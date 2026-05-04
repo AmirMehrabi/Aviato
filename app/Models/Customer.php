@@ -6,6 +6,7 @@ use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -17,7 +18,13 @@ class Customer extends Authenticatable
     use HasFactory, Notifiable;
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_SUSPENDED = 'suspended';
+
+    public function virtualMachines(): HasMany
+    {
+        return $this->hasMany(VirtualMachine::class);
+    }
 
     public function suspend(?string $reason = null): void
     {

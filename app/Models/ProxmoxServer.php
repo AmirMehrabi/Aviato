@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'name',
@@ -36,12 +37,21 @@ use Illuminate\Database\Eloquent\Model;
 class ProxmoxServer extends Model
 {
     public const CONNECTION_ONLINE = 'online';
+
     public const CONNECTION_OFFLINE = 'offline';
+
     public const CONNECTION_UNKNOWN = 'unknown';
 
     public const SYNC_SYNCED = 'synced';
+
     public const SYNC_PENDING = 'pending';
+
     public const SYNC_FAILED = 'failed';
+
+    public function virtualMachines(): HasMany
+    {
+        return $this->hasMany(VirtualMachine::class);
+    }
 
     protected function casts(): array
     {

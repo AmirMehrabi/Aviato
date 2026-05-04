@@ -57,29 +57,31 @@
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <h2 class="text-xl font-black text-slate-950">ماشین‌های مجازی مشتری</h2>
-                    <p class="mt-1 text-sm text-slate-500">داده‌های این بخش تا اتصال ماژول VM به صورت dummy نمایش داده می‌شود.</p>
+                    <p class="mt-1 text-sm text-slate-500">VMهای واقعی متصل به این مشتری و هزینه PAYG آنها.</p>
                 </div>
-                <span class="rounded-full bg-[#F1F7F5] px-4 py-2 text-sm font-black text-[#105D52]">{{ count($virtualMachines) }} VM</span>
+                <span class="rounded-full bg-[#F1F7F5] px-4 py-2 text-sm font-black text-[#105D52]">{{ $virtualMachines->count() }} VM</span>
             </div>
 
             <div class="mt-5 grid gap-4 lg:grid-cols-3">
-                @foreach($virtualMachines as $vm)
+                @forelse($virtualMachines as $vm)
                     <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <h3 class="font-black text-slate-950" dir="ltr">{{ $vm['name'] }}</h3>
-                                <p class="mt-1 text-xs text-slate-500">Node: {{ $vm['node'] }}</p>
+                                <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->name }}</a>
+                                <p class="mt-1 text-xs text-slate-500">Node: {{ $vm->node ?: '—' }}</p>
                             </div>
-                            <span class="rounded-md px-2 py-1 text-xs font-black {{ $vm['status'] === 'running' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' }}">{{ $vm['status'] }}</span>
+                            <span class="rounded-md px-2 py-1 text-xs font-black {{ $vm->status === 'running' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' }}">{{ $vm->status === 'running' ? 'running' : 'stopped' }}</span>
                         </div>
                         <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-                            <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm['cpu'] }}</span><span class="text-slate-500">vCPU</span></div>
-                            <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm['ram'] }}</span><span class="text-slate-500">RAM</span></div>
-                            <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm['disk'] }}</span><span class="text-slate-500">Disk</span></div>
+                            <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->cpu_cores }}</span><span class="text-slate-500">vCPU</span></div>
+                            <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->ram_gb }} GB</span><span class="text-slate-500">RAM</span></div>
+                            <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->disk_gb }} GB</span><span class="text-slate-500">Disk</span></div>
                         </div>
-                        <p class="mt-4 text-left text-sm font-black text-[#105D52]">{{ number_format($vm['monthly_price']) }} تومان / ماه</p>
+                        <p class="mt-4 text-left text-sm font-black text-[#105D52]">{{ number_format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }} تومان / ماه</p>
                     </article>
-                @endforeach
+                @empty
+                    <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 lg:col-span-3">هنوز VM برای این مشتری ثبت نشده است. <a class="font-black text-[#105D52]" href="{{ route('admin.virtual-machines.create', ['customer_id' => $customer->id]) }}">ساخت VM</a></div>
+                @endforelse
             </div>
         </section>
 

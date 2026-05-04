@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
+use App\Http\Controllers\Admin\ResourceRateController;
+use App\Http\Controllers\Admin\VirtualMachineController;
+use App\Http\Controllers\Admin\VmBundleController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +55,21 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.customers.activate');
         Route::resource('customers', CustomerController::class)
             ->names('admin.customers');
+
+        Route::post('virtual-machines/{virtualMachine}/start', [VirtualMachineController::class, 'start'])
+            ->name('admin.virtual-machines.start');
+        Route::post('virtual-machines/{virtualMachine}/stop', [VirtualMachineController::class, 'stop'])
+            ->name('admin.virtual-machines.stop');
+        Route::resource('virtual-machines', VirtualMachineController::class)
+            ->parameters(['virtual-machines' => 'virtualMachine'])
+            ->names('admin.virtual-machines');
+
+        Route::prefix('billing')->name('admin.billing.')->group(function (): void {
+            Route::resource('rates', ResourceRateController::class)->except(['show']);
+            Route::resource('bundles', VmBundleController::class)
+                ->parameters(['bundles' => 'bundle'])
+                ->except(['show']);
+        });
 
         Route::post('proxmox-servers/{proxmoxServer}/sync', [ProxmoxServerWebController::class, 'sync'])
             ->name('admin.proxmox-servers.sync');
