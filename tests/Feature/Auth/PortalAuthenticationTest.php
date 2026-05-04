@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,71 +11,82 @@ class PortalAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_customer_can_register_with_phone_only(): void
+    public function test_customer_can_register_with_phone_only_on_customer_subdomain(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('https://cp.aviato.ir/register', [
             'name' => 'Customer User',
             'phone' => '+15551234567',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
 
-        $response->assertRedirect('/dashboard');
+        $response->assertRedirect('https://cp.aviato.ir/dashboard');
         $this->assertAuthenticated('customer');
-        $this->assertDatabaseHas('users', [
+        $this->assertDatabaseHas('customers', [
             'phone' => '+15551234567',
             'email' => null,
-            'role' => 'customer',
         ]);
     }
 
-    public function test_customer_can_login_with_email(): void
+    public function test_admin_can_register_with_email_on_admin_subdomain(): void
     {
-        User::factory()->create([
+        $response = $this->post('https://admin.aviato.ir/register', [
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertRedirect('https://admin.aviato.ir/dashboard');
+        $this->assertAuthenticated('admin');
+        $this->assertDatabaseHas('users', [
+            'email' => 'admin@example.com',
+            'phone' => null,
+        ]);
+    }
+
+    public function test_customer_can_login_with_email_on_customer_subdomain(): void
+    {
+        Customer::factory()->create([
             'email' => 'customer@example.com',
             'phone' => null,
-            'role' => 'customer',
             'password' => 'password',
         ]);
 
-        $response = $this->post('/login', [
+        $response = $this->post('https://cp.aviato.ir/login', [
             'login' => 'customer@example.com',
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/dashboard');
+        $response->assertRedirect('https://cp.aviato.ir/dashboard');
         $this->assertAuthenticated('customer');
     }
 
-    public function test_admin_can_login_only_from_admin_portal(): void
+    public function test_admin_and_customer_use_separate_auth_models(): void
     {
-        User::factory()->create([
-            'email' => null,
+        Customer::factory()->create([
             'phone' => '+15557654321',
-            'role' => 'admin',
+            'email' => null,
             'password' => 'password',
         ]);
 
-        $this->post('/login', [
+        User::factory()->create([
+            'phone' => '+15550001111',
+            'email' => null,
+            'password' => 'password',
+        ]);
+
+        $this->post('https://admin.aviato.ir/login', [
             'login' => '+15557654321',
             'password' => 'password',
         ])->assertSessionHasErrors('login');
 
-        $response = $this->post('/admin/login', [
-            'login' => '+15557654321',
+        $response = $this->post('https://admin.aviato.ir/login', [
+            'login' => '+15550001111',
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/admin/dashboard');
+        $response->assertRedirect('https://admin.aviato.ir/dashboard');
         $this->assertAuthenticated('admin');
-    }
-
-    public function test_role_guards_protect_portals(): void
-    {
-        $customer = User::factory()->create(['role' => 'customer']);
-        $admin = User::factory()->create(['role' => 'admin']);
-
-        $this->actingAs($customer, 'customer')->get('/admin/dashboard')->assertRedirect('/admin/login');
-        $this->actingAs($admin, 'admin')->get('/dashboard')->assertRedirect('/login');
     }
 }

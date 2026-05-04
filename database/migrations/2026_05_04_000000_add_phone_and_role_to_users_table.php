@@ -16,9 +16,6 @@ return new class extends Migration
                 $table->string('phone', 30)->nullable()->unique()->after('email');
             }
 
-            if (! Schema::hasColumn('users', 'role')) {
-                $table->string('role')->default('customer')->index()->after('phone');
-            }
         });
     }
 
@@ -28,11 +25,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            if (Schema::hasColumn('users', 'role')) {
-                $table->dropIndex(['role']);
-                $table->dropColumn('role');
-            }
-
             if (Schema::hasColumn('users', 'phone')) {
                 $table->dropUnique(['phone']);
                 $table->dropColumn('phone');

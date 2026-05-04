@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePortalHost;
 use App\Http\Middleware\EnsureUserRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,13 +15,17 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'portal.host' => EnsurePortalHost::class,
             'role' => EnsureUserRole::class,
         ]);
 
         $middleware->redirectGuestsTo(function (Request $request) {
-            return str_starts_with(trim($request->path(), '/'), trim(config('portals.admin.home_path'), '/'))
-                ? '/'.config('portals.admin.login_path')
-                : '/'.config('portals.customer.login_path');
+            $adminDomain = config('portals.admin.domain');
+            $portal = $adminDomain && $request->getHost() === $adminDomain ? 'admin' : 'customer';
+            $domain = config("portals.$portal.domain");
+            $path = '/'.config("portals.$portal.login_path");
+
+            return $domain ? $request->getScheme().'://'.$domain.$path : $path;
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {

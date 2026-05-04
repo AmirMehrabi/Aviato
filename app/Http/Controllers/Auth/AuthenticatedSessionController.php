@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,8 +18,6 @@ class AuthenticatedSessionController extends Controller
 
     public function store(Request $request, string $portal): RedirectResponse
     {
-        $role = $this->roleForPortal($portal);
-
         $credentials = $request->validate([
             'login' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
@@ -31,7 +28,6 @@ class AuthenticatedSessionController extends Controller
         if (! Auth::guard($portal)->attempt([
             $loginColumn => $credentials['login'],
             'password' => $credentials['password'],
-            'role' => $role->value,
         ], $request->boolean('remember'))) {
             throw ValidationException::withMessages([
                 'login' => __('These credentials do not match our records.'),
@@ -40,33 +36,36 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended($this->homePath($portal));
+        return redirect()->intended($this->homeUrl($portal));
     }
 
     public function destroy(Request $request): RedirectResponse
     {
-        $portal = $request->user()?->isAdmin() ? 'admin' : 'customer';
+        $portal = Auth::guard('admin')->check() ? 'admin' : 'customer';
 
         Auth::guard($portal)->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect($this->loginPath($portal));
+        return redirect($this->loginUrl($portal));
     }
 
-    private function roleForPortal(string $portal): UserRole
+    private function homeUrl(string $portal): string
     {
-        return $portal === 'admin' ? UserRole::Admin : UserRole::Customer;
+        return $this->portalUrl($portal, config("portals.$portal.home_path"));
     }
 
-    private function homePath(string $portal): string
+    private function loginUrl(string $portal): string
     {
-        return '/'.config("portals.$portal.home_path");
+        return $this->portalUrl($portal, config("portals.$portal.login_path"));
     }
 
-    private function loginPath(string $portal): string
+    private function portalUrl(string $portal, string $path): string
     {
-        return '/'.config("portals.$portal.login_path");
+        $domain = config("portals.$portal.domain");
+        $path = '/'.trim($path, '/');
+
+        return $domain ? request()->getScheme().'://'.$domain.$path : $path;
     }
 }

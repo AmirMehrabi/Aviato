@@ -2,16 +2,23 @@
 
 namespace Database\Factories;
 
-use App\Models\User;
+use App\Models\Customer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @extends Factory<User>
+ * @extends Factory<Customer>
  */
-class UserFactory extends Factory
+class CustomerFactory extends Factory
 {
+    /**
+     * The name of the factory's corresponding model.
+     *
+     * @var class-string<Customer>
+     */
+    protected $model = Customer::class;
+
     /**
      * The current password being used by the factory.
      */
@@ -35,7 +42,7 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the model's email address should be unverified.
+     * Indicate that the customer's email address should be unverified.
      */
     public function unverified(): static
     {
