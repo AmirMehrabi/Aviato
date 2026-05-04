@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable([
     'name',
     'cluster_name',
+    'datacenter',
+    'environment',
     'host',
     'port',
     'realm',
@@ -18,12 +20,29 @@ use Illuminate\Database\Eloquent\Model;
     'api_token_secret',
     'verify_tls',
     'is_active',
+    'maintenance_mode',
+    'tags',
+    'desired_state',
+    'remote_inventory',
+    'connection_status',
+    'sync_status',
+    'sync_error',
+    'sync_pending_since',
+    'synced_at',
     'last_seen_at',
     'last_status',
 ])]
 #[Hidden(['password', 'api_token_secret'])]
 class ProxmoxServer extends Model
 {
+    public const CONNECTION_ONLINE = 'online';
+    public const CONNECTION_OFFLINE = 'offline';
+    public const CONNECTION_UNKNOWN = 'unknown';
+
+    public const SYNC_SYNCED = 'synced';
+    public const SYNC_PENDING = 'pending';
+    public const SYNC_FAILED = 'failed';
+
     protected function casts(): array
     {
         return [
@@ -31,8 +50,14 @@ class ProxmoxServer extends Model
             'api_token_secret' => 'encrypted',
             'verify_tls' => 'boolean',
             'is_active' => 'boolean',
+            'maintenance_mode' => 'boolean',
+            'tags' => 'array',
+            'desired_state' => 'array',
+            'remote_inventory' => 'array',
             'last_seen_at' => 'datetime',
             'last_status' => 'array',
+            'sync_pending_since' => 'datetime',
+            'synced_at' => 'datetime',
         ];
     }
 
@@ -49,5 +74,34 @@ class ProxmoxServer extends Model
     public function proxmoxUser(): string
     {
         return str_contains($this->username, '@') ? $this->username : $this->username.'@'.$this->realm;
+    }
+
+    /** @return array<string, mixed> */
+    public function desiredStateSnapshot(): array
+    {
+        return [
+            'name' => $this->name,
+            'cluster_name' => $this->cluster_name,
+            'datacenter' => $this->datacenter,
+            'environment' => $this->environment,
+            'host' => $this->host,
+            'port' => $this->port,
+            'realm' => $this->realm,
+            'username' => $this->username,
+            'verify_tls' => $this->verify_tls,
+            'is_active' => $this->is_active,
+            'maintenance_mode' => $this->maintenance_mode,
+            'tags' => $this->tags ?? [],
+        ];
+    }
+
+    public function markPendingSync(): void
+    {
+        $this->forceFill([
+            'desired_state' => $this->desiredStateSnapshot(),
+            'sync_status' => self::SYNC_PENDING,
+            'sync_error' => null,
+            'sync_pending_since' => $this->sync_pending_since ?? now(),
+        ]);
     }
 }

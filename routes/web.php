@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Support\Facades\Route;
@@ -39,9 +40,17 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         ->middleware('auth:admin')
         ->name('admin.logout');
 
-    Route::get($adminHome, function () {
-        return view('admin.dashboard');
-    })->middleware('auth:admin')->name('admin.dashboard');
+    Route::middleware('auth:admin')->group(function () use ($adminHome) {
+        Route::get($adminHome, function () {
+            return view('admin.dashboard');
+        })->name('admin.dashboard');
+
+        Route::post('proxmox-servers/{proxmoxServer}/sync', [ProxmoxServerWebController::class, 'sync'])
+            ->name('admin.proxmox-servers.sync');
+        Route::resource('proxmox-servers', ProxmoxServerWebController::class)
+            ->parameters(['proxmox-servers' => 'proxmoxServer'])
+            ->names('admin.proxmox-servers');
+    });
 });
 
 Route::domain($customerDomain)->middleware('portal.host:customer')->group(function () use ($customerLogin, $customerRegister, $customerHome) {

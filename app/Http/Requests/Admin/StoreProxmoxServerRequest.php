@@ -17,6 +17,8 @@ class StoreProxmoxServerRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'cluster_name' => ['nullable', 'string', 'max:255'],
+            'datacenter' => ['nullable', 'string', 'max:255'],
+            'environment' => ['required', 'string', 'max:80'],
             'host' => ['required', 'string', 'max:255'],
             'port' => ['required', 'integer', 'between:1,65535'],
             'realm' => ['required', 'string', 'max:50'],
@@ -26,6 +28,8 @@ class StoreProxmoxServerRequest extends FormRequest
             'api_token_secret' => ['nullable', 'required_with:api_token_id', 'string'],
             'verify_tls' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
+            'maintenance_mode' => ['sometimes', 'boolean'],
+            'tags' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }
