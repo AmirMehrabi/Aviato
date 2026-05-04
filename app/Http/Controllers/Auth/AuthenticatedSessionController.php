@@ -36,7 +36,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended($this->homeUrl($portal));
+        return redirect()->intended($this->portalPath($portal, 'home_path'));
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -48,24 +48,11 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect($this->loginUrl($portal));
+        return redirect($this->portalPath($portal, 'login_path'));
     }
 
-    private function homeUrl(string $portal): string
+    private function portalPath(string $portal, string $key): string
     {
-        return $this->portalUrl($portal, config("portals.$portal.home_path"));
-    }
-
-    private function loginUrl(string $portal): string
-    {
-        return $this->portalUrl($portal, config("portals.$portal.login_path"));
-    }
-
-    private function portalUrl(string $portal, string $path): string
-    {
-        $domain = config("portals.$portal.domain");
-        $path = '/'.trim($path, '/');
-
-        return $domain ? request()->getScheme().'://'.$domain.$path : $path;
+        return '/'.trim(config("portals.$portal.$key"), '/');
     }
 }

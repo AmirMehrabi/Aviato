@@ -22,10 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(function (Request $request) {
             $adminDomain = config('portals.admin.domain');
             $portal = $adminDomain && $request->getHost() === $adminDomain ? 'admin' : 'customer';
-            $domain = config("portals.$portal.domain");
-            $path = '/'.config("portals.$portal.login_path");
 
-            return $domain ? $request->getScheme().'://'.$domain.$path : $path;
+            return '/'.trim(config("portals.$portal.login_path"), '/');
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -110,6 +110,7 @@
                             </svg>
                             ساخت ماشین
                         </button>
+                        <form method="POST" action="{{ route('admin.logout', [], false) }}" class="mt-8">@csrf <button class="rounded-2xl bg-white px-5 py-3 font-black text-[#0A3D37]">خروج</button></form>
                     </div>
                 </div>
             </header>

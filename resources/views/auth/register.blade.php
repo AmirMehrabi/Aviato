@@ -15,7 +15,7 @@
                 <h1 class="mt-2 text-3xl font-black">ثبت نام با ایمیل یا موبایل</h1>
             </div>
 
-            <form method="POST" action="{{ route($portal.'.register.store') }}" class="space-y-5 px-8 py-8">
+            <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 px-8 py-8">
                 @csrf
 
                 <label class="block">
@@ -50,7 +50,7 @@
                 </label>
 
                 <button class="w-full rounded-2xl bg-[#0A3D37] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0A3D37]/20 transition hover:bg-[#105D52]" type="submit">ایجاد حساب</button>
-                <p class="text-center text-sm font-semibold text-slate-500">حساب دارید؟ <a class="text-[#0A3D37]" href="{{ route($portal.'.login') }}">ورود</a></p>
+                <p class="text-center text-sm font-semibold text-slate-500">حساب دارید؟ <a class="text-[#0A3D37]" href="{{ route($portal.'.login', [], false) }}">ورود</a></p>
             </form>
         </section>
     </main>

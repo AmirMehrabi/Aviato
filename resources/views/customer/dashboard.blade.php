@@ -11,7 +11,7 @@
     <main class="mx-auto max-w-4xl rounded-[2rem] bg-white p-8 shadow-2xl shadow-[#0A3D37]/10">
         <h1 class="text-3xl font-black">داشبورد مشتریان</h1>
         <p class="mt-3 text-slate-600">این صفحه با گارد customer محافظت شده است.</p>
-        <form method="POST" action="{{ route('customer.logout') }}" class="mt-8">@csrf <button class="rounded-2xl bg-[#0A3D37] px-5 py-3 font-black text-white">خروج</button></form>
+        <form method="POST" action="{{ route('customer.logout', [], false) }}" class="mt-8">@csrf <button class="rounded-2xl bg-[#0A3D37] px-5 py-3 font-black text-white">خروج</button></form>
     </main>
 </body>
 </html>

@@ -42,14 +42,6 @@ class RegisteredUserController extends Controller
         Auth::guard($portal)->login($account);
         $request->session()->regenerate();
 
-        return redirect($this->portalUrl($portal, config("portals.$portal.home_path")));
-    }
-
-    private function portalUrl(string $portal, string $path): string
-    {
-        $domain = config("portals.$portal.domain");
-        $path = '/'.trim($path, '/');
-
-        return $domain ? request()->getScheme().'://'.$domain.$path : $path;
+        return redirect('/'.trim(config("portals.$portal.home_path"), '/'));
     }
 }
