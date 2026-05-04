@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,16 @@ class AuthenticatedSessionController extends Controller
         ], $request->boolean('remember'))) {
             throw ValidationException::withMessages([
                 'login' => __('These credentials do not match our records.'),
+            ]);
+        }
+
+        $user = Auth::guard($portal)->user();
+
+        if ($portal === 'customer' && $user instanceof Customer && $user->isSuspended()) {
+            Auth::guard($portal)->logout();
+
+            throw ValidationException::withMessages([
+                'login' => 'حساب شما تعلیق شده است. لطفا با پشتیبانی تماس بگیرید.',
             ]);
         }
 

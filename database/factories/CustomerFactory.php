@@ -37,6 +37,7 @@ class CustomerFactory extends Factory
             'phone' => fake()->unique()->e164PhoneNumber(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'status' => Customer::STATUS_ACTIVE,
             'remember_token' => Str::random(10),
         ];
     }

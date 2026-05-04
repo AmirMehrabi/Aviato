@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -44,6 +45,13 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::get($adminHome, function () {
             return view('admin.dashboard');
         })->name('admin.dashboard');
+
+        Route::patch('customers/{customer}/suspend', [CustomerController::class, 'suspend'])
+            ->name('admin.customers.suspend');
+        Route::patch('customers/{customer}/activate', [CustomerController::class, 'activate'])
+            ->name('admin.customers.activate');
+        Route::resource('customers', CustomerController::class)
+            ->names('admin.customers');
 
         Route::post('proxmox-servers/{proxmoxServer}/sync', [ProxmoxServerWebController::class, 'sync'])
             ->name('admin.proxmox-servers.sync');

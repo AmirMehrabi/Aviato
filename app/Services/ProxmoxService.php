@@ -22,10 +22,12 @@ class ProxmoxService
 
         try {
             // Treat /nodes as the connectivity/auth source of truth because scoped API tokens often allow it while denying /version.
-            $nodes = $this->getData($server, '/nodes');
+            $nodes = $this->getData($server, '/nodes') ?? [];
             $version = $this->getOptionalData($server, '/version', $errors);
             $clusterStatus = $this->getOptionalData($server, '/cluster/status', $errors, []);
             $resources = $this->getOptionalData($server, '/cluster/resources', $errors, [], ['type' => 'vm']);
+            $storage = $this->storageInventory($server, $nodes, $errors);
+            $backups = $this->backupInventory($server, $storage, $errors);
         } catch (ConnectionException $exception) {
             throw new RuntimeException('Unable to connect to the Proxmox API: '.$exception->getMessage(), previous: $exception);
         } catch (RequestException $exception) {
@@ -37,12 +39,10 @@ class ProxmoxService
             'nodes' => $nodes,
             'cluster_status' => $clusterStatus,
             'virtual_machines' => $resources,
+            'storage' => $storage,
+            'backups' => $backups,
             'endpoint_errors' => $errors,
-            'counts' => [
-                'nodes' => count($nodes),
-                'virtual_machines' => count($resources),
-                'running_virtual_machines' => collect($resources)->where('status', 'running')->count(),
-            ],
+            'counts' => $this->counts($nodes, $resources, $storage, $backups),
             'fetched_at' => now()->toISOString(),
         ];
     }
@@ -75,6 +75,88 @@ class ProxmoxService
         return $summary;
     }
 
+
+
+    /**
+     * @param array<int, array<string, mixed>> $nodes
+     * @param array<string, string> $errors
+     * @return array<int, array<string, mixed>>
+     */
+    protected function storageInventory(ProxmoxServer $server, array $nodes, array &$errors): array
+    {
+        $inventory = [];
+
+        foreach ($nodes as $node) {
+            $nodeName = $node['node'] ?? $node['name'] ?? null;
+
+            if (! $nodeName) {
+                continue;
+            }
+
+            $storages = $this->getOptionalData($server, "/nodes/{$nodeName}/storage", $errors, []);
+
+            foreach ($storages as $storage) {
+                $storage['node'] = $nodeName;
+                $inventory[] = $storage;
+            }
+        }
+
+        return $inventory;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $storage
+     * @param array<string, string> $errors
+     * @return array<int, array<string, mixed>>
+     */
+    protected function backupInventory(ProxmoxServer $server, array $storage, array &$errors): array
+    {
+        $backups = [];
+
+        foreach ($storage as $store) {
+            $node = $store['node'] ?? null;
+            $storageId = $store['storage'] ?? null;
+            $content = (string) ($store['content'] ?? '');
+
+            if (! $node || ! $storageId || ! str_contains($content, 'backup')) {
+                continue;
+            }
+
+            $items = $this->getOptionalData($server, "/nodes/{$node}/storage/{$storageId}/content", $errors, [], ['content' => 'backup']);
+
+            foreach ($items as $item) {
+                $item['node'] = $node;
+                $item['storage'] = $storageId;
+                $backups[] = $item;
+            }
+        }
+
+        return $backups;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $nodes
+     * @param array<int, array<string, mixed>> $resources
+     * @param array<int, array<string, mixed>> $storage
+     * @param array<int, array<string, mixed>> $backups
+     * @return array<string, int>
+     */
+    protected function counts(array $nodes, array $resources, array $storage, array $backups): array
+    {
+        $nodeCollection = collect($nodes);
+        $vmCollection = collect($resources);
+
+        return [
+            'nodes' => $nodeCollection->count(),
+            'online_nodes' => $nodeCollection->where('status', 'online')->count(),
+            'offline_nodes' => $nodeCollection->reject(fn (array $node): bool => ($node['status'] ?? null) === 'online')->count(),
+            'virtual_machines' => $vmCollection->count(),
+            'running_virtual_machines' => $vmCollection->where('status', 'running')->count(),
+            'offline_virtual_machines' => $vmCollection->reject(fn (array $vm): bool => ($vm['status'] ?? null) === 'running')->count(),
+            'storage' => count($storage),
+            'backups' => count($backups),
+        ];
+    }
 
     /** @return mixed */
     protected function getData(ProxmoxServer $server, string $path, array $query = []): mixed
