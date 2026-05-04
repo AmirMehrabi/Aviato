@@ -21,20 +21,20 @@
         ></div>
 
         <aside
-            class="fixed inset-y-0 right-0 z-40 hidden w-72 translate-x-full flex-col border-l border-slate-200 bg-white px-5 py-5 shadow-xl transition-transform duration-200 lg:static lg:flex lg:translate-x-0 lg:shadow-none"
+            class="fixed inset-y-0 right-0 z-40 hidden w-72 translate-x-full flex-col border-l border-white/10 bg-[#0A3D37] px-5 py-5 text-white shadow-2xl shadow-[#0A3D37]/30 transition-transform duration-200 lg:static lg:flex lg:translate-x-0 lg:shadow-none"
             :class="{ '!flex translate-x-0': sidebarOpen }"
         >
             <div class="flex items-center justify-between">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
-                    <span class="grid size-11 place-items-center rounded-lg bg-[#105D52] text-lg font-black text-white">آ</span>
+                    <span class="grid size-11 place-items-center rounded-lg bg-[#105D52] text-lg font-black text-white shadow-lg shadow-[#105D52]/25">آ</span>
                     <span>
-                        <span class="block text-lg font-black">آویاتو</span>
-                        <span class="block text-xs text-slate-500">پنل مدیریت سرورها</span>
+                        <span class="block text-lg font-black text-white">آویاتو</span>
+                        <span class="block text-xs text-emerald-50/60">پنل مدیریت سرورها</span>
                     </span>
                 </a>
                 <button
                     type="button"
-                    class="grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-600 lg:hidden"
+                    class="grid size-10 place-items-center rounded-lg border border-white/10 text-emerald-50/80 transition hover:bg-white/10 hover:text-white lg:hidden"
                     @click="sidebarOpen = false"
                     aria-label="بستن منو"
                 >
@@ -58,7 +58,7 @@
                 @foreach ($navItems as $item)
                     <a
                         href="#"
-                        class="flex items-center gap-3 rounded-lg px-3 py-3 transition {{ $item['active'] ? 'bg-[#E8F3F0] text-[#105D52]' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950' }}"
+                        class="flex items-center gap-3 rounded-lg px-3 py-3 transition {{ $item['active'] ? 'bg-white text-[#105D52] shadow-lg shadow-black/10' : 'text-emerald-50/70 hover:bg-white/10 hover:text-white' }}"
                     >
                         <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                             <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
@@ -68,22 +68,22 @@
                 @endforeach
             </nav>
 
-            <div class="mt-auto rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <p class="text-sm font-bold">اعتبار کیف پول</p>
-                <p class="mt-2 text-2xl font-black">۲٬۴۵۰٬۰۰۰ تومان</p>
-                <button type="button" class="mt-4 w-full rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800">
+            <div class="mt-auto rounded-lg border border-white/10 bg-white/10 p-4 shadow-lg shadow-black/10">
+                <p class="text-sm font-bold text-emerald-50/80">اعتبار کیف پول</p>
+                <p class="mt-2 text-2xl font-black text-white">۲٬۴۵۰٬۰۰۰ تومان</p>
+                <button type="button" class="mt-4 w-full rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-slate-100">
                     افزایش اعتبار
                 </button>
             </div>
         </aside>
 
         <main class="w-full min-w-0 flex-1 overflow-x-hidden">
-            <header class="sticky top-0 z-20 border-b border-slate-200 bg-[#F7F8FA]/90 px-4 py-4 backdrop-blur md:px-8 lg:px-10">
+            <header class="sticky top-0 z-20 border-b border-white/10 bg-[#0A3D37]/95 px-4 py-4 text-white shadow-lg shadow-[#0A3D37]/10 backdrop-blur md:px-8 lg:px-10">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex min-w-0 items-center gap-3">
                         <button
                             type="button"
-                            class="grid size-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 lg:hidden"
+                            class="grid size-10 place-items-center rounded-lg border border-white/10 bg-white/10 text-emerald-50/90 transition hover:bg-white/15 hover:text-white lg:hidden"
                             @click="sidebarOpen = true"
                             aria-label="باز کردن منو"
                         >
@@ -92,17 +92,17 @@
                             </svg>
                         </button>
                         <div class="min-w-0">
-                            <p class="text-sm text-slate-500">خوش آمدید، امیر</p>
-                            <h1 class="text-lg font-black leading-8 md:text-2xl">داشبورد سرورهای شما</h1>
+                            <p class="text-sm text-emerald-50/60">خوش آمدید، امیر</p>
+                            <h1 class="text-lg font-black leading-8 text-white md:text-2xl">داشبورد سرورهای شما</h1>
                         </div>
                     </div>
                     <div class="flex items-center justify-between gap-2 sm:justify-start">
-                        <button type="button" class="hidden rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 sm:block">
+                        <button type="button" class="hidden rounded-lg border border-white/10 bg-white/10 px-4 py-2.5 text-sm font-bold text-emerald-50/90 transition hover:bg-white/15 hover:text-white sm:block">
                             مستندات
                         </button>
                         <button
                             type="button"
-                            class="inline-flex items-center gap-2 rounded-lg bg-[#105D52] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#0D4C44]"
+                            class="inline-flex items-center gap-2 rounded-lg bg-[#105D52] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#105D52]/20 transition hover:bg-[#0D4C44]"
                             @click="createOpen = true"
                         >
                             <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -260,7 +260,7 @@
                         <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                             <div class="flex items-center justify-between">
                                 <h2 class="font-black">مصرف منابع</h2>
-                                <span class="text-xs font-bold text-slate-400" x-text="period"></span>
+                                <span class="text-xs font-bold text-emerald-50/60" x-text="period"></span>
                             </div>
                             <div class="mt-6 flex h-44 items-end gap-2 rounded-lg bg-slate-50 px-3 py-3">
                                 @foreach ([46, 64, 38, 78, 55, 42, 69, 51, 84, 61, 48, 73] as $bar)
@@ -269,7 +269,7 @@
                                     </div>
                                 @endforeach
                             </div>
-                            <div class="mt-4 flex justify-between text-xs font-bold text-slate-400">
+                            <div class="mt-4 flex justify-between text-xs font-bold text-emerald-50/60">
                                 <span>ابتدا</span>
                                 <span>اکنون</span>
                             </div>
