@@ -3,41 +3,36 @@
 <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div class="grid gap-4 md:grid-cols-2">
-            <label class="block md:col-span-2">
-                <span class="text-sm font-black text-slate-700">نام مشتری</span>
-                <input name="name" value="{{ old('name', $customer->name) }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#105D52] focus:outline-none" required>
-                @error('name') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-            </label>
+            <x-form.input name="name" label="نام مشتری" :value="$customer->name" wrapper-class="block md:col-span-2" required />
 
-            <label class="block">
-                <span class="text-sm font-black text-slate-700">ایمیل</span>
-                <input name="email" type="email" value="{{ old('email', $customer->email) }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left dir-ltr focus:border-[#105D52] focus:outline-none">
-                @error('email') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-            </label>
+            <x-form.input name="email" label="ایمیل" type="email" :value="$customer->email" dir-ltr />
 
-            <label class="block">
-                <span class="text-sm font-black text-slate-700">موبایل</span>
-                <input name="phone" value="{{ old('phone', $customer->phone) }}" placeholder="+98912..." class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left dir-ltr focus:border-[#105D52] focus:outline-none">
-                @error('phone') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-            </label>
+            <x-form.input name="phone" label="موبایل" :value="$customer->phone" placeholder="+98912..." dir-ltr />
 
-            <label class="block">
-                <span class="text-sm font-black text-slate-700">رمز عبور</span>
-                <input name="password" type="password" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left dir-ltr focus:border-[#105D52] focus:outline-none" @if(! $customer->exists) required @endif>
-                <span class="mt-1 block text-xs text-slate-500">در ویرایش، خالی بگذارید تا تغییر نکند.</span>
-                @error('password') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-            </label>
+            <x-form.input
+                name="password"
+                label="رمز عبور"
+                type="password"
+                help="در ویرایش، خالی بگذارید تا تغییر نکند."
+                dir-ltr
+                :required="! $customer->exists"
+            />
 
-            <label class="block">
-                <span class="text-sm font-black text-slate-700">تکرار رمز عبور</span>
-                <input name="password_confirmation" type="password" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left dir-ltr focus:border-[#105D52] focus:outline-none" @if(! $customer->exists) required @endif>
-            </label>
+            <x-form.input
+                name="password_confirmation"
+                label="تکرار رمز عبور"
+                type="password"
+                dir-ltr
+                :required="! $customer->exists"
+            />
 
-            <label class="block md:col-span-2">
-                <span class="text-sm font-black text-slate-700">دلیل تعلیق</span>
-                <input name="suspension_reason" value="{{ old('suspension_reason', $customer->suspension_reason) }}" placeholder="اختیاری؛ فقط برای مشتری تعلیق شده نمایش داده می‌شود" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#105D52] focus:outline-none">
-                @error('suspension_reason') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-            </label>
+            <x-form.input
+                name="suspension_reason"
+                label="دلیل تعلیق"
+                :value="$customer->suspension_reason"
+                placeholder="اختیاری؛ فقط برای مشتری تعلیق شده نمایش داده می‌شود"
+                wrapper-class="block md:col-span-2"
+            />
         </div>
     </div>
 
@@ -46,18 +41,21 @@
             <h2 class="font-black">وضعیت حساب</h2>
             <p class="mt-2 text-sm leading-7 text-slate-500">مشتری فعال می‌تواند وارد پنل شود؛ مشتری تعلیق شده برای عملیات مدیریتی نگه داشته می‌شود.</p>
             <div class="mt-5 space-y-3">
-                <label class="block rounded-lg bg-slate-50 p-3 text-sm font-bold">
-                    <span>وضعیت</span>
-                    <select name="status" class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 focus:border-[#105D52] focus:outline-none">
-                        <option value="active" @selected(old('status', $customer->status ?: 'active') === 'active')>فعال</option>
-                        <option value="suspended" @selected(old('status', $customer->status) === 'suspended')>تعلیق شده</option>
-                    </select>
-                </label>
-                <label class="flex items-center justify-between gap-3 rounded-lg bg-[#F1F7F5] p-3 text-sm font-bold text-[#105D52]">
-                    <span>ایمیل تایید شده</span>
-                    <input type="hidden" name="email_verified" value="0">
-                    <input type="checkbox" name="email_verified" value="1" @checked(old('email_verified', (bool) $customer->email_verified_at))>
-                </label>
+                <x-form.select
+                    name="status"
+                    label="وضعیت"
+                    :options="['active' => 'فعال', 'suspended' => 'تعلیق شده']"
+                    :selected="$customer->status ?: 'active'"
+                    wrapper-class="block rounded-lg bg-slate-50 p-3 text-sm font-bold"
+                    select-class="bg-white px-3 py-2"
+                />
+
+                <x-form.checkbox
+                    name="email_verified"
+                    label="ایمیل تایید شده"
+                    :checked="(bool) $customer->email_verified_at"
+                    wrapper-class="flex items-center justify-between gap-3 rounded-lg bg-[#F1F7F5] p-3 text-sm font-bold text-[#105D52]"
+                />
             </div>
         </div>
 
