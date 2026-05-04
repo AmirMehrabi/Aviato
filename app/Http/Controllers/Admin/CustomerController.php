@@ -7,13 +7,17 @@ use App\Http\Requests\Admin\StoreCustomerRequest;
 use App\Http\Requests\Admin\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Services\BillingService;
+use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
-    public function __construct(private readonly BillingService $billing) {}
+    public function __construct(
+        private readonly BillingService $billing,
+        private readonly WalletService $wallets,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -25,6 +29,7 @@ class CustomerController extends Controller
         ]);
 
         $customers = Customer::query()
+            ->with('wallet')
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
@@ -70,13 +75,15 @@ class CustomerController extends Controller
 
     public function show(Customer $customer): View
     {
+        $wallet = $this->wallets->walletFor($customer);
         $customer->load(['virtualMachines.bundle', 'virtualMachines.proxmoxServer']);
+        $transactions = $wallet->transactions()->with('createdBy')->limit(10)->get();
         $summary = $this->billing->customerSummary($customer->id);
 
         return view('admin.customers.show', [
             'customer' => $customer,
             'financial' => [
-                'balance' => 0,
+                'balance' => $wallet->balance,
                 'monthly_spend' => $summary['monthly_spend'],
                 'unpaid_total' => $summary['unbilled_accrued'],
                 'status' => $summary['unbilled_accrued'] > 0 ? 'در حال مصرف' : 'بدون مصرف',
@@ -84,6 +91,9 @@ class CustomerController extends Controller
             'virtualMachines' => $customer->virtualMachines,
             'invoices' => $this->dummyInvoices($customer),
             'billing' => $this->billing,
+            'wallet' => $wallet,
+            'walletTransactions' => $transactions,
+            'wallets' => $this->wallets,
         ]);
     }
 

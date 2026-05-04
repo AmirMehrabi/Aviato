@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@inject('money', 'App\Services\WalletService')
 @section('title', 'باندل‌ها')
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
@@ -9,7 +10,7 @@
 <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <div class="flex items-start justify-between gap-3"><div><h2 class="text-lg font-black">{{ $bundle->name }}</h2><p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $bundle->slug }}</p></div><span class="rounded-md px-2 py-1 text-xs font-black {{ $bundle->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">{{ $bundle->is_active ? 'فعال' : 'غیرفعال' }}</span></div>
     <div class="mt-5 grid grid-cols-4 gap-2 text-center text-xs"><div class="rounded-lg bg-slate-50 p-3"><span class="block font-black">{{ $bundle->cpu_cores }}</span><span class="text-slate-500">CPU</span></div><div class="rounded-lg bg-slate-50 p-3"><span class="block font-black">{{ $bundle->ram_gb }}</span><span class="text-slate-500">GB RAM</span></div><div class="rounded-lg bg-slate-50 p-3"><span class="block font-black">{{ $bundle->disk_gb }}</span><span class="text-slate-500">GB Disk</span></div><div class="rounded-lg bg-slate-50 p-3"><span class="block font-black">{{ $bundle->ip_count }}</span><span class="text-slate-500">IP</span></div></div>
-    <p class="mt-5 text-left text-xl font-black text-[#105D52]">{{ number_format($bundle->monthly_price) }} <span class="text-xs text-slate-500">تومان / ماه روشن</span></p>
+    <p class="mt-5 text-left text-xl font-black text-[#105D52]">{{ $money->format($bundle->monthly_price) }} <span class="text-xs text-slate-500">/ ماه روشن</span></p>
     <a class="mt-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700" href="{{ route('admin.billing.bundles.edit', $bundle) }}">ویرایش</a>
 </article>
 @empty

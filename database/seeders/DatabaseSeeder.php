@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\AppSetting;
 use App\Models\ResourceRate;
 use App\Models\User;
 use App\Models\VmBundle;
@@ -14,6 +15,8 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        AppSetting::setValue(AppSetting::BILLING_CURRENCY, 'IRR', 'string', 'billing');
+
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',

@@ -3,10 +3,13 @@
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResourceRateController;
+use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\VirtualMachineController;
 use App\Http\Controllers\Admin\VmBundleController;
+use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Services\WalletService;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -48,6 +51,14 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::get($adminHome, function () {
             return view('admin.dashboard');
         })->name('admin.dashboard');
+
+        Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
+        Route::patch('settings', [SettingController::class, 'update'])->name('admin.settings.update');
+
+        Route::post('customers/{customer}/wallet-transactions', [WalletController::class, 'storeTransaction'])
+            ->name('admin.customers.wallet-transactions.store');
+        Route::patch('customers/{customer}/wallet-lock', [WalletController::class, 'updateLock'])
+            ->name('admin.customers.wallet-lock.update');
 
         Route::patch('customers/{customer}/suspend', [CustomerController::class, 'suspend'])
             ->name('admin.customers.suspend');
@@ -101,6 +112,15 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         ->name('customer.logout');
 
     Route::get($customerHome, function () {
-        return view('customer.dashboard');
+        $customer = auth('customer')->user();
+        $wallets = app(WalletService::class);
+        $wallet = $wallets->walletFor($customer);
+
+        return view('customer.dashboard', [
+            'customer' => $customer,
+            'wallet' => $wallet,
+            'transactions' => $wallet->transactions()->limit(5)->get(),
+            'wallets' => $wallets,
+        ]);
     })->middleware('auth:customer')->name('dashboard');
 });

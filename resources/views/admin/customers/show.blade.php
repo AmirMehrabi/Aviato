@@ -7,6 +7,9 @@
     @if (session('status'))
         <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
     @endif
+    @if ($errors->any())
+        <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ $errors->first() }}</div>
+    @endif
 
     <div class="relative overflow-hidden rounded-2xl bg-[#0A3D37] p-6 text-white shadow-xl shadow-[#0A3D37]/15">
         <div class="absolute -left-16 -top-16 size-48 rounded-full bg-white/10 blur-2xl"></div>
@@ -34,15 +37,70 @@
     <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @foreach ([
             ['label' => 'وضعیت حساب', 'value' => $customer->status === 'suspended' ? 'تعلیق شده' : 'فعال', 'tone' => $customer->status === 'suspended' ? 'text-red-600' : 'text-emerald-700'],
-            ['label' => 'اعتبار / بدهی', 'value' => number_format($financial['balance']) . ' تومان', 'tone' => $financial['balance'] < 0 ? 'text-red-600' : 'text-emerald-700'],
-            ['label' => 'مصرف ماهانه', 'value' => number_format($financial['monthly_spend']) . ' تومان', 'tone' => 'text-slate-950'],
-            ['label' => 'صورتحساب باز', 'value' => number_format($financial['unpaid_total']) . ' تومان', 'tone' => $financial['unpaid_total'] > 0 ? 'text-amber-700' : 'text-emerald-700'],
+            ['label' => 'موجودی کیف پول', 'value' => $wallets->format($financial['balance']), 'tone' => $financial['balance'] < 0 ? 'text-red-600' : 'text-emerald-700'],
+            ['label' => 'مصرف ماهانه', 'value' => $wallets->format($financial['monthly_spend']), 'tone' => 'text-slate-950'],
+            ['label' => 'مصرف محاسبه نشده', 'value' => $wallets->format($financial['unpaid_total']), 'tone' => $financial['unpaid_total'] > 0 ? 'text-amber-700' : 'text-emerald-700'],
         ] as $card)
             <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-bold text-slate-500">{{ $card['label'] }}</p>
                 <p class="mt-3 text-2xl font-black {{ $card['tone'] }}">{{ $card['value'] }}</p>
             </div>
         @endforeach
+    </section>
+
+    <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)]">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-black text-slate-950">کیف پول مشتری</h2>
+                    <p class="mt-1 text-sm text-slate-500">موجودی از روی Ledger تراکنش‌ها نگهداری می‌شود و مبلغ اولیه همه مشتریان ۰ است.</p>
+                </div>
+                <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $wallet->is_locked ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700' }}">{{ $wallet->is_locked ? 'قفل' : 'فعال' }}</span>
+            </div>
+            <p class="mt-6 text-4xl font-black {{ $wallet->balance < 0 ? 'text-red-600' : 'text-[#105D52]' }}">{{ $wallets->format($wallet->balance) }}</p>
+            <form method="POST" action="{{ route('admin.customers.wallet-transactions.store', $customer) }}" class="mt-6 grid gap-3 md:grid-cols-2">
+                @csrf
+                <select name="type" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-bold focus:border-[#105D52] focus:outline-none">
+                    <option value="credit">افزایش اعتبار</option>
+                    <option value="debit">کسر اعتبار</option>
+                </select>
+                <input name="amount" type="number" min="1" placeholder="مبلغ" class="rounded-lg border border-slate-200 px-4 py-3 text-sm focus:border-[#105D52] focus:outline-none">
+                <input name="description" placeholder="توضیح تراکنش" class="rounded-lg border border-slate-200 px-4 py-3 text-sm focus:border-[#105D52] focus:outline-none md:col-span-2">
+                <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-xs font-bold text-slate-600 md:col-span-2">
+                    <input type="checkbox" name="allow_negative" value="1" class="size-4 rounded border-slate-300 text-[#105D52]">
+                    اجازه منفی شدن موجودی برای این کسر اعتبار
+                </label>
+                <button class="rounded-lg bg-[#105D52] px-5 py-3 text-sm font-black text-white md:col-span-2">ثبت تراکنش</button>
+            </form>
+            <form method="POST" action="{{ route('admin.customers.wallet-lock.update', $customer) }}" class="mt-4 rounded-xl border border-dashed border-slate-300 p-4">
+                @csrf @method('PATCH')
+                <input type="hidden" name="is_locked" value="{{ $wallet->is_locked ? 0 : 1 }}">
+                @unless($wallet->is_locked)
+                    <input name="lock_reason" placeholder="دلیل قفل کردن کیف پول" class="mb-3 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm focus:border-[#105D52] focus:outline-none">
+                @endunless
+                <button class="rounded-lg {{ $wallet->is_locked ? 'bg-emerald-600' : 'bg-red-600' }} px-5 py-3 text-sm font-black text-white">{{ $wallet->is_locked ? 'باز کردن کیف پول' : 'قفل کردن کیف پول' }}</button>
+            </form>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-xl font-black text-slate-950">آخرین تراکنش‌های کیف پول</h2>
+            <div class="mt-5 space-y-3">
+                @forelse($walletTransactions as $transaction)
+                    <div class="rounded-xl border border-slate-200 p-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="font-black text-slate-950">{{ $transaction->description }}</p>
+                                <p class="mt-1 text-xs text-slate-500">{{ $transaction->created_at?->format('Y/m/d H:i') }} · {{ $transaction->createdBy?->name ?: 'system' }}</p>
+                            </div>
+                            <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $transaction->amount >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}">{{ $wallets->format($transaction->amount) }}</span>
+                        </div>
+                        <p class="mt-3 text-left text-xs font-bold text-slate-500">Balance: {{ $wallets->format($transaction->balance_after) }}</p>
+                    </div>
+                @empty
+                    <div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">هنوز تراکنشی ثبت نشده است.</div>
+                @endforelse
+            </div>
+        </div>
     </section>
 
     @if($customer->status === 'suspended')
@@ -77,7 +135,7 @@
                             <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->ram_gb }} GB</span><span class="text-slate-500">RAM</span></div>
                             <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->disk_gb }} GB</span><span class="text-slate-500">Disk</span></div>
                         </div>
-                        <p class="mt-4 text-left text-sm font-black text-[#105D52]">{{ number_format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }} تومان / ماه</p>
+                        <p class="mt-4 text-left text-sm font-black text-[#105D52]">{{ $wallets->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }} / ماه</p>
                     </article>
                 @empty
                     <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 lg:col-span-3">هنوز VM برای این مشتری ثبت نشده است. <a class="font-black text-[#105D52]" href="{{ route('admin.virtual-machines.create', ['customer_id' => $customer->id]) }}">ساخت VM</a></div>
@@ -98,7 +156,7 @@
                             </div>
                             <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $invoice['status'] === 'پرداخت شده' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }}">{{ $invoice['status'] }}</span>
                         </div>
-                        <p class="mt-3 text-left text-lg font-black text-slate-950">{{ number_format($invoice['amount']) }} تومان</p>
+                        <p class="mt-3 text-left text-lg font-black text-slate-950">{{ $wallets->format($invoice['amount']) }}</p>
                     </div>
                 @endforeach
             </div>

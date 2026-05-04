@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@inject('money', 'App\Services\WalletService')
 
 @section('title', 'مدیریت مشتریان')
 
@@ -66,13 +67,13 @@
             ['label' => 'مشتری'],
             ['label' => 'تماس'],
             ['label' => 'وضعیت'],
-            ['label' => 'مالی ساختگی'],
+            ['label' => 'کیف پول'],
             ['label' => 'تاریخ ایجاد'],
             ['label' => 'عملیات', 'class' => 'text-left'],
         ]">
             @forelse ($customers as $customer)
                 @php
-                    $credit = (($customer->id % 5) - 2) * 375000;
+                    $credit = $customer->wallet?->balance ?? 0;
                     $statusClass = $customer->status === 'suspended' ? 'bg-red-50 text-red-700 ring-red-200' : 'bg-emerald-50 text-emerald-700 ring-emerald-200';
                 @endphp
                 <tr class="transition hover:bg-slate-50/80">
@@ -94,8 +95,8 @@
                         <p class="mt-2 text-xs text-slate-500">{{ $customer->email_verified_at ? 'ایمیل تایید شده' : 'ایمیل تایید نشده' }}</p>
                     </td>
                     <td class="px-5 py-4">
-                        <p class="font-black {{ $credit < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ number_format($credit) }} تومان</p>
-                        <p class="mt-1 text-xs text-slate-500">دمو بر اساس شناسه مشتری</p>
+                        <p class="font-black {{ $credit < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $money->format($credit) }}</p>
+                        <p class="mt-1 text-xs text-slate-500">موجودی فعلی کیف پول</p>
                     </td>
                     <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $customer->created_at?->format('Y/m/d') }}</td>
                     <td class="px-5 py-4">

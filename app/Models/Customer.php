@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -20,6 +21,23 @@ class Customer extends Authenticatable
     public const STATUS_ACTIVE = 'active';
 
     public const STATUS_SUSPENDED = 'suspended';
+
+    protected static function booted(): void
+    {
+        static::created(function (Customer $customer): void {
+            $customer->wallet()->firstOrCreate([], ['balance' => 0]);
+        });
+    }
+
+    public function wallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
+    public function walletTransactions(): HasMany
+    {
+        return $this->hasMany(WalletTransaction::class)->latest();
+    }
 
     public function virtualMachines(): HasMany
     {
