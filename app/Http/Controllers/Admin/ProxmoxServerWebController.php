@@ -10,13 +10,12 @@ use App\Services\ProxmoxService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ProxmoxServerWebController extends Controller
 {
-    public function __construct(private readonly ProxmoxService $proxmox)
-    {
-    }
+    public function __construct(private readonly ProxmoxService $proxmox) {}
 
     public function index(Request $request): View
     {
@@ -110,17 +109,41 @@ class ProxmoxServerWebController extends Controller
 
     public function sync(ProxmoxServer $proxmoxServer): RedirectResponse
     {
+        Log::info('Manual Proxmox sync requested from admin UI', [
+            'server_id' => $proxmoxServer->id,
+            'server_name' => $proxmoxServer->name,
+            'host' => $proxmoxServer->host,
+            'port' => (int) $proxmoxServer->port,
+            'connection_status_before' => $proxmoxServer->connection_status,
+            'sync_status_before' => $proxmoxServer->sync_status,
+        ]);
+
         $synced = $this->attemptSync($proxmoxServer);
+
+        Log::info('Manual Proxmox sync finished from admin UI', [
+            'server_id' => $proxmoxServer->id,
+            'server_name' => $proxmoxServer->name,
+            'synced' => $synced,
+            'connection_status_after' => $proxmoxServer->refresh()->connection_status,
+            'sync_status_after' => $proxmoxServer->sync_status,
+            'sync_error_after' => $proxmoxServer->sync_error,
+        ]);
 
         return back()->with($synced ? 'status' : 'error', $synced ? 'Server synced successfully.' : 'Server is offline; changes remain pending.');
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function normalizedInput(array $data, bool $isUpdate = false): array
     {
+        foreach (['host', 'realm', 'username', 'api_token_id', 'api_token_secret'] as $field) {
+            if (array_key_exists($field, $data) && is_string($data[$field])) {
+                $data[$field] = trim($data[$field]);
+            }
+        }
+
         if (isset($data['tags']) && is_string($data['tags'])) {
             $data['tags'] = collect(explode(',', $data['tags']))
                 ->map(fn (string $tag): string => trim($tag))
@@ -165,6 +188,19 @@ class ProxmoxServerWebController extends Controller
 
     private function markOffline(ProxmoxServer $server, Throwable $exception): void
     {
+        Log::error('Marking Proxmox server offline after sync failure', [
+            'server_id' => $server->id,
+            'server_name' => $server->name,
+            'host' => $server->host,
+            'port' => (int) $server->port,
+            'connection_status_before' => $server->connection_status,
+            'sync_status_before' => $server->sync_status,
+            'exception_class' => $exception::class,
+            'exception_message' => $exception->getMessage(),
+            'exception_file' => $exception->getFile(),
+            'exception_line' => $exception->getLine(),
+        ]);
+
         $server->forceFill([
             'connection_status' => ProxmoxServer::CONNECTION_OFFLINE,
             'sync_error' => $exception->getMessage(),

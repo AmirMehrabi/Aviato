@@ -19,6 +19,8 @@ return new class extends Migration
             $table->string('node')->nullable();
             $table->string('storage')->nullable();
             $table->string('os_template')->nullable();
+            $table->string('iso_volume')->nullable();
+            $table->string('network_bridge')->nullable();
             $table->string('ip_address')->nullable();
             $table->unsignedSmallInteger('cpu_cores');
             $table->unsignedInteger('ram_gb');

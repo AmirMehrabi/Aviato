@@ -57,7 +57,14 @@
                 :required="! $server->exists"
             />
 
-            <x-form.input name="api_token_id" label="API Token ID" :value="$server->api_token_id" placeholder="automation" dir-ltr />
+            <x-form.input
+                name="api_token_id"
+                label="API Token ID"
+                :value="$server->api_token_id"
+                placeholder="root@pam!avapardaz or avapardaz"
+                help="می‌توانید Final Token ID کامل را وارد کنید؛ اگر فقط نام توکن را وارد کنید، برنامه username و realm را اضافه می‌کند."
+                dir-ltr
+            />
 
             <x-form.input
                 name="api_token_secret"

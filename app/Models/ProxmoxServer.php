@@ -78,12 +78,38 @@ class ProxmoxServer extends Model
 
     public function usesApiToken(): bool
     {
-        return filled($this->api_token_id) && filled($this->api_token_secret);
+        return filled(trim((string) $this->api_token_id)) && filled(trim((string) $this->api_token_secret));
     }
 
     public function proxmoxUser(): string
     {
-        return str_contains($this->username, '@') ? $this->username : $this->username.'@'.$this->realm;
+        $username = trim((string) $this->username);
+        $realm = trim((string) $this->realm);
+
+        return str_contains($username, '@') ? $username : $username.'@'.$realm;
+    }
+
+    public function finalApiTokenId(): ?string
+    {
+        $tokenId = trim((string) $this->api_token_id);
+
+        if ($tokenId === '') {
+            return null;
+        }
+
+        return str_contains($tokenId, '!') ? $tokenId : $this->proxmoxUser().'!'.$tokenId;
+    }
+
+    public function apiTokenAuthorizationHeader(): ?string
+    {
+        $finalTokenId = $this->finalApiTokenId();
+        $secret = trim((string) $this->api_token_secret);
+
+        if (! $finalTokenId || $secret === '') {
+            return null;
+        }
+
+        return 'PVEAPIToken='.$finalTokenId.'='.$secret;
     }
 
     /** @return array<string, mixed> */

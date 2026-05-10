@@ -6,6 +6,7 @@
     <title>@yield('title', 'داشبورد آویاتو')</title>
     <link rel="stylesheet" href="{{ asset('assets/fonts.css') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>[x-cloak]{display:none!important}</style>
 </head>
 <body class="overflow-x-hidden bg-[#F7F8FA] text-slate-950">
     <div

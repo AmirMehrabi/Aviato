@@ -8,17 +8,17 @@ use App\Http\Requests\Admin\UpdateProxmoxServerRequest;
 use App\Http\Resources\Admin\ProxmoxServerResource;
 use App\Models\ProxmoxServer;
 use App\Services\ProxmoxService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
 class ProxmoxServerController extends Controller
 {
-    public function __construct(private readonly ProxmoxService $proxmox)
-    {
-    }
+    public function __construct(private readonly ProxmoxService $proxmox) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -94,8 +94,8 @@ class ProxmoxServerController extends Controller
         return response()->json(status: 204);
     }
 
-    /** @return \Illuminate\Database\Eloquent\Builder<ProxmoxServer> */
-    private function filteredQuery(Request $request): \Illuminate\Database\Eloquent\Builder
+    /** @return Builder<ProxmoxServer> */
+    private function filteredQuery(Request $request): Builder
     {
         return ProxmoxServer::query()
             ->when($request->filled('search'), function ($query) use ($request): void {
@@ -116,6 +116,19 @@ class ProxmoxServerController extends Controller
 
     private function markOffline(ProxmoxServer $server, Throwable $exception): ProxmoxServer
     {
+        Log::error('Marking Proxmox server offline after API failure', [
+            'server_id' => $server->id,
+            'server_name' => $server->name,
+            'host' => $server->host,
+            'port' => (int) $server->port,
+            'connection_status_before' => $server->connection_status,
+            'sync_status_before' => $server->sync_status,
+            'exception_class' => $exception::class,
+            'exception_message' => $exception->getMessage(),
+            'exception_file' => $exception->getFile(),
+            'exception_line' => $exception->getLine(),
+        ]);
+
         $server->forceFill([
             'connection_status' => ProxmoxServer::CONNECTION_OFFLINE,
             'sync_status' => $server->sync_status === ProxmoxServer::SYNC_SYNCED ? ProxmoxServer::SYNC_FAILED : $server->sync_status,
@@ -126,11 +139,17 @@ class ProxmoxServerController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function normalizedInput(array $data, bool $isUpdate = false): array
     {
+        foreach (['host', 'realm', 'username', 'api_token_id', 'api_token_secret'] as $field) {
+            if (array_key_exists($field, $data) && is_string($data[$field])) {
+                $data[$field] = trim($data[$field]);
+            }
+        }
+
         if (isset($data['tags']) && is_string($data['tags'])) {
             $data['tags'] = collect(explode(',', $data['tags']))
                 ->map(fn (string $tag): string => trim($tag))

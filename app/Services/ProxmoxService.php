@@ -7,10 +7,13 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class ProxmoxService
 {
+    private ?string $operationId = null;
+
     /**
      * Fetch a compact cluster summary for admin/API show pages.
      *
@@ -18,19 +21,32 @@ class ProxmoxService
      */
     public function summary(ProxmoxServer $server): array
     {
+        return $this->runWithOperation($server, 'summary', fn (): array => $this->fetchSummary($server));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fetchSummary(ProxmoxServer $server): array
+    {
         $errors = [];
+        $diagnosticErrors = [];
 
         try {
             // Treat /nodes as the connectivity/auth source of truth because scoped API tokens often allow it while denying /version.
             $nodes = $this->getData($server, '/nodes') ?? [];
             $version = $this->getOptionalData($server, '/version', $errors);
-            $clusterStatus = $this->getOptionalData($server, '/cluster/status', $errors, []);
-            $resources = $this->getOptionalData($server, '/cluster/resources', $errors, [], ['type' => 'vm']);
+            $clusterStatus = $this->getOptionalData($server, '/cluster/status', $diagnosticErrors, []);
+            $resources = $this->vmInventory($server, $nodes, $errors);
             $storage = $this->storageInventory($server, $nodes, $errors);
             $backups = $this->backupInventory($server, $storage, $errors);
         } catch (ConnectionException $exception) {
+            $this->logConnectionDiagnostics($server, $exception);
+
             throw new RuntimeException('Unable to connect to the Proxmox API: '.$exception->getMessage(), previous: $exception);
         } catch (RequestException $exception) {
+            $this->logHttpFailure($server, 'summary fatal endpoint', $exception);
+
             throw new RuntimeException('Unable to authenticate with the Proxmox API: HTTP '.$exception->response->status().' for '.$exception->response->effectiveUri(), previous: $exception);
         }
 
@@ -42,6 +58,7 @@ class ProxmoxService
             'storage' => $storage,
             'backups' => $backups,
             'endpoint_errors' => $errors,
+            'diagnostic_endpoint_errors' => $diagnosticErrors,
             'counts' => $this->counts($nodes, $resources, $storage, $backups),
             'fetched_at' => now()->toISOString(),
         ];
@@ -55,31 +72,269 @@ class ProxmoxService
      */
     public function syncDesiredState(ProxmoxServer $server): array
     {
-        $summary = $this->summary($server);
+        return $this->runWithOperation($server, 'sync', function () use ($server): array {
+            $summary = $this->fetchSummary($server);
 
-        $server->forceFill([
-            'connection_status' => ProxmoxServer::CONNECTION_ONLINE,
-            'sync_status' => ProxmoxServer::SYNC_SYNCED,
-            'sync_error' => null,
-            'sync_pending_since' => null,
-            'synced_at' => now(),
-            'last_seen_at' => now(),
-            'remote_inventory' => $summary,
-            'last_status' => [
+            $server->forceFill([
+                'connection_status' => ProxmoxServer::CONNECTION_ONLINE,
+                'sync_status' => ProxmoxServer::SYNC_SYNCED,
+                'sync_error' => null,
+                'sync_pending_since' => null,
+                'synced_at' => now(),
+                'last_seen_at' => now(),
+                'remote_inventory' => $summary,
+                'last_status' => [
+                    'counts' => $summary['counts'],
+                    'version' => $summary['version'],
+                    'fetched_at' => $summary['fetched_at'],
+                ],
+            ])->save();
+
+            $this->logInfo('Proxmox sync state saved', $server, [
                 'counts' => $summary['counts'],
-                'version' => $summary['version'],
-                'fetched_at' => $summary['fetched_at'],
-            ],
-        ])->save();
+                'endpoint_error_count' => count($summary['endpoint_errors'] ?? []),
+                'diagnostic_endpoint_error_count' => count($summary['diagnostic_endpoint_errors'] ?? []),
+            ]);
 
-        return $summary;
+            return $summary;
+        });
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function vmCreationOptions(ProxmoxServer $server): array
+    {
+        $errors = [];
+        $nodes = collect($this->getData($server, '/nodes') ?? [])
+            ->filter(fn (array $node): bool => ($node['status'] ?? null) === 'online')
+            ->values();
+        $nextId = $this->getOptionalData($server, '/cluster/nextid', $errors);
 
+        return [
+            'server' => [
+                'id' => $server->id,
+                'name' => $server->name,
+                'datacenter' => $server->datacenter,
+                'cluster_name' => $server->cluster_name,
+            ],
+            'next_vmid' => $nextId,
+            'nodes' => $nodes->map(fn (array $node): array => [
+                'name' => $node['node'] ?? $node['name'] ?? null,
+                'display' => ($node['node'] ?? $node['name'] ?? 'node').' (CPU '.round((float) ($node['cpu'] ?? 0) * 100).'%, RAM '.$this->humanBytes((int) ($node['mem'] ?? 0)).' / '.$this->humanBytes((int) ($node['maxmem'] ?? 0)).')',
+                'raw' => $node,
+            ])->filter(fn (array $node): bool => filled($node['name']))->values()->all(),
+            'iso_files' => $this->isoFiles($server, $nodes->all(), $errors),
+            'disk_storages' => $this->diskStorages($server, $nodes->all(), $errors),
+            'bridges' => $this->networkBridges($server, $nodes->all(), $errors),
+            'errors' => $errors,
+        ];
+    }
 
     /**
-     * @param array<int, array<string, mixed>> $nodes
-     * @param array<string, string> $errors
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public function createQemuVm(ProxmoxServer $server, array $options): array
+    {
+        $node = $options['node'];
+        $vmid = (int) $options['vmid'];
+        $storage = $options['storage'];
+        $isoVolume = $options['iso_volume'];
+        $bridge = $options['network_bridge'] ?? 'vmbr0';
+        $diskGb = (int) $options['disk_gb'];
+
+        $payload = [
+            'vmid' => $vmid,
+            'name' => $options['name'],
+            'cores' => (int) $options['cpu_cores'],
+            'memory' => (int) $options['ram_gb'] * 1024,
+            'ostype' => $options['ostype'] ?? 'l26',
+            'scsihw' => 'virtio-scsi-pci',
+            'scsi0' => "{$storage}:{$diskGb}",
+            'ide2' => "{$isoVolume},media=cdrom",
+            'net0' => "virtio,bridge={$bridge}",
+            'boot' => 'order=ide2;scsi0;net0',
+            'agent' => 1,
+            'onboot' => ! empty($options['onboot']) ? 1 : 0,
+            'description' => $options['description'] ?? null,
+        ];
+
+        $payload = array_filter($payload, fn (mixed $value): bool => $value !== null && $value !== '');
+        $taskId = $this->request($server)->asForm()->post("/nodes/{$node}/qemu", $payload)->throw()->json('data');
+
+        if (! empty($options['start_after_create'])) {
+            $this->request($server)->asForm()->post("/nodes/{$node}/qemu/{$vmid}/status/start")->throw();
+        }
+
+        return [
+            'task_id' => $taskId,
+            'payload' => $payload,
+            'started' => ! empty($options['start_after_create']),
+            'created_at' => now()->toISOString(),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $nodes
+     * @param  array<int, array<string, mixed>>  $resources
+     * @param  array<int, array<string, mixed>>  $storage
+     * @param  array<int, array<string, mixed>>  $backups
+     * @return array<string, int>
+     */
+    protected function counts(array $nodes, array $resources, array $storage, array $backups): array
+    {
+        $nodeCollection = collect($nodes);
+        $vmCollection = collect($resources);
+
+        return [
+            'nodes' => $nodeCollection->count(),
+            'online_nodes' => $nodeCollection->where('status', 'online')->count(),
+            'offline_nodes' => $nodeCollection->reject(fn (array $node): bool => ($node['status'] ?? null) === 'online')->count(),
+            'virtual_machines' => $vmCollection->count(),
+            'running_virtual_machines' => $vmCollection->where('status', 'running')->count(),
+            'offline_virtual_machines' => $vmCollection->reject(fn (array $vm): bool => ($vm['status'] ?? null) === 'running')->count(),
+            'storage' => count($storage),
+            'backups' => count($backups),
+        ];
+    }
+
+    protected function getData(ProxmoxServer $server, string $path, array $query = []): mixed
+    {
+        $startedAt = microtime(true);
+
+        $this->logInfo('Proxmox API request starting', $server, [
+            'method' => 'GET',
+            'path' => $path,
+            'query' => $query,
+        ]);
+
+        try {
+            $response = $this->request($server)->get($path, $query);
+            $durationMs = $this->durationMs($startedAt);
+
+            $this->logInfo('Proxmox API response received', $server, [
+                'method' => 'GET',
+                'path' => $path,
+                'query' => $query,
+                'status' => $response->status(),
+                'effective_uri' => (string) $response->effectiveUri(),
+                'duration_ms' => $durationMs,
+                'content_type' => $response->header('content-type'),
+                'body_preview' => $this->bodyPreview($response->body()),
+            ]);
+
+            return $response->throw()->json('data');
+        } catch (ConnectionException $exception) {
+            $this->logError('Proxmox API connection failed', $server, [
+                'method' => 'GET',
+                'path' => $path,
+                'query' => $query,
+                'duration_ms' => $this->durationMs($startedAt),
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        } catch (RequestException $exception) {
+            $this->logHttpFailure($server, 'GET '.$path, $exception, [
+                'query' => $query,
+                'duration_ms' => $this->durationMs($startedAt),
+            ]);
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * @param  array<string, string>  $errors
+     */
+    protected function getOptionalData(ProxmoxServer $server, string $path, array &$errors, mixed $default = null, array $query = []): mixed
+    {
+        try {
+            return $this->getData($server, $path, $query) ?? $default;
+        } catch (RequestException $exception) {
+            $errors[$path] = 'HTTP '.$exception->response->status();
+            $this->logHttpFailure($server, 'optional endpoint '.$path, $exception, [
+                'optional' => true,
+                'query' => $query,
+                'using_default' => $default,
+            ]);
+
+            return $default;
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $nodes
+     * @param  array<string, string>  $errors
+     * @return array<int, array<string, mixed>>
+     */
+    protected function vmInventory(ProxmoxServer $server, array $nodes, array &$errors): array
+    {
+        $resources = $this->getOptionalData($server, '/cluster/resources', $errors, [], ['type' => 'vm']);
+
+        if (! empty($resources)) {
+            $this->logInfo('Proxmox VM inventory loaded from cluster resources', $server, [
+                'vm_count' => count($resources),
+            ]);
+
+            return $resources;
+        }
+
+        $this->logInfo('Proxmox cluster VM inventory was empty; trying per-node VM endpoints', $server, [
+            'node_count' => count($nodes),
+        ]);
+
+        return $this->nodeVmInventory($server, $nodes, $errors);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $nodes
+     * @param  array<string, string>  $errors
+     * @return array<int, array<string, mixed>>
+     */
+    protected function nodeVmInventory(ProxmoxServer $server, array $nodes, array &$errors): array
+    {
+        $items = [];
+
+        foreach ($nodes as $node) {
+            $nodeName = $node['node'] ?? $node['name'] ?? null;
+
+            if (! $nodeName) {
+                continue;
+            }
+
+            foreach ($this->getOptionalData($server, "/nodes/{$nodeName}/qemu", $errors, []) as $vm) {
+                $vm['node'] = $nodeName;
+                $vm['type'] = $vm['type'] ?? 'qemu';
+                $vm['id'] = $vm['id'] ?? 'qemu/'.$vm['vmid'];
+                $items[] = $vm;
+            }
+
+            foreach ($this->getOptionalData($server, "/nodes/{$nodeName}/lxc", $errors, []) as $container) {
+                $container['node'] = $nodeName;
+                $container['type'] = $container['type'] ?? 'lxc';
+                $container['id'] = $container['id'] ?? 'lxc/'.$container['vmid'];
+                $items[] = $container;
+            }
+        }
+
+        $items = collect($items)
+            ->unique(fn (array $item): string => (string) ($item['id'] ?? $item['node'].'/'.$item['vmid']))
+            ->values()
+            ->all();
+
+        $this->logInfo('Proxmox per-node VM inventory loaded', $server, [
+            'vm_count' => count($items),
+        ]);
+
+        return $items;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $nodes
+     * @param  array<string, string>  $errors
      * @return array<int, array<string, mixed>>
      */
     protected function storageInventory(ProxmoxServer $server, array $nodes, array &$errors): array
@@ -101,12 +356,33 @@ class ProxmoxService
             }
         }
 
+        if (! empty($inventory)) {
+            return $inventory;
+        }
+
+        $this->logInfo('Proxmox node storage inventory was empty; trying datacenter storage endpoint', $server, [
+            'node_count' => count($nodes),
+        ]);
+
+        $storages = $this->getOptionalData($server, '/storage', $errors, []);
+        $fallbackNode = count($nodes) === 1 ? ($nodes[0]['node'] ?? $nodes[0]['name'] ?? null) : null;
+
+        foreach ($storages as $storage) {
+            $storage['node'] = $fallbackNode;
+            $storage['active'] = $storage['active'] ?? null;
+            $inventory[] = $storage;
+        }
+
+        $this->logInfo('Proxmox datacenter storage inventory loaded', $server, [
+            'storage_count' => count($inventory),
+        ]);
+
         return $inventory;
     }
 
     /**
-     * @param array<int, array<string, mixed>> $storage
-     * @param array<string, string> $errors
+     * @param  array<int, array<string, mixed>>  $storage
+     * @param  array<string, string>  $errors
      * @return array<int, array<string, mixed>>
      */
     protected function backupInventory(ProxmoxServer $server, array $storage, array &$errors): array
@@ -135,63 +411,329 @@ class ProxmoxService
     }
 
     /**
-     * @param array<int, array<string, mixed>> $nodes
-     * @param array<int, array<string, mixed>> $resources
-     * @param array<int, array<string, mixed>> $storage
-     * @param array<int, array<string, mixed>> $backups
-     * @return array<string, int>
+     * @param  array<int, array<string, mixed>>  $nodes
+     * @param  array<string, string>  $errors
+     * @return array<int, array<string, mixed>>
      */
-    protected function counts(array $nodes, array $resources, array $storage, array $backups): array
+    private function isoFiles(ProxmoxServer $server, array $nodes, array &$errors): array
     {
-        $nodeCollection = collect($nodes);
-        $vmCollection = collect($resources);
+        $items = [];
 
-        return [
-            'nodes' => $nodeCollection->count(),
-            'online_nodes' => $nodeCollection->where('status', 'online')->count(),
-            'offline_nodes' => $nodeCollection->reject(fn (array $node): bool => ($node['status'] ?? null) === 'online')->count(),
-            'virtual_machines' => $vmCollection->count(),
-            'running_virtual_machines' => $vmCollection->where('status', 'running')->count(),
-            'offline_virtual_machines' => $vmCollection->reject(fn (array $vm): bool => ($vm['status'] ?? null) === 'running')->count(),
-            'storage' => count($storage),
-            'backups' => count($backups),
-        ];
-    }
+        foreach ($nodes as $node) {
+            $nodeName = $node['node'] ?? $node['name'] ?? null;
+            if (! $nodeName) {
+                continue;
+            }
 
-    /** @return mixed */
-    protected function getData(ProxmoxServer $server, string $path, array $query = []): mixed
-    {
-        return $this->request($server)->get($path, $query)->throw()->json('data');
+            foreach ($this->nodeStoragesWithContent($server, $nodeName, 'iso', $errors) as $storage) {
+                $storageId = $storage['storage'];
+                $contents = $this->getOptionalData($server, "/nodes/{$nodeName}/storage/{$storageId}/content", $errors, [], ['content' => 'iso']);
+
+                foreach ($contents as $content) {
+                    if (($content['content'] ?? null) !== 'iso') {
+                        continue;
+                    }
+
+                    $volume = $content['volid'] ?? $content['volume'] ?? null;
+                    if (! $volume) {
+                        continue;
+                    }
+
+                    $items[] = [
+                        'node' => $nodeName,
+                        'storage' => $storageId,
+                        'volume' => $volume,
+                        'name' => basename((string) $volume),
+                        'size' => $content['size'] ?? null,
+                        'display' => $nodeName.' / '.$storageId.' / '.basename((string) $volume),
+                    ];
+                }
+            }
+        }
+
+        return collect($items)->unique(fn (array $item): string => $item['node'].'|'.$item['volume'])->values()->all();
     }
 
     /**
-     * @param array<string, string> $errors
-     * @return mixed
+     * @param  array<int, array<string, mixed>>  $nodes
+     * @param  array<string, string>  $errors
+     * @return array<int, array<string, mixed>>
      */
-    protected function getOptionalData(ProxmoxServer $server, string $path, array &$errors, mixed $default = null, array $query = []): mixed
+    private function diskStorages(ProxmoxServer $server, array $nodes, array &$errors): array
     {
-        try {
-            return $this->getData($server, $path, $query) ?? $default;
-        } catch (RequestException $exception) {
-            $errors[$path] = 'HTTP '.$exception->response->status();
+        $items = [];
 
-            return $default;
+        foreach ($nodes as $node) {
+            $nodeName = $node['node'] ?? $node['name'] ?? null;
+            if (! $nodeName) {
+                continue;
+            }
+
+            foreach ($this->nodeStoragesWithContent($server, $nodeName, 'images', $errors) as $storage) {
+                $items[] = [
+                    'node' => $nodeName,
+                    'storage' => $storage['storage'],
+                    'type' => $storage['type'] ?? null,
+                    'avail' => $storage['avail'] ?? null,
+                    'display' => $nodeName.' / '.$storage['storage'].' ('.$this->humanBytes((int) ($storage['avail'] ?? 0)).' free)',
+                ];
+            }
         }
+
+        return collect($items)->unique(fn (array $item): string => $item['node'].'|'.$item['storage'])->values()->all();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $nodes
+     * @param  array<string, string>  $errors
+     * @return array<int, array<string, mixed>>
+     */
+    private function networkBridges(ProxmoxServer $server, array $nodes, array &$errors): array
+    {
+        $items = [];
+
+        foreach ($nodes as $node) {
+            $nodeName = $node['node'] ?? $node['name'] ?? null;
+            if (! $nodeName) {
+                continue;
+            }
+
+            $networks = $this->getOptionalData($server, "/nodes/{$nodeName}/network", $errors, []);
+            foreach ($networks as $network) {
+                if (($network['type'] ?? null) !== 'bridge') {
+                    continue;
+                }
+
+                $iface = $network['iface'] ?? null;
+                if (! $iface) {
+                    continue;
+                }
+
+                $items[] = [
+                    'node' => $nodeName,
+                    'iface' => $iface,
+                    'active' => (bool) ($network['active'] ?? false),
+                    'display' => $nodeName.' / '.$iface.(! empty($network['active']) ? ' (active)' : ''),
+                ];
+            }
+        }
+
+        return collect($items)->unique(fn (array $item): string => $item['node'].'|'.$item['iface'])->values()->all();
+    }
+
+    /**
+     * @param  array<string, string>  $errors
+     * @return array<int, array<string, mixed>>
+     */
+    private function nodeStoragesWithContent(ProxmoxServer $server, string $nodeName, string $contentType, array &$errors): array
+    {
+        $storages = $this->getOptionalData($server, "/nodes/{$nodeName}/storage", $errors, []);
+
+        return collect($storages)
+            ->filter(function (array $storage) use ($contentType): bool {
+                $content = ','.(string) ($storage['content'] ?? '').',';
+
+                return str_contains($content, ','.$contentType.',') && ! ($storage['disable'] ?? false);
+            })
+            ->values()
+            ->all();
+    }
+
+    private function humanBytes(int $bytes): string
+    {
+        if ($bytes <= 0) {
+            return '0 B';
+        }
+
+        $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        $power = min((int) floor(log($bytes, 1024)), count($units) - 1);
+
+        return round($bytes / (1024 ** $power), 1).' '.$units[$power];
+    }
+
+    /**
+     * @template TReturn
+     *
+     * @param  callable(): TReturn  $callback
+     * @return TReturn
+     */
+    private function runWithOperation(ProxmoxServer $server, string $operation, callable $callback): mixed
+    {
+        $previousOperationId = $this->operationId;
+        $this->operationId = $previousOperationId ?? bin2hex(random_bytes(6));
+        $startedAt = microtime(true);
+
+        $this->logInfo('Proxmox operation starting', $server, [
+            'operation' => $operation,
+            'desired_state_snapshot' => $server->desiredStateSnapshot(),
+            'stored_connection_status' => $server->connection_status,
+            'stored_sync_status' => $server->sync_status,
+        ]);
+
+        try {
+            $result = $callback();
+
+            $this->logInfo('Proxmox operation completed', $server, [
+                'operation' => $operation,
+                'duration_ms' => $this->durationMs($startedAt),
+            ]);
+
+            return $result;
+        } catch (\Throwable $exception) {
+            $this->logError('Proxmox operation failed', $server, [
+                'operation' => $operation,
+                'duration_ms' => $this->durationMs($startedAt),
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+                'exception_file' => $exception->getFile(),
+                'exception_line' => $exception->getLine(),
+            ]);
+
+            throw $exception;
+        } finally {
+            $this->operationId = $previousOperationId;
+        }
+    }
+
+    /** @param array<string, mixed> $context */
+    private function logInfo(string $message, ProxmoxServer $server, array $context = []): void
+    {
+        Log::info($message, $this->logContext($server, $context));
+    }
+
+    /** @param array<string, mixed> $context */
+    private function logError(string $message, ProxmoxServer $server, array $context = []): void
+    {
+        Log::error($message, $this->logContext($server, $context));
+    }
+
+    /** @param array<string, mixed> $context */
+    private function logHttpFailure(ProxmoxServer $server, string $step, RequestException $exception, array $context = []): void
+    {
+        $response = $exception->response;
+
+        $this->logError('Proxmox HTTP request failed', $server, array_merge($context, [
+            'step' => $step,
+            'status' => $response->status(),
+            'effective_uri' => (string) $response->effectiveUri(),
+            'reason' => $response->reason(),
+            'content_type' => $response->header('content-type'),
+            'body_preview' => $this->bodyPreview($response->body()),
+            'exception_message' => $exception->getMessage(),
+        ]));
+    }
+
+    private function logConnectionDiagnostics(ProxmoxServer $server, \Throwable $exception): void
+    {
+        $diagnostics = [
+            'exception_class' => $exception::class,
+            'exception_message' => $exception->getMessage(),
+            'dns_lookup' => gethostbyname($server->host),
+            'target_host' => $server->host,
+            'target_port' => (int) $server->port,
+        ];
+
+        $socketStartedAt = microtime(true);
+        $socketErrorNumber = 0;
+        $socketError = '';
+        $socket = @fsockopen($server->host, (int) $server->port, $socketErrorNumber, $socketError, 5);
+        $diagnostics['tcp_probe_duration_ms'] = $this->durationMs($socketStartedAt);
+        $diagnostics['tcp_probe_connected'] = is_resource($socket);
+        $diagnostics['tcp_probe_error_number'] = $socketErrorNumber ?: null;
+        $diagnostics['tcp_probe_error'] = $socketError ?: null;
+
+        if (is_resource($socket)) {
+            fclose($socket);
+        }
+
+        $this->logError('Proxmox connection diagnostics', $server, $diagnostics);
+    }
+
+    /** @param array<string, mixed> $context */
+    private function logContext(ProxmoxServer $server, array $context = []): array
+    {
+        return array_merge([
+            'operation_id' => $this->operationId,
+            'server_id' => $server->id,
+            'server_name' => $server->name,
+            'host' => $server->host,
+            'port' => (int) $server->port,
+            'base_url' => $server->baseUrl(),
+            'verify_tls' => $server->verify_tls,
+            'username' => $server->proxmoxUser(),
+            'auth_method' => $server->usesApiToken() ? 'api_token' : 'ticket',
+            'api_token_id' => $server->usesApiToken() ? $this->maskedTokenId($server) : null,
+        ], $this->sanitizeLogContext($context));
+    }
+
+    private function maskedTokenId(ProxmoxServer $server): ?string
+    {
+        $tokenId = $server->finalApiTokenId();
+
+        if (! $tokenId) {
+            return null;
+        }
+
+        return strlen($tokenId) <= 6 ? '******' : substr($tokenId, 0, 3).'...'.substr($tokenId, -3);
+    }
+
+    /** @param array<string, mixed> $context */
+    private function sanitizeLogContext(array $context): array
+    {
+        $sensitiveKeys = ['password', 'api_token_secret', 'Authorization', 'authorization', 'ticket', 'CSRFPreventionToken', 'PVEAuthCookie'];
+
+        foreach ($context as $key => $value) {
+            if (in_array((string) $key, $sensitiveKeys, true)) {
+                $context[$key] = '[redacted]';
+
+                continue;
+            }
+
+            if (is_array($value)) {
+                $context[$key] = $this->sanitizeLogContext($value);
+            }
+        }
+
+        return $context;
+    }
+
+    private function bodyPreview(string $body): ?string
+    {
+        if ($body === '') {
+            return null;
+        }
+
+        return mb_substr(preg_replace('/\s+/', ' ', $body) ?? $body, 0, 1000);
+    }
+
+    private function durationMs(float $startedAt): int
+    {
+        return (int) round((microtime(true) - $startedAt) * 1000);
     }
 
     protected function tokenAuthorization(ProxmoxServer $server): string
     {
-        $tokenId = $server->api_token_id;
+        $authorization = $server->apiTokenAuthorizationHeader();
 
-        if (! str_contains($tokenId, '!')) {
-            $tokenId = $server->proxmoxUser().'!'.$tokenId;
+        if (! $authorization) {
+            throw new RuntimeException('A complete Proxmox API token id and secret are required to connect to this Proxmox server.');
         }
 
-        return 'PVEAPIToken='.$tokenId.'='.$server->api_token_secret;
+        return $authorization;
     }
 
     protected function request(ProxmoxServer $server): PendingRequest
     {
+        $this->logInfo('Preparing Proxmox HTTP client', $server, [
+            'base_url' => $server->baseUrl().'/api2/json',
+            'connect_timeout_seconds' => 5,
+            'timeout_seconds' => 10,
+            'verify_tls' => $server->verify_tls,
+            'auth_method' => $server->usesApiToken() ? 'api_token' : 'ticket',
+            'php_openssl_loaded' => extension_loaded('openssl'),
+            'php_curl_loaded' => extension_loaded('curl'),
+        ]);
+
         $request = Http::baseUrl($server->baseUrl().'/api2/json')
             ->acceptJson()
             ->timeout(10)
@@ -210,17 +752,60 @@ class ProxmoxService
     protected function authenticateWithTicket(PendingRequest $request, ProxmoxServer $server): PendingRequest
     {
         if (blank($server->password)) {
+            $this->logError('Proxmox ticket authentication blocked: missing password', $server);
             throw new RuntimeException('A password or API token is required to connect to this Proxmox server.');
         }
 
-        $ticket = $request->asForm()->post('/access/ticket', [
+        $startedAt = microtime(true);
+        $this->logInfo('Proxmox ticket authentication starting', $server, [
             'username' => $server->proxmoxUser(),
-            'password' => $server->password,
-        ])->throw()->json('data');
+            'path' => '/access/ticket',
+        ]);
+
+        try {
+            $response = $request->asForm()->post('/access/ticket', [
+                'username' => $server->proxmoxUser(),
+                'password' => $server->password,
+            ]);
+
+            $this->logInfo('Proxmox ticket authentication response received', $server, [
+                'status' => $response->status(),
+                'effective_uri' => (string) $response->effectiveUri(),
+                'duration_ms' => $this->durationMs($startedAt),
+                'has_json_data' => is_array($response->json('data')),
+            ]);
+
+            $ticket = $response->throw()->json('data');
+        } catch (ConnectionException $exception) {
+            $this->logError('Proxmox ticket authentication connection failed', $server, [
+                'duration_ms' => $this->durationMs($startedAt),
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+            ]);
+            $this->logConnectionDiagnostics($server, $exception);
+
+            throw $exception;
+        } catch (RequestException $exception) {
+            $this->logHttpFailure($server, 'ticket authentication', $exception, [
+                'duration_ms' => $this->durationMs($startedAt),
+            ]);
+
+            throw $exception;
+        }
 
         if (! isset($ticket['ticket'], $ticket['CSRFPreventionToken'])) {
+            $this->logError('Proxmox ticket authentication response was missing required fields', $server, [
+                'has_ticket' => isset($ticket['ticket']),
+                'has_csrf_token' => isset($ticket['CSRFPreventionToken']),
+                'response_keys' => is_array($ticket) ? array_keys($ticket) : [],
+            ]);
+
             throw new RuntimeException('Proxmox did not return an authentication ticket.');
         }
+
+        $this->logInfo('Proxmox ticket authentication succeeded', $server, [
+            'duration_ms' => $this->durationMs($startedAt),
+        ]);
 
         return $request->withCookies(['PVEAuthCookie' => $ticket['ticket']], $server->host)
             ->withHeader('CSRFPreventionToken', $ticket['CSRFPreventionToken']);

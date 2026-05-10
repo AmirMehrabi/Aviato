@@ -67,6 +67,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::resource('customers', CustomerController::class)
             ->names('admin.customers');
 
+        Route::get('virtual-machines/proxmox-servers/{proxmoxServer}/options', [VirtualMachineController::class, 'options'])
+            ->name('admin.virtual-machines.options');
         Route::post('virtual-machines/{virtualMachine}/start', [VirtualMachineController::class, 'start'])
             ->name('admin.virtual-machines.start');
         Route::post('virtual-machines/{virtualMachine}/stop', [VirtualMachineController::class, 'stop'])
