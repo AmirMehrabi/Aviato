@@ -13,7 +13,13 @@
     $endpointErrors = $inventory['endpoint_errors'] ?? [];
 @endphp
 
-<div class="px-4 py-6 md:px-8 lg:px-10">
+<div
+    class="px-4 py-6 md:px-8 lg:px-10"
+    x-data="proxmoxMetrics({
+        url: @js(route('admin.proxmox-servers.metrics', $server)),
+        initialNode: @js($nodes[0]['node'] ?? $nodes[0]['name'] ?? null),
+    })"
+>
     @if (session('status'))
         <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
     @endif
@@ -74,7 +80,12 @@
         </div>
     @endif
 
-    <div class="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_420px]">
+    <div class="mt-6 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'overview' ? 'bg-[#105D52] text-white shadow-lg shadow-[#105D52]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'overview'">Overview</button>
+        <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'performance' ? 'bg-[#105D52] text-white shadow-lg shadow-[#105D52]/20' : 'text-slate-600 hover:bg-slate-50'" @click="openPerformance()">Performance graphs</button>
+    </div>
+
+    <div x-show="activeTab === 'overview'" class="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_420px]">
         <div class="space-y-6">
             <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div class="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
@@ -182,5 +193,197 @@
             @endif
         </aside>
     </div>
+
+    <section x-cloak x-show="activeTab === 'performance'" class="mt-6 space-y-6">
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 border-b border-slate-200 p-5 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                    <h2 class="text-lg font-black">Node Performance</h2>
+                    <p class="mt-1 text-sm leading-7 text-slate-500">CPU Usage, Server Load, Memory Usage, and Network Traffic from Proxmox RRD data.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <select x-model="node" @change="load()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold focus:border-[#105D52] focus:bg-white focus:outline-none">
+                        <template x-for="item in nodes" :key="item">
+                            <option :value="item" x-text="item"></option>
+                        </template>
+                    </select>
+                    <select x-model="timeframe" @change="load()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold focus:border-[#105D52] focus:bg-white focus:outline-none">
+                        <option value="hour">Last hour</option>
+                        <option value="day">Last day</option>
+                        <option value="week">Last week</option>
+                        <option value="month">Last month</option>
+                        <option value="year">Last year</option>
+                    </select>
+                    <button type="button" class="rounded-xl bg-[#105D52] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0D4C44]" @click="load()">Refresh</button>
+                </div>
+            </div>
+
+            <div class="grid gap-4 border-b border-slate-200 bg-slate-50 p-5 md:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-xl bg-white p-4 shadow-sm">
+                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">CPU</p>
+                    <p class="mt-2 text-2xl font-black text-[#105D52]" x-text="formatPercent(latest.cpu_percent)"></p>
+                </div>
+                <div class="rounded-xl bg-white p-4 shadow-sm">
+                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">Server Load</p>
+                    <p class="mt-2 text-2xl font-black text-[#105D52]" x-text="latest.load ?? '—'"></p>
+                </div>
+                <div class="rounded-xl bg-white p-4 shadow-sm">
+                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">Memory</p>
+                    <p class="mt-2 text-2xl font-black text-[#105D52]" x-text="formatPercent(latest.memory_percent)"></p>
+                    <p class="mt-1 text-xs font-bold text-slate-400" x-text="latest.memory_used && latest.memory_total ? `${latest.memory_used} / ${latest.memory_total}` : ''"></p>
+                </div>
+                <div class="rounded-xl bg-white p-4 shadow-sm">
+                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">Network</p>
+                    <p class="mt-2 text-sm font-black text-[#105D52]">In <span x-text="formatRate(latest.netin_bytes_per_second)"></span></p>
+                    <p class="mt-1 text-sm font-black text-amber-600">Out <span x-text="formatRate(latest.netout_bytes_per_second)"></span></p>
+                </div>
+            </div>
+
+            <div x-show="loading" class="p-8 text-center text-sm font-bold text-slate-500">Loading Proxmox graph data...</div>
+            <div x-show="error" class="m-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700" x-text="error"></div>
+            <div x-show="!loading && !error && samples.length === 0" class="p-8 text-center text-sm font-bold text-slate-500">No graph samples were returned by Proxmox for this node/timeframe.</div>
+
+            <div x-show="!loading && samples.length > 0" class="grid gap-5 p-5 xl:grid-cols-2">
+                <template x-for="graph in graphs" :key="graph.key">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="mb-4 flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="font-black" x-text="graph.label"></h3>
+                                <p class="mt-1 text-xs font-bold text-slate-400" x-text="graph.help"></p>
+                            </div>
+                            <span class="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-600" x-text="`${samples.length} points`"></span>
+                        </div>
+                        <svg viewBox="0 0 720 260" class="h-72 w-full overflow-visible rounded-xl bg-slate-950 p-2" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient :id="`${graph.key}-fill`" x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0%" :stop-color="graph.color" stop-opacity="0.34"></stop>
+                                    <stop offset="100%" :stop-color="graph.color" stop-opacity="0.02"></stop>
+                                </linearGradient>
+                            </defs>
+                            <g class="text-slate-700">
+                                <line x1="34" y1="30" x2="34" y2="222" stroke="currentColor" stroke-width="1"></line>
+                                <line x1="34" y1="222" x2="700" y2="222" stroke="currentColor" stroke-width="1"></line>
+                                <line x1="34" y1="158" x2="700" y2="158" stroke="currentColor" stroke-width="1" stroke-dasharray="5 8"></line>
+                                <line x1="34" y1="94" x2="700" y2="94" stroke="currentColor" stroke-width="1" stroke-dasharray="5 8"></line>
+                            </g>
+                            <path :d="areaPath(graph)" :fill="`url(#${graph.key}-fill)`"></path>
+                            <path :d="linePath(graph)" fill="none" :stroke="graph.color" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <text x="38" y="24" fill="#94a3b8" font-size="12" font-weight="800" x-text="graph.maxLabel"></text>
+                            <text x="38" y="246" fill="#94a3b8" font-size="12" font-weight="800" x-text="timeLabel(samples[0]?.time)"></text>
+                            <text x="620" y="246" fill="#94a3b8" font-size="12" font-weight="800" x-text="timeLabel(samples[samples.length - 1]?.time)"></text>
+                        </svg>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </section>
 </div>
+
+<script>
+    function proxmoxMetrics(config) {
+        return {
+            activeTab: 'overview',
+            url: config.url,
+            node: config.initialNode,
+            nodes: config.initialNode ? [config.initialNode] : [],
+            timeframe: 'hour',
+            samples: [],
+            latest: {},
+            loading: false,
+            error: null,
+            loaded: false,
+            graphs: [
+                { key: 'cpu', label: 'CPU Usage', help: 'Percent used', color: '#34d399', max: 100, maxLabel: '100%' },
+                { key: 'loadavg', label: 'Server Load', help: 'Load average', color: '#f59e0b', max: null, maxLabel: 'auto' },
+                { key: 'memory', label: 'Memory Usage', help: 'Percent used', color: '#38bdf8', max: 100, maxLabel: '100%' },
+                { key: 'network', label: 'Network Traffic', help: 'Total in/out bytes per second', color: '#fb7185', max: null, maxLabel: 'auto' },
+            ],
+            openPerformance() {
+                this.activeTab = 'performance';
+                if (!this.loaded) {
+                    this.load();
+                }
+            },
+            async load() {
+                this.loading = true;
+                this.error = null;
+
+                try {
+                    const params = new URLSearchParams({ timeframe: this.timeframe });
+                    if (this.node) params.set('node', this.node);
+
+                    const response = await fetch(`${this.url}?${params.toString()}`, {
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    const payload = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(payload.message || 'Unable to load metrics.');
+                    }
+
+                    const data = payload.data || {};
+                    this.samples = data.samples || [];
+                    this.latest = data.latest || {};
+                    this.nodes = data.nodes?.length ? data.nodes : this.nodes;
+                    this.node = data.node || this.node;
+                    this.loaded = true;
+                } catch (error) {
+                    this.error = error.message || 'Unable to load metrics.';
+                } finally {
+                    this.loading = false;
+                }
+            },
+            value(sample, graph) {
+                if (!sample) return 0;
+                if (graph.key === 'cpu') return Number(sample.cpu || 0) * 100;
+                if (graph.key === 'loadavg') return Number(sample.loadavg || sample.load || 0);
+                if (graph.key === 'memory') return Number(sample.maxmem || 0) > 0 ? (Number(sample.mem || 0) / Number(sample.maxmem)) * 100 : 0;
+                if (graph.key === 'network') return Number(sample.netin || 0) + Number(sample.netout || 0);
+                return 0;
+            },
+            scaleMax(graph) {
+                if (graph.max) return graph.max;
+                const max = Math.max(...this.samples.map((sample) => this.value(sample, graph)), 1);
+                graph.maxLabel = graph.key === 'network' ? this.formatRate(max) : Math.ceil(max * 10) / 10;
+                return max * 1.12;
+            },
+            points(graph) {
+                const max = this.scaleMax(graph);
+                return this.samples.map((sample, index) => {
+                    const x = 34 + (index / Math.max(this.samples.length - 1, 1)) * 666;
+                    const y = 222 - (Math.min(this.value(sample, graph), max) / max) * 192;
+                    return [x, y];
+                });
+            },
+            linePath(graph) {
+                const points = this.points(graph);
+                if (!points.length) return '';
+                return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point[0].toFixed(2)} ${point[1].toFixed(2)}`).join(' ');
+            },
+            areaPath(graph) {
+                const points = this.points(graph);
+                if (!points.length) return '';
+                return `${this.linePath(graph)} L ${points[points.length - 1][0].toFixed(2)} 222 L ${points[0][0].toFixed(2)} 222 Z`;
+            },
+            formatPercent(value) {
+                return value === null || value === undefined ? '—' : `${Number(value).toFixed(1)}%`;
+            },
+            formatRate(value) {
+                if (value === null || value === undefined) return '—';
+                const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+                let amount = Number(value);
+                let unit = 0;
+                while (amount >= 1024 && unit < units.length - 1) {
+                    amount /= 1024;
+                    unit++;
+                }
+                return `${amount.toFixed(amount >= 10 ? 0 : 1)} ${units[unit]}`;
+            },
+            timeLabel(timestamp) {
+                if (!timestamp) return '';
+                return new Date(Number(timestamp) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            },
+        };
+    }
+</script>
 @endsection

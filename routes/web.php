@@ -86,6 +86,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
         Route::post('proxmox-servers/{proxmoxServer}/sync', [ProxmoxServerWebController::class, 'sync'])
             ->name('admin.proxmox-servers.sync');
+        Route::get('proxmox-servers/{proxmoxServer}/metrics', [ProxmoxServerWebController::class, 'metrics'])
+            ->name('admin.proxmox-servers.metrics');
         Route::resource('proxmox-servers', ProxmoxServerWebController::class)
             ->parameters(['proxmox-servers' => 'proxmoxServer'])
             ->names('admin.proxmox-servers');

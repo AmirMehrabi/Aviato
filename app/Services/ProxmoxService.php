@@ -101,6 +101,56 @@ class ProxmoxService
     }
 
     /**
+     * Fetch node performance samples for CPU, load, memory, and network graphs.
+     *
+     * @return array<string, mixed>
+     */
+    public function nodePerformance(ProxmoxServer $server, ?string $nodeName = null, string $timeframe = 'hour'): array
+    {
+        return $this->runWithOperation($server, 'node-performance', function () use ($server, $nodeName, $timeframe): array {
+            $errors = [];
+            $nodes = collect($this->getData($server, '/nodes') ?? []);
+            $selectedNode = $nodeName ?: ($nodes->first()['node'] ?? $nodes->first()['name'] ?? null);
+
+            if (! $selectedNode) {
+                throw new RuntimeException('No Proxmox node was available for performance metrics.');
+            }
+
+            $rrdData = $this->getOptionalData(
+                $server,
+                "/nodes/{$selectedNode}/rrddata",
+                $errors,
+                [],
+                ['timeframe' => $timeframe, 'cf' => 'AVERAGE'],
+            );
+            $status = $this->getOptionalData($server, "/nodes/{$selectedNode}/status", $errors, []);
+
+            $samples = collect($rrdData)
+                ->filter(fn (mixed $sample): bool => is_array($sample) && isset($sample['time']))
+                ->sortBy('time')
+                ->values()
+                ->all();
+
+            $this->logInfo('Proxmox node performance loaded', $server, [
+                'node' => $selectedNode,
+                'timeframe' => $timeframe,
+                'sample_count' => count($samples),
+                'error_count' => count($errors),
+            ]);
+
+            return [
+                'node' => $selectedNode,
+                'nodes' => $nodes->map(fn (array $node): string => (string) ($node['node'] ?? $node['name'] ?? ''))->filter()->values()->all(),
+                'timeframe' => $timeframe,
+                'samples' => $samples,
+                'latest' => $this->latestPerformanceValues($samples, is_array($status) ? $status : []),
+                'errors' => $errors,
+                'fetched_at' => now()->toISOString(),
+            ];
+        });
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function vmCreationOptions(ProxmoxServer $server): array
@@ -549,6 +599,34 @@ class ProxmoxService
         $power = min((int) floor(log($bytes, 1024)), count($units) - 1);
 
         return round($bytes / (1024 ** $power), 1).' '.$units[$power];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $samples
+     * @param  array<string, mixed>  $status
+     * @return array<string, mixed>
+     */
+    private function latestPerformanceValues(array $samples, array $status): array
+    {
+        $latestSample = end($samples) ?: [];
+        $cpu = $latestSample['cpu'] ?? $status['cpu'] ?? null;
+        $load = $latestSample['loadavg'] ?? $latestSample['load'] ?? $status['loadavg'][0] ?? null;
+        $mem = $latestSample['mem'] ?? $status['memory']['used'] ?? null;
+        $maxMem = $latestSample['maxmem'] ?? $status['memory']['total'] ?? null;
+        $netIn = $latestSample['netin'] ?? null;
+        $netOut = $latestSample['netout'] ?? null;
+
+        return [
+            'cpu_percent' => is_numeric($cpu) ? round((float) $cpu * 100, 2) : null,
+            'load' => is_numeric($load) ? round((float) $load, 2) : null,
+            'memory_percent' => is_numeric($mem) && is_numeric($maxMem) && (float) $maxMem > 0
+                ? round(((float) $mem / (float) $maxMem) * 100, 2)
+                : null,
+            'memory_used' => is_numeric($mem) ? $this->humanBytes((int) $mem) : null,
+            'memory_total' => is_numeric($maxMem) ? $this->humanBytes((int) $maxMem) : null,
+            'netin_bytes_per_second' => is_numeric($netIn) ? round((float) $netIn, 2) : null,
+            'netout_bytes_per_second' => is_numeric($netOut) ? round((float) $netOut, 2) : null,
+        ];
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateProxmoxServerRequest;
 use App\Models\ProxmoxServer;
 use App\Services\ProxmoxService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -130,6 +131,38 @@ class ProxmoxServerWebController extends Controller
         ]);
 
         return back()->with($synced ? 'status' : 'error', $synced ? 'Server synced successfully.' : 'Server is offline; changes remain pending.');
+    }
+
+    public function metrics(Request $request, ProxmoxServer $proxmoxServer): JsonResponse
+    {
+        $timeframe = $request->string('timeframe')->toString() ?: 'hour';
+        if (! in_array($timeframe, ['hour', 'day', 'week', 'month', 'year'], true)) {
+            $timeframe = 'hour';
+        }
+
+        try {
+            return response()->json([
+                'data' => $this->proxmox->nodePerformance(
+                    $proxmoxServer,
+                    $request->string('node')->toString() ?: null,
+                    $timeframe,
+                ),
+            ]);
+        } catch (Throwable $exception) {
+            Log::error('Unable to load Proxmox performance metrics', [
+                'server_id' => $proxmoxServer->id,
+                'server_name' => $proxmoxServer->name,
+                'node' => $request->string('node')->toString(),
+                'timeframe' => $timeframe,
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Unable to load Proxmox performance metrics.',
+                'error' => $exception->getMessage(),
+            ], 422);
+        }
     }
 
     /**
