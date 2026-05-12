@@ -12,13 +12,13 @@
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <a href="{{ route('admin.virtual-machines.create') }}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-[#2563EB] px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-[#1D4ED8]">
+                        <a href="{{ route('admin.virtual-machines.create') }}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-[#0050D0]">
                             <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
                             </svg>
                             ساخت VM
                         </a>
-                        <a href="{{ route('admin.proxmox-servers.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-[#0B2550]">
+                        <a href="{{ route('admin.proxmox-servers.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
                             Sync زیرساخت
                         </a>
                     </div>
@@ -27,7 +27,7 @@
                 <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                     @php
                         $stats = [
-                            ['label' => 'VM فعال', 'value' => '۱۲۸', 'change' => '۹ ماشین بیشتر از هفته قبل', 'tone' => 'text-[#1D4ED8]', 'bar' => '82'],
+                            ['label' => 'VM فعال', 'value' => '۱۲۸', 'change' => '۹ ماشین بیشتر از هفته قبل', 'tone' => 'text-[#0050D0]', 'bar' => '82'],
                             ['label' => 'صف Provisioning', 'value' => '۷', 'change' => '۲ مورد بیشتر از SLA', 'tone' => 'text-amber-600', 'bar' => '48'],
                             ['label' => 'فاکتورهای پرریسک', 'value' => '۱۸', 'change' => '۴ مشتری نزدیک تعلیق', 'tone' => 'text-red-600', 'bar' => '36'],
                             ['label' => 'هشدار زیرساخت', 'value' => '۳', 'change' => 'تهران ۱، بکاپ، Sync', 'tone' => 'text-amber-600', 'bar' => '28'],
@@ -43,7 +43,7 @@
                             <p class="mt-3 text-2xl font-black {{ $stat['tone'] }}">{{ $stat['value'] }}</p>
                             <p class="mt-2 min-h-10 text-xs leading-5 text-slate-500">{{ $stat['change'] }}</p>
                             <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                                <div class="h-full rounded-full bg-[#2563EB]" style="width: {{ $stat['bar'] }}%"></div>
+                                <div class="h-full rounded-full bg-[#0069FF]" style="width: {{ $stat['bar'] }}%"></div>
                             </div>
                         </article>
                     @endforeach
@@ -101,7 +101,7 @@
                                             </td>
                                             <td class="whitespace-nowrap px-5 py-4 font-black text-slate-900">{{ $machine['cost'] }} <span class="text-xs font-bold text-slate-400">تومان</span></td>
                                             <td class="whitespace-nowrap px-5 py-4">
-                                                <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-[#1D4ED8] transition hover:border-blue-200 hover:bg-blue-50">{{ $machine['action'] }}</a>
+                                                <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-[#0050D0] transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF]">{{ $machine['action'] }}</a>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -117,7 +117,7 @@
                                 <span class="text-xs font-black text-slate-400" x-text="period"></span>
                             </div>
                             <div class="mt-5 space-y-4">
-                                @foreach ([['name' => 'تهران ۱', 'value' => 87, 'color' => 'bg-amber-500'], ['name' => 'شیراز ۱', 'value' => 54, 'color' => 'bg-[#2563EB]'], ['name' => 'فرانکفورت', 'value' => 41, 'color' => 'bg-[#2563EB]']] as $capacity)
+                                @foreach ([['name' => 'تهران ۱', 'value' => 87, 'color' => 'bg-amber-500'], ['name' => 'شیراز ۱', 'value' => 54, 'color' => 'bg-[#0069FF]'], ['name' => 'فرانکفورت', 'value' => 41, 'color' => 'bg-[#0069FF]']] as $capacity)
                                     <div>
                                         <div class="flex items-center justify-between text-sm">
                                             <span class="font-black text-slate-800">{{ $capacity['name'] }}</span>
@@ -143,7 +143,7 @@
                                     <p class="mt-1 text-xs leading-6 text-amber-700/80">برای مشتریان سازمانی پیگیری دستی لازم است.</p>
                                 </div>
                             </div>
-                            <a href="{{ route('admin.customers.index') }}" class="mt-4 inline-flex w-full justify-center rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-[#0B2550]">
+                            <a href="{{ route('admin.customers.index') }}" class="mt-4 inline-flex w-full justify-center rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
                                 بررسی مشتریان
                             </a>
                         </div>
@@ -152,7 +152,7 @@
                             <h2 class="font-black text-slate-950">فعالیت‌های اخیر</h2>
                             <div class="mt-5 space-y-4">
                                 <div class="flex gap-3">
-                                    <span class="mt-1 size-2.5 shrink-0 rounded-full bg-[#2563EB]"></span>
+                                    <span class="mt-1 size-2.5 shrink-0 rounded-full bg-[#0069FF]"></span>
                                     <p class="text-sm leading-7 text-slate-600"><span class="font-black text-slate-900">thr-node-03</span> با موفقیت Sync شد.</p>
                                 </div>
                                 <div class="flex gap-3">
