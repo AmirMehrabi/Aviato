@@ -13,10 +13,20 @@
         $customerInitial = mb_substr($customer->name ?? 'م', 0, 1);
         $balanceIsNegative = ($wallet->balance ?? 0) < 0;
         $activeNav = $activeNav ?? 'dashboard';
-        $navItems = [
-            ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
-            ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm12 3h4v5h-4a2.5 2.5 0 0 1 0-5Zm1 2.5h.01'],
-            ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm8 0v5h5M8 13h8M8 17h6'],
+        $navGroups = [
+            'پروژه ها' => [
+                ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
+            ],
+            'مدیریت' => [
+                ['key' => 'machines', 'label' => 'ماشین ها', 'route' => route('dashboard', [], false).'#vm-list', 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
+                ['key' => 'network', 'label' => 'شبکه', 'route' => null, 'icon' => 'M12 3v4m0 10v4M4.9 7.1l2.8 2.8m8.6 8.6 2.8 2.8M3 12h4m10 0h4'],
+                ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => null, 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
+                ['key' => 'monitoring', 'label' => 'مانیتورینگ', 'route' => null, 'icon' => 'M4 19V5m4 14v-7m4 7V8m4 11v-4m4 4V9'],
+            ],
+            'حساب' => [
+                ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm12 3h4v5h-4a2.5 2.5 0 0 1 0-5Zm1 2.5h.01'],
+                ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm8 0v5h5M8 13h8M8 17h6'],
+            ],
         ];
     @endphp
 
@@ -88,7 +98,7 @@
                 openSearch();
             }
         "
-        class="min-h-screen lg:grid lg:grid-cols-[240px_minmax(0,1fr)]"
+        class="min-h-screen lg:grid lg:grid-cols-[230px_minmax(0,1fr)]"
     >
         <div
             x-cloak
@@ -100,20 +110,20 @@
         ></div>
 
         <aside
-            class="fixed inset-y-0 right-0 z-40 hidden w-60 translate-x-full flex-col border-l border-slate-200 bg-white px-3 py-4 shadow-2xl shadow-slate-950/10 transition-transform duration-200 lg:static lg:flex lg:translate-x-0 lg:shadow-none"
+            class="fixed inset-y-0 right-0 z-40 hidden w-[230px] translate-x-full flex-col border-l border-white/10 bg-[#031B4E] py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:static lg:flex lg:translate-x-0 lg:shadow-none"
             :class="{ '!flex translate-x-0': sidebarOpen }"
         >
-            <div class="flex items-center justify-between px-1">
+            <div class="flex items-center justify-between px-4">
                 <a href="{{ route('dashboard', [], false) }}" class="flex items-center gap-2.5">
-                    <span class="grid size-9 place-items-center rounded-lg bg-[#0069FF] text-base font-black text-white shadow-sm shadow-[#0069FF]/25">آ</span>
+                    <span class="grid size-9 place-items-center rounded-full border border-white/15 bg-white/10 text-base font-black text-white shadow-sm shadow-black/20">آ</span>
                     <span>
-                        <span class="block text-base font-black leading-5 text-slate-950">آویاتو</span>
-                        <span class="block text-[11px] font-bold leading-4 text-slate-400">کنسول ابری</span>
+                        <span class="block text-base font-black leading-5 text-white">آویاتو</span>
+                        <span class="block text-[11px] font-bold leading-4 text-[#8FA6D2]">کنسول ابری</span>
                     </span>
                 </a>
                 <button
                     type="button"
-                    class="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] lg:hidden"
+                    class="grid size-9 place-items-center rounded-md border border-white/10 text-[#9DB4DC] transition hover:bg-white/10 hover:text-white lg:hidden"
                     @click="sidebarOpen = false"
                     aria-label="بستن منو"
                 >
@@ -123,38 +133,47 @@
                 </button>
             </div>
 
-            <nav class="mt-7 space-y-1 text-sm font-bold">
-                @foreach ($navItems as $item)
-                    <a
-                        href="{{ $item['route'] }}"
-                        class="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition {{ $activeNav === $item['key'] ? 'bg-[#0069FF] text-white shadow-sm shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-[#EBF3FF] hover:text-[#0069FF]' }}"
-                    >
-                        <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span>{{ $item['label'] }}</span>
-                        @if ($item['key'] === 'invoices' && ($invoiceCount ?? null))
-                            <span class="mr-auto rounded-md px-2 py-0.5 text-[11px] {{ $activeNav === $item['key'] ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500' }}">{{ $invoiceCount }}</span>
-                        @endif
-                    </a>
+            <nav class="mt-7 space-y-6 text-sm font-bold">
+                @foreach ($navGroups as $group => $items)
+                    <div>
+                        <p class="px-4 text-[10px] font-black text-[#5F79AA]">{{ $group }}</p>
+                        <div class="mt-2 space-y-0.5">
+                            @foreach ($items as $item)
+                                @php($isActive = $activeNav === $item['key'])
+                                <a
+                                    href="{{ $item['route'] ?: '#' }}"
+                                    @if (! $item['route']) aria-disabled="true" @endif
+                                    class="flex items-center gap-2.5 px-3 py-2 transition {{ $isActive ? 'bg-white text-[#031B4E] shadow-sm shadow-black/10' : ($item['route'] ? 'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' : 'cursor-default text-[#6F86B5] opacity-70') }}"
+                                >
+                                    <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                        <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>{{ $item['label'] }}</span>
+                                    @if ($item['key'] === 'invoices' && ($invoiceCount ?? null))
+                                        <span class="mr-auto rounded px-1.5 py-0.5 text-[10px] font-black {{ $isActive ? 'bg-[#E5F0FF] text-[#0069FF]' : 'bg-white/10 text-[#C7D4EA]' }}">{{ $invoiceCount }}</span>
+                                    @endif
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
                 @endforeach
             </nav>
 
-            <div class="mt-7 border-t border-slate-200 pt-4">
-                <p class="px-3 text-[11px] font-black text-slate-400">مصرف</p>
-                <div class="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div class="mt-7 border-t border-white/10 pt-4">
+                <p class="px-3 text-[10px] font-black text-[#5F79AA]">مصرف</p>
+                <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
                     <div class="flex items-center justify-between gap-3">
-                        <span class="text-xs font-bold text-slate-500">موجودی</span>
-                        <span class="rounded-md px-2 py-0.5 text-[11px] font-black {{ $wallet->is_locked ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700' }}">{{ $wallet->is_locked ? 'قفل' : 'فعال' }}</span>
+                        <span class="text-xs font-bold text-[#9DB4DC]">موجودی</span>
+                        <span class="rounded px-1.5 py-0.5 text-[10px] font-black {{ $wallet->is_locked ? 'bg-red-400/15 text-red-200' : 'bg-emerald-400/15 text-emerald-200' }}">{{ $wallet->is_locked ? 'قفل' : 'فعال' }}</span>
                     </div>
-                    <p class="mt-2 truncate text-lg font-black {{ $balanceIsNegative ? 'text-red-600' : 'text-slate-950' }}">{{ $wallets->format($wallet->balance) }}</p>
-                    <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#0069FF] px-3 py-2 text-sm font-black text-white transition hover:bg-[#0050D0]">
+                    <p class="mt-2 truncate text-lg font-black {{ $balanceIsNegative ? 'text-red-200' : 'text-white' }}">{{ $wallets->format($wallet->balance) }}</p>
+                    <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-3 inline-flex w-full items-center justify-center rounded-md bg-[#00A67E] px-3 py-2 text-sm font-black text-white transition hover:bg-[#008F6E]">
                         افزایش اعتبار
                     </a>
                 </div>
             </div>
 
-            <div class="mt-auto px-1 pt-6 text-xs leading-6 text-slate-400">
+            <div class="mt-auto border-t border-white/10 px-1 pt-4 text-xs leading-6 text-[#8FA6D2]">
                 مصرف PAYG از کیف پول کسر می شود و صورتحساب ماهانه برای بایگانی صادر می گردد.
             </div>
         </aside>
