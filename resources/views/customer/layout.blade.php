@@ -183,11 +183,11 @@
         </aside>
 
         <main class="min-w-0">
-            <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm shadow-slate-200/50 backdrop-blur md:px-6 lg:px-8">
-                <div class="flex items-center gap-3">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 shadow-sm shadow-slate-200/50 backdrop-blur md:px-6 lg:px-8">
+                <div class="flex h-14 items-stretch gap-2">
                     <button
                         type="button"
-                        class="grid size-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] lg:hidden"
+                        class="my-2 grid size-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] lg:hidden"
                         @click="sidebarOpen = true"
                         aria-label="باز کردن منو"
                     >
@@ -200,7 +200,7 @@
                         <button
                             type="button"
                             @click="openSearch()"
-                            class="flex h-9 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] md:max-w-sm"
+                            class="flex h-full w-full max-w-xs items-center gap-2 px-1 text-sm text-slate-400 transition hover:text-[#0069FF] md:max-w-sm"
                         >
                             <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"/>
@@ -214,7 +214,7 @@
                         </button>
                     </div>
 
-                    <a href="{{ route('customer.servers.create', [], false) }}" class="hidden h-9 shrink-0 items-center justify-center rounded-lg bg-[#0069FF] px-4 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0] md:inline-flex">
+                    <a href="{{ route('customer.servers.create', [], false) }}" class="my-2 hidden h-10 shrink-0 items-center justify-center rounded-lg bg-[#0069FF] px-4 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0] md:inline-flex">
                         ساخت ماشین
                     </a>
 
@@ -222,17 +222,11 @@
                         <button
                             type="button"
                             @click="walletOpen = !walletOpen; profileOpen = false; searchOpen = false"
-                            class="hidden h-9 items-center gap-2 rounded-lg bg-transparent px-2 text-sm font-black text-slate-600 transition hover:bg-slate-100 hover:text-[#0069FF] sm:flex"
+                            class="grid h-full w-10 place-items-center text-slate-500 transition hover:text-[#0069FF]"
                             aria-label="کیف پول"
                         >
-                            <span class="grid size-6 place-items-center rounded-md bg-[#EBF3FF] text-[#0069FF]">
-                                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm12 3h4v5h-4a2.5 2.5 0 0 1 0-5Z" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </span>
-                            <span class="{{ $balanceIsNegative ? 'text-red-600' : 'text-slate-950' }}">{{ $wallets->format($wallet->balance) }}</span>
-                            <svg class="size-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm12 3h4v5h-4a2.5 2.5 0 0 1 0-5Z" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
 
@@ -259,14 +253,10 @@
                         <button
                             type="button"
                             @click="profileOpen = !profileOpen; walletOpen = false; searchOpen = false"
-                            class="flex h-9 items-center gap-2 rounded-lg bg-transparent px-2 transition hover:bg-slate-100"
+                            class="grid h-full w-10 place-items-center text-slate-500 transition hover:text-[#0069FF]"
                             aria-label="پروفایل"
                         >
-                            <span class="hidden min-w-0 text-right text-sm sm:block">
-                                <span class="block max-w-36 truncate font-black leading-5 text-slate-950">{{ $customer->name }}</span>
-                                <span class="block truncate text-[11px] font-bold leading-4 text-slate-500">{{ $customer->email ?? $customer->phone ?? 'حساب مشتری' }}</span>
-                            </span>
-                            <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
+                            <span class="grid size-8 shrink-0 place-items-center rounded-full bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
                         </button>
 
                         <div
