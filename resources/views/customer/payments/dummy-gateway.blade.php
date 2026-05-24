@@ -4,7 +4,9 @@
 @section('header_title', 'درگاه پرداخت آزمایشی')
 @section('header_subtitle', 'این صفحه شبیه ساز پرداخت است و پس از تایید، کیف پول بلافاصله شارژ می شود')
 
-@php($activeNav = 'wallet')
+@php
+    $activeNav = 'wallet';
+@endphp
 
 @section('content')
     <section class="mx-auto max-w-3xl rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60 md:p-8">

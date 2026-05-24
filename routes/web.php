@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\PaymentController;
+use App\Http\Controllers\Customer\ServerController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
 use Illuminate\Support\Facades\Route;
 
@@ -121,6 +122,8 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
 
     Route::middleware('auth:customer')->group(function () use ($customerHome) {
         Route::get($customerHome, DashboardController::class)->name('dashboard');
+        Route::get('servers', [ServerController::class, 'index'])->name('customer.servers.index');
+        Route::get('servers/create', [ServerController::class, 'create'])->name('customer.servers.create');
         Route::get('wallet', [CustomerWalletController::class, 'show'])->name('customer.wallet.show');
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');
         Route::get('wallet/payments/{payment}/gateway', [PaymentController::class, 'showGateway'])->name('customer.wallet.payments.gateway.show');

@@ -4,7 +4,9 @@
 @section('header_title', 'جزئیات صورتحساب '.$invoice->number)
 @section('header_subtitle', 'تفکیک کارکرد VMها و مبلغ برداشت شده از کیف پول در این دوره')
 
-@php($activeNav = 'invoices')
+@php
+    $activeNav = 'invoices';
+@endphp
 
 @section('content')
     <section class="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60 md:p-8">

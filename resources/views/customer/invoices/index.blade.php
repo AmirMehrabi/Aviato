@@ -4,8 +4,10 @@
 @section('header_title', 'صورتحساب های ماهانه')
 @section('header_subtitle', 'گزارش تفصیلی مصرف ماهانه به تفکیک VM و برداشت های کیف پول')
 
-@php($activeNav = 'invoices')
-@php($invoiceCount = $invoices->total())
+@php
+    $activeNav = 'invoices';
+    $invoiceCount = $invoices->total();
+@endphp
 
 @section('content')
     <section class="grid gap-4 md:grid-cols-3">

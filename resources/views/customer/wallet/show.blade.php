@@ -4,7 +4,9 @@
 @section('header_title', 'کیف پول و تراکنش ها')
 @section('header_subtitle', 'شارژ کیف پول، پیگیری تراکنش ها و مشاهده کارکرد ثبت نشده')
 
-@php($activeNav = 'wallet')
+@php
+    $activeNav = 'wallet';
+@endphp
 
 @section('content')
     <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -73,7 +75,9 @@
 
             <div class="divide-y divide-slate-100">
                 @forelse ($transactions as $transaction)
-                    @php($meta = $transaction->metadata ?? [])
+                    @php
+                        $meta = $transaction->metadata ?? [];
+                    @endphp
                     <article class="p-5">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div class="min-w-0">

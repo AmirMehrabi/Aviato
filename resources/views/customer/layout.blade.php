@@ -8,7 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>[x-cloak]{display:none!important}</style>
 </head>
-<body class="min-h-screen bg-[#F5F7FB] text-slate-950">
+<body class="min-h-screen bg-[#FFF] text-slate-950">
     @php
         $customerInitial = mb_substr($customer->name ?? 'م', 0, 1);
         $balanceIsNegative = ($wallet->balance ?? 0) < 0;
@@ -18,7 +18,7 @@
                 ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
             ],
             'مدیریت' => [
-                ['key' => 'machines', 'label' => 'ماشین ها', 'route' => route('dashboard', [], false).'#vm-list', 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
+                ['key' => 'servers', 'label' => 'ماشین ها', 'route' => route('customer.servers.index', [], false), 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
                 ['key' => 'network', 'label' => 'شبکه', 'route' => null, 'icon' => 'M12 3v4m0 10v4M4.9 7.1l2.8 2.8m8.6 8.6 2.8 2.8M3 12h4m10 0h4'],
                 ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => null, 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
                 ['key' => 'monitoring', 'label' => 'مانیتورینگ', 'route' => null, 'icon' => 'M4 19V5m4 14v-7m4 7V8m4 11v-4m4 4V9'],
@@ -41,6 +41,8 @@
             init() {
                 const baseItems = [
                     { title: 'داشبورد', description: 'نمای کلی ماشین ها، کیف پول و مصرف', url: '{{ route('dashboard', [], false) }}', type: 'صفحه' },
+                    { title: 'سرورها', description: 'فهرست ماشین های ابری و وضعیت آنها', url: '{{ route('customer.servers.index', [], false) }}', type: 'صفحه' },
+                    { title: 'ساخت ماشین', description: 'انتخاب پلن، سیستم عامل و دیتاسنتر', url: '{{ route('customer.servers.create', [], false) }}', type: 'عملیات' },
                     { title: 'کیف پول', description: 'موجودی، تراکنش ها و افزایش اعتبار', url: '{{ route('customer.wallet.show', [], false) }}', type: 'صفحه' },
                     { title: 'افزایش اعتبار', description: 'شارژ سریع کیف پول', url: '{{ route('customer.wallet.show', ['topup' => 1], false) }}', type: 'عملیات' },
                     { title: 'صورتحساب ها', description: 'بایگانی و جزئیات فاکتورهای ماهانه', url: '{{ route('customer.invoices.index', [], false) }}', type: 'صفحه' }
@@ -139,11 +141,13 @@
                         <p class="px-4 text-[10px] font-black text-[#5F79AA]">{{ $group }}</p>
                         <div class="mt-2 space-y-0.5">
                             @foreach ($items as $item)
-                                @php($isActive = $activeNav === $item['key'])
+                                @php
+                                    $isActive = $activeNav === $item['key'];
+                                @endphp
                                 <a
                                     href="{{ $item['route'] ?: '#' }}"
                                     @if (! $item['route']) aria-disabled="true" @endif
-                                    class="flex items-center gap-2.5 px-3 py-2 transition {{ $isActive ? 'bg-white text-[#031B4E] shadow-sm shadow-black/10' : ($item['route'] ? 'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' : 'cursor-default text-[#6F86B5] opacity-70') }}"
+                                    class="flex items-center gap-2.5 px-3 py-2 transition {{ $isActive ? 'bg-white/90 text-[#031B4E] shadow-sm shadow-black/10' : ($item['route'] ? 'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' : 'cursor-default text-[#6F86B5] opacity-70') }}"
                                 >
                                     <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                         <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
@@ -196,13 +200,13 @@
                         <button
                             type="button"
                             @click="openSearch()"
-                            class="flex h-10 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] md:max-w-xl"
+                            class="flex h-9 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] md:max-w-sm"
                         >
                             <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"/>
                                 <path d="m21 21-4.35-4.35" stroke-linecap="round"/>
                             </svg>
-                            <span class="truncate">جستجو در ماشین ها، صورتحساب ها و عملیات...</span>
+                            <span class="truncate">جستجو...</span>
                             <span class="mr-auto hidden items-center gap-1 text-[11px] font-black text-slate-400 md:flex">
                                 <kbd class="rounded border border-slate-200 bg-white px-1.5 py-0.5">Ctrl</kbd>
                                 <kbd class="rounded border border-slate-200 bg-white px-1.5 py-0.5">K</kbd>
@@ -210,11 +214,15 @@
                         </button>
                     </div>
 
+                    <a href="{{ route('customer.servers.create', [], false) }}" class="hidden h-9 shrink-0 items-center justify-center rounded-lg bg-[#0069FF] px-4 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0] md:inline-flex">
+                        ساخت ماشین
+                    </a>
+
                     <div class="relative">
                         <button
                             type="button"
                             @click="walletOpen = !walletOpen; profileOpen = false; searchOpen = false"
-                            class="hidden h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] sm:flex"
+                            class="hidden h-9 items-center gap-2 rounded-lg bg-transparent px-2 text-sm font-black text-slate-600 transition hover:bg-slate-100 hover:text-[#0069FF] sm:flex"
                             aria-label="کیف پول"
                         >
                             <span class="grid size-6 place-items-center rounded-md bg-[#EBF3FF] text-[#0069FF]">
@@ -251,7 +259,7 @@
                         <button
                             type="button"
                             @click="profileOpen = !profileOpen; walletOpen = false; searchOpen = false"
-                            class="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF]"
+                            class="flex h-9 items-center gap-2 rounded-lg bg-transparent px-2 transition hover:bg-slate-100"
                             aria-label="پروفایل"
                         >
                             <span class="hidden min-w-0 text-right text-sm sm:block">
@@ -341,8 +349,8 @@
                         <h1 class="mt-1 text-2xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
                         <p class="mt-1 text-sm leading-7 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>
                     </div>
-                    <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
-                        افزایش اعتبار
+                    <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
+                        ساخت ماشین
                     </a>
                 </div>
 
