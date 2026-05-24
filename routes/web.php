@@ -9,12 +9,16 @@ use App\Http\Controllers\Admin\VmBundleController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Services\WalletService;
+use App\Http\Controllers\Customer\DashboardController;
+use App\Http\Controllers\Customer\InvoiceController;
+use App\Http\Controllers\Customer\PaymentController;
+use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('home');
-});
+Route::view('/', 'home')->name('home');
+Route::view('/pricing', 'pricing')->name('pricing');
+Route::view('/solutions', 'solutions')->name('solutions');
+Route::view('/contact', 'contact')->name('contact');
 
 $adminDomain = config('portals.admin.domain');
 $customerDomain = config('portals.customer.domain');
@@ -115,16 +119,15 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         ->middleware('auth:customer')
         ->name('customer.logout');
 
-    Route::get($customerHome, function () {
-        $customer = auth('customer')->user();
-        $wallets = app(WalletService::class);
-        $wallet = $wallets->walletFor($customer);
+    Route::middleware('auth:customer')->group(function () use ($customerHome) {
+        Route::get($customerHome, DashboardController::class)->name('dashboard');
+        Route::get('wallet', [CustomerWalletController::class, 'show'])->name('customer.wallet.show');
+        Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');
+        Route::get('wallet/payments/{payment}/gateway', [PaymentController::class, 'showGateway'])->name('customer.wallet.payments.gateway.show');
+        Route::post('wallet/payments/{payment}/gateway', [PaymentController::class, 'submitGateway'])->name('customer.wallet.payments.gateway.store');
+        Route::get('wallet/payments/{payment}/callback', [PaymentController::class, 'callback'])->name('customer.wallet.payments.callback');
 
-        return view('customer.dashboard', [
-            'customer' => $customer,
-            'wallet' => $wallet,
-            'transactions' => $wallet->transactions()->limit(5)->get(),
-            'wallets' => $wallets,
-        ]);
-    })->middleware('auth:customer')->name('dashboard');
+        Route::get('invoices', [InvoiceController::class, 'index'])->name('customer.invoices.index');
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('customer.invoices.show');
+    });
 });

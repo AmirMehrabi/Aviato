@@ -20,6 +20,11 @@ class Wallet extends Model
         return $this->hasMany(WalletTransaction::class)->latest();
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->latest();
+    }
+
     protected function casts(): array
     {
         return [

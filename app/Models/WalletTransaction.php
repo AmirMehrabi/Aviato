@@ -52,6 +52,12 @@ class WalletTransaction extends Model
         return $this->morphTo();
     }
 
+    public function isUsageCharge(): bool
+    {
+        return $this->type === self::TYPE_CHARGE
+            && ($this->metadata['category'] ?? null) === 'payg_usage';
+    }
+
     protected function casts(): array
     {
         return [

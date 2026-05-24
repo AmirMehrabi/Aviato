@@ -39,6 +39,16 @@ class Customer extends Authenticatable
         return $this->hasMany(WalletTransaction::class)->latest();
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->latest();
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->latest('period_start');
+    }
+
     public function virtualMachines(): HasMany
     {
         return $this->hasMany(VirtualMachine::class);
