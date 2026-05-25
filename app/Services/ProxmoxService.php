@@ -226,6 +226,134 @@ class ProxmoxService
     }
 
     /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public function cloneCloudTemplate(ProxmoxServer $server, array $options): array
+    {
+        $node = $options['node'];
+        $templateVmid = (int) $options['template_vmid'];
+        $newid = (int) $options['newid'];
+
+        $payload = array_filter([
+            'newid' => $newid,
+            'name' => $options['name'],
+            'full' => 1,
+            'storage' => $options['storage'] ?? null,
+            'description' => $options['description'] ?? null,
+        ], fn (mixed $value): bool => $value !== null && $value !== '');
+
+        $taskId = $this->request($server)
+            ->asForm()
+            ->post("/nodes/{$node}/qemu/{$templateVmid}/clone", $payload)
+            ->throw()
+            ->json('data');
+
+        return [
+            'task_id' => $taskId,
+            'payload' => $payload,
+            'template_vmid' => $templateVmid,
+            'newid' => $newid,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public function configureCloudInit(ProxmoxServer $server, array $options): array
+    {
+        $node = $options['node'];
+        $vmid = (int) $options['vmid'];
+
+        $payload = array_filter([
+            'cores' => (int) $options['cpu_cores'],
+            'memory' => (int) $options['ram_gb'] * 1024,
+            'ciuser' => $options['login_username'],
+            'cipassword' => $options['login_password'] ?? null,
+            'sshkeys' => $options['ssh_public_key'] ?? null,
+            'ipconfig0' => $options['ipconfig0'],
+            'nameserver' => $options['nameserver'],
+            'onboot' => ! empty($options['onboot']) ? 1 : 0,
+            'agent' => 1,
+            'description' => $options['description'] ?? null,
+        ], fn (mixed $value): bool => $value !== null && $value !== '');
+
+        $taskId = $this->request($server)
+            ->asForm()
+            ->post("/nodes/{$node}/qemu/{$vmid}/config", $payload)
+            ->throw()
+            ->json('data');
+
+        return [
+            'task_id' => $taskId,
+            'payload' => array_diff_key($payload, ['cipassword' => true, 'sshkeys' => true]),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function resizeDisk(ProxmoxServer $server, string $node, int $vmid, string $disk, int $sizeGb): array
+    {
+        $payload = ['disk' => $disk, 'size' => $sizeGb.'G'];
+        $taskId = $this->request($server)
+            ->asForm()
+            ->put("/nodes/{$node}/qemu/{$vmid}/resize", $payload)
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function startVm(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        $taskId = $this->request($server)
+            ->asForm()
+            ->post("/nodes/{$node}/qemu/{$vmid}/status/start")
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function nextVmid(ProxmoxServer $server): array
+    {
+        return ['vmid' => (int) $this->getData($server, '/cluster/nextid')];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function waitForTask(ProxmoxServer $server, string $node, string $upid, int $timeoutSeconds = 300): array
+    {
+        $deadline = now()->addSeconds($timeoutSeconds);
+        $lastStatus = null;
+
+        while (now()->lessThanOrEqualTo($deadline)) {
+            $lastStatus = $this->getData($server, "/nodes/{$node}/tasks/{$upid}/status") ?? [];
+
+            if (($lastStatus['status'] ?? null) === 'stopped') {
+                if (($lastStatus['exitstatus'] ?? 'OK') !== 'OK') {
+                    throw new RuntimeException('Proxmox task failed: '.($lastStatus['exitstatus'] ?? 'unknown error'));
+                }
+
+                return $lastStatus;
+            }
+
+            sleep(2);
+        }
+
+        throw new RuntimeException('Timed out waiting for Proxmox task '.$upid.'. Last status: '.json_encode($lastStatus));
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $nodes
      * @param  array<int, array<string, mixed>>  $resources
      * @param  array<int, array<string, mixed>>  $storage

@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResourceRateController;
 use App\Http\Controllers\Admin\SettingController;
@@ -81,6 +83,14 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::resource('virtual-machines', VirtualMachineController::class)
             ->parameters(['virtual-machines' => 'virtualMachine'])
             ->names('admin.virtual-machines');
+        Route::resource('cloud-images', CloudImageController::class)
+            ->parameters(['cloud-images' => 'cloudImage'])
+            ->except(['show'])
+            ->names('admin.cloud-images');
+        Route::resource('ip-pools', IpPoolController::class)
+            ->parameters(['ip-pools' => 'ipPool'])
+            ->except(['show'])
+            ->names('admin.ip-pools');
 
         Route::prefix('billing')->name('admin.billing.')->group(function (): void {
             Route::resource('rates', ResourceRateController::class)->except(['show']);
@@ -124,6 +134,7 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::get($customerHome, DashboardController::class)->name('dashboard');
         Route::get('servers', [ServerController::class, 'index'])->name('customer.servers.index');
         Route::get('servers/create', [ServerController::class, 'create'])->name('customer.servers.create');
+        Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');
         Route::get('wallet', [CustomerWalletController::class, 'show'])->name('customer.wallet.show');
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');
         Route::get('wallet/payments/{payment}/gateway', [PaymentController::class, 'showGateway'])->name('customer.wallet.payments.gateway.show');

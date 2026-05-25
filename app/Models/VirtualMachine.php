@@ -10,7 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'customer_id',
     'proxmox_server_id',
     'vm_bundle_id',
+    'cloud_image_id',
+    'ip_address_id',
     'vmid',
+    'template_vmid',
     'name',
     'hostname',
     'node',
@@ -19,6 +22,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'iso_volume',
     'network_bridge',
     'ip_address',
+    'login_username',
+    'login_password',
+    'ssh_public_key',
     'cpu_cores',
     'ram_gb',
     'disk_gb',
@@ -27,6 +33,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'provisioning_status',
     'desired_state',
     'remote_state',
+    'provisioning_job_id',
+    'provisioning_task_id',
     'last_seen_at',
     'last_started_at',
     'last_stopped_at',
@@ -62,6 +70,16 @@ class VirtualMachine extends Model
         return $this->belongsTo(VmBundle::class, 'vm_bundle_id');
     }
 
+    public function cloudImage(): BelongsTo
+    {
+        return $this->belongsTo(CloudImage::class);
+    }
+
+    public function reservedIpAddress(): BelongsTo
+    {
+        return $this->belongsTo(IpAddress::class, 'ip_address_id');
+    }
+
     public function isRunning(): bool
     {
         return $this->status === self::STATUS_RUNNING;
@@ -76,12 +94,16 @@ class VirtualMachine extends Model
             'storage' => $this->storage,
             'os_template' => $this->os_template,
             'iso_volume' => $this->iso_volume,
+            'cloud_image_id' => $this->cloud_image_id,
+            'template_vmid' => $this->template_vmid,
             'network_bridge' => $this->network_bridge,
             'cpu_cores' => $this->cpu_cores,
             'ram_gb' => $this->ram_gb,
             'disk_gb' => $this->disk_gb,
             'ip_count' => $this->ip_count,
             'ip_address' => $this->ip_address,
+            'login_username' => $this->login_username,
+            'ssh_public_key' => filled($this->ssh_public_key),
             'status' => $this->status,
         ];
     }
@@ -90,12 +112,14 @@ class VirtualMachine extends Model
     {
         return [
             'vmid' => 'integer',
+            'template_vmid' => 'integer',
             'cpu_cores' => 'integer',
             'ram_gb' => 'integer',
             'disk_gb' => 'integer',
             'ip_count' => 'integer',
             'desired_state' => 'array',
             'remote_state' => 'array',
+            'login_password' => 'encrypted',
             'last_seen_at' => 'datetime',
             'last_started_at' => 'datetime',
             'last_stopped_at' => 'datetime',

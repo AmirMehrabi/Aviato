@@ -3,17 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\BillingService;
+use App\Services\CloudVmProvisioningService;
 use App\Services\ProxmoxService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Throwable;
 
@@ -22,6 +23,7 @@ class VirtualMachineController extends Controller
     public function __construct(
         private readonly BillingService $billing,
         private readonly ProxmoxService $proxmox,
+        private readonly CloudVmProvisioningService $cloudProvisioning,
     ) {}
 
     public function index(Request $request): View
@@ -33,7 +35,7 @@ class VirtualMachineController extends Controller
         ]);
 
         $vms = VirtualMachine::query()
-            ->with(['customer', 'proxmoxServer', 'bundle'])
+            ->with(['customer', 'proxmoxServer', 'bundle', 'cloudImage'])
             ->when($filters['customer_id'] ?? null, fn ($query, int $customerId) => $query->where('customer_id', $customerId))
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['search'] ?? null, function ($query, string $search): void {
@@ -65,6 +67,12 @@ class VirtualMachineController extends Controller
                 ->orderBy('datacenter')
                 ->orderBy('name')
                 ->get(),
+            'cloudImages' => CloudImage::query()
+                ->with('proxmoxServer')
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
             'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
             'selectedCustomerId' => $request->integer('customer_id') ?: null,
         ]);
@@ -84,55 +92,27 @@ class VirtualMachineController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $this->validated($request);
-        $server = ProxmoxServer::findOrFail($data['proxmox_server_id']);
-        $vm = VirtualMachine::make($data);
-        $this->applyBundleHardware($vm);
-        $vm->last_billed_at = now();
-        $vm->status = $request->boolean('start_after_create') ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED;
-        $vm->provisioning_status = VirtualMachine::PROVISION_PENDING;
-        $vm->desired_state = $vm->desiredStateSnapshot() + [
-            'ostype' => $data['ostype'],
-            'start_after_create' => $request->boolean('start_after_create'),
-            'onboot' => $request->boolean('onboot'),
-        ];
-        $vm->save();
+        $data = $this->validatedForCloud($request);
+        $customer = Customer::findOrFail($data['customer_id']);
 
         try {
-            $result = $this->proxmox->createQemuVm($server, [
-                ...Arr::only($data, ['node', 'vmid', 'name', 'cpu_cores', 'ram_gb', 'disk_gb', 'storage', 'iso_volume', 'network_bridge', 'ostype']),
-                'start_after_create' => $request->boolean('start_after_create'),
-                'onboot' => $request->boolean('onboot'),
-                'description' => 'Created from Aviato panel for customer #'.$vm->customer_id,
-            ]);
-
-            $vm->forceFill([
-                'provisioning_status' => VirtualMachine::PROVISION_READY,
-                'remote_state' => $result,
-                'last_started_at' => $request->boolean('start_after_create') ? now() : null,
-                'last_seen_at' => now(),
-            ])->save();
+            $result = $this->cloudProvisioning->create($customer, $data);
+            $vm = $result['vm'];
+            $message = 'Cloud VM provisioning queued. IP: '.$vm->ip_address.'.';
 
             return redirect()->route('admin.virtual-machines.show', $vm)
-                ->with('status', 'VM در Proxmox ساخته شد. Task: '.($result['task_id'] ?? 'created'));
+                ->with('status', $message)
+                ->with('provisioning_password', $result['password']);
         } catch (Throwable $exception) {
-            $vm->forceFill([
-                'status' => VirtualMachine::STATUS_STOPPED,
-                'provisioning_status' => VirtualMachine::PROVISION_FAILED,
-                'remote_state' => [
-                    'error' => $exception->getMessage(),
-                    'failed_at' => now()->toISOString(),
-                ],
-            ])->save();
-
-            return redirect()->route('admin.virtual-machines.show', $vm)
-                ->with('error', 'VM locally saved, but Proxmox creation failed: '.$exception->getMessage());
+            return back()
+                ->withInput($request->except('login_password'))
+                ->with('error', 'Cloud VM provisioning could not be queued: '.$exception->getMessage());
         }
     }
 
     public function show(VirtualMachine $virtualMachine): View
     {
-        $virtualMachine->load(['customer', 'proxmoxServer', 'bundle']);
+        $virtualMachine->load(['customer', 'proxmoxServer', 'bundle', 'cloudImage']);
 
         return view('admin.virtual-machines.show', [
             'vm' => $virtualMachine,
@@ -203,26 +183,51 @@ class VirtualMachineController extends Controller
         ];
     }
 
+    private function validatedForCloud(Request $request): array
+    {
+        $data = $request->validate([
+            'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'cloud_image_id' => ['required', 'integer', 'exists:cloud_images,id'],
+            'vm_bundle_id' => ['nullable', 'integer', 'exists:vm_bundles,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'hostname' => ['nullable', 'string', 'max:255'],
+            'login_username' => ['nullable', 'string', 'max:64'],
+            'login_password' => ['nullable', 'string', 'min:8', 'max:255'],
+            'ssh_public_key' => ['nullable', 'string', 'max:5000'],
+            'cpu_cores' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:512'],
+            'ram_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
+            'disk_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
+            'start_after_create' => ['nullable', 'boolean'],
+            'onboot' => ['nullable', 'boolean'],
+        ]);
+
+        $data['start_after_create'] = $request->boolean('start_after_create', true);
+        $data['onboot'] = $request->boolean('onboot');
+
+        return $data;
+    }
+
     private function validated(Request $request, ?VirtualMachine $vm = null): array
     {
         return $request->validate([
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
             'proxmox_server_id' => ['required', 'integer', 'exists:proxmox_servers,id'],
             'vm_bundle_id' => ['nullable', 'integer', 'exists:vm_bundles,id'],
-            'vmid' => ['required', 'integer', 'min:1'],
+            'vmid' => ['nullable', 'integer', 'min:1'],
             'name' => ['required', 'string', 'max:255'],
             'hostname' => ['nullable', 'string', 'max:255'],
-            'node' => ['required', 'string', 'max:255'],
-            'storage' => ['required', 'string', 'max:255'],
+            'node' => ['nullable', 'string', 'max:255'],
+            'storage' => ['nullable', 'string', 'max:255'],
             'os_template' => ['nullable', 'string', 'max:255'],
-            'iso_volume' => ['required', 'string', 'max:500'],
-            'network_bridge' => ['required', 'string', 'max:255'],
+            'iso_volume' => ['nullable', 'string', 'max:500'],
+            'network_bridge' => ['nullable', 'string', 'max:255'],
             'ip_address' => ['nullable', 'string', 'max:255'],
             'cpu_cores' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:512'],
             'ram_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
             'disk_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
             'ip_count' => ['nullable', 'integer', 'min:0', 'max:128'],
-            'ostype' => ['required', Rule::in(['l26', 'win11', 'win10', 'win8', 'win7', 'w2k22', 'w2k19', 'w2k16', 'other'])],
+            'status' => ['nullable', Rule::in([VirtualMachine::STATUS_RUNNING, VirtualMachine::STATUS_STOPPED, VirtualMachine::STATUS_SUSPENDED])],
+            'ostype' => ['nullable', Rule::in(['l26', 'win11', 'win10', 'win8', 'win7', 'w2k22', 'w2k19', 'w2k16', 'other'])],
             'start_after_create' => ['nullable', 'boolean'],
             'onboot' => ['nullable', 'boolean'],
         ]);

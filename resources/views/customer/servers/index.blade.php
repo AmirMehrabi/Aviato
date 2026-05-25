@@ -30,6 +30,8 @@
 @endsection
 
 @section('content')
+    @if (session('status'))<div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
+    @if (session('provisioning_password'))<div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">Password اولیه فقط همین حالا نمایش داده می‌شود: <span dir="ltr">{{ session('provisioning_password') }}</span></div>@endif
     <section class="grid gap-3 md:grid-cols-4">
         @foreach ([
             ['label' => 'کل ماشین ها', 'value' => $summary['total'], 'hint' => 'همه VPSهای حساب', 'tone' => 'text-slate-950'],

@@ -53,6 +53,16 @@ class ProxmoxServer extends Model
         return $this->hasMany(VirtualMachine::class);
     }
 
+    public function cloudImages(): HasMany
+    {
+        return $this->hasMany(CloudImage::class);
+    }
+
+    public function ipPools(): HasMany
+    {
+        return $this->hasMany(IpPool::class);
+    }
+
     protected function casts(): array
     {
         return [
