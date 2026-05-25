@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Customer;
 use App\Models\VirtualMachine;
+use App\Models\VmBackup;
 use App\Models\WalletTransaction;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -103,7 +104,61 @@ class UsageBillingService
                 }
             });
 
+        VmBackup::query()
+            ->with('virtualMachine.customer')
+            ->where('status', VmBackup::STATUS_READY)
+            ->where('size_bytes', '>', 0)
+            ->chunk(100, function ($backups) use (&$transactions, $until): void {
+                foreach ($backups as $backup) {
+                    $transaction = $this->chargeBackup($backup, $until);
+
+                    if ($transaction) {
+                        $transactions->push($transaction);
+                    }
+                }
+            });
+
         return $transactions;
+    }
+
+    public function chargeBackup(VmBackup $backup, ?CarbonInterface $until = null): ?WalletTransaction
+    {
+        $backup->loadMissing('virtualMachine.customer');
+        $until ??= now();
+        $from = $backup->last_billed_at ?? $backup->finished_at ?? $backup->created_at ?? $until;
+        $hours = max(0, $from->floatDiffInHours($until));
+        $hourly = $this->billing->backupHourly($backup);
+        $amount = (int) round($hours * $hourly);
+
+        if ($amount <= 0 || ! $backup->virtualMachine?->customer) {
+            return null;
+        }
+
+        $transaction = $this->wallets->charge(
+            $backup->virtualMachine->customer,
+            $amount,
+            'کسر فضای بکاپ برای VM '.$backup->virtualMachine->name,
+            metadata: [
+                'category' => 'backup_storage',
+                'vm_id' => $backup->virtual_machine_id,
+                'vm_name' => $backup->virtualMachine->name,
+                'backup_id' => $backup->id,
+                'period_start' => $from->toIso8601String(),
+                'period_end' => $until->toIso8601String(),
+                'hours' => round($hours, 4),
+                'hourly_rate' => $hourly,
+                'backup_snapshot' => [
+                    'size_gb' => round($backup->sizeGb(), 4),
+                    'size_bytes' => $backup->size_bytes,
+                    'volid' => $backup->volid,
+                    'storage' => $backup->storage,
+                ],
+            ],
+        );
+
+        $backup->forceFill(['last_billed_at' => $until])->save();
+
+        return $transaction;
     }
 
     public function customerPendingUsage(Customer $customer): int

@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'customer_id',
@@ -78,6 +80,16 @@ class VirtualMachine extends Model
     public function reservedIpAddress(): BelongsTo
     {
         return $this->belongsTo(IpAddress::class, 'ip_address_id');
+    }
+
+    public function backupPolicy(): HasOne
+    {
+        return $this->hasOne(VmBackupPolicy::class);
+    }
+
+    public function backups(): HasMany
+    {
+        return $this->hasMany(VmBackup::class);
     }
 
     public function isRunning(): bool

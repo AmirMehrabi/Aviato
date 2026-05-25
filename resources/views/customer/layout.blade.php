@@ -20,7 +20,7 @@
             'مدیریت' => [
                 ['key' => 'servers', 'label' => 'ماشین ها', 'route' => route('customer.servers.index', [], false), 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
                 ['key' => 'network', 'label' => 'شبکه', 'route' => null, 'icon' => 'M12 3v4m0 10v4M4.9 7.1l2.8 2.8m8.6 8.6 2.8 2.8M3 12h4m10 0h4'],
-                ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => null, 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
+                ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => route('customer.backups.index', [], false), 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
                 ['key' => 'monitoring', 'label' => 'مانیتورینگ', 'route' => null, 'icon' => 'M4 19V5m4 14v-7m4 7V8m4 11v-4m4 4V9'],
             ],
             'حساب' => [
@@ -43,6 +43,7 @@
                     { title: 'داشبورد', description: 'نمای کلی ماشین ها، کیف پول و مصرف', url: '{{ route('dashboard', [], false) }}', type: 'صفحه' },
                     { title: 'سرورها', description: 'فهرست ماشین های ابری و وضعیت آنها', url: '{{ route('customer.servers.index', [], false) }}', type: 'صفحه' },
                     { title: 'ساخت ماشین', description: 'انتخاب پلن، سیستم عامل و دیتاسنتر', url: '{{ route('customer.servers.create', [], false) }}', type: 'عملیات' },
+                    { title: 'بکاپ ها', description: 'بکاپ دستی، برنامه بکاپ خودکار و نگهداری نسخه ها', url: '{{ route('customer.backups.index', [], false) }}', type: 'صفحه' },
                     { title: 'کیف پول', description: 'موجودی، تراکنش ها و افزایش اعتبار', url: '{{ route('customer.wallet.show', [], false) }}', type: 'صفحه' },
                     { title: 'افزایش اعتبار', description: 'شارژ سریع کیف پول', url: '{{ route('customer.wallet.show', ['topup' => 1], false) }}', type: 'عملیات' },
                     { title: 'صورتحساب ها', description: 'بایگانی و جزئیات فاکتورهای ماهانه', url: '{{ route('customer.invoices.index', [], false) }}', type: 'صفحه' }

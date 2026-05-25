@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\VmBundleController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\PaymentController;
@@ -135,6 +136,9 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::get('servers', [ServerController::class, 'index'])->name('customer.servers.index');
         Route::get('servers/create', [ServerController::class, 'create'])->name('customer.servers.create');
         Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');
+        Route::get('backups', [BackupController::class, 'index'])->name('customer.backups.index');
+        Route::post('backups/servers/{virtualMachine}', [BackupController::class, 'storeManual'])->name('customer.backups.manual.store');
+        Route::patch('backups/servers/{virtualMachine}/policy', [BackupController::class, 'updatePolicy'])->name('customer.backups.policy.update');
         Route::get('wallet', [CustomerWalletController::class, 'show'])->name('customer.wallet.show');
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');
         Route::get('wallet/payments/{payment}/gateway', [PaymentController::class, 'showGateway'])->name('customer.wallet.payments.gateway.show');

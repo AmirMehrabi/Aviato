@@ -16,6 +16,8 @@ class ResourceRate extends Model
 
     public const IP = 'ip_address';
 
+    public const BACKUP = 'backup_gb';
+
     public const POLICY_RUNNING = 'running';
 
     public const POLICY_ALWAYS = 'always';
@@ -27,6 +29,7 @@ class ResourceRate extends Model
             self::RAM => ['label' => 'RAM', 'unit' => 'GB', 'monthly_price' => 90000, 'billing_policy' => self::POLICY_RUNNING],
             self::DISK => ['label' => 'SSD Disk', 'unit' => 'GB', 'monthly_price' => 9000, 'billing_policy' => self::POLICY_ALWAYS],
             self::IP => ['label' => 'IP Address', 'unit' => 'IP', 'monthly_price' => 150000, 'billing_policy' => self::POLICY_ALWAYS],
+            self::BACKUP => ['label' => 'Backup Storage', 'unit' => 'GB', 'monthly_price' => 6000, 'billing_policy' => self::POLICY_ALWAYS],
         ];
     }
 

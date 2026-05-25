@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
+use App\Models\VmBackup;
 use Illuminate\Support\Collection;
 
 class BillingService
@@ -47,6 +48,13 @@ class BillingService
 
         return ($vm->disk_gb * $this->rate($rates, ResourceRate::DISK))
             + ($vm->ip_count * $this->rate($rates, ResourceRate::IP));
+    }
+
+    public function backupHourly(VmBackup $backup): float
+    {
+        $rates = $this->rates();
+
+        return $backup->sizeGb() * $this->rate($rates, ResourceRate::BACKUP);
     }
 
     public function customerSummary(int $customerId): array

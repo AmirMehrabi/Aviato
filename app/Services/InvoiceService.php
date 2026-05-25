@@ -87,25 +87,35 @@ class InvoiceService
             ]);
 
             $transactions
-                ->groupBy(fn (WalletTransaction $transaction): string => (string) ($transaction->metadata['vm_id'] ?? 'unknown'))
+                ->groupBy(fn (WalletTransaction $transaction): string => ($transaction->metadata['category'] ?? 'payg_usage').'|'.($transaction->metadata['vm_id'] ?? 'unknown'))
                 ->each(function ($group) use ($invoice): void {
                     $first = $group->first();
                     $meta = $first->metadata ?? [];
+                    $category = $meta['category'] ?? 'payg_usage';
                     $resource = $meta['resource_snapshot'] ?? [];
+                    $backup = $meta['backup_snapshot'] ?? [];
                     $hours = (float) $group->sum(fn (WalletTransaction $transaction): float => (float) ($transaction->metadata['hours'] ?? 0));
                     $subtotal = (int) abs($group->sum('amount'));
-                    $label = $meta['vm_name'] ?? 'VM';
+                    $label = ($meta['vm_name'] ?? 'VM').($category === 'backup_storage' ? ' - Backup' : '');
                     $windowStart = collect($group)->map(fn (WalletTransaction $transaction) => $transaction->metadata['period_start'] ?? null)->filter()->sort()->first();
                     $windowEnd = collect($group)->map(fn (WalletTransaction $transaction) => $transaction->metadata['period_end'] ?? null)->filter()->sort()->last();
-                    $description = sprintf(
-                        'بازه مصرف: %s تا %s | منابع: %s vCPU / %sGB RAM / %sGB Disk / %s IP',
-                        $windowStart ? CarbonImmutable::parse($windowStart)->format('Y/m/d H:i') : '—',
-                        $windowEnd ? CarbonImmutable::parse($windowEnd)->format('Y/m/d H:i') : '—',
-                        $resource['cpu_cores'] ?? '—',
-                        $resource['ram_gb'] ?? '—',
-                        $resource['disk_gb'] ?? '—',
-                        $resource['ip_count'] ?? '—',
-                    );
+                    $description = $category === 'backup_storage'
+                        ? sprintf(
+                            'بازه مصرف بکاپ: %s تا %s | فضای بکاپ: %sGB | Storage: %s',
+                            $windowStart ? CarbonImmutable::parse($windowStart)->format('Y/m/d H:i') : '—',
+                            $windowEnd ? CarbonImmutable::parse($windowEnd)->format('Y/m/d H:i') : '—',
+                            $backup['size_gb'] ?? '—',
+                            $backup['storage'] ?? '—',
+                        )
+                        : sprintf(
+                            'بازه مصرف: %s تا %s | منابع: %s vCPU / %sGB RAM / %sGB Disk / %s IP',
+                            $windowStart ? CarbonImmutable::parse($windowStart)->format('Y/m/d H:i') : '—',
+                            $windowEnd ? CarbonImmutable::parse($windowEnd)->format('Y/m/d H:i') : '—',
+                            $resource['cpu_cores'] ?? '—',
+                            $resource['ram_gb'] ?? '—',
+                            $resource['disk_gb'] ?? '—',
+                            $resource['ip_count'] ?? '—',
+                        );
 
                     InvoiceItem::create([
                         'invoice_id' => $invoice->id,

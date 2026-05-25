@@ -354,6 +354,98 @@ class ProxmoxService
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function backupStorages(ProxmoxServer $server, string $node): array
+    {
+        $errors = [];
+
+        return collect($this->nodeStoragesWithContent($server, $node, 'backup', $errors))
+            ->map(fn (array $storage): array => [
+                'storage' => $storage['storage'],
+                'type' => $storage['type'] ?? null,
+                'avail' => $storage['avail'] ?? null,
+                'display' => $node.' / '.$storage['storage'].' ('.$this->humanBytes((int) ($storage['avail'] ?? 0)).' free)',
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public function startBackup(ProxmoxServer $server, array $options): array
+    {
+        $node = $options['node'];
+        $payload = array_filter([
+            'vmid' => (string) $options['vmid'],
+            'storage' => $options['storage'] ?? null,
+            'mode' => $options['mode'] ?? 'snapshot',
+            'compress' => $options['compress'] ?? 'zstd',
+            'remove' => 0,
+            'notes-template' => $options['notes_template'] ?? 'Aviato panel backup - {{guestname}} - {{vmid}}',
+        ], fn (mixed $value): bool => $value !== null && $value !== '');
+
+        $taskId = $this->request($server)
+            ->asForm()
+            ->post("/nodes/{$node}/vzdump", $payload)
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function backupFilesForVm(ProxmoxServer $server, string $node, int $vmid, ?string $storage = null): array
+    {
+        $errors = [];
+        $storages = $storage
+            ? [['storage' => $storage]]
+            : $this->nodeStoragesWithContent($server, $node, 'backup', $errors);
+
+        $items = [];
+
+        foreach ($storages as $store) {
+            $storageId = $store['storage'] ?? null;
+            if (! $storageId) {
+                continue;
+            }
+
+            $contents = $this->getOptionalData($server, "/nodes/{$node}/storage/{$storageId}/content", $errors, [], ['content' => 'backup']);
+
+            foreach ($contents as $content) {
+                $volid = (string) ($content['volid'] ?? $content['volume'] ?? '');
+                $name = basename($volid ?: (string) ($content['filename'] ?? ''));
+
+                if (! str_contains($name, 'vzdump-qemu-'.$vmid.'-')) {
+                    continue;
+                }
+
+                $content['node'] = $node;
+                $content['storage'] = $storageId;
+                $content['volid'] = $volid ?: ($content['volume'] ?? null);
+                $content['filename'] = $name;
+                $items[] = $content;
+            }
+        }
+
+        return collect($items)
+            ->sortByDesc(fn (array $item): int => (int) ($item['ctime'] ?? $item['mtime'] ?? 0))
+            ->values()
+            ->all();
+    }
+
+    public function deleteBackupFile(ProxmoxServer $server, string $node, string $storage, string $volid): void
+    {
+        $this->request($server)
+            ->delete("/nodes/{$node}/storage/{$storage}/content/".rawurlencode($volid))
+            ->throw();
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $nodes
      * @param  array<int, array<string, mixed>>  $resources
      * @param  array<int, array<string, mixed>>  $storage
