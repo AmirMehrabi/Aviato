@@ -17,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class ServerController extends Controller
 {
+    private const MINIMUM_CREATE_BALANCE = 1000000;
+
     public function __construct(
         private readonly WalletService $wallets,
         private readonly BillingService $billing,
@@ -76,22 +78,27 @@ class ServerController extends Controller
     {
         $customer = $request->user('customer');
         $wallet = $this->wallets->walletFor($customer);
+        $cloudImages = CloudImage::query()
+            ->with('proxmoxServer')
+            ->where('is_active', true)
+            ->orderBy('os_family')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
 
         return view('customer.servers.create', [
             'customer' => $customer,
             'wallet' => $wallet,
             'wallets' => $this->wallets,
+            'minimumCreateBalance' => self::MINIMUM_CREATE_BALANCE,
+            'canCreateVps' => $wallet->balance >= self::MINIMUM_CREATE_BALANCE,
             'bundles' => VmBundle::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')
                 ->orderBy('monthly_price')
                 ->get(),
-            'cloudImages' => CloudImage::query()
-                ->with('proxmoxServer')
-                ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->orderBy('name')
-                ->get(),
+            'cloudImages' => $cloudImages,
+            'osFamilies' => $this->osFamilies($cloudImages),
             'invoiceCount' => $customer->invoices()->count(),
         ]);
     }
@@ -99,8 +106,16 @@ class ServerController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $customer = $request->user('customer');
+        $wallet = $this->wallets->walletFor($customer);
+
+        if ($wallet->balance < self::MINIMUM_CREATE_BALANCE) {
+            return back()
+                ->withInput($request->except('login_password'))
+                ->with('error', 'برای ساخت VPS حداقل موجودی کیف پول باید ۱,۰۰۰,۰۰۰ ریال باشد.');
+        }
+
         $data = $request->validate([
-            'cloud_image_id' => ['required', 'integer', 'exists:cloud_images,id'],
+            'cloud_image_id' => ['required', 'integer', 'exists:cloud_images,id,is_active,1'],
             'vm_bundle_id' => ['nullable', 'integer', 'exists:vm_bundles,id'],
             'name' => ['required', 'string', 'max:255'],
             'hostname' => ['nullable', 'string', 'max:255'],
@@ -127,5 +142,26 @@ class ServerController extends Controller
                 ->withInput($request->except('login_password'))
                 ->with('error', 'ساخت VPS ممکن نیست: '.$exception->getMessage());
         }
+    }
+
+    private function osFamilies($cloudImages): array
+    {
+        $labels = [
+            'ubuntu' => 'Ubuntu',
+            'debian' => 'Debian',
+            'rocky' => 'Rocky Linux',
+            'windows' => 'Windows Server',
+        ];
+
+        return $cloudImages
+            ->groupBy('os_family')
+            ->map(fn ($images, string $family): array => [
+                'key' => $family,
+                'label' => $labels[$family] ?? str($family)->headline()->toString(),
+                'logo_key' => $images->first()->logo_key ?: $family,
+                'count' => $images->count(),
+            ])
+            ->values()
+            ->all();
     }
 }

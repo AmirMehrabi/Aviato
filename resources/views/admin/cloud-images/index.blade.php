@@ -16,7 +16,7 @@
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <h2 class="text-lg font-black">{{ $image->name }}</h2>
-                        <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $image->slug }}</p>
+                        <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ ucfirst((string) $image->os_family) }} {{ $image->os_version }} · {{ $image->slug }}</p>
                     </div>
                     <span class="rounded-md px-2 py-1 text-xs font-black {{ $image->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">{{ $image->is_active ? 'فعال' : 'غیرفعال' }}</span>
                 </div>

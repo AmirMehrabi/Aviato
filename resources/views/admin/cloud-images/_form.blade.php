@@ -3,6 +3,9 @@
     <x-form.select name="proxmox_server_id" label="Proxmox Server" :selected="$image->proxmox_server_id" :options="$servers->prepend('انتخاب سرور', '')" />
     <x-form.input name="name" label="نام Image" :value="$image->name" dir-ltr />
     <x-form.input name="slug" label="Slug" :value="$image->slug" dir-ltr help="اختیاری؛ اگر خالی باشد خودکار ساخته می‌شود." />
+    <x-form.select name="os_family" label="OS Family" :selected="$image->os_family ?: 'ubuntu'" :options="$osFamilies" />
+    <x-form.input name="os_version" label="OS Version" :value="$image->os_version" dir-ltr placeholder="24.04 LTS" />
+    <x-form.select name="logo_key" label="Logo" :selected="$image->logo_key ?: $image->os_family ?: 'ubuntu'" :options="$logoKeys" />
     <x-form.input name="node" label="Node" :value="$image->node" dir-ltr />
     <x-form.input name="template_vmid" type="number" label="Template VMID" :value="$image->template_vmid" />
     <x-form.input name="default_username" label="Default Username" :value="$image->default_username ?: 'ubuntu'" dir-ltr />

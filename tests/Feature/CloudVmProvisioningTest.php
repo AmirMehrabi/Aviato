@@ -25,6 +25,7 @@ class CloudVmProvisioningTest extends TestCase
         Bus::fake();
 
         $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog();
 
         $this->actingAs($customer, 'customer');
@@ -57,6 +58,7 @@ class CloudVmProvisioningTest extends TestCase
         Bus::fake();
 
         $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
         [$image] = $this->catalog();
 
         $this->actingAs($customer, 'customer');
@@ -72,6 +74,43 @@ class CloudVmProvisioningTest extends TestCase
 
         $this->assertDatabaseCount('virtual_machines', 0);
         Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_customer_below_wallet_threshold_cannot_queue_cloud_vps(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 999999]);
+        [$image, $bundle] = $this->catalog();
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/create')->post($this->customerBaseUrl.'/servers', [
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'blocked-vps',
+            'hostname' => 'ubuntu-blocked-vps',
+            'login_username' => 'ubuntu',
+        ])->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('virtual_machines', 0);
+        $this->assertDatabaseCount('ip_addresses', 0);
+        Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_create_page_exposes_os_family_and_version_options(): void
+    {
+        $customer = Customer::factory()->create();
+        [$image] = $this->catalog();
+
+        $this->actingAs($customer, 'customer');
+        $response = $this->get($this->customerBaseUrl.'/servers/create');
+
+        $response->assertOk();
+        $this->assertSame('ubuntu', $response->viewData('osFamilies')[0]['key']);
+        $this->assertSame('Ubuntu', $response->viewData('osFamilies')[0]['label']);
+        $this->assertTrue($response->viewData('cloudImages')->contains($image));
     }
 
     /**
@@ -96,6 +135,9 @@ class CloudVmProvisioningTest extends TestCase
             'proxmox_server_id' => $server->id,
             'name' => 'Ubuntu 24.04',
             'slug' => 'ubuntu-2404',
+            'os_family' => 'ubuntu',
+            'os_version' => '24.04 LTS',
+            'logo_key' => 'ubuntu',
             'node' => 'pve1',
             'template_vmid' => 9000,
             'default_username' => 'ubuntu',
