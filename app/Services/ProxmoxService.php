@@ -151,6 +151,51 @@ class ProxmoxService
     }
 
     /**
+     * Fetch VM performance samples for customer monitoring graphs.
+     *
+     * @return array<string, mixed>
+     */
+    public function qemuPerformance(ProxmoxServer $server, string $node, int $vmid, string $timeframe = 'hour'): array
+    {
+        return $this->runWithOperation($server, 'qemu-performance', function () use ($server, $node, $vmid, $timeframe): array {
+            $errors = [];
+            $rrdData = $this->getOptionalData(
+                $server,
+                "/nodes/{$node}/qemu/{$vmid}/rrddata",
+                $errors,
+                [],
+                ['timeframe' => $timeframe, 'cf' => 'AVERAGE'],
+            );
+            $status = $this->getOptionalData($server, "/nodes/{$node}/qemu/{$vmid}/status/current", $errors, []);
+
+            $samples = collect($rrdData)
+                ->filter(fn (mixed $sample): bool => is_array($sample) && isset($sample['time']))
+                ->sortBy('time')
+                ->values()
+                ->all();
+
+            $this->logInfo('Proxmox VM performance loaded', $server, [
+                'node' => $node,
+                'vmid' => $vmid,
+                'timeframe' => $timeframe,
+                'sample_count' => count($samples),
+                'error_count' => count($errors),
+            ]);
+
+            return [
+                'node' => $node,
+                'vmid' => $vmid,
+                'timeframe' => $timeframe,
+                'samples' => $samples,
+                'latest' => $this->latestVmPerformanceValues($samples, is_array($status) ? $status : []),
+                'status' => is_array($status) ? $status : [],
+                'errors' => $errors,
+                'fetched_at' => now()->toISOString(),
+            ];
+        });
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function vmCreationOptions(ProxmoxServer $server): array
@@ -846,6 +891,46 @@ class ProxmoxService
             'memory_total' => is_numeric($maxMem) ? $this->humanBytes((int) $maxMem) : null,
             'netin_bytes_per_second' => is_numeric($netIn) ? round((float) $netIn, 2) : null,
             'netout_bytes_per_second' => is_numeric($netOut) ? round((float) $netOut, 2) : null,
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $samples
+     * @param  array<string, mixed>  $status
+     * @return array<string, mixed>
+     */
+    private function latestVmPerformanceValues(array $samples, array $status): array
+    {
+        $latestSample = end($samples) ?: [];
+        $cpu = $latestSample['cpu'] ?? $status['cpu'] ?? null;
+        $mem = $latestSample['mem'] ?? $status['mem'] ?? null;
+        $maxMem = $latestSample['maxmem'] ?? $status['maxmem'] ?? null;
+        $disk = $latestSample['disk'] ?? $status['disk'] ?? null;
+        $maxDisk = $latestSample['maxdisk'] ?? $status['maxdisk'] ?? null;
+        $netIn = $latestSample['netin'] ?? $status['netin'] ?? null;
+        $netOut = $latestSample['netout'] ?? $status['netout'] ?? null;
+        $diskRead = $latestSample['diskread'] ?? $status['diskread'] ?? null;
+        $diskWrite = $latestSample['diskwrite'] ?? $status['diskwrite'] ?? null;
+        $uptime = $status['uptime'] ?? null;
+
+        return [
+            'status' => $status['status'] ?? null,
+            'cpu_percent' => is_numeric($cpu) ? round((float) $cpu * 100, 2) : null,
+            'memory_percent' => is_numeric($mem) && is_numeric($maxMem) && (float) $maxMem > 0
+                ? round(((float) $mem / (float) $maxMem) * 100, 2)
+                : null,
+            'memory_used' => is_numeric($mem) ? $this->humanBytes((int) $mem) : null,
+            'memory_total' => is_numeric($maxMem) ? $this->humanBytes((int) $maxMem) : null,
+            'disk_percent' => is_numeric($disk) && is_numeric($maxDisk) && (float) $maxDisk > 0
+                ? round(((float) $disk / (float) $maxDisk) * 100, 2)
+                : null,
+            'disk_used' => is_numeric($disk) ? $this->humanBytes((int) $disk) : null,
+            'disk_total' => is_numeric($maxDisk) ? $this->humanBytes((int) $maxDisk) : null,
+            'netin_bytes_per_second' => is_numeric($netIn) ? round((float) $netIn, 2) : null,
+            'netout_bytes_per_second' => is_numeric($netOut) ? round((float) $netOut, 2) : null,
+            'diskread_bytes_per_second' => is_numeric($diskRead) ? round((float) $diskRead, 2) : null,
+            'diskwrite_bytes_per_second' => is_numeric($diskWrite) ? round((float) $diskWrite, 2) : null,
+            'uptime_seconds' => is_numeric($uptime) ? (int) $uptime : null,
         ];
     }
 
