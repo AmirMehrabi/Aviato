@@ -340,9 +340,9 @@
                         <h1 class="mt-1 text-2xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
                         <p class="mt-1 text-sm leading-7 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>
                     </div>
-                    <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
+                    {{-- <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
                         ساخت ماشین
-                    </a>
+                    </a> --}}
                 </div>
 
                 @if (session('status'))

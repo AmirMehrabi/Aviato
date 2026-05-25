@@ -17,11 +17,30 @@ use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\ServerController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
+use App\Models\VmBundle;
+use App\Services\WalletService;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'home')->name('home');
-Route::view('/pricing', 'pricing')->name('pricing');
-Route::view('/solutions', 'solutions')->name('solutions');
+Route::get('/', function (WalletService $wallets) {
+    return view('home', [
+        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+        'wallets' => $wallets,
+    ]);
+})->name('home');
+
+Route::get('/pricing', function (WalletService $wallets) {
+    return view('pricing', [
+        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+        'wallets' => $wallets,
+    ]);
+})->name('pricing');
+
+Route::get('/solutions', function (WalletService $wallets) {
+    return view('solutions', [
+        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+        'wallets' => $wallets,
+    ]);
+})->name('solutions');
 Route::view('/contact', 'contact')->name('contact');
 
 $adminDomain = config('portals.admin.domain');

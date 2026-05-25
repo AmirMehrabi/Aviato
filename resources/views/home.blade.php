@@ -6,37 +6,13 @@
 @php
     $activePage = 'home';
 
-    $droplets = [
-        [
-            'name' => 'Starter',
-            'label' => 'شروع سریع',
-            'price' => '۴۹۰٬۰۰۰',
-            'use' => 'لندینگ، وردپرس، API سبک',
-            'cpu' => '۲ vCPU',
-            'ram' => '۴GB RAM',
-            'disk' => '۸۰GB NVMe',
-            'tone' => 'border-slate-200 bg-white',
-        ],
-        [
-            'name' => 'Growth',
-            'label' => 'پیشنهاد خرید',
-            'price' => '۹۸۰٬۰۰۰',
-            'use' => 'SaaS، فروشگاه، production',
-            'cpu' => '۴ vCPU',
-            'ram' => '۸GB RAM',
-            'disk' => '۱۶۰GB NVMe',
-            'tone' => 'border-[#0080FF] bg-[#EAF4FF] shadow-xl shadow-[#0080FF]/10',
-        ],
-        [
-            'name' => 'Scale',
-            'label' => 'برای بار جدی',
-            'price' => '۲٬۴۵۰٬۰۰۰',
-            'use' => 'دیتابیس، صف، سرویس پرترافیک',
-            'cpu' => '۸ vCPU',
-            'ram' => '۱۶GB RAM',
-            'disk' => '۳۲۰GB NVMe',
-            'tone' => 'border-slate-200 bg-white',
-        ],
+    $marketingBundles = ($bundles ?? collect())->values();
+    $heroBundle = $marketingBundles->get(1) ?? $marketingBundles->first();
+    $planMeta = [
+        ['label' => 'شروع سریع', 'use' => 'لندینگ، وردپرس، API سبک', 'tone' => 'border-slate-200 bg-white'],
+        ['label' => 'پیشنهاد خرید', 'use' => 'SaaS، فروشگاه، production', 'tone' => 'border-[#0080FF] bg-[#EAF4FF] shadow-xl shadow-[#0080FF]/10'],
+        ['label' => 'برای بار جدی', 'use' => 'دیتابیس، صف، سرویس پرترافیک', 'tone' => 'border-slate-200 bg-white'],
+        ['label' => 'منابع بیشتر', 'use' => 'بارهای سنگین و سازمانی', 'tone' => 'border-slate-200 bg-white'],
     ];
 
     $proofPoints = [
@@ -121,27 +97,27 @@
                             </div>
                             <div class="rounded-lg border border-[#B8D6FF] bg-[#EAF4FF] p-4">
                                 <div class="flex items-center justify-between gap-4">
-                                    <span class="text-sm font-black text-slate-700">Growth Droplet</span>
+                                    <span class="text-sm font-black text-slate-700">{{ $heroBundle?->name ?? 'Droplet آماده' }}</span>
                                     <span class="rounded-md bg-[#0069FF] px-3 py-1 text-xs font-black text-white">پیشنهادی</span>
                                 </div>
                                 <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-black text-slate-700">
-                                    <span class="rounded-md bg-white px-2 py-3">۴ CPU</span>
-                                    <span class="rounded-md bg-white px-2 py-3">۸GB RAM</span>
-                                    <span class="rounded-md bg-white px-2 py-3">Backup</span>
+                                    <span class="rounded-md bg-white px-2 py-3">{{ $heroBundle?->cpu_cores ?? '۴' }} CPU</span>
+                                    <span class="rounded-md bg-white px-2 py-3">{{ $heroBundle?->ram_gb ?? '۸' }}GB RAM</span>
+                                    <span class="rounded-md bg-white px-2 py-3">{{ $heroBundle?->disk_gb ?? '۱۶۰' }}GB NVMe</span>
                                 </div>
                             </div>
                         </div>
                         <aside class="bg-[#07172D] p-5 text-white">
                             <p class="text-sm font-black text-[#8FC7FF]">خلاصه خرید</p>
                             <div class="mt-5 space-y-4 text-sm">
-                                <div class="flex justify-between gap-4"><span class="text-slate-300">پلن</span><span class="font-black">Growth</span></div>
-                                <div class="flex justify-between gap-4"><span class="text-slate-300">IP عمومی</span><span class="font-black">۱ عدد</span></div>
+                                <div class="flex justify-between gap-4"><span class="text-slate-300">پلن</span><span class="font-black">{{ $heroBundle?->name ?? 'Growth' }}</span></div>
+                                <div class="flex justify-between gap-4"><span class="text-slate-300">IP عمومی</span><span class="font-black">{{ $heroBundle?->ip_count ?? 1 }} عدد</span></div>
                                 <div class="flex justify-between gap-4"><span class="text-slate-300">بکاپ</span><span class="font-black">روزانه</span></div>
                             </div>
                             <div class="mt-8 border-t border-white/10 pt-5">
                                 <p class="text-xs font-bold text-slate-300">هزینه ماهانه</p>
-                                <p class="mt-2 text-3xl font-black">۹۸۰٬۰۰۰</p>
-                                <p class="mt-1 text-xs text-slate-400">تومان / ماه</p>
+                                <p class="mt-2 text-3xl font-black">{{ $heroBundle ? $wallets->format($heroBundle->monthly_price) : 'مشاهده قیمت' }}</p>
+                                <p class="mt-1 text-xs text-slate-400">ماهانه</p>
                             </div>
                             <a href="{{ route('customer.register') }}" class="mt-6 inline-flex w-full justify-center rounded-lg bg-[#0080FF] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0069FF]">شروع خرید</a>
                         </aside>
@@ -161,25 +137,32 @@
                 <a href="{{ route('pricing') }}" class="inline-flex w-fit items-center justify-center rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:border-[#0080FF] hover:text-[#0069FF]">دیدن همه قیمت ها</a>
             </div>
             <div class="mt-10 grid gap-5 lg:grid-cols-3">
-                @foreach ($droplets as $droplet)
-                    <article class="relative rounded-xl border p-6 {{ $droplet['tone'] }}">
+                @forelse ($marketingBundles as $bundle)
+                    @php($meta = $planMeta[$loop->index] ?? $planMeta[3])
+                    <article class="relative rounded-xl border p-6 {{ $meta['tone'] }}">
                         <div class="flex items-start justify-between gap-4">
                             <div>
-                                <p class="text-sm font-black text-[#0069FF]">{{ $droplet['label'] }}</p>
-                                <h3 class="mt-2 text-3xl font-black text-slate-950">{{ $droplet['name'] }}</h3>
+                                <p class="text-sm font-black text-[#0069FF]">{{ $meta['label'] }}</p>
+                                <h3 class="mt-2 text-3xl font-black text-slate-950">{{ $bundle->name }}</h3>
                             </div>
-                            <span class="rounded-md bg-slate-950 px-3 py-1 text-xs font-black text-white">{{ $droplet['use'] }}</span>
+                            <span class="rounded-md bg-slate-950 px-3 py-1 text-xs font-black text-white">{{ $meta['use'] }}</span>
                         </div>
-                        <p class="mt-6 text-4xl font-black text-slate-950">{{ $droplet['price'] }}</p>
-                        <p class="mt-1 text-sm font-bold text-slate-500">تومان / ماه</p>
+                        <p class="mt-6 text-4xl font-black text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
+                        <p class="mt-1 text-sm font-bold text-slate-500">ماهانه</p>
+                        <p class="mt-5 min-h-14 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'Droplet آماده برای اجرای سرویس های وب، API و محیط production.' }}</p>
                         <div class="mt-7 grid grid-cols-3 gap-2 text-center text-xs font-black text-slate-700">
-                            <span class="rounded-lg bg-white p-3 ring-1 ring-slate-200">{{ $droplet['cpu'] }}</span>
-                            <span class="rounded-lg bg-white p-3 ring-1 ring-slate-200">{{ $droplet['ram'] }}</span>
-                            <span class="rounded-lg bg-white p-3 ring-1 ring-slate-200">{{ $droplet['disk'] }}</span>
+                            <span class="rounded-lg bg-white p-3 ring-1 ring-slate-200">{{ $bundle->cpu_cores }} vCPU</span>
+                            <span class="rounded-lg bg-white p-3 ring-1 ring-slate-200">{{ $bundle->ram_gb }}GB RAM</span>
+                            <span class="rounded-lg bg-white p-3 ring-1 ring-slate-200">{{ $bundle->disk_gb }}GB NVMe</span>
                         </div>
                         <a href="{{ route('customer.register') }}" class="mt-7 inline-flex w-full justify-center rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">انتخاب و ساخت</a>
                     </article>
-                @endforeach
+                @empty
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center lg:col-span-3">
+                        <h3 class="text-xl font-black text-slate-950">هنوز پلن فعالی برای نمایش منتشر نشده است.</h3>
+                        <p class="mt-3 text-sm leading-7 text-slate-600">بعد از فعال کردن باندل ها در پنل مدیریت، قیمت ها به صورت خودکار در صفحه خانه و قیمت گذاری نمایش داده می شوند.</p>
+                    </div>
+                @endforelse
             </div>
         </div>
     </section>
