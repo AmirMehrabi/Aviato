@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Models\CloudImage;
 use App\Models\Customer;
+use App\Models\IpAddress;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
+use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +27,7 @@ class VirtualMachineController extends Controller
         private readonly BillingService $billing,
         private readonly ProxmoxService $proxmox,
         private readonly CloudVmProvisioningService $cloudProvisioning,
+        private readonly IpPoolService $ipPools,
     ) {}
 
     public function index(Request $request): View
@@ -120,6 +124,73 @@ class VirtualMachineController extends Controller
         ]);
     }
 
+    public function retryProvisioning(VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $virtualMachine->loadMissing(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool']);
+
+        if ($virtualMachine->provisioning_status !== VirtualMachine::PROVISION_FAILED) {
+            return back()->with('error', 'Only failed provisioning jobs can be retried.');
+        }
+
+        if (! $virtualMachine->proxmoxServer || ! $virtualMachine->cloudImage || ! $virtualMachine->node || ! $virtualMachine->template_vmid) {
+            return back()->with('error', 'This VM is missing Proxmox, image, node, or template data and cannot be retried.');
+        }
+
+        try {
+            if ($this->remoteVmMatchesPanelVm($virtualMachine)) {
+                if ($virtualMachine->reservedIpAddress) {
+                    $this->ipPools->assign($virtualMachine->reservedIpAddress, $virtualMachine);
+                }
+
+                $virtualMachine->forceFill([
+                    'status' => VirtualMachine::STATUS_RUNNING,
+                    'provisioning_status' => VirtualMachine::PROVISION_READY,
+                    'last_seen_at' => now(),
+                    'remote_state' => array_merge($virtualMachine->remote_state ?? [], [
+                        'synced_from_retry_at' => now()->toISOString(),
+                    ]),
+                ])->save();
+
+                return back()->with('status', 'Existing Proxmox VM matched this panel VM and was synced.');
+            }
+
+            $address = $virtualMachine->reservedIpAddress;
+            $hasUsableAddress = $address
+                && (int) $address->virtual_machine_id === (int) $virtualMachine->id
+                && in_array($address->status, [IpAddress::STATUS_RESERVED, IpAddress::STATUS_ASSIGNED], true);
+
+            $virtualMachine->forceFill([
+                'vmid' => null,
+                'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+                'provisioning_task_id' => null,
+                'remote_state' => array_merge($virtualMachine->remote_state ?? [], [
+                    'retry_queued_at' => now()->toISOString(),
+                ]),
+            ])->save();
+
+            if (! $hasUsableAddress) {
+                $virtualMachine->forceFill([
+                    'ip_address_id' => null,
+                    'ip_address' => null,
+                ])->save();
+
+                $remoteAddresses = $this->proxmox->assignedGuestIpAddresses($virtualMachine->proxmoxServer, $virtualMachine->node);
+                $this->ipPools->reserveForVm($virtualMachine->refresh(), $remoteAddresses);
+            }
+
+            ProvisionCloudVirtualMachine::dispatch($virtualMachine->id, [
+                'start_after_create' => (bool) data_get($virtualMachine->desired_state, 'start_after_create', true),
+                'onboot' => (bool) data_get($virtualMachine->desired_state, 'onboot', false),
+            ]);
+
+            return back()->with('status', 'Provisioning retry queued. The VMID will be recalculated before cloning.');
+        } catch (Throwable $exception) {
+            $virtualMachine->forceFill(['provisioning_status' => VirtualMachine::PROVISION_FAILED])->save();
+
+            return back()->with('error', 'Provisioning retry could not be queued: '.$exception->getMessage());
+        }
+    }
+
     public function edit(VirtualMachine $virtualMachine): View
     {
         return view('admin.virtual-machines.edit', $this->formData($virtualMachine));
@@ -187,6 +258,23 @@ class VirtualMachineController extends Controller
         ])->save();
 
         return back()->with('status', 'VM خاموش شد. فقط IP و Disk محاسبه می‌شوند.');
+    }
+
+    private function remoteVmMatchesPanelVm(VirtualMachine $vm): bool
+    {
+        if (! $vm->vmid || ! $vm->proxmoxServer || ! $vm->node) {
+            return false;
+        }
+
+        try {
+            $config = $this->proxmox->vmConfig($vm->proxmoxServer, $vm->node, (int) $vm->vmid);
+        } catch (Throwable) {
+            return false;
+        }
+
+        $remoteName = trim((string) ($config['name'] ?? ''));
+
+        return $remoteName !== '' && hash_equals($remoteName, $vm->name);
     }
 
     private function formData(VirtualMachine $vm): array
