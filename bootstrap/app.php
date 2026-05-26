@@ -26,6 +26,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return '/'.trim(config("portals.$portal.login_path"), '/');
         });
+
+        $middleware->redirectUsersTo(function (Request $request) {
+            $adminDomain = config('portals.admin.domain');
+            $portal = $adminDomain && $request->getHost() === $adminDomain ? 'admin' : 'customer';
+
+            return '/'.trim(config("portals.$portal.home_path"), '/');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

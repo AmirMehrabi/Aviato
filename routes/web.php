@@ -23,28 +23,6 @@ use App\Models\VmBundle;
 use App\Services\WalletService;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function (WalletService $wallets) {
-    return view('home', [
-        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
-        'wallets' => $wallets,
-    ]);
-})->name('home');
-
-Route::get('/pricing', function (WalletService $wallets) {
-    return view('pricing', [
-        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
-        'wallets' => $wallets,
-    ]);
-})->name('pricing');
-
-Route::get('/solutions', function (WalletService $wallets) {
-    return view('solutions', [
-        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
-        'wallets' => $wallets,
-    ]);
-})->name('solutions');
-Route::view('/contact', 'contact')->name('contact');
-
 $adminDomain = config('portals.admin.domain');
 $customerDomain = config('portals.customer.domain');
 
@@ -56,6 +34,10 @@ $customerRegister = config('portals.customer.register_path');
 $customerHome = config('portals.customer.home_path');
 
 Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () use ($adminLogin, $adminRegister, $adminHome) {
+    Route::get('/', fn () => redirect('/'.trim($adminHome, '/')))
+        ->middleware('auth:admin')
+        ->name('admin.home');
+
     Route::middleware('guest:admin')->group(function () use ($adminLogin, $adminRegister) {
         Route::get($adminLogin, [AuthenticatedSessionController::class, 'create'])
             ->defaults('portal', 'admin')
@@ -134,6 +116,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 });
 
 Route::domain($customerDomain)->middleware('portal.host:customer')->group(function () use ($customerLogin, $customerRegister, $customerHome) {
+    Route::get('/', fn () => redirect('/'.trim($customerHome, '/')))
+        ->middleware('auth:customer')
+        ->name('customer.home');
+
     Route::middleware('guest:customer')->group(function () use ($customerLogin, $customerRegister) {
         Route::get($customerLogin, [AuthenticatedSessionController::class, 'create'])
             ->defaults('portal', 'customer')
@@ -183,3 +169,25 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('customer.invoices.show');
     });
 });
+
+Route::get('/', function (WalletService $wallets) {
+    return view('home', [
+        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+        'wallets' => $wallets,
+    ]);
+})->name('home');
+
+Route::get('/pricing', function (WalletService $wallets) {
+    return view('pricing', [
+        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+        'wallets' => $wallets,
+    ]);
+})->name('pricing');
+
+Route::get('/solutions', function (WalletService $wallets) {
+    return view('solutions', [
+        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+        'wallets' => $wallets,
+    ]);
+})->name('solutions');
+Route::view('/contact', 'contact')->name('contact');

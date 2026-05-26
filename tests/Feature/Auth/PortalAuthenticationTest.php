@@ -101,6 +101,26 @@ class PortalAuthenticationTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_admin_redirects_from_public_portal_entry_points_to_dashboard(): void
+    {
+        $this->actingAs(User::factory()->create(), 'admin');
+
+        foreach (['/', '/login', '/register'] as $path) {
+            $this->get('https://admin.aviato.ir'.$path)
+                ->assertRedirect('https://admin.aviato.ir/dashboard');
+        }
+    }
+
+    public function test_authenticated_customer_redirects_from_public_portal_entry_points_to_dashboard(): void
+    {
+        $this->actingAs(Customer::factory()->create(), 'customer');
+
+        foreach (['/', '/login', '/register'] as $path) {
+            $this->get('https://cp.aviato.ir'.$path)
+                ->assertRedirect('https://cp.aviato.ir/dashboard');
+        }
+    }
+
     public function test_customer_can_login_with_email_on_customer_subdomain(): void
     {
         AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'disabled');
