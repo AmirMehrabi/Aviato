@@ -65,19 +65,59 @@ class ServerController extends Controller
         $pendingUsage = $summarySource
             ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
             ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
+        $monthlySpend = $summarySource
+            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+            ->sum(fn (VirtualMachine $vm): int => $vm->isRunning()
+                ? $this->billing->estimateMonthly($vm)
+                : $this->billing->estimateStoppedMonthly($vm));
 
         return view('customer.servers.index', [
             'customer' => $customer,
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'servers' => $servers,
+            'serverRows' => $servers->getCollection()->map(fn (VirtualMachine $server): array => [
+                'id' => $server->id,
+                'name' => $server->name,
+                'hostname' => $server->hostname ?: '-',
+                'ip' => $server->ip_address ?: 'بدون IP',
+                'node' => $server->node ?: 'نامشخص',
+                'location' => $server->proxmoxServer?->name ?: 'local',
+                'plan' => $server->bundle?->name ?: 'Custom',
+                'image' => $server->cloudImage?->name ?: 'Image نامشخص',
+                'resources' => sprintf('%d CPU / %dGB RAM / %dGB Disk', $server->cpu_cores, $server->ram_gb, $server->disk_gb),
+                'monthly_cost' => $server->isActionLocked()
+                    ? 0
+                    : ($server->isRunning()
+                        ? $this->billing->estimateMonthly($server)
+                        : $this->billing->estimateStoppedMonthly($server)),
+                'billing_hint' => $server->isRunning() ? 'CPU/RAM فعال' : 'دیسک و IP پایدار',
+                'status' => $server->status,
+                'status_label' => $this->statusLabel($server->status),
+                'status_class' => $this->statusClass($server->status),
+                'provisioning_status' => $server->provisioning_status,
+                'provisioning_label' => $this->provisioningLabel($server->provisioning_status),
+                'provisioning_class' => $this->provisioningClass($server->provisioning_status),
+                'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
+                'is_deleting' => $server->isDeleting(),
+                'is_deleted' => $server->isDeleted(),
+                'is_locked' => $server->isActionLocked(),
+                'ssh_ready' => $server->ip_address && $server->provisioning_status === VirtualMachine::PROVISION_READY,
+                'show_url' => route('customer.servers.show', $server, false),
+                'monitoring_url' => route('customer.monitoring.index', ['server' => $server->id], false),
+                'backup_url' => route('customer.backups.index', [], false),
+            ])->values(),
             'filters' => $filters,
             'billing' => $this->billing,
             'summary' => [
                 'total' => $summarySource->count(),
                 'running' => $summarySource->where('status', VirtualMachine::STATUS_RUNNING)->count(),
                 'stopped' => $summarySource->where('status', VirtualMachine::STATUS_STOPPED)->count(),
+                'pending' => $summarySource->where('provisioning_status', VirtualMachine::PROVISION_PENDING)->count(),
+                'failed' => $summarySource->where('provisioning_status', VirtualMachine::PROVISION_FAILED)->count(),
+                'deleting' => $summarySource->where('status', VirtualMachine::STATUS_DELETING)->count(),
                 'pending_usage' => $pendingUsage,
+                'monthly_spend' => $monthlySpend,
             ],
             'invoiceCount' => $customer->invoices()->count(),
         ]);
@@ -103,7 +143,7 @@ class ServerController extends Controller
                 'status_label' => $this->statusLabel($server->status),
                 'status_class' => $this->statusClass($server->status),
                 'provisioning_status' => $server->provisioning_status,
-                'provisioning_label' => $server->provisioning_status ?: '-',
+                'provisioning_label' => $this->provisioningLabel($server->provisioning_status),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
                 'action_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING || $server->isDeleting(),

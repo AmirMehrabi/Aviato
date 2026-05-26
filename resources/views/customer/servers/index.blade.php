@@ -2,41 +2,33 @@
 
 @section('title', 'سرورها')
 @section('header_title', 'ماشین های ابری')
-@section('header_subtitle', 'مدیریت VPSها، وضعیت، IP و هزینه ماهانه')
+@section('header_subtitle', 'وضعیت، اتصال، هزینه و عملیات VPSهای شما')
+@section('breadcrumbs')
+    <span class="truncate text-slate-700">سرورها</span>
+@endsection
 
 @php
     $activeNav = 'servers';
-    $serverStatusRows = $servers->map(fn ($server) => [
-        'id' => $server->id,
-        'status' => $server->status,
-        'status_label' => match ($server->status) {
-            'running' => 'روشن',
-            'stopped' => 'خاموش',
-            'suspended' => 'تعلیق',
-            'deleting' => 'در حال حذف',
-            'deleted' => 'حذف شده',
-            default => $server->status ?: '-',
-        },
-        'status_class' => match ($server->status) {
-            'running' => 'bg-emerald-50 text-emerald-700',
-            'suspended' => 'bg-red-50 text-red-600',
-            'deleting' => 'bg-amber-50 text-amber-700',
-            'deleted' => 'bg-slate-100 text-slate-500',
-            default => 'bg-slate-100 text-slate-600',
-        },
-        'provisioning_status' => $server->provisioning_status,
-        'provisioning_label' => $server->provisioning_status ?: '-',
-        'provisioning_class' => match ($server->provisioning_status) {
-            'ready' => 'bg-emerald-50 text-emerald-700',
-            'failed' => 'bg-red-50 text-red-600',
-            'pending' => 'bg-blue-50 text-[#0069FF]',
-            default => 'bg-slate-100 text-slate-600',
-        },
-        'provisioning_pending' => $server->provisioning_status === 'pending',
-        'action_pending' => $server->provisioning_status === 'pending' || $server->status === 'deleting',
-        'is_deleting' => $server->status === 'deleting',
-        'is_deleted' => $server->status === 'deleted' || filled($server->deleted_at),
+    $hasFilters = filled($filters['search'] ?? null) || filled($filters['status'] ?? null);
+    $serverStatusRows = $serverRows->map(fn ($server) => [
+        'id' => $server['id'],
+        'status' => $server['status'],
+        'status_label' => $server['status_label'],
+        'status_class' => $server['status_class'],
+        'provisioning_status' => $server['provisioning_status'],
+        'provisioning_label' => $server['provisioning_label'],
+        'provisioning_class' => $server['provisioning_class'],
+        'provisioning_pending' => $server['provisioning_pending'],
+        'action_pending' => $server['provisioning_pending'] || $server['is_deleting'],
+        'is_deleting' => $server['is_deleting'],
+        'is_deleted' => $server['is_deleted'],
     ])->values();
+    $attentionItems = collect([
+        $summary['failed'] > 0 ? ['tone' => 'red', 'text' => $summary['failed'].' ماشین با Provisioning ناموفق نیازمند بررسی است.'] : null,
+        $summary['pending'] > 0 ? ['tone' => 'blue', 'text' => $summary['pending'].' ماشین هنوز در حال آماده سازی است؛ SSH بعد از آماده شدن فعال می شود.'] : null,
+        $summary['deleting'] > 0 ? ['tone' => 'amber', 'text' => $summary['deleting'].' ماشین در صف حذف است و عملیات آن قفل شده است.'] : null,
+        $summary['pending_usage'] > 0 ? ['tone' => 'amber', 'text' => 'مصرف ثبت نشده فعلی: '.$wallets->format($summary['pending_usage'])] : null,
+    ])->filter()->values();
 @endphp
 
 @section('search_data')
@@ -47,153 +39,191 @@
         "type": "عملیات",
         "url": @json(route('customer.servers.create', [], false)),
         "keywords": "ساخت ماشین vps server"
-    }@if ($servers->count()),@endif
-@foreach ($servers as $server)
+    }@if ($serverRows->isNotEmpty()),@endif
+@foreach ($serverRows as $server)
     {
-        "title": @json($server->name),
-        "description": @json(($server->ip_address ?: 'بدون IP').' - '.($server->node ?: 'نامشخص')),
+        "title": @json($server['name']),
+        "description": @json($server['ip'].' - '.$server['node'].' - '.$server['resources']),
         "type": "VM",
-        "url": @json(route('customer.servers.show', $server, false)),
-        "keywords": @json($server->name.' '.$server->hostname.' '.$server->ip_address.' '.$server->node.' '.$server->status)
+        "url": @json($server['show_url']),
+        "keywords": @json($server['name'].' '.$server['hostname'].' '.$server['ip'].' '.$server['node'].' '.$server['status'].' '.$server['provisioning_status'])
     }@if (! $loop->last),@endif
 @endforeach
 ]
 @endsection
 
 @section('content')
-    <div x-data="customerServerStatus({
-        url: @js(route('customer.servers.statuses', [], false)),
-        servers: @js($serverStatusRows),
-    })">
-    @if (session('status'))<div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
-    @if (session('error'))<div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>@endif
-    @if (session('provisioning_password'))<div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">Password اولیه فقط همین حالا نمایش داده می‌شود: <span dir="ltr">{{ session('provisioning_password') }}</span></div>@endif
-    <section class="grid gap-3 md:grid-cols-4">
-        @foreach ([
-            ['label' => 'کل ماشین ها', 'value' => $summary['total'], 'hint' => 'همه VPSهای حساب', 'tone' => 'text-slate-950'],
-            ['label' => 'روشن', 'value' => $summary['running'], 'hint' => 'CPU/RAM فعال', 'tone' => 'text-[#0069FF]'],
-            ['label' => 'خاموش', 'value' => $summary['stopped'], 'hint' => 'فقط Disk/IP', 'tone' => 'text-slate-950'],
-            ['label' => 'مصرف ثبت نشده', 'value' => $wallets->format($summary['pending_usage']), 'hint' => 'برداشت بعدی', 'tone' => $summary['pending_usage'] > 0 ? 'text-amber-600' : 'text-emerald-600'],
-        ] as $metric)
-            <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
-                <p class="text-xs font-black text-slate-500">{{ $metric['label'] }}</p>
-                <p class="mt-2 truncate text-2xl font-black {{ $metric['tone'] }}">{{ $metric['value'] }}</p>
-                <p class="mt-1 text-xs font-bold text-slate-400">{{ $metric['hint'] }}</p>
-            </article>
-        @endforeach
-    </section>
-
-    <section class="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-        <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-                <h2 class="text-lg font-black text-slate-950">فهرست سرورها</h2>
-                <p class="mt-1 text-sm text-slate-500">جستجو و فیلتر روی VPSهای همین حساب انجام می شود.</p>
+    <div
+        x-data="customerServerStatus({
+            url: @js(route('customer.servers.statuses', [], false)),
+            servers: @js($serverStatusRows),
+        })"
+        class="space-y-5"
+    >
+        @if (session('status'))<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
+        @if (session('error'))<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>@endif
+        @if (session('provisioning_password'))
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+                Password اولیه فقط همین حالا نمایش داده می‌شود:
+                <span dir="ltr">{{ session('provisioning_password') }}</span>
             </div>
-            <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex w-fit justify-center rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white transition hover:bg-[#0050D0]">
-                ساخت ماشین
-            </a>
-        </div>
+        @endif
 
-        <form class="grid gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 md:grid-cols-[minmax(0,1fr)_220px_110px]">
-            <input name="search" value="{{ $filters['search'] ?? '' }}" placeholder="جستجو نام، hostname، IP یا node..." class="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10">
-            <select name="status" class="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10">
-                <option value="">همه وضعیت ها</option>
-                <option value="running" @selected(($filters['status'] ?? '') === 'running')>روشن</option>
-                <option value="stopped" @selected(($filters['status'] ?? '') === 'stopped')>خاموش</option>
-                <option value="suspended" @selected(($filters['status'] ?? '') === 'suspended')>تعلیق</option>
-                <option value="deleting" @selected(($filters['status'] ?? '') === 'deleting')>در حال حذف</option>
-            </select>
-            <button class="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white">فیلتر</button>
-        </form>
+        @if ($attentionItems->isNotEmpty())
+            <section class="grid gap-3 lg:grid-cols-3">
+                @foreach ($attentionItems as $item)
+                    <div class="rounded-2xl border px-4 py-3 text-sm font-bold leading-7 {{ $item['tone'] === 'red' ? 'border-red-200 bg-red-50 text-red-800' : ($item['tone'] === 'blue' ? 'border-blue-200 bg-blue-50 text-[#0050D0]' : 'border-amber-200 bg-amber-50 text-amber-900') }}">
+                        {{ $item['text'] }}
+                    </div>
+                @endforeach
+            </section>
+        @endif
 
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-right text-sm">
-                <thead class="border-b border-slate-200 bg-white text-xs font-black text-slate-500">
-                    <tr>
-                        <th class="px-5 py-3">ماشین</th>
-                        <th class="px-5 py-3">موقعیت</th>
-                        <th class="px-5 py-3">منابع</th>
-                        <th class="px-5 py-3">Provision</th>
-                        <th class="px-5 py-3">وضعیت</th>
-                        <th class="px-5 py-3 text-left">هزینه ماهانه</th>
-                        <th class="px-5 py-3">عملیات</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @forelse ($servers as $server)
-                        @php
-                            $monthlyCost = $server->isActionLocked()
-                                ? 0
-                                : ($server->isRunning()
-                                ? $billing->estimateMonthly($server)
-                                : $billing->estimateStoppedMonthly($server));
-                            $statusRow = $serverStatusRows->firstWhere('id', $server->id);
-                        @endphp
-                        <tr class="transition hover:bg-[#F8FBFF]">
-                            <td class="whitespace-nowrap px-5 py-4">
-                                <p class="font-black text-slate-950" dir="ltr">{{ $server->name }}</p>
-                                <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ $server->ip_address ?: 'بدون IP' }}</p>
-                            </td>
-                            <td class="whitespace-nowrap px-5 py-4">
-                                <p class="font-bold text-slate-700">{{ $server->node ?: 'نامشخص' }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $server->proxmoxServer?->name ?: 'local' }}</p>
-                            </td>
-                            <td class="whitespace-nowrap px-5 py-4">
-                                <p class="font-bold text-slate-700">{{ $server->cpu_cores }} CPU / {{ $server->ram_gb }}GB RAM</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $server->disk_gb }}GB Disk · {{ $server->bundle?->name ?: 'Custom' }}</p>
-                            </td>
-                            <td class="whitespace-nowrap px-5 py-4">
-                                <span class="inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-black" :class="server({{ $server->id }}).provisioning_class">
-                                    <span x-show="server({{ $server->id }}).provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
-                                    <span x-text="server({{ $server->id }}).provisioning_label">{{ $statusRow['provisioning_label'] }}</span>
-                                </span>
-                            </td>
-                            <td class="whitespace-nowrap px-5 py-4">
-                                <span class="inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-black" :class="server({{ $server->id }}).status_class">
-                                    <span x-show="server({{ $server->id }}).is_deleting" class="size-3 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-600"></span>
-                                    <span x-text="server({{ $server->id }}).status_label">{{ $statusRow['status_label'] }}</span>
-                                </span>
-                            </td>
-                            <td class="whitespace-nowrap px-5 py-4 text-left font-black text-slate-950">
-                                {{ $server->isActionLocked() ? 'قفل حذف' : $wallets->format($monthlyCost) }}
-                            </td>
-                            <td class="whitespace-nowrap px-5 py-4">
-                                <div class="flex flex-wrap items-center gap-2">
-                                <a href="{{ route('customer.servers.show', $server, false) }}" class="inline-flex items-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
-                                    مشاهده
-                                </a>
-                                <template x-if="!server({{ $server->id }}).is_deleting && !server({{ $server->id }}).is_deleted">
-                                    <form action="{{ route('customer.servers.destroy', $server, false) }}" method="POST" onsubmit="return confirm('این سرور حذف شود؟ ابتدا خاموش و سپس از Proxmox حذف می شود.');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="inline-flex items-center rounded-md border border-red-200 px-3 py-1.5 text-xs font-black text-red-700 transition hover:bg-red-50">
-                                            حذف سرور
-                                        </button>
-                                    </form>
-                                </template>
-                                <span x-show="server({{ $server->id }}).is_deleting" class="inline-flex items-center rounded-md bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-700">
-                                    عملیات قفل است
-                                </span>
+        <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            @foreach ([
+                ['label' => 'کل ماشین ها', 'value' => $summary['total'], 'hint' => 'همه VPSهای حساب', 'tone' => 'text-slate-950'],
+                ['label' => 'روشن', 'value' => $summary['running'], 'hint' => 'CPU/RAM فعال', 'tone' => 'text-[#0069FF]'],
+                ['label' => 'خاموش', 'value' => $summary['stopped'], 'hint' => 'دیسک و IP همچنان هزینه دارند', 'tone' => 'text-slate-950'],
+                ['label' => 'در حال آماده سازی', 'value' => $summary['pending'], 'hint' => 'تا تکمیل، SSH فعال نیست', 'tone' => $summary['pending'] > 0 ? 'text-[#0069FF]' : 'text-slate-950'],
+                ['label' => 'برآورد ماهانه', 'value' => $wallets->format($summary['monthly_spend']), 'hint' => 'براساس وضعیت فعلی', 'tone' => 'text-emerald-700'],
+            ] as $metric)
+                <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
+                    <p class="text-xs font-black text-slate-500">{{ $metric['label'] }}</p>
+                    <p class="mt-2 truncate text-2xl font-black {{ $metric['tone'] }}">{{ $metric['value'] }}</p>
+                    <p class="mt-1 truncate text-xs font-bold text-slate-400">{{ $metric['hint'] }}</p>
+                </article>
+            @endforeach
+        </section>
+
+        <section class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+            <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                    <h2 class="text-xl font-black text-slate-950">فهرست ماشین ها</h2>
+                    <p class="mt-1 text-sm leading-7 text-slate-500">سرورها را براساس وضعیت، IP، hostname یا node پیدا کنید.</p>
+                </div>
+                <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex w-fit justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
+                    ساخت ماشین
+                </a>
+            </div>
+
+            <form class="grid gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <div class="relative">
+                    <svg class="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35" stroke-linecap="round"/>
+                    </svg>
+                    <input name="search" value="{{ $filters['search'] ?? '' }}" placeholder="جستجو نام، hostname، IP یا node..." class="h-12 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10">
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    @foreach ([
+                        '' => 'همه',
+                        'running' => 'روشن',
+                        'stopped' => 'خاموش',
+                        'suspended' => 'تعلیق',
+                        'deleting' => 'در حال حذف',
+                    ] as $value => $label)
+                        <label class="cursor-pointer">
+                            <input type="radio" name="status" value="{{ $value }}" class="peer sr-only" @checked(($filters['status'] ?? '') === $value)>
+                            <span class="inline-flex h-12 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-600 transition peer-checked:border-[#0069FF] peer-checked:bg-[#EBF3FF] peer-checked:text-[#0069FF] hover:border-[#B8D6FF]">
+                                {{ $label }}
+                            </span>
+                        </label>
+                    @endforeach
+                </div>
+                <div class="flex gap-2">
+                    <button class="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-[#0069FF] xl:flex-none">اعمال فیلتر</button>
+                    @if ($hasFilters)
+                        <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 transition hover:bg-slate-50 xl:flex-none">پاک کردن</a>
+                    @endif
+                </div>
+            </form>
+
+            @if ($serverRows->isEmpty())
+                <div class="px-5 py-14 text-center">
+                    @if ($summary['total'] === 0)
+                        <div class="mx-auto grid size-20 place-items-center rounded-3xl bg-[#EBF3FF] text-[#0069FF]">
+                            <svg class="size-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M6 8a6 6 0 0 1 11.7-1.9A5 5 0 0 1 18 16H7a5 5 0 0 1-1-9.9Z" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M9 16v3m3-3v3m3-3v3M8 21h8" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h3 class="mt-5 text-2xl font-black text-slate-950">هنوز ماشینی ندارید</h3>
+                        <p class="mt-2 text-sm font-bold leading-7 text-slate-500">با ساخت اولین VPS، وضعیت، IP، هزینه و دسترسی SSH آن از همین صفحه قابل پیگیری است.</p>
+                        <a href="{{ route('customer.servers.create', [], false) }}" class="mt-5 inline-flex rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ساخت اولین ماشین</a>
+                    @else
+                        <h3 class="text-xl font-black text-slate-950">نتیجه ای با این فیلتر پیدا نشد</h3>
+                        <p class="mt-2 text-sm font-bold leading-7 text-slate-500">عبارت جستجو یا وضعیت انتخاب شده را تغییر دهید.</p>
+                        <a href="{{ route('customer.servers.index', [], false) }}" class="mt-5 inline-flex rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن فیلترها</a>
+                    @endif
+                </div>
+            @else
+                <div class="grid gap-4 p-5 lg:grid-cols-2 2xl:grid-cols-3">
+                    @foreach ($serverRows as $server)
+                        <article class="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[#B8D6FF] hover:shadow-lg hover:shadow-[#0069FF]/10">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <a href="{{ $server['show_url'] }}" class="block truncate text-lg font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $server['name'] }}</a>
+                                    <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr">{{ $server['hostname'] }} · {{ $server['node'] }}</p>
                                 </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="px-5 py-12 text-center">
-                                <p class="font-black text-slate-950">هنوز ماشینی برای این حساب ثبت نشده است.</p>
-                                <p class="mt-2 text-sm text-slate-500">با ساخت اولین VPS می توانید مصرف و هزینه را از همین صفحه پیگیری کنید.</p>
-                                <a href="{{ route('customer.servers.create', [], false) }}" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">ساخت اولین ماشین</a>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                                <div class="flex shrink-0 flex-col items-end gap-2">
+                                    <span class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black" :class="server({{ $server['id'] }}).status_class">
+                                        <span x-show="server({{ $server['id'] }}).is_deleting" class="size-3 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-600"></span>
+                                        <span x-text="server({{ $server['id'] }}).status_label">{{ $server['status_label'] }}</span>
+                                    </span>
+                                    <span class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black" :class="server({{ $server['id'] }}).provisioning_class">
+                                        <span x-show="server({{ $server['id'] }}).provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
+                                        <span x-text="server({{ $server['id'] }}).provisioning_label">{{ $server['provisioning_label'] }}</span>
+                                    </span>
+                                </div>
+                            </div>
 
-        <div class="border-t border-slate-100 px-5 py-4">
-            {{ $servers->links() }}
-        </div>
-    </section>
+                            <div class="mt-4 rounded-2xl bg-slate-50 p-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-black text-slate-500">IP Address</p>
+                                        <p class="mt-1 truncate text-base font-black text-slate-950" dir="ltr">{{ $server['ip'] }}</p>
+                                    </div>
+                                    <span class="rounded-xl px-3 py-1.5 text-xs font-black {{ $server['ssh_ready'] ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }}">{{ $server['ssh_ready'] ? 'SSH آماده' : 'اتصال در انتظار' }}</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                                @foreach (explode(' / ', $server['resources']) as $resource)
+                                    <div class="rounded-xl border border-slate-100 bg-white px-2 py-3">
+                                        <p class="text-sm font-black text-slate-950" dir="ltr">{{ $resource }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="mt-4 space-y-3 border-t border-slate-100 pt-4 text-sm">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-bold text-slate-500">پلن</span>
+                                    <span class="truncate font-black text-slate-950">{{ $server['plan'] }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-bold text-slate-500">هزینه ماهانه</span>
+                                    <span class="font-black text-slate-950">{{ $server['is_locked'] ? 'قفل حذف' : $wallets->format($server['monthly_cost']) }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-bold text-slate-500">محاسبه</span>
+                                    <span class="font-black text-slate-950">{{ $server['billing_hint'] }}</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 grid grid-cols-3 gap-2">
+                                <a href="{{ $server['show_url'] }}" class="inline-flex justify-center rounded-xl bg-slate-950 px-3 py-2.5 text-xs font-black text-white transition hover:bg-[#0069FF]">مشاهده و اتصال</a>
+                                <a href="{{ $server['monitoring_url'] }}" class="inline-flex justify-center rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مانیتورینگ</a>
+                                <a href="{{ $server['backup_url'] }}" class="inline-flex justify-center rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">بکاپ</a>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+
+                <div class="border-t border-slate-100 px-5 py-4">
+                    {{ $servers->links() }}
+                </div>
+            @endif
+        </section>
     </div>
 
     <script>
