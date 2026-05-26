@@ -11,6 +11,8 @@
     $storages = $inventory['storage'] ?? [];
     $backups = $inventory['backups'] ?? [];
     $endpointErrors = $inventory['endpoint_errors'] ?? [];
+    $staleAnomalies = $staleAnomalies ?? collect();
+    $staleIds = $staleAnomalies->pluck('id')->values();
 @endphp
 
 <div
@@ -18,6 +20,7 @@
     x-data="proxmoxMetrics({
         url: @js(route('admin.proxmox-servers.metrics', $server)),
         initialNode: @js($nodes[0]['node'] ?? $nodes[0]['name'] ?? null),
+        staleIds: @js($staleIds),
     })"
 >
     @if (session('status'))
@@ -83,6 +86,10 @@
     <div class="mt-6 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
         <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'overview' ? 'bg-[#105D52] text-white shadow-lg shadow-[#105D52]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'overview'">Overview</button>
         <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'performance' ? 'bg-[#105D52] text-white shadow-lg shadow-[#105D52]/20' : 'text-slate-600 hover:bg-slate-50'" @click="openPerformance()">Performance graphs</button>
+        <button type="button" class="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'anomalies' ? 'bg-[#105D52] text-white shadow-lg shadow-[#105D52]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'anomalies'">
+            Anomalies
+            <span class="rounded-md px-2 py-0.5 text-xs" :class="activeTab === 'anomalies' ? 'bg-white/20 text-white' : '{{ $staleAnomalies->isNotEmpty() ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-500' }}'">{{ $staleAnomalies->count() }}</span>
+        </button>
     </div>
 
     <div x-show="activeTab === 'overview'" class="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -194,6 +201,112 @@
         </aside>
     </div>
 
+    <section x-cloak x-show="activeTab === 'anomalies'" class="mt-6 space-y-6">
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 border-b border-slate-200 p-5 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                    <h2 class="text-lg font-black">Stale Application Records</h2>
+                    <p class="mt-1 text-sm leading-7 text-slate-500">Local VM records whose VMID was not found on this Proxmox server. Cleanup re-checks Proxmox live before changing billing or IP state.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="rounded-lg px-3 py-2 text-xs font-black {{ $staleAnomalySource === 'live' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }}">{{ $staleAnomalySource === 'live' ? 'Live scan' : 'Cached inventory' }}</span>
+                    <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">Refresh inventory</button></form>
+                </div>
+            </div>
+
+            @if($staleAnomalies->isEmpty())
+                <div class="grid gap-4 p-8 md:grid-cols-[80px_minmax(0,1fr)] md:items-center">
+                    <div class="grid size-16 place-items-center rounded-2xl bg-emerald-50 text-2xl font-black text-emerald-700">0</div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-950">No stale VM records found</h3>
+                        <p class="mt-2 text-sm leading-7 text-slate-500">The local VMIDs on this server match the latest inventory available to the panel.</p>
+                    </div>
+                </div>
+            @else
+                <div class="grid gap-4 border-b border-slate-200 bg-red-50/60 p-5 lg:grid-cols-3">
+                    <div class="rounded-xl bg-white p-4 shadow-sm">
+                        <p class="text-xs font-black text-slate-500">Anomalies</p>
+                        <p class="mt-2 text-3xl font-black text-red-700">{{ $staleAnomalies->count() }}</p>
+                    </div>
+                    <div class="rounded-xl bg-white p-4 shadow-sm">
+                        <p class="text-xs font-black text-slate-500">Reserved or assigned IPs</p>
+                        <p class="mt-2 text-3xl font-black text-slate-950">{{ $staleAnomalies->filter(fn($vm) => $vm->reservedIpAddress)->count() }}</p>
+                    </div>
+                    <div class="rounded-xl bg-white p-4 shadow-sm">
+                        <p class="text-xs font-black text-slate-500">Potential billing closes</p>
+                        <p class="mt-2 text-3xl font-black text-slate-950">{{ $staleAnomalies->filter(fn($vm) => (int) ($vm->unbilled_amount ?? 0) > 0 || $vm->last_billed_at)->count() }}</p>
+                    </div>
+                </div>
+
+                <form id="bulk-stale-cleanup" method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy-bulk', $server) }}" onsubmit="return confirm('Delete the selected stale records from the application? This releases their IPs and closes accrued billing.');">
+                    @csrf
+                    @method('DELETE')
+                </form>
+
+                <div class="flex flex-col gap-3 border-b border-slate-200 p-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700">
+                            <input type="checkbox" class="size-4 rounded border-slate-300 text-[#105D52]" :checked="allStaleSelected()" @change="toggleAllStale($event.target.checked)">
+                            Select all stale records
+                        </label>
+                        <span class="text-sm font-bold text-slate-500" x-text="`${selectedStale.length} selected`"></span>
+                    </div>
+                    <button type="submit" form="bulk-stale-cleanup" class="rounded-lg bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300" :disabled="selectedStale.length === 0">Delete selected</button>
+                </div>
+
+                <template x-for="id in selectedStale" :key="`stale-${id}`">
+                    <input type="hidden" name="vm_ids[]" :value="id" form="bulk-stale-cleanup">
+                </template>
+
+                <div class="overflow-x-auto p-5">
+                    <table class="min-w-full text-right text-sm">
+                        <thead class="text-xs font-black text-slate-500">
+                            <tr>
+                                <th class="py-3"></th>
+                                <th class="py-3">VM</th>
+                                <th class="py-3">Customer</th>
+                                <th class="py-3">VMID</th>
+                                <th class="py-3">IP</th>
+                                <th class="py-3">Billing state</th>
+                                <th class="py-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach($staleAnomalies as $vm)
+                                <tr class="align-top">
+                                    <td class="py-4">
+                                        <input type="checkbox" value="{{ $vm->id }}" class="size-4 rounded border-slate-300 text-[#105D52]" :checked="selectedStale.includes({{ $vm->id }})" @change="toggleStale({{ $vm->id }}, $event.target.checked)">
+                                    </td>
+                                    <td class="py-4">
+                                        <p class="font-black text-slate-950">{{ $vm->name }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">{{ $vm->hostname ?: 'No hostname' }} · {{ $vm->status }}</p>
+                                    </td>
+                                    <td class="py-4">{{ $vm->customer?->name ?? '—' }}</td>
+                                    <td class="py-4"><span class="rounded-md bg-red-50 px-2.5 py-1 font-mono text-xs font-black text-red-700">{{ $vm->vmid }}</span></td>
+                                    <td class="py-4">
+                                        <p class="font-mono" dir="ltr">{{ $vm->ip_address ?: '—' }}</p>
+                                        <p class="mt-1 text-xs font-bold text-slate-400">{{ $vm->reservedIpAddress ? 'Will be released' : 'No reserved IP' }}</p>
+                                    </td>
+                                    <td class="py-4">
+                                        <p class="font-bold text-slate-700">Last billed: {{ $vm->last_billed_at?->diffForHumans() ?? 'never' }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">Unbilled: {{ number_format((int) ($vm->unbilled_amount ?? 0)) }}</p>
+                                    </td>
+                                    <td class="py-4">
+                                        <form method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy', [$server, $vm]) }}" onsubmit="return confirm('Delete this stale record from the application? Proxmox will be checked again before cleanup.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="rounded-lg bg-red-50 px-4 py-2 text-sm font-black text-red-700 transition hover:bg-red-100">Delete local record</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </section>
+
     <section x-cloak x-show="activeTab === 'performance'" class="mt-6 space-y-6">
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div class="flex flex-col gap-4 border-b border-slate-200 p-5 xl:flex-row xl:items-center xl:justify-between">
@@ -286,6 +399,8 @@
             url: config.url,
             node: config.initialNode,
             nodes: config.initialNode ? [config.initialNode] : [],
+            staleIds: config.staleIds || [],
+            selectedStale: [],
             timeframe: 'hour',
             samples: [],
             latest: {},
@@ -303,6 +418,18 @@
                 if (!this.loaded) {
                     this.load();
                 }
+            },
+            toggleStale(id, checked) {
+                id = Number(id);
+                this.selectedStale = checked
+                    ? [...new Set([...this.selectedStale, id])]
+                    : this.selectedStale.filter((item) => item !== id);
+            },
+            toggleAllStale(checked) {
+                this.selectedStale = checked ? [...this.staleIds] : [];
+            },
+            allStaleSelected() {
+                return this.staleIds.length > 0 && this.selectedStale.length === this.staleIds.length;
             },
             async load() {
                 this.loading = true;

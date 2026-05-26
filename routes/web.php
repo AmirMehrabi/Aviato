@@ -109,6 +109,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.proxmox-servers.sync');
         Route::get('proxmox-servers/{proxmoxServer}/metrics', [ProxmoxServerWebController::class, 'metrics'])
             ->name('admin.proxmox-servers.metrics');
+        Route::delete('proxmox-servers/{proxmoxServer}/stale-virtual-machines', [ProxmoxServerWebController::class, 'destroyStaleVirtualMachines'])
+            ->name('admin.proxmox-servers.stale-virtual-machines.destroy-bulk');
+        Route::delete('proxmox-servers/{proxmoxServer}/stale-virtual-machines/{virtualMachine}', [ProxmoxServerWebController::class, 'destroyStaleVirtualMachine'])
+            ->name('admin.proxmox-servers.stale-virtual-machines.destroy');
         Route::resource('proxmox-servers', ProxmoxServerWebController::class)
             ->parameters(['proxmox-servers' => 'proxmoxServer'])
             ->names('admin.proxmox-servers');

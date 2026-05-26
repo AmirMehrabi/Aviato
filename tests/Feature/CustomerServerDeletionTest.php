@@ -10,6 +10,7 @@ use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
+use App\Services\StaleVirtualMachineCleanupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
@@ -140,6 +141,54 @@ class CustomerServerDeletionTest extends TestCase
         $this->assertSame(VirtualMachine::STATUS_DELETING, $vm->status);
         $this->assertNotNull($vm->delete_failed_at);
         $this->assertSame('Proxmox unavailable', $vm->delete_error);
+    }
+
+    public function test_stale_cleanup_charges_usage_releases_ip_and_marks_vm_deleted(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, [
+            'unbilled_amount' => 750,
+            'last_billed_at' => now(),
+        ]);
+        $address = $this->assignedAddress($vm);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestVmids')->once()->andReturn([]);
+        });
+
+        $result = app(StaleVirtualMachineCleanupService::class)->cleanup($vm, 'test');
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::STATUS_DELETED, $vm->status);
+        $this->assertNull($vm->vmid);
+        $this->assertNotNull($vm->deleted_at);
+        $this->assertSame(101, data_get($vm->remote_state, 'stale_cleanup.deleted_vmid'));
+        $this->assertSame($address->address, $result['released_ip']);
+        $this->assertDatabaseHas('ip_addresses', [
+            'id' => $address->id,
+            'virtual_machine_id' => null,
+            'status' => IpAddress::STATUS_RELEASED,
+        ]);
+        $this->assertDatabaseHas('wallet_transactions', [
+            'customer_id' => $customer->id,
+            'amount' => -750,
+        ]);
+    }
+
+    public function test_stale_cleanup_blocks_when_remote_vmid_still_exists(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer);
+        $this->assignedAddress($vm);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestVmids')->once()->andReturn([101]);
+        });
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('VM still exists on Proxmox');
+
+        app(StaleVirtualMachineCleanupService::class)->cleanup($vm, 'test');
     }
 
     /**

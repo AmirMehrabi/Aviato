@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProxmoxServerRequest;
 use App\Http\Requests\Admin\UpdateProxmoxServerRequest;
 use App\Models\ProxmoxServer;
+use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
+use App\Services\StaleVirtualMachineCleanupService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -16,7 +18,10 @@ use Throwable;
 
 class ProxmoxServerWebController extends Controller
 {
-    public function __construct(private readonly ProxmoxService $proxmox) {}
+    public function __construct(
+        private readonly ProxmoxService $proxmox,
+        private readonly StaleVirtualMachineCleanupService $staleCleanup,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -78,6 +83,8 @@ class ProxmoxServerWebController extends Controller
             'server' => $proxmoxServer->refresh(),
             'summary' => $summary,
             'fallback' => $fallback,
+            'staleAnomalies' => $this->staleAnomalies($proxmoxServer->refresh(), $summary),
+            'staleAnomalySource' => $summary ? 'live' : 'cached',
         ]);
     }
 
@@ -165,6 +172,59 @@ class ProxmoxServerWebController extends Controller
         }
     }
 
+    public function destroyStaleVirtualMachine(ProxmoxServer $proxmoxServer, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        abort_unless((int) $virtualMachine->proxmox_server_id === (int) $proxmoxServer->id, 404);
+
+        try {
+            $result = $this->staleCleanup->cleanup($virtualMachine, 'admin-single');
+
+            return back()->with('status', sprintf(
+                'Stale VM #%d was deleted locally. Released IP: %s. Billing transaction: %s.',
+                $result['vm']->id,
+                $result['released_ip'] ?? 'none',
+                $result['wallet_transaction']?->id ?? 'none',
+            ));
+        } catch (Throwable $exception) {
+            return back()->with('error', 'Stale VM cleanup was blocked: '.$exception->getMessage());
+        }
+    }
+
+    public function destroyStaleVirtualMachines(Request $request, ProxmoxServer $proxmoxServer): RedirectResponse
+    {
+        $data = $request->validate([
+            'vm_ids' => ['required', 'array', 'min:1'],
+            'vm_ids.*' => ['integer', 'exists:virtual_machines,id'],
+        ]);
+
+        $vms = VirtualMachine::query()
+            ->where('proxmox_server_id', $proxmoxServer->id)
+            ->whereIn('id', $data['vm_ids'])
+            ->get();
+
+        $deleted = 0;
+        $errors = [];
+
+        foreach ($vms as $vm) {
+            try {
+                $this->staleCleanup->cleanup($vm, 'admin-bulk');
+                $deleted++;
+            } catch (Throwable $exception) {
+                $errors[] = '#'.$vm->id.': '.$exception->getMessage();
+            }
+        }
+
+        $message = sprintf('%d stale VM record(s) were deleted locally.', $deleted);
+
+        if ($errors !== []) {
+            return back()
+                ->with('status', $message)
+                ->with('error', 'Some records were skipped: '.implode(' | ', $errors));
+        }
+
+        return back()->with('status', $message);
+    }
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -238,5 +298,26 @@ class ProxmoxServerWebController extends Controller
             'connection_status' => ProxmoxServer::CONNECTION_OFFLINE,
             'sync_error' => $exception->getMessage(),
         ])->save();
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, VirtualMachine>
+     */
+    private function staleAnomalies(ProxmoxServer $server, ?array $liveSummary): \Illuminate\Database\Eloquent\Collection
+    {
+        $inventory = $liveSummary ?: ($server->remote_inventory ?? []);
+
+        if (! array_key_exists('virtual_machines', $inventory)) {
+            return new \Illuminate\Database\Eloquent\Collection;
+        }
+
+        $remoteVmids = collect($inventory['virtual_machines'] ?? [])
+            ->pluck('vmid')
+            ->filter(fn (mixed $vmid): bool => is_numeric($vmid))
+            ->map(fn (mixed $vmid): int => (int) $vmid)
+            ->values()
+            ->all();
+
+        return $this->staleCleanup->staleFromRemoteVmids($server, $remoteVmids);
     }
 }
