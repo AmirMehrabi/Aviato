@@ -78,6 +78,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'ssh_public_key' => $vm->ssh_public_key,
                 'ipconfig0' => $ipPools->ipConfig($address),
                 'nameserver' => $ipPools->nameservers($address),
+                'cicustom' => 'vendor=local:snippets/ssh-port-2222.yaml',
                 'onboot' => $this->options['onboot'] ?? false,
                 'description' => 'Cloud-init configured by Aviato panel',
             ]);

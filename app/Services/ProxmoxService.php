@@ -319,6 +319,7 @@ class ProxmoxService
             'sshkeys' => $options['ssh_public_key'] ?? null,
             'ipconfig0' => $options['ipconfig0'],
             'nameserver' => $options['nameserver'],
+            'cicustom' => $options['cicustom'] ?? null,
             'onboot' => ! empty($options['onboot']) ? 1 : 0,
             'agent' => 1,
             'description' => $options['description'] ?? null,
