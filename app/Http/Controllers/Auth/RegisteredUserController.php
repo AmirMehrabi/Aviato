@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Throwable;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
@@ -49,14 +50,22 @@ class RegisteredUserController extends Controller
         ]);
 
         if ($portal === 'customer' && $account instanceof Customer && $verificationMode !== 'disabled') {
-            CustomerEmailVerificationController::sendVerificationCode($account, $verificationMode);
+            try {
+                CustomerEmailVerificationController::sendVerificationCode($account, $verificationMode);
+            } catch (Throwable $e) {
+                $account->delete();
+
+                return back()
+                    ->withInput($request->except('password', 'password_confirmation'))
+                    ->withErrors(['verification' => $e->getMessage()]);
+            }
 
             $routeParams = $verificationMode === 'sms'
                 ? ['phone' => $account->phone]
                 : ['email' => $account->email];
 
             return redirect()
-                ->route('customer.verification.notice', $routeParams, false)
+                ->route('customer.verification.notice', $routeParams)
                 ->with('status', $verificationMode === 'sms' ? 'کد تایید پیامک ارسال شد.' : 'کد تایید برای ایمیل شما ارسال شد.');
         }
 

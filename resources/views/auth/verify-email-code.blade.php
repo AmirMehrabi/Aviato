@@ -20,7 +20,7 @@
                     <p class="mt-2 text-sm leading-7 text-slate-600">{{ $isSmsMode ? 'یک کد ۶ رقمی به موبایل شما ارسال شده است. این مرحله برای فعال شدن پنل مشتری اجباری است.' : 'یک کد ۶ رقمی به ایمیل شما ارسال شده است. این مرحله برای فعال شدن پنل مشتری اجباری است.' }}</p>
                 </div>
 
-                <form method="POST" action="{{ route('customer.verification.verify', [], false) }}" class="space-y-5 px-6 py-7 md:px-8">
+                <form method="POST" action="{{ route('customer.verification.verify', [], false) }}" class="space-y-5 px-6 py-7 md:px-8" data-submit-loading>
                     @csrf
 
                     @if (session('status'))
@@ -47,11 +47,13 @@
                         @error('code') <span class="mt-2 block text-sm font-bold text-red-600">{{ $message }}</span> @enderror
                     </label>
 
-                    <button class="inline-flex w-full items-center justify-center rounded-lg bg-[#0069FF] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" type="submit">تایید و ورود</button>
+                    <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0069FF] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" type="submit">
+                        <span>تایید و ورود</span>
+                    </button>
                 </form>
 
                 <div class="border-t border-slate-200 px-6 py-5 md:px-8">
-                    <form method="POST" action="{{ route('customer.verification.resend', [], false) }}" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <form method="POST" action="{{ route('customer.verification.resend', [], false) }}" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-submit-loading>
                         @csrf
                         @if ($isSmsMode)
                             <input type="hidden" name="phone" value="{{ old('phone', $phone) }}">
@@ -68,4 +70,22 @@
         </div>
     </main>
 </body>
+<script>
+    (function () {
+        const status = @json(session('status'));
+        const firstError = @json($errors->first() ?: null);
+        if (status) alert(status);
+        if (firstError) alert(firstError);
+
+        document.querySelectorAll('form[data-submit-loading]').forEach((form) => {
+            form.addEventListener('submit', () => {
+                const button = form.querySelector('button[type="submit"]');
+                if (!button || button.disabled) return;
+                button.disabled = true;
+                button.dataset.originalHtml = button.innerHTML;
+                button.innerHTML = '<svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity=".3" stroke-width="3"></circle><path d="M22 12A10 10 0 0 0 12 2" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path></svg><span>در حال ارسال...</span>';
+            });
+        });
+    })();
+</script>
 </html>

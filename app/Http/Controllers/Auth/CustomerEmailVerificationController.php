@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
+use Throwable;
 
 class CustomerEmailVerificationController extends Controller
 {
@@ -31,7 +32,7 @@ class CustomerEmailVerificationController extends Controller
     {
         $mode = AppSetting::customerVerificationMode();
         if ($mode === 'disabled') {
-            return redirect()->route('customer.login', [], false)
+            return redirect()->route('customer.login')
                 ->withErrors(['login' => 'تایید هویت در حال حاضر غیرفعال است.']);
         }
 
@@ -74,7 +75,7 @@ class CustomerEmailVerificationController extends Controller
     {
         $mode = AppSetting::customerVerificationMode();
         if ($mode === 'disabled') {
-            return redirect()->route('customer.login', [], false)
+            return redirect()->route('customer.login')
                 ->withErrors(['login' => 'تایید هویت در حال حاضر غیرفعال است.']);
         }
 
@@ -96,11 +97,15 @@ class CustomerEmailVerificationController extends Controller
         }
 
         if ($customer->email_verified_at) {
-            return redirect()->route('customer.login', [], false)
+            return redirect()->route('customer.login')
                 ->with('status', 'این حساب قبلا تایید شده است. وارد حساب شوید.');
         }
 
-        self::sendVerificationCode($customer, $mode);
+        try {
+            self::sendVerificationCode($customer, $mode);
+        } catch (Throwable $e) {
+            return back()->withErrors(['verification' => $e->getMessage()])->withInput();
+        }
 
         return back()->with('status', 'کد تایید جدید ارسال شد.');
     }

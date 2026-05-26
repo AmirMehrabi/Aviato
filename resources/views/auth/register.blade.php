@@ -60,11 +60,14 @@
                         </p>
                     </div>
 
-                    <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 px-6 py-7 md:px-8">
+                    <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 px-6 py-7 md:px-8" data-submit-loading>
                         @csrf
 
                         @if (session('status'))
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{{ session('status') }}</div>
+                        @endif
+                        @if ($errors->any())
+                            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first() }}</div>
                         @endif
 
                         <label class="block">
@@ -98,7 +101,9 @@
                             <input type="password" name="password_confirmation" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                         </label>
 
-                        <button class="inline-flex w-full items-center justify-center rounded-lg bg-[#0069FF] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" type="submit">ایجاد حساب</button>
+                        <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0069FF] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" type="submit">
+                            <span>ایجاد حساب</span>
+                        </button>
 
                         <p class="text-center text-sm font-bold text-slate-500">
                             حساب دارید؟
@@ -110,4 +115,17 @@
         </div>
     </main>
 </body>
+<script>
+    (function () {
+        document.querySelectorAll('form[data-submit-loading]').forEach((form) => {
+            form.addEventListener('submit', () => {
+                const button = form.querySelector('button[type="submit"]');
+                if (!button || button.disabled) return;
+                button.disabled = true;
+                button.dataset.originalHtml = button.innerHTML;
+                button.innerHTML = '<svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity=".3" stroke-width="3"></circle><path d="M22 12A10 10 0 0 0 12 2" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path></svg><span>در حال ارسال...</span>';
+            });
+        });
+    })();
+</script>
 </html>
