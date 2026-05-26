@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
 use App\Models\Customer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,17 @@ class AuthenticatedSessionController extends Controller
 
             throw ValidationException::withMessages([
                 'login' => 'حساب شما تعلیق شده است. لطفا با پشتیبانی تماس بگیرید.',
+            ]);
+        }
+
+        $verificationMode = $portal === 'customer' ? AppSetting::customerVerificationMode() : 'disabled';
+        if ($portal === 'customer' && $verificationMode !== 'disabled' && $user instanceof Customer && ! $user->email_verified_at) {
+            Auth::guard($portal)->logout();
+
+            throw ValidationException::withMessages([
+                'login' => $verificationMode === 'sms'
+                    ? 'شماره موبایل حساب شما هنوز تایید نشده است. کد پیامک را وارد کنید.'
+                    : 'ایمیل حساب شما هنوز تایید نشده است. کد تایید را وارد کنید.',
             ]);
         }
 

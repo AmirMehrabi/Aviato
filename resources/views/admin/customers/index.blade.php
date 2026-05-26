@@ -28,7 +28,7 @@
         </div>
 
         <div class="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            @foreach ([['کل مشتریان', $stats['total']], ['فعال', $stats['active']], ['تعلیق شده', $stats['suspended']], ['ایمیل تایید شده', $stats['verified']]] as [$label, $value])
+            @foreach ([['کل مشتریان', $stats['total']], ['فعال', $stats['active']], ['تعلیق شده', $stats['suspended']], ['حساب تایید شده', $stats['verified']]] as [$label, $value])
                 <div class="rounded-xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                     <p class="text-xs font-bold text-emerald-50/60">{{ $label }}</p>
                     <p class="mt-2 text-3xl font-black">{{ number_format($value) }}</p>
@@ -92,7 +92,7 @@
                     </td>
                     <td class="px-5 py-4">
                         <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $statusClass }}">{{ $customer->status === 'suspended' ? 'تعلیق شده' : 'فعال' }}</span>
-                        <p class="mt-2 text-xs text-slate-500">{{ $customer->email_verified_at ? 'ایمیل تایید شده' : 'ایمیل تایید نشده' }}</p>
+                        <p class="mt-2 text-xs text-slate-500">{{ $customer->email_verified_at ? 'حساب تایید شده' : 'حساب تایید نشده' }}</p>
                     </td>
                     <td class="px-5 py-4">
                         <p class="font-black {{ $credit < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $money->format($credit) }}</p>

@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Cache;
 class AppSetting extends Model
 {
     public const BILLING_CURRENCY = 'billing.currency';
+    public const CUSTOMER_VERIFICATION_MODE = 'customer.verification.mode';
+    public const SMS0098_USERNAME = 'sms0098.username';
+    public const SMS0098_PASSWORD = 'sms0098.password';
+    public const SMS0098_PANEL_NO = 'sms0098.panel_no';
 
     public static function getValue(string $key, mixed $default = null): mixed
     {
@@ -51,6 +55,22 @@ class AppSetting extends Model
     {
         return [
             'value' => 'json',
+        ];
+    }
+
+    public static function customerVerificationMode(): string
+    {
+        $mode = (string) static::getValue(self::CUSTOMER_VERIFICATION_MODE, 'email');
+
+        return in_array($mode, ['disabled', 'email', 'sms'], true) ? $mode : 'email';
+    }
+
+    public static function customerVerificationModes(): array
+    {
+        return [
+            'disabled' => 'غیرفعال (بدون تایید)',
+            'email' => 'تایید با ایمیل',
+            'sms' => 'تایید با پیامک',
         ];
     }
 }

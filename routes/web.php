@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\VirtualMachineController;
 use App\Http\Controllers\Admin\VmBundleController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\CustomerEmailVerificationController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
@@ -145,6 +146,13 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::post($customerRegister, [RegisteredUserController::class, 'store'])
             ->defaults('portal', 'customer')
             ->name('customer.register.store');
+
+        Route::get('email/verify', [CustomerEmailVerificationController::class, 'create'])
+            ->name('customer.verification.notice');
+        Route::post('email/verify', [CustomerEmailVerificationController::class, 'store'])
+            ->name('customer.verification.verify');
+        Route::post('email/verify/resend', [CustomerEmailVerificationController::class, 'resend'])
+            ->name('customer.verification.resend');
     });
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

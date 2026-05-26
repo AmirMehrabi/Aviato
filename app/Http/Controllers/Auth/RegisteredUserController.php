@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -17,17 +18,25 @@ class RegisteredUserController extends Controller
 {
     public function create(string $portal): View
     {
-        return view('auth.register', ['portal' => $portal]);
+        return view('auth.register', [
+            'portal' => $portal,
+            'verificationMode' => $portal === 'customer' ? AppSetting::customerVerificationMode() : 'disabled',
+        ]);
     }
 
     public function store(Request $request, string $portal): RedirectResponse
     {
         $model = $portal === 'admin' ? User::class : Customer::class;
+        $verificationMode = $portal === 'customer' ? AppSetting::customerVerificationMode() : 'disabled';
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'required_without:phone', 'email', 'max:255', Rule::unique($model, 'email')],
-            'phone' => ['nullable', 'required_without:email', 'string', 'max:30', 'regex:/^\+?[0-9][0-9\s().-]{6,29}$/', Rule::unique($model, 'phone')],
+            'email' => $portal === 'customer' && $verificationMode === 'email'
+                ? ['required', 'email', 'max:255', Rule::unique($model, 'email')]
+                : ['nullable', 'required_without:phone', 'email', 'max:255', Rule::unique($model, 'email')],
+            'phone' => $portal === 'customer' && $verificationMode === 'sms'
+                ? ['required', 'string', 'max:30', 'regex:/^(\+98|98|0)?9\d{9}$/', Rule::unique($model, 'phone')]
+                : ['nullable', 'required_without:email', 'string', 'max:30', 'regex:/^\+?[0-9][0-9\s().-]{6,29}$/', Rule::unique($model, 'phone')],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
@@ -38,6 +47,18 @@ class RegisteredUserController extends Controller
             'phone' => $data['phone'] ?? null,
             'password' => $data['password'],
         ]);
+
+        if ($portal === 'customer' && $account instanceof Customer && $verificationMode !== 'disabled') {
+            CustomerEmailVerificationController::sendVerificationCode($account, $verificationMode);
+
+            $routeParams = $verificationMode === 'sms'
+                ? ['phone' => $account->phone]
+                : ['email' => $account->email];
+
+            return redirect()
+                ->route('customer.verification.notice', $routeParams, false)
+                ->with('status', $verificationMode === 'sms' ? 'کد تایید پیامک ارسال شد.' : 'کد تایید برای ایمیل شما ارسال شد.');
+        }
 
         Auth::guard($portal)->login($account);
         $request->session()->regenerate();
