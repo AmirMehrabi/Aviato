@@ -152,6 +152,7 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::get('servers', [ServerController::class, 'index'])->name('customer.servers.index');
         Route::get('servers/create', [ServerController::class, 'create'])->name('customer.servers.create');
         Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');
+        Route::get('servers/statuses', [ServerController::class, 'statuses'])->name('customer.servers.statuses');
         Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->name('customer.servers.show');
         Route::delete('servers/{virtualMachine}', [ServerController::class, 'destroy'])->name('customer.servers.destroy');
         Route::get('backups', [BackupController::class, 'index'])->name('customer.backups.index');

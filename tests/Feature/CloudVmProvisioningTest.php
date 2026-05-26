@@ -148,6 +148,55 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertTrue($response->viewData('cloudImages')->contains($image));
     }
 
+    public function test_customer_can_poll_owned_server_statuses(): void
+    {
+        $owner = Customer::factory()->create();
+        $other = Customer::factory()->create();
+        [$image, $bundle] = $this->catalog();
+
+        $owned = VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'name' => 'poll-owned',
+            'hostname' => 'poll-owned',
+            'node' => $image->node,
+            'ip_address' => '192.168.10.50',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_STOPPED,
+            'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+        ]);
+
+        $foreign = VirtualMachine::create([
+            'customer_id' => $other->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'name' => 'poll-foreign',
+            'hostname' => 'poll-foreign',
+            'node' => $image->node,
+            'ip_address' => '192.168.10.51',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->actingAs($owner, 'customer');
+        $this->getJson($this->customerBaseUrl.'/servers/statuses?ids[]='.$owned->id.'&ids[]='.$foreign->id)
+            ->assertOk()
+            ->assertJsonCount(1, 'servers')
+            ->assertJsonPath('servers.0.id', $owned->id)
+            ->assertJsonPath('servers.0.status_label', 'خاموش')
+            ->assertJsonPath('servers.0.provisioning_pending', true);
+    }
+
     /**
      * @return array{CloudImage, VmBundle}
      */

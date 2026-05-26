@@ -185,8 +185,9 @@
                     </div>
                     <div class="rounded-lg border border-dashed border-slate-300 p-4 text-xs leading-6 text-slate-500">IP به صورت خودکار از Pool آزاد تخصیص داده می‌شود.</div>
                 </div>
-                <button type="button" @click="submit()" :disabled="!canSubmit" class="mt-5 w-full rounded-lg px-4 py-3 text-sm font-black transition" :class="canSubmit ? 'bg-[#0069FF] text-white hover:bg-[#0050D0]' : 'cursor-not-allowed bg-slate-200 text-slate-500'">
-                    ساخت VPS
+                <button type="button" @click="submit()" :disabled="!canSubmit" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-black transition" :class="canSubmit ? 'bg-[#0069FF] text-white hover:bg-[#0050D0]' : 'cursor-not-allowed bg-slate-200 text-slate-500'">
+                    <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                    <span x-text="submitting ? 'در حال ثبت درخواست...' : 'ساخت VPS'"></span>
                 </button>
                 <a x-show="!canCreate" :href="walletUrl" class="mt-3 inline-flex w-full justify-center rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] px-4 py-3 text-sm font-black text-[#0069FF]">افزایش موجودی کیف پول</a>
                 <p x-show="!canCreate" class="mt-3 text-xs leading-6 text-red-600">برای ساخت VPS موجودی کیف پول باید حداقل <span x-text="minimumBalanceLabel"></span> باشد.</p>
@@ -198,6 +199,7 @@
     function customerVmCreate(config) {
         return {
             canCreate: config.canCreate,
+            submitting: false,
             walletBalanceLabel: config.walletBalanceLabel,
             minimumBalanceLabel: config.minimumBalanceLabel,
             walletUrl: config.walletUrl,
@@ -234,7 +236,7 @@
                 return this.osFamilies.find((family) => family.key === this.form.os_family)?.label || '';
             },
             get canSubmit() {
-                return this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.form.name.trim().length > 0;
+                return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.form.name.trim().length > 0;
             },
             selectOs(family) {
                 this.form.os_family = family;
@@ -260,6 +262,7 @@
             },
             submit() {
                 if (!this.canSubmit) return;
+                this.submitting = true;
                 this.$refs.createForm.submit();
             },
             slug(value) {

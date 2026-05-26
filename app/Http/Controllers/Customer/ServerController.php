@@ -13,6 +13,7 @@ use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -76,6 +77,33 @@ class ServerController extends Controller
                 'pending_usage' => $pendingUsage,
             ],
             'invoiceCount' => $customer->invoices()->count(),
+        ]);
+    }
+
+    public function statuses(Request $request): JsonResponse
+    {
+        $customer = $request->user('customer');
+        $ids = collect((array) $request->query('ids', []))
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $servers = $customer->virtualMachines()
+            ->when($ids->isNotEmpty(), fn ($query) => $query->whereIn('id', $ids))
+            ->get(['id', 'status', 'provisioning_status']);
+
+        return response()->json([
+            'servers' => $servers->map(fn (VirtualMachine $server): array => [
+                'id' => $server->id,
+                'status' => $server->status,
+                'status_label' => $this->statusLabel($server->status),
+                'status_class' => $this->statusClass($server->status),
+                'provisioning_status' => $server->provisioning_status,
+                'provisioning_label' => $server->provisioning_status ?: '-',
+                'provisioning_class' => $this->provisioningClass($server->provisioning_status),
+                'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
+            ])->values(),
         ]);
     }
 
@@ -229,5 +257,34 @@ class ServerController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    private function statusLabel(?string $status): string
+    {
+        return match ($status) {
+            VirtualMachine::STATUS_RUNNING => 'روشن',
+            VirtualMachine::STATUS_STOPPED => 'خاموش',
+            VirtualMachine::STATUS_SUSPENDED => 'تعلیق',
+            default => $status ?: '-',
+        };
+    }
+
+    private function statusClass(?string $status): string
+    {
+        return match ($status) {
+            VirtualMachine::STATUS_RUNNING => 'bg-emerald-50 text-emerald-700',
+            VirtualMachine::STATUS_SUSPENDED => 'bg-red-50 text-red-600',
+            default => 'bg-slate-100 text-slate-600',
+        };
+    }
+
+    private function provisioningClass(?string $status): string
+    {
+        return match ($status) {
+            VirtualMachine::PROVISION_READY => 'bg-emerald-50 text-emerald-700',
+            VirtualMachine::PROVISION_FAILED => 'bg-red-50 text-red-600',
+            VirtualMachine::PROVISION_PENDING => 'bg-blue-50 text-[#0069FF]',
+            default => 'bg-slate-100 text-slate-600',
+        };
     }
 }

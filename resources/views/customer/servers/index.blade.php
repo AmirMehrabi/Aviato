@@ -6,6 +6,30 @@
 
 @php
     $activeNav = 'servers';
+    $serverStatusRows = $servers->map(fn ($server) => [
+        'id' => $server->id,
+        'status' => $server->status,
+        'status_label' => match ($server->status) {
+            'running' => 'روشن',
+            'stopped' => 'خاموش',
+            'suspended' => 'تعلیق',
+            default => $server->status ?: '-',
+        },
+        'status_class' => match ($server->status) {
+            'running' => 'bg-emerald-50 text-emerald-700',
+            'suspended' => 'bg-red-50 text-red-600',
+            default => 'bg-slate-100 text-slate-600',
+        },
+        'provisioning_status' => $server->provisioning_status,
+        'provisioning_label' => $server->provisioning_status ?: '-',
+        'provisioning_class' => match ($server->provisioning_status) {
+            'ready' => 'bg-emerald-50 text-emerald-700',
+            'failed' => 'bg-red-50 text-red-600',
+            'pending' => 'bg-blue-50 text-[#0069FF]',
+            default => 'bg-slate-100 text-slate-600',
+        },
+        'provisioning_pending' => $server->provisioning_status === 'pending',
+    ])->values();
 @endphp
 
 @section('search_data')
@@ -30,6 +54,10 @@
 @endsection
 
 @section('content')
+    <div x-data="customerServerStatus({
+        url: @js(route('customer.servers.statuses', [], false)),
+        servers: @js($serverStatusRows),
+    })">
     @if (session('status'))<div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
     @if (session('provisioning_password'))<div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">Password اولیه فقط همین حالا نمایش داده می‌شود: <span dir="ltr">{{ session('provisioning_password') }}</span></div>@endif
     <section class="grid gap-3 md:grid-cols-4">
@@ -88,17 +116,7 @@
                             $monthlyCost = $server->isRunning()
                                 ? $billing->estimateMonthly($server)
                                 : $billing->estimateStoppedMonthly($server);
-                            $statusLabel = match ($server->status) {
-                                'running' => 'روشن',
-                                'stopped' => 'خاموش',
-                                'suspended' => 'تعلیق',
-                                default => $server->status,
-                            };
-                            $statusClass = match ($server->status) {
-                                'running' => 'bg-emerald-50 text-emerald-700',
-                                'suspended' => 'bg-red-50 text-red-600',
-                                default => 'bg-slate-100 text-slate-600',
-                            };
+                            $statusRow = $serverStatusRows->firstWhere('id', $server->id);
                         @endphp
                         <tr class="transition hover:bg-[#F8FBFF]">
                             <td class="whitespace-nowrap px-5 py-4">
@@ -114,10 +132,13 @@
                                 <p class="mt-1 text-xs text-slate-500">{{ $server->disk_gb }}GB Disk · {{ $server->bundle?->name ?: 'Custom' }}</p>
                             </td>
                             <td class="whitespace-nowrap px-5 py-4">
-                                <span class="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-black text-[#0069FF]">{{ $server->provisioning_status }}</span>
+                                <span class="inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-black" :class="server({{ $server->id }}).provisioning_class">
+                                    <span x-show="server({{ $server->id }}).provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
+                                    <span x-text="server({{ $server->id }}).provisioning_label">{{ $statusRow['provisioning_label'] }}</span>
+                                </span>
                             </td>
                             <td class="whitespace-nowrap px-5 py-4">
-                                <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $statusClass }}">{{ $statusLabel }}</span>
+                                <span class="rounded-md px-2.5 py-1 text-xs font-black" :class="server({{ $server->id }}).status_class" x-text="server({{ $server->id }}).status_label">{{ $statusRow['status_label'] }}</span>
                             </td>
                             <td class="whitespace-nowrap px-5 py-4 text-left font-black text-slate-950">{{ $wallets->format($monthlyCost) }}</td>
                             <td class="whitespace-nowrap px-5 py-4">
@@ -143,4 +164,56 @@
             {{ $servers->links() }}
         </div>
     </section>
+    </div>
+
+    <script>
+    function customerServerStatus(config) {
+        return {
+            url: config.url,
+            servers: Object.fromEntries((config.servers || []).map((server) => [Number(server.id), server])),
+            interval: null,
+            init() {
+                if (!Object.keys(this.servers).length) return;
+                this.refresh();
+                this.interval = window.setInterval(() => this.refresh(), 5000);
+            },
+            server(id) {
+                return this.servers[Number(id)] || {
+                    status_label: '-',
+                    status_class: 'bg-slate-100 text-slate-600',
+                    provisioning_label: '-',
+                    provisioning_class: 'bg-slate-100 text-slate-600',
+                    provisioning_pending: false,
+                };
+            },
+            refresh() {
+                const ids = Object.keys(this.servers);
+                if (!ids.length) return;
+
+                const params = new URLSearchParams();
+                ids.forEach((id) => params.append('ids[]', id));
+
+                fetch(`${this.url}?${params.toString()}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                })
+                    .then((response) => response.ok ? response.json() : Promise.reject(response))
+                    .then((data) => {
+                        (data.servers || []).forEach((server) => {
+                            this.servers[Number(server.id)] = server;
+                        });
+
+                        const hasPending = Object.values(this.servers).some((server) => server.provisioning_pending);
+                        if (!hasPending && this.interval) {
+                            window.clearInterval(this.interval);
+                            this.interval = null;
+                        }
+                    })
+                    .catch(() => {});
+            },
+        };
+    }
+    </script>
 @endsection
