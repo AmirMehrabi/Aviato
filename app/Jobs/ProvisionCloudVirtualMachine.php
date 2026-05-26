@@ -140,6 +140,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
         }
 
     }
+
     private function nextAvailableVmid(ProxmoxService $proxmox, VirtualMachine $vm): int
     {
         $server = $vm->proxmoxServer;
@@ -167,5 +168,4 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
         return $candidate;
     }
-
 }

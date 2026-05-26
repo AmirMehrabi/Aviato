@@ -478,7 +478,7 @@ class ProxmoxService
                 ->all();
         });
     }
-    /**
+
     /**
      * @return array<int, int>
      */
@@ -504,8 +504,8 @@ class ProxmoxService
                 ->all();
         });
     }
-    /**
 
+    /**
      * @return array<int, string>
      */
     private function extractIpAddresses(mixed $value): array
