@@ -44,8 +44,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
         $remoteCreated = false;
 
         try {
-            $next = $proxmox->nextVmid($server);
-            $vmid = (int) $next['vmid'];
+            $vmid = $this->nextAvailableVmid($proxmox, $vm);
 
             $vm->forceFill([
                 'vmid' => $vmid,
@@ -139,5 +138,34 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
             throw $exception;
         }
+
     }
+    private function nextAvailableVmid(ProxmoxService $proxmox, VirtualMachine $vm): int
+    {
+        $server = $vm->proxmoxServer;
+
+        if (! $server) {
+            throw new \RuntimeException('Provisioning cannot continue without a Proxmox server.');
+        }
+
+        $candidate = (int) ($proxmox->nextVmid($server)['vmid'] ?? 0);
+        $remoteVmids = $proxmox->assignedGuestVmids($server, $vm->node);
+        $localVmids = VirtualMachine::query()
+            ->where('proxmox_server_id', $server->id)
+            ->whereNotNull('vmid')
+            ->whereKeyNot($vm->id)
+            ->pluck('vmid')
+            ->map(fn (mixed $vmid): int => (int) $vmid)
+            ->all();
+
+        $usedVmids = array_flip(array_merge($remoteVmids, $localVmids));
+        $candidate = max(100, $candidate);
+
+        while (isset($usedVmids[$candidate])) {
+            $candidate++;
+        }
+
+        return $candidate;
+    }
+
 }
