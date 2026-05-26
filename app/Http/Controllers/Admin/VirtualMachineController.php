@@ -137,9 +137,25 @@ class VirtualMachineController extends Controller
 
     public function destroy(VirtualMachine $virtualMachine): RedirectResponse
     {
-        $virtualMachine->delete();
+        $virtualMachine->loadMissing('proxmoxServer');
 
-        return redirect()->route('admin.virtual-machines.index')->with('status', 'VM حذف شد.');
+        if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
+            return back()->with('error', 'اتصال این VM به Proxmox کامل نیست؛ حذف انجام نشد.');
+        }
+
+        try {
+            $shutdown = $this->proxmox->shutdownVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+            $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $shutdown['task_id'], 180);
+
+            $delete = $this->proxmox->deleteVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid, true);
+            $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $delete['task_id'], 300);
+
+            $virtualMachine->delete();
+
+            return redirect()->route('admin.virtual-machines.index')->with('status', 'VM در Proxmox خاموش و حذف شد.');
+        } catch (Throwable $exception) {
+            return back()->with('error', 'حذف VM در Proxmox ناموفق بود و در پنل هم حذف نشد: '.$exception->getMessage());
+        }
     }
 
     public function start(VirtualMachine $virtualMachine): RedirectResponse

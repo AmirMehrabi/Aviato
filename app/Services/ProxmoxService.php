@@ -369,6 +369,49 @@ class ProxmoxService
     /**
      * @return array<string, mixed>
      */
+    public function shutdownVm(ProxmoxServer $server, string $node, int $vmid, bool $forceStopFallback = true): array
+    {
+        try {
+            $taskId = $this->request($server)
+                ->asForm()
+                ->post("/nodes/{$node}/qemu/{$vmid}/status/shutdown")
+                ->throw()
+                ->json('data');
+
+            return ['task_id' => $taskId];
+        } catch (RequestException $exception) {
+            if (! $forceStopFallback) {
+                throw $exception;
+            }
+
+            $taskId = $this->request($server)
+                ->asForm()
+                ->post("/nodes/{$node}/qemu/{$vmid}/status/stop")
+                ->throw()
+                ->json('data');
+
+            return ['task_id' => $taskId, 'fallback' => 'force_stop'];
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function deleteVm(ProxmoxServer $server, string $node, int $vmid, bool $purge = true): array
+    {
+        $payload = ['purge' => $purge ? 1 : 0];
+        $taskId = $this->request($server)
+            ->asForm()
+            ->delete("/nodes/{$node}/qemu/{$vmid}", $payload)
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function nextVmid(ProxmoxServer $server): array
     {
         return ['vmid' => (int) $this->getData($server, '/cluster/nextid')];

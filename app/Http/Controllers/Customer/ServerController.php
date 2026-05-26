@@ -9,6 +9,7 @@ use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
 use App\Services\IpPoolService;
+use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -26,6 +27,7 @@ class ServerController extends Controller
         private readonly BillingService $billing,
         private readonly UsageBillingService $usageBilling,
         private readonly IpPoolService $ipPool,
+        private readonly ProxmoxService $proxmox,
         private readonly CloudVmProvisioningService $cloudProvisioning,
     ) {}
 
@@ -168,21 +170,35 @@ class ServerController extends Controller
     public function destroy(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
         $server = $this->resolveCustomerServer($request, $virtualMachine);
+        $server->loadMissing(['reservedIpAddress', 'proxmoxServer']);
 
-        DB::transaction(function () use ($server): void {
-            $server->loadMissing('reservedIpAddress');
-            $address = $server->reservedIpAddress;
+        if (! $server->proxmoxServer || ! $server->node || ! $server->vmid) {
+            return back()->with('error', 'اتصال این سرور به Proxmox کامل نیست؛ حذف انجام نشد.');
+        }
 
-            if ($address && (int) $address->virtual_machine_id === (int) $server->id) {
-                $this->ipPool->release($address);
-            }
+        try {
+            $shutdown = $this->proxmox->shutdownVm($server->proxmoxServer, $server->node, (int) $server->vmid);
+            $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $shutdown['task_id'], 180);
 
-            $server->delete();
-        });
+            $delete = $this->proxmox->deleteVm($server->proxmoxServer, $server->node, (int) $server->vmid, true);
+            $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $delete['task_id'], 300);
+
+            DB::transaction(function () use ($server): void {
+                $address = $server->reservedIpAddress;
+
+                if ($address && (int) $address->virtual_machine_id === (int) $server->id) {
+                    $this->ipPool->release($address);
+                }
+
+                $server->delete();
+            });
+        } catch (\Throwable $exception) {
+            return back()->with('error', 'حذف سرور در Proxmox ناموفق بود و در پنل هم حذف نشد: '.$exception->getMessage());
+        }
 
         return redirect()
             ->route('customer.servers.index')
-            ->with('status', 'سرور حذف شد و IP به IP Pool بازگردانده شد.');
+            ->with('status', 'سرور در Proxmox خاموش و حذف شد و IP به IP Pool بازگردانده شد.');
     }
 
     private function resolveCustomerServer(Request $request, VirtualMachine $virtualMachine): VirtualMachine
