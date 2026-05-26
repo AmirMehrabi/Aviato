@@ -6,7 +6,36 @@
 @if (session('status'))<div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
 @if (session('error'))<div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>@endif
 @if (session('provisioning_password'))<div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">Password اولیه فقط همین حالا نمایش داده می‌شود: <span dir="ltr">{{ session('provisioning_password') }}</span></div>@endif
-<div class="relative overflow-hidden rounded-2xl bg-[#0A3D37] p-6 text-white shadow-xl shadow-[#0A3D37]/15"><div class="absolute -left-16 -top-16 size-48 rounded-full bg-white/10 blur-2xl"></div><div class="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between"><div><p class="text-sm font-bold text-emerald-50/60">VM #{{ $vm->id }} · {{ $vm->customer->name }}</p><h1 class="mt-1 text-2xl font-black md:text-4xl" dir="ltr">{{ $vm->name }}</h1><p class="mt-3 leading-8 text-emerald-50/75" dir="ltr">{{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local only' }} · {{ $vm->provisioning_status }}</p></div><div class="flex flex-wrap gap-2"><a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#0A3D37]">ویرایش</a>@if($vm->provisioning_status === "failed" && $vm->cloud_image_id)<form method="POST" action="{{ route("admin.virtual-machines.retry-provisioning", $vm) }}" onsubmit="return confirm(&quot;Retry provisioning for this VM?&quot;)">@csrf<button class="rounded-lg bg-sky-300 px-5 py-3 text-sm font-black text-sky-950">Retry provisioning</button></form>@endif@if($vm->provisioning_status !== "failed" && $vm->isRunning())<form method="POST" action="{{ route('admin.virtual-machines.stop', $vm) }}">@csrf <button class="rounded-lg bg-amber-300 px-5 py-3 text-sm font-black text-amber-950">خاموش کردن</button></form>@elseif($vm->provisioning_status !== "failed")<form method="POST" action="{{ route('admin.virtual-machines.start', $vm) }}">@csrf <button class="rounded-lg bg-emerald-300 px-5 py-3 text-sm font-black text-emerald-950">روشن کردن</button></form>@endif</div></div></div>
+<div class="relative overflow-hidden rounded-2xl bg-[#0A3D37] p-6 text-white shadow-xl shadow-[#0A3D37]/15">
+    <div class="absolute -left-16 -top-16 size-48 rounded-full bg-white/10 blur-2xl"></div>
+    <div class="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+            <p class="text-sm font-bold text-emerald-50/60">VM #{{ $vm->id }} · {{ $vm->customer->name }}</p>
+            <h1 class="mt-1 text-2xl font-black md:text-4xl" dir="ltr">{{ $vm->name }}</h1>
+            <p class="mt-3 leading-8 text-emerald-50/75" dir="ltr">{{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local only' }} · {{ $vm->provisioning_status }}</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#0A3D37]">ویرایش</a>
+
+            @if($vm->provisioning_status === 'failed' && $vm->cloud_image_id)
+                <form method="POST" action="{{ route('admin.virtual-machines.retry-provisioning', $vm) }}" onsubmit="return confirm('Retry provisioning for this VM?')">
+                    @csrf
+                    <button class="rounded-lg bg-sky-300 px-5 py-3 text-sm font-black text-sky-950">Retry provisioning</button>
+                </form>
+            @elseif($vm->isRunning())
+                <form method="POST" action="{{ route('admin.virtual-machines.stop', $vm) }}">
+                    @csrf
+                    <button class="rounded-lg bg-amber-300 px-5 py-3 text-sm font-black text-amber-950">خاموش کردن</button>
+                </form>
+            @else
+                <form method="POST" action="{{ route('admin.virtual-machines.start', $vm) }}">
+                    @csrf
+                    <button class="rounded-lg bg-emerald-300 px-5 py-3 text-sm font-black text-emerald-950">روشن کردن</button>
+                </form>
+            @endif
+        </div>
+    </div>
+</div>
 <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 @foreach([
 ['label' => 'وضعیت', 'value' => $vm->isRunning() ? 'روشن' : 'خاموش', 'tone' => $vm->isRunning() ? 'text-emerald-700' : 'text-slate-700'],
