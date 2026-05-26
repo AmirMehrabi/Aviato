@@ -10,9 +10,14 @@ use RuntimeException;
 
 class IpPoolService
 {
-    public function reserveForVm(VirtualMachine $vm): IpAddress
+    /**
+         * @param  array<int, string>  $excludedAddresses
+     */
+    public function reserveForVm(VirtualMachine $vm, array $excludedAddresses = []): IpAddress
     {
-        return DB::transaction(function () use ($vm): IpAddress {
+        $excludedAddresses = array_values(array_unique(array_filter($excludedAddresses)));
+
+        return DB::transaction(function () use ($vm, $excludedAddresses): IpAddress {
             $pool = IpPool::query()
                 ->where('proxmox_server_id', $vm->proxmox_server_id)
                 ->where('is_active', true)
@@ -31,6 +36,7 @@ class IpPoolService
 
             $address = $pool->addresses()
                 ->whereIn('status', [IpAddress::STATUS_AVAILABLE, IpAddress::STATUS_RELEASED])
+                ->when($excludedAddresses !== [], fn ($query) => $query->whereNotIn('address', $excludedAddresses))
                 ->orderBy('address')
                 ->lockForUpdate()
                 ->first();

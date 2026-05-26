@@ -11,6 +11,7 @@ use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\ProxmoxService;
 use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
@@ -25,6 +26,9 @@ class CloudVmProvisioningTest extends TestCase
         Bus::fake();
 
         $customer = Customer::factory()->create();
+        ->mock(ProxmoxService::class, function (): void {
+            ->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
+        });
         $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog();
 

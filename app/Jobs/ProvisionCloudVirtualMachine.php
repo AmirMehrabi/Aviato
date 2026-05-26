@@ -76,7 +76,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'login_username' => $vm->login_username,
                 'login_password' => $vm->login_password,
                 'ssh_public_key' => $vm->ssh_public_key,
-                'ipconfig0' => 'ip=dhcp',
+                'ipconfig0' => $ipPools->ipConfig($address),
                 'nameserver' => $ipPools->nameservers($address),
                 'cicustom' => 'vendor=local:snippets/ubuntu-password-login.yml',
                 'onboot' => $this->options['onboot'] ?? false,

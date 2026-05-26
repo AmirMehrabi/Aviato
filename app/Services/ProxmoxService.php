@@ -434,6 +434,81 @@ class ProxmoxService
     /**
      * @return array<string, mixed>
      */
+    /**
+     * @return array<int, string>
+     */
+    public function assignedGuestIpAddresses(ProxmoxServer $server, ?string $nodeName = null): array
+    {
+        return $this->runWithOperation($server, "guest-ip-inventory", function () use ($server, $nodeName): array {
+            $errors = [];
+            $nodes = collect($this->getData($server, "/nodes") ?? [])
+                ->filter(function (array $node) use ($nodeName): bool {
+                    $current = $node["node"] ?? $node["name"] ?? null;
+
+                    return filled($current) && ($nodeName === null || $current === $nodeName);
+                })
+                ->values()
+                ->all();
+
+            $addresses = [];
+
+            foreach ($this->nodeVmInventory($server, $nodes, $errors) as $guest) {
+                $node = $guest["node"] ?? null;
+                $vmid = isset($guest["vmid"]) ? (int) $guest["vmid"] : null;
+                $type = $guest["type"] ?? "qemu";
+
+                if (! $node || ! $vmid) {
+                    continue;
+                }
+
+                $configPath = $type === "lxc"
+                    ? "/nodes/{$node}/lxc/{$vmid}/config"
+                    : "/nodes/{$node}/qemu/{$vmid}/config";
+
+                $config = $this->getOptionalData($server, $configPath, $errors, []);
+                $addresses = array_merge($addresses, $this->extractIpAddresses($config));
+
+                if ($type === "qemu") {
+                    $interfaces = $this->getOptionalData($server, "/nodes/{$node}/qemu/{$vmid}/agent/network-get-interfaces", $errors, []);
+                    $addresses = array_merge($addresses, $this->extractIpAddresses($interfaces));
+                }
+            }
+
+            return collect($addresses)
+                ->filter(fn (string $address): bool => filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false)
+                ->unique()
+                ->values()
+                ->all();
+        });
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function extractIpAddresses(mixed $value): array
+    {
+        if (is_array($value)) {
+            $addresses = [];
+
+            foreach ($value as $item) {
+                $addresses = array_merge($addresses, $this->extractIpAddresses($item));
+            }
+
+            return $addresses;
+        }
+
+        if (! is_string($value)) {
+            return [];
+        }
+
+        preg_match_all("/(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])/", $value, $matches);
+
+        return $matches[0] ?? [];
+    }
+
+    /**
+     *  array<string, mixed>
+     */
     public function nextVmid(ProxmoxServer $server): array
     {
         return ['vmid' => (int) $this->getData($server, '/cluster/nextid')];

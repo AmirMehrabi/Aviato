@@ -11,10 +11,14 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 class CloudVmProvisioningService
 {
-    public function __construct(private readonly IpPoolService $ipPools) {}
+    public function __construct(
+        private readonly IpPoolService $ipPools,
+        private readonly ProxmoxService $proxmox,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -75,8 +79,9 @@ class CloudVmProvisioningService
         });
 
         try {
-            $this->ipPools->reserveForVm($vm);
-        } catch (\Throwable $exception) {
+            $remoteAddresses = $this->proxmox->assignedGuestIpAddresses($server, $image->node);
+            $this->ipPools->reserveForVm($vm, $remoteAddresses);
+        } catch (Throwable $exception) {
             $vm->delete();
 
             throw $exception;
