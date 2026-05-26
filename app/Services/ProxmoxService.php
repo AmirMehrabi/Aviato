@@ -428,7 +428,8 @@ class ProxmoxService
                 ->throw()
                 ->json('data');
 
-        return ['task_id' => $taskId, 'fallback' => 'force_stop'];
+            return ['task_id' => $taskId, 'fallback' => 'force_stop'];
+        }
     }
 
     /**
@@ -443,7 +444,6 @@ class ProxmoxService
             ->json('data');
 
         return ['task_id' => $taskId, 'fallback' => 'force_stop'];
-    }
     }
 
     /**
