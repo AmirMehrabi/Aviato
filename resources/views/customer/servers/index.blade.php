@@ -13,11 +13,15 @@
             'running' => 'روشن',
             'stopped' => 'خاموش',
             'suspended' => 'تعلیق',
+            'deleting' => 'در حال حذف',
+            'deleted' => 'حذف شده',
             default => $server->status ?: '-',
         },
         'status_class' => match ($server->status) {
             'running' => 'bg-emerald-50 text-emerald-700',
             'suspended' => 'bg-red-50 text-red-600',
+            'deleting' => 'bg-amber-50 text-amber-700',
+            'deleted' => 'bg-slate-100 text-slate-500',
             default => 'bg-slate-100 text-slate-600',
         },
         'provisioning_status' => $server->provisioning_status,
@@ -29,6 +33,9 @@
             default => 'bg-slate-100 text-slate-600',
         },
         'provisioning_pending' => $server->provisioning_status === 'pending',
+        'action_pending' => $server->provisioning_status === 'pending' || $server->status === 'deleting',
+        'is_deleting' => $server->status === 'deleting',
+        'is_deleted' => $server->status === 'deleted' || filled($server->deleted_at),
     ])->values();
 @endphp
 
@@ -59,6 +66,7 @@
         servers: @js($serverStatusRows),
     })">
     @if (session('status'))<div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
+    @if (session('error'))<div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>@endif
     @if (session('provisioning_password'))<div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">Password اولیه فقط همین حالا نمایش داده می‌شود: <span dir="ltr">{{ session('provisioning_password') }}</span></div>@endif
     <section class="grid gap-3 md:grid-cols-4">
         @foreach ([
@@ -93,6 +101,7 @@
                 <option value="running" @selected(($filters['status'] ?? '') === 'running')>روشن</option>
                 <option value="stopped" @selected(($filters['status'] ?? '') === 'stopped')>خاموش</option>
                 <option value="suspended" @selected(($filters['status'] ?? '') === 'suspended')>تعلیق</option>
+                <option value="deleting" @selected(($filters['status'] ?? '') === 'deleting')>در حال حذف</option>
             </select>
             <button class="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white">فیلتر</button>
         </form>
@@ -113,9 +122,11 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($servers as $server)
                         @php
-                            $monthlyCost = $server->isRunning()
+                            $monthlyCost = $server->isActionLocked()
+                                ? 0
+                                : ($server->isRunning()
                                 ? $billing->estimateMonthly($server)
-                                : $billing->estimateStoppedMonthly($server);
+                                : $billing->estimateStoppedMonthly($server));
                             $statusRow = $serverStatusRows->firstWhere('id', $server->id);
                         @endphp
                         <tr class="transition hover:bg-[#F8FBFF]">
@@ -138,13 +149,32 @@
                                 </span>
                             </td>
                             <td class="whitespace-nowrap px-5 py-4">
-                                <span class="rounded-md px-2.5 py-1 text-xs font-black" :class="server({{ $server->id }}).status_class" x-text="server({{ $server->id }}).status_label">{{ $statusRow['status_label'] }}</span>
+                                <span class="inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-black" :class="server({{ $server->id }}).status_class">
+                                    <span x-show="server({{ $server->id }}).is_deleting" class="size-3 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-600"></span>
+                                    <span x-text="server({{ $server->id }}).status_label">{{ $statusRow['status_label'] }}</span>
+                                </span>
                             </td>
-                            <td class="whitespace-nowrap px-5 py-4 text-left font-black text-slate-950">{{ $wallets->format($monthlyCost) }}</td>
+                            <td class="whitespace-nowrap px-5 py-4 text-left font-black text-slate-950">
+                                {{ $server->isActionLocked() ? 'قفل حذف' : $wallets->format($monthlyCost) }}
+                            </td>
                             <td class="whitespace-nowrap px-5 py-4">
+                                <div class="flex flex-wrap items-center gap-2">
                                 <a href="{{ route('customer.servers.show', $server, false) }}" class="inline-flex items-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
                                     مشاهده
                                 </a>
+                                <template x-if="!server({{ $server->id }}).is_deleting && !server({{ $server->id }}).is_deleted">
+                                    <form action="{{ route('customer.servers.destroy', $server, false) }}" method="POST" onsubmit="return confirm('این سرور حذف شود؟ ابتدا خاموش و سپس از Proxmox حذف می شود.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="inline-flex items-center rounded-md border border-red-200 px-3 py-1.5 text-xs font-black text-red-700 transition hover:bg-red-50">
+                                            حذف سرور
+                                        </button>
+                                    </form>
+                                </template>
+                                <span x-show="server({{ $server->id }}).is_deleting" class="inline-flex items-center rounded-md bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-700">
+                                    عملیات قفل است
+                                </span>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -184,6 +214,9 @@
                     provisioning_label: '-',
                     provisioning_class: 'bg-slate-100 text-slate-600',
                     provisioning_pending: false,
+                    action_pending: false,
+                    is_deleting: false,
+                    is_deleted: false,
                 };
             },
             refresh() {
@@ -205,7 +238,7 @@
                             this.servers[Number(server.id)] = server;
                         });
 
-                        const hasPending = Object.values(this.servers).some((server) => server.provisioning_pending);
+                        const hasPending = Object.values(this.servers).some((server) => server.action_pending);
                         if (!hasPending && this.interval) {
                             window.clearInterval(this.interval);
                             this.interval = null;

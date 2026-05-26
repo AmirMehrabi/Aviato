@@ -27,6 +27,7 @@ class BackupController extends Controller
         $customer = $request->user('customer');
         $wallet = $this->wallets->walletFor($customer);
         $vms = $customer->virtualMachines()
+            ->notDeleted()
             ->with(['proxmoxServer', 'backupPolicy', 'backups' => fn ($query) => $query->latest()->limit(10)])
             ->latest()
             ->get();
@@ -90,5 +91,6 @@ class BackupController extends Controller
     private function authorizeCustomerVm(Request $request, VirtualMachine $vm): void
     {
         abort_unless($vm->customer_id === $request->user('customer')->id, 404);
+        abort_if($vm->isActionLocked(), 404);
     }
 }

@@ -152,6 +152,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
         $candidate = (int) ($proxmox->nextVmid($server)['vmid'] ?? 0);
         $remoteVmids = $proxmox->assignedGuestVmids($server, $vm->node);
         $localVmids = VirtualMachine::query()
+            ->notDeleted()
             ->where('proxmox_server_id', $server->id)
             ->whereNotNull('vmid')
             ->whereKeyNot($vm->id)

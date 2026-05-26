@@ -39,6 +39,7 @@ class WalletController extends Controller
 
         $monthStart = now()->startOfMonth();
         $baseQuery = $wallet->transactions()->where('created_at', '>=', $monthStart);
+        $customer->load(['virtualMachines' => fn ($query) => $query->notDeleted()->with('bundle')]);
 
         return view('customer.wallet.show', [
             'customer' => $customer,
@@ -46,7 +47,7 @@ class WalletController extends Controller
             'wallets' => $this->wallets,
             'transactions' => $transactions,
             'selectedType' => $selectedType,
-            'pendingUsage' => $this->usageBilling->customerPendingUsage($customer->loadMissing('virtualMachines.bundle')),
+            'pendingUsage' => $this->usageBilling->customerPendingUsage($customer),
             'monthlyCredits' => (int) (clone $baseQuery)->where('amount', '>', 0)->sum('amount'),
             'monthlyCharges' => (int) abs((clone $baseQuery)->where('amount', '<', 0)->sum('amount')),
             'topUpPresets' => [200000, 500000, 1000000, 2000000],

@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\DeleteVirtualMachineJob;
 use App\Models\CloudImage;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
-use App\Services\IpPoolService;
-use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -18,6 +17,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 class ServerController extends Controller
 {
@@ -27,8 +27,6 @@ class ServerController extends Controller
         private readonly WalletService $wallets,
         private readonly BillingService $billing,
         private readonly UsageBillingService $usageBilling,
-        private readonly IpPoolService $ipPool,
-        private readonly ProxmoxService $proxmox,
         private readonly CloudVmProvisioningService $cloudProvisioning,
     ) {}
 
@@ -42,10 +40,12 @@ class ServerController extends Controller
                 VirtualMachine::STATUS_RUNNING,
                 VirtualMachine::STATUS_STOPPED,
                 VirtualMachine::STATUS_SUSPENDED,
+                VirtualMachine::STATUS_DELETING,
             ])],
         ]);
 
         $servers = $customer->virtualMachines()
+            ->notDeleted()
             ->with(['bundle', 'proxmoxServer', 'cloudImage'])
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['search'] ?? null, function ($query, string $search): void {
@@ -60,8 +60,10 @@ class ServerController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $summarySource = $customer->virtualMachines()->with('bundle')->get();
-        $pendingUsage = $summarySource->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
+        $summarySource = $customer->virtualMachines()->notDeleted()->with('bundle')->get();
+        $pendingUsage = $summarySource
+            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+            ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
 
         return view('customer.servers.index', [
             'customer' => $customer,
@@ -103,6 +105,9 @@ class ServerController extends Controller
                 'provisioning_label' => $server->provisioning_status ?: '-',
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
+                'action_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING || $server->isDeleting(),
+                'is_deleting' => $server->isDeleting(),
+                'is_deleted' => $server->isDeleted(),
             ])->values(),
         ]);
     }
@@ -200,33 +205,54 @@ class ServerController extends Controller
         $server = $this->resolveCustomerServer($request, $virtualMachine);
         $server->loadMissing(['reservedIpAddress', 'proxmoxServer']);
 
+        if ($server->isActionLocked()) {
+            return redirect()
+                ->route('customer.servers.index')
+                ->with('status', 'این سرور قبلا وارد صف حذف شده است.');
+        }
+
         if (! $server->proxmoxServer || ! $server->node || ! $server->vmid) {
             return back()->with('error', 'اتصال این سرور به Proxmox کامل نیست؛ حذف انجام نشد.');
         }
 
+        $queued = false;
+
         try {
-            $shutdown = $this->proxmox->shutdownVm($server->proxmoxServer, $server->node, (int) $server->vmid);
-            $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $shutdown['task_id'], 180);
+            DB::transaction(function () use ($server, &$queued): void {
+                $locked = VirtualMachine::query()
+                    ->whereKey($server->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            $delete = $this->proxmox->deleteVm($server->proxmoxServer, $server->node, (int) $server->vmid, true);
-            $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $delete['task_id'], 300);
-
-            DB::transaction(function () use ($server): void {
-                $address = $server->reservedIpAddress;
-
-                if ($address && (int) $address->virtual_machine_id === (int) $server->id) {
-                    $this->ipPool->release($address);
+                if ($locked->isActionLocked()) {
+                    return;
                 }
 
-                $server->delete();
+                $this->usageBilling->chargeVm($locked);
+
+                $locked->forceFill([
+                    'status' => VirtualMachine::STATUS_DELETING,
+                    'delete_requested_at' => now(),
+                    'delete_started_at' => null,
+                    'delete_failed_at' => null,
+                    'delete_error' => null,
+                    'delete_task_id' => null,
+                    'desired_state' => array_merge($locked->desired_state ?? [], ['status' => VirtualMachine::STATUS_DELETING]),
+                ])->save();
+
+                $queued = true;
             });
-        } catch (\Throwable $exception) {
-            return back()->with('error', 'حذف سرور در Proxmox ناموفق بود و در پنل هم حذف نشد: '.$exception->getMessage());
+
+            if ($queued) {
+                DeleteVirtualMachineJob::dispatch($server->id);
+            }
+        } catch (Throwable $exception) {
+            return back()->with('error', 'درخواست حذف سرور ثبت نشد: '.$exception->getMessage());
         }
 
         return redirect()
             ->route('customer.servers.index')
-            ->with('status', 'سرور در Proxmox خاموش و حذف شد و IP به IP Pool بازگردانده شد.');
+            ->with('status', 'درخواست حذف سرور ثبت شد. تا پایان حذف، عملیات روی این سرور غیرفعال است.');
     }
 
     private function resolveCustomerServer(Request $request, VirtualMachine $virtualMachine): VirtualMachine
@@ -234,6 +260,7 @@ class ServerController extends Controller
         $customer = $request->user('customer');
 
         abort_if((int) $virtualMachine->customer_id !== (int) $customer->id, 404);
+        abort_if($virtualMachine->isDeleted(), 404);
 
         return $virtualMachine;
     }
@@ -265,6 +292,8 @@ class ServerController extends Controller
             VirtualMachine::STATUS_RUNNING => 'روشن',
             VirtualMachine::STATUS_STOPPED => 'خاموش',
             VirtualMachine::STATUS_SUSPENDED => 'تعلیق',
+            VirtualMachine::STATUS_DELETING => 'در حال حذف',
+            VirtualMachine::STATUS_DELETED => 'حذف شده',
             default => $status ?: '-',
         };
     }
@@ -274,6 +303,8 @@ class ServerController extends Controller
         return match ($status) {
             VirtualMachine::STATUS_RUNNING => 'bg-emerald-50 text-emerald-700',
             VirtualMachine::STATUS_SUSPENDED => 'bg-red-50 text-red-600',
+            VirtualMachine::STATUS_DELETING => 'bg-amber-50 text-amber-700',
+            VirtualMachine::STATUS_DELETED => 'bg-slate-100 text-slate-500',
             default => 'bg-slate-100 text-slate-600',
         };
     }

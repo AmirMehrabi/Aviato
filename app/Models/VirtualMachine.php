@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -40,6 +41,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'last_seen_at',
     'last_started_at',
     'last_stopped_at',
+    'delete_requested_at',
+    'delete_started_at',
+    'deleted_at',
+    'delete_failed_at',
+    'delete_error',
+    'delete_task_id',
     'last_billed_at',
     'unbilled_amount',
 ])]
@@ -50,6 +57,10 @@ class VirtualMachine extends Model
     public const STATUS_STOPPED = 'stopped';
 
     public const STATUS_SUSPENDED = 'suspended';
+
+    public const STATUS_DELETING = 'deleting';
+
+    public const STATUS_DELETED = 'deleted';
 
     public const PROVISION_PENDING = 'pending';
 
@@ -97,6 +108,32 @@ class VirtualMachine extends Model
         return $this->status === self::STATUS_RUNNING;
     }
 
+    public function isDeleting(): bool
+    {
+        return $this->status === self::STATUS_DELETING;
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->status === self::STATUS_DELETED || $this->deleted_at !== null;
+    }
+
+    public function isActionLocked(): bool
+    {
+        return in_array($this->status, [self::STATUS_DELETING, self::STATUS_DELETED], true);
+    }
+
+    /**
+     * @param  Builder<VirtualMachine>  $query
+     * @return Builder<VirtualMachine>
+     */
+    public function scopeNotDeleted(Builder $query): Builder
+    {
+        return $query
+            ->whereNull('deleted_at')
+            ->where('status', '!=', self::STATUS_DELETED);
+    }
+
     public function desiredStateSnapshot(): array
     {
         return [
@@ -135,6 +172,10 @@ class VirtualMachine extends Model
             'last_seen_at' => 'datetime',
             'last_started_at' => 'datetime',
             'last_stopped_at' => 'datetime',
+            'delete_requested_at' => 'datetime',
+            'delete_started_at' => 'datetime',
+            'deleted_at' => 'datetime',
+            'delete_failed_at' => 'datetime',
             'last_billed_at' => 'datetime',
             'unbilled_amount' => 'integer',
         ];

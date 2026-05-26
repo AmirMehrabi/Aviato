@@ -26,6 +26,7 @@ class MonitoringController extends Controller
         $customer = $request->user('customer');
         $wallet = $this->wallets->walletFor($customer);
         $servers = $customer->virtualMachines()
+            ->notDeleted()
             ->with([
                 'proxmoxServer',
                 'backupPolicy',
@@ -73,6 +74,10 @@ class MonitoringController extends Controller
         $timeframe = $data['timeframe'] ?? 'hour';
 
         try {
+            if ($virtualMachine->isActionLocked()) {
+                throw new RuntimeException('This VM is being deleted and monitoring is unavailable.');
+            }
+
             if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
                 throw new RuntimeException('This VM is not connected to Proxmox monitoring yet.');
             }
@@ -115,6 +120,7 @@ class MonitoringController extends Controller
     private function authorizeCustomerVm(Request $request, VirtualMachine $vm): void
     {
         abort_unless($vm->customer_id === $request->user('customer')->id, 404);
+        abort_if($vm->isDeleted(), 404);
     }
 
     /**

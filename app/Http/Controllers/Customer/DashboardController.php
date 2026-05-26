@@ -22,10 +22,12 @@ class DashboardController extends Controller
     {
         $customer = $request->user('customer');
         $wallet = $this->wallets->walletFor($customer);
-        $virtualMachines = $customer->virtualMachines()->with('bundle')->latest()->get();
+        $virtualMachines = $customer->virtualMachines()->notDeleted()->with('bundle')->latest()->get();
         $transactions = $wallet->transactions()->with('createdBy')->limit(5)->get();
         $summary = $this->billing->customerSummary($customer->id);
-        $pendingUsage = $virtualMachines->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
+        $pendingUsage = $virtualMachines
+            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+            ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
         $latestInvoice = $customer->invoices()->latest('period_start')->first();
 
         $vmRows = $virtualMachines->map(function (VirtualMachine $vm): array {

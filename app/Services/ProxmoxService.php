@@ -389,6 +389,22 @@ class ProxmoxService
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public function vmStatus(ProxmoxServer $server, string $node, int $vmid): ?array
+    {
+        try {
+            return $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/status/current");
+        } catch (RequestException $exception) {
+            if ($exception->response->status() === 404) {
+                return null;
+            }
+
+            throw $exception;
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function shutdownVm(ProxmoxServer $server, string $node, int $vmid, bool $forceStopFallback = true): array
@@ -412,8 +428,22 @@ class ProxmoxService
                 ->throw()
                 ->json('data');
 
-            return ['task_id' => $taskId, 'fallback' => 'force_stop'];
-        }
+        return ['task_id' => $taskId, 'fallback' => 'force_stop'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function stopVm(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        $taskId = $this->request($server)
+            ->asForm()
+            ->post("/nodes/{$node}/qemu/{$vmid}/status/stop")
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId, 'fallback' => 'force_stop'];
+    }
     }
 
     /**

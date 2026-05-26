@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\DeleteVirtualMachineJob;
 use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Models\CloudImage;
 use App\Models\Customer;
@@ -14,10 +15,12 @@ use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
+use App\Services\UsageBillingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Throwable;
 
@@ -28,13 +31,20 @@ class VirtualMachineController extends Controller
         private readonly ProxmoxService $proxmox,
         private readonly CloudVmProvisioningService $cloudProvisioning,
         private readonly IpPoolService $ipPools,
+        private readonly UsageBillingService $usageBilling,
     ) {}
 
     public function index(Request $request): View
     {
         $filters = $request->validate([
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
-            'status' => ['nullable', Rule::in([VirtualMachine::STATUS_RUNNING, VirtualMachine::STATUS_STOPPED, VirtualMachine::STATUS_SUSPENDED])],
+            'status' => ['nullable', Rule::in([
+                VirtualMachine::STATUS_RUNNING,
+                VirtualMachine::STATUS_STOPPED,
+                VirtualMachine::STATUS_SUSPENDED,
+                VirtualMachine::STATUS_DELETING,
+                VirtualMachine::STATUS_DELETED,
+            ])],
             'search' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -198,6 +208,10 @@ class VirtualMachineController extends Controller
 
     public function update(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
+        if ($virtualMachine->isActionLocked()) {
+            return back()->with('error', 'این VM در وضعیت حذف است و قابل ویرایش نیست.');
+        }
+
         $virtualMachine->fill($this->validated($request, $virtualMachine));
         $this->applyBundleHardware($virtualMachine);
         $virtualMachine->desired_state = $virtualMachine->desiredStateSnapshot();
@@ -210,27 +224,58 @@ class VirtualMachineController extends Controller
     {
         $virtualMachine->loadMissing('proxmoxServer');
 
+        if ($virtualMachine->isActionLocked()) {
+            return back()->with('status', 'این VM قبلا وارد صف حذف شده است.');
+        }
+
         if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
             return back()->with('error', 'اتصال این VM به Proxmox کامل نیست؛ حذف انجام نشد.');
         }
 
+        $queued = false;
+
         try {
-            $shutdown = $this->proxmox->shutdownVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
-            $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $shutdown['task_id'], 180);
+            DB::transaction(function () use ($virtualMachine, &$queued): void {
+                $locked = VirtualMachine::query()
+                    ->whereKey($virtualMachine->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            $delete = $this->proxmox->deleteVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid, true);
-            $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $delete['task_id'], 300);
+                if ($locked->isActionLocked()) {
+                    return;
+                }
 
-            $virtualMachine->delete();
+                $this->usageBilling->chargeVm($locked);
 
-            return redirect()->route('admin.virtual-machines.index')->with('status', 'VM در Proxmox خاموش و حذف شد.');
+                $locked->forceFill([
+                    'status' => VirtualMachine::STATUS_DELETING,
+                    'delete_requested_at' => now(),
+                    'delete_started_at' => null,
+                    'delete_failed_at' => null,
+                    'delete_error' => null,
+                    'delete_task_id' => null,
+                    'desired_state' => array_merge($locked->desired_state ?? [], ['status' => VirtualMachine::STATUS_DELETING]),
+                ])->save();
+
+                $queued = true;
+            });
+
+            if ($queued) {
+                DeleteVirtualMachineJob::dispatch($virtualMachine->id);
+            }
+
+            return redirect()->route('admin.virtual-machines.index')->with('status', 'VM وارد صف حذف شد.');
         } catch (Throwable $exception) {
-            return back()->with('error', 'حذف VM در Proxmox ناموفق بود و در پنل هم حذف نشد: '.$exception->getMessage());
+            return back()->with('error', 'درخواست حذف VM ثبت نشد: '.$exception->getMessage());
         }
     }
 
     public function start(VirtualMachine $virtualMachine): RedirectResponse
     {
+        if ($virtualMachine->isActionLocked()) {
+            return back()->with('error', 'این VM در وضعیت حذف است و امکان روشن کردن ندارد.');
+        }
+
         $accrued = $this->billing->currentAccrued($virtualMachine);
 
         $virtualMachine->forceFill([
@@ -247,6 +292,10 @@ class VirtualMachineController extends Controller
 
     public function stop(VirtualMachine $virtualMachine): RedirectResponse
     {
+        if ($virtualMachine->isActionLocked()) {
+            return back()->with('error', 'این VM در وضعیت حذف است و امکان خاموش کردن ندارد.');
+        }
+
         $accrued = $this->billing->currentAccrued($virtualMachine);
 
         $virtualMachine->forceFill([
@@ -330,7 +379,13 @@ class VirtualMachineController extends Controller
             'ram_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
             'disk_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
             'ip_count' => ['nullable', 'integer', 'min:0', 'max:128'],
-            'status' => ['nullable', Rule::in([VirtualMachine::STATUS_RUNNING, VirtualMachine::STATUS_STOPPED, VirtualMachine::STATUS_SUSPENDED])],
+            'status' => ['nullable', Rule::in([
+                VirtualMachine::STATUS_RUNNING,
+                VirtualMachine::STATUS_STOPPED,
+                VirtualMachine::STATUS_SUSPENDED,
+                VirtualMachine::STATUS_DELETING,
+                VirtualMachine::STATUS_DELETED,
+            ])],
             'ostype' => ['nullable', Rule::in(['l26', 'win11', 'win10', 'win8', 'win7', 'w2k22', 'w2k19', 'w2k16', 'other'])],
             'start_after_create' => ['nullable', 'boolean'],
             'onboot' => ['nullable', 'boolean'],

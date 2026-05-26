@@ -60,6 +60,7 @@ class BillingService
     public function customerSummary(int $customerId): array
     {
         $vms = VirtualMachine::query()
+            ->notDeleted()
             ->with('bundle')
             ->where('customer_id', $customerId)
             ->get();
@@ -67,8 +68,12 @@ class BillingService
         return [
             'running' => $vms->where('status', VirtualMachine::STATUS_RUNNING)->count(),
             'stopped' => $vms->where('status', VirtualMachine::STATUS_STOPPED)->count(),
-            'monthly_spend' => $vms->sum(fn (VirtualMachine $vm): int => $vm->isRunning() ? $this->estimateMonthly($vm) : $this->estimateStoppedMonthly($vm)),
-            'unbilled_accrued' => $vms->sum(fn (VirtualMachine $vm): int => $this->currentAccrued($vm)),
+            'monthly_spend' => $vms
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->sum(fn (VirtualMachine $vm): int => $vm->isRunning() ? $this->estimateMonthly($vm) : $this->estimateStoppedMonthly($vm)),
+            'unbilled_accrued' => $vms
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->sum(fn (VirtualMachine $vm): int => $this->currentAccrued($vm)),
         ];
     }
 

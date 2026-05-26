@@ -91,8 +91,10 @@ class UsageBillingService
         $until ??= now();
 
         VirtualMachine::query()
+            ->notDeleted()
             ->with(['customer', 'bundle'])
             ->whereNotNull('customer_id')
+            ->whereNotIn('status', [VirtualMachine::STATUS_DELETING, VirtualMachine::STATUS_DELETED])
             ->orderBy('customer_id')
             ->chunk(100, function ($vms) use (&$transactions, $until): void {
                 foreach ($vms as $vm) {
@@ -164,6 +166,7 @@ class UsageBillingService
     public function customerPendingUsage(Customer $customer): int
     {
         return $customer->virtualMachines
+            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
             ->sum(fn (VirtualMachine $vm): int => $this->estimateVmUsage($vm)['amount']);
     }
 }
