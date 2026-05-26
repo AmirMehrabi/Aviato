@@ -76,8 +76,9 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'login_username' => $vm->login_username,
                 'login_password' => $vm->login_password,
                 'ssh_public_key' => $vm->ssh_public_key,
-                'ipconfig0' => $ipPools->ipConfig($address),
+                'ipconfig0' => 'ip=dhcp',
                 'nameserver' => $ipPools->nameservers($address),
+                'cicustom' => 'vendor=local:snippets/ubuntu-password-login.yml',
                 'onboot' => $this->options['onboot'] ?? false,
                 'description' => 'Cloud-init configured by Aviato panel',
             ]);
@@ -89,6 +90,12 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 $history[] = ['step' => 'resize_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $resize['task_id'])];
             }
 
+            $cloudInit = $proxmox->regenerateCloudInit($server, $vm->node, $vmid);
+            $history[] = ['step' => 'cloudinit_regenerate', 'result' => $cloudInit];
+            if (! empty($cloudInit['task_id'])) {
+                $history[] = ['step' => 'cloudinit_regenerate_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $cloudInit['task_id'])];
+            }
+
             if ($this->options['start_after_create'] ?? true) {
                 $start = $proxmox->startVm($server, $vm->node, $vmid);
                 $history[] = ['step' => 'start', 'result' => $start];
@@ -96,6 +103,8 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                     $history[] = ['step' => 'start_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $start['task_id'])];
                 }
             }
+
+            $history[] = ['step' => 'config_verify', 'result' => $proxmox->vmConfig($server, $vm->node, $vmid)];
 
             $ipPools->assign($address, $vm);
 

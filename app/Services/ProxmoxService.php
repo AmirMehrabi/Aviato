@@ -319,6 +319,7 @@ class ProxmoxService
             'sshkeys' => $options['ssh_public_key'] ?? null,
             'ipconfig0' => $options['ipconfig0'],
             'nameserver' => $options['nameserver'],
+            'cicustom' => $options['cicustom'] ?? null,
             'onboot' => ! empty($options['onboot']) ? 1 : 0,
             'agent' => 1,
             'description' => $options['description'] ?? null,
@@ -326,7 +327,7 @@ class ProxmoxService
 
         $taskId = $this->request($server)
             ->asForm()
-            ->post("/nodes/{$node}/qemu/{$vmid}/config", $payload)
+            ->put("/nodes/{$node}/qemu/{$vmid}/config", $payload)
             ->throw()
             ->json('data');
 
@@ -334,6 +335,28 @@ class ProxmoxService
             'task_id' => $taskId,
             'payload' => array_diff_key($payload, ['cipassword' => true, 'sshkeys' => true]),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function regenerateCloudInit(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        $taskId = $this->request($server)
+            ->asForm()
+            ->put("/nodes/{$node}/qemu/{$vmid}/cloudinit")
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function vmConfig(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        return $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/config") ?? [];
     }
 
     /**
