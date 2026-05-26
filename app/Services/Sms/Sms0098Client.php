@@ -26,23 +26,11 @@ class Sms0098Client
 
         $text = "کد تایید حساب شما: {$code}\nاعتبار: 10 دقیقه";
 
-        $client = new SoapClient('https://webservice.0098sms.com/service.asmx?wsdl', [
-            'encoding' => 'UTF-8',
-            'cache_wsdl' => WSDL_CACHE_NONE,
-            'exceptions' => true,
-        ]);
-
         try {
-            $result = $client->SendSMSWithID([
-                'username' => $username,
-                'password' => $password,
-                'mobileno' => $mobile,
-                'pnlno' => $panelNo,
-                'text' => $text,
-                'isflash' => false,
-            ])->SendSMSWithIDResult ?? null;
-        } catch (Throwable $e) {
-            throw new RuntimeException('ارسال پیامک با خطا مواجه شد: '.$e->getMessage(), previous: $e);
+            $result = $this->sendWithWsdl($username, $password, $panelNo, $mobile, $text);
+        } catch (Throwable) {
+            // Some hosts cannot fetch remote WSDL files. Fallback to non-WSDL SOAP mode.
+            $result = $this->sendWithoutWsdl($username, $password, $panelNo, $mobile, $text);
         }
 
         if (! is_scalar($result)) {
@@ -57,6 +45,50 @@ class Sms0098Client
         if ($resultString !== '0') {
             throw new RuntimeException('ارسال پیامک ناموفق بود. کد خطا: '.$resultString);
         }
+    }
+
+    private function sendWithWsdl(string $username, string $password, string $panelNo, string $mobile, string $text): mixed
+    {
+        $client = new SoapClient('https://webservice.0098sms.com/service.asmx?wsdl', [
+            'encoding' => 'UTF-8',
+            'cache_wsdl' => WSDL_CACHE_NONE,
+            'exceptions' => true,
+        ]);
+
+        return $client->SendSMSWithID([
+            'username' => $username,
+            'password' => $password,
+            'mobileno' => $mobile,
+            'pnlno' => $panelNo,
+            'text' => $text,
+            'isflash' => false,
+        ])->SendSMSWithIDResult ?? null;
+    }
+
+    private function sendWithoutWsdl(string $username, string $password, string $panelNo, string $mobile, string $text): mixed
+    {
+        $client = new SoapClient(null, [
+            'location' => 'https://webservice.0098sms.com/service.asmx',
+            'uri' => 'http://tempuri.org/',
+            'encoding' => 'UTF-8',
+            'exceptions' => true,
+            'trace' => false,
+        ]);
+
+        $response = $client->__soapCall('SendSMSWithID', [[
+                'username' => $username,
+                'password' => $password,
+                'mobileno' => $mobile,
+                'pnlno' => $panelNo,
+                'text' => $text,
+                'isflash' => false,
+            ]], [
+                'soapaction' => 'http://tempuri.org/SendSMSWithID',
+            ]);
+
+        return is_object($response) && property_exists($response, 'SendSMSWithIDResult')
+            ? $response->SendSMSWithIDResult
+            : $response;
     }
 
     private function normalizeIranianPhone(string $phone): string
