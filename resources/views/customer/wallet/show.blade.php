@@ -26,29 +26,6 @@
 
     <section class="mt-6 grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <aside class="space-y-6">
-            <div class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-black text-slate-950">افزایش اعتبار</h2>
-                    <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#2563EB]">درگاه آزمایشی</span>
-                </div>
-                <p class="mt-2 text-sm leading-7 text-slate-500">برای این نسخه، پرداخت از طریق درگاه آزمایشی انجام می شود اما ساختار آماده اتصال به درگاه واقعی است.</p>
-                <form method="POST" action="{{ route('customer.wallet.topups.store', [], false) }}" class="mt-5 space-y-4">
-                    @csrf
-                    <div class="grid grid-cols-2 gap-3">
-                        @foreach ($topUpPresets as $preset)
-                            <label class="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm font-black text-slate-700 transition hover:border-blue-300 hover:bg-blue-50">
-                                <input type="radio" name="amount" value="{{ $preset }}" class="sr-only" @checked((int) old('amount', request('topup') ? $topUpPresets[1] : 0) === $preset)>
-                                {{ number_format($preset) }}
-                            </label>
-                        @endforeach
-                    </div>
-                    <label class="block">
-                        <span class="text-sm font-black text-slate-700">مبلغ دلخواه</span>
-                        <input type="number" name="custom_amount" min="10000" value="{{ old('custom_amount') }}" placeholder="مثلا 750000" class="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
-                    </label>
-                    <button class="inline-flex w-full items-center justify-center rounded-2xl bg-[#2563EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#1d4ed8]">انتقال به درگاه آزمایشی</button>
-                </form>
-            </div>
 
             <div class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <h2 class="text-lg font-black text-slate-950">راهنمای برداشت ها</h2>

@@ -85,41 +85,8 @@
         </aside>
     </section>
 
-    <section class="mt-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="text-lg font-black text-slate-950">پلن های پیشنهادی VPS</h2>
-                <p class="mt-1 text-sm text-slate-500">داده نمونه برای کمک به انتخاب سریع پلن مناسب.</p>
-            </div>
-            <a href="{{ route('customer.servers.create', [], false) }}" class="text-sm font-black text-[#0069FF]">مشاهده همه گزینه ها</a>
-        </div>
-        <div class="mt-5 grid gap-4 lg:grid-cols-3">
-            @foreach ([
-                ['name' => 'شروع سریع', 'fit' => 'سایت و API سبک', 'cpu' => '2 vCPU', 'ram' => '4GB RAM', 'disk' => '60GB NVMe', 'price' => '۷۹۰٬۰۰۰', 'accent' => 'border-[#0069FF] bg-[#F2F8FF]'],
-                ['name' => 'رشد', 'fit' => 'فروشگاه و SaaS', 'cpu' => '4 vCPU', 'ram' => '8GB RAM', 'disk' => '120GB NVMe', 'price' => '۱٬۴۹۰٬۰۰۰', 'accent' => 'border-slate-200 bg-white'],
-                ['name' => 'Performance', 'fit' => 'دیتابیس و پردازش', 'cpu' => '8 vCPU', 'ram' => '16GB RAM', 'disk' => '240GB NVMe', 'price' => '۲٬۹۰۰٬۰۰۰', 'accent' => 'border-slate-200 bg-white'],
-            ] as $plan)
-                <article class="rounded-xl border p-4 {{ $plan['accent'] }}">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <h3 class="font-black text-slate-950">{{ $plan['name'] }}</h3>
-                            <p class="mt-1 text-xs font-bold text-slate-500">{{ $plan['fit'] }}</p>
-                        </div>
-                        <span class="rounded-md bg-white px-2 py-1 text-[11px] font-black text-[#0069FF] ring-1 ring-slate-200">VPS</span>
-                    </div>
-                    <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-                        <div class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><span class="block font-black">{{ $plan['cpu'] }}</span></div>
-                        <div class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><span class="block font-black">{{ $plan['ram'] }}</span></div>
-                        <div class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><span class="block font-black">{{ $plan['disk'] }}</span></div>
-                    </div>
-                    <p class="mt-4 text-left text-xl font-black text-slate-950">{{ $plan['price'] }} <span class="text-xs text-slate-500">/ ماه</span></p>
-                    <a href="{{ route('customer.servers.create', [], false) }}" class="mt-4 inline-flex w-full justify-center rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white transition hover:bg-[#0050D0]">انتخاب پلن</a>
-                </article>
-            @endforeach
-        </div>
-    </section>
 
-    <section class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <section class="mt-5 grid gap-5 xl:grid-cols-1">
         <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
             <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -169,7 +136,7 @@
             </div>
         </div>
 
-        <aside class="space-y-5">
+        {{-- <aside class="space-y-5">
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <h2 class="text-base font-black text-slate-950">دیتاسنترهای آماده</h2>
                 <div class="mt-4 space-y-3">
@@ -201,6 +168,6 @@
                     <p class="mt-2 text-sm leading-7 text-slate-500">بکاپ روزانه و مانیتورینگ پایه را هنگام ساخت ماشین فعال کنید.</p>
                 </div>
             </div>
-        </aside>
+        </aside> --}}
     </section>
 @endsection
