@@ -483,6 +483,32 @@ class ProxmoxService
     }
 
     /**
+    /**
+     * @return array<int, int>
+     */
+    public function assignedGuestVmids(ProxmoxServer $server, ?string $nodeName = null): array
+    {
+        return $this->runWithOperation($server, 'guest-vmid-inventory', function () use ($server, $nodeName): array {
+            $errors = [];
+            $nodes = collect($this->getData($server, '/nodes') ?? [])
+                ->filter(function (array $node) use ($nodeName): bool {
+                    $current = $node['node'] ?? $node['name'] ?? null;
+
+                    return filled($current) && ($nodeName === null || $current === $nodeName);
+                })
+                ->values()
+                ->all();
+
+            return collect($this->nodeVmInventory($server, $nodes, $errors))
+                ->pluck('vmid')
+                ->filter(fn (mixed $vmid): bool => is_numeric($vmid))
+                ->map(fn (mixed $vmid): int => (int) $vmid)
+                ->unique()
+                ->values()
+                ->all();
+        });
+    }
+
      * @return array<int, string>
      */
     private function extractIpAddresses(mixed $value): array
