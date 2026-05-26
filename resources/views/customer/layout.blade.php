@@ -334,16 +334,31 @@
                 </div>
             </div>
 
-            <div class="px-4 py-6 md:px-6 lg:px-8">
-                <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <p class="text-sm font-black text-[#0069FF]">{{ $customer->name }}</p>
-                        <h1 class="mt-1 text-2xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
-                        <p class="mt-1 text-sm leading-7 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>
+            <div class="px-4 pb-8 pt-4 md:px-6 lg:px-8">
+                <div class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                    <div class="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="min-w-0">
+                            <nav class="flex flex-wrap items-center gap-2 text-xs font-black text-slate-400" aria-label="breadcrumb">
+                                <a href="{{ route('dashboard', [], false) }}" class="transition hover:text-[#0069FF]">کنسول ابری</a>
+                                <svg class="size-3.5 rotate-180 text-slate-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M12.78 4.22a.75.75 0 0 1 0 1.06L8.06 10l4.72 4.72a.75.75 0 1 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/>
+                                </svg>
+                                @hasSection('breadcrumbs')
+                                    @yield('breadcrumbs')
+                                @else
+                                    <span class="truncate text-slate-700">@yield('header_title', 'پنل مشتریان')</span>
+                                @endif
+                            </nav>
+                            <div class="mt-3">
+                                <p class="text-xs font-black text-[#0069FF]">{{ $customer->name }}</p>
+                                <h1 class="mt-1 truncate text-2xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
+                                <p class="mt-1 max-w-3xl text-sm leading-7 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>
+                            </div>
+                        </div>
+                        <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex w-fit shrink-0 items-center justify-center rounded-xl bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
+                            ساخت ماشین
+                        </a>
                     </div>
-                    {{-- <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
-                        ساخت ماشین
-                    </a> --}}
                 </div>
 
                 @if (session('status'))

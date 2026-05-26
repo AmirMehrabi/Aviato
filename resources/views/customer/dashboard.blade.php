@@ -3,6 +3,9 @@
 @section('title', 'داشبورد مشتری')
 @section('header_title', 'داشبورد VPS')
 @section('header_subtitle', 'ساخت سریع ماشین ابری، کنترل هزینه و مدیریت سرورها')
+@section('breadcrumbs')
+    <span class="truncate text-slate-700">داشبورد</span>
+@endsection
 
 @php
     $activeNav = 'dashboard';
@@ -29,7 +32,7 @@
         "title": @json($vm['name']),
         "description": @json($vm['ip'].' - '.$vm['region'].' - '.$vm['plan']),
         "type": "VM",
-        "url": @json(route('customer.servers.index', [], false)),
+        "url": @json($vm['url']),
         "keywords": @json($vm['name'].' '.$vm['ip'].' '.$vm['region'].' '.$vm['plan'].' '.$vm['status'])
     }@if (! $loop->last),@endif
 @endforeach
@@ -37,137 +40,198 @@
 @endsection
 
 @section('content')
-    <section class="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_360px]">
-        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-            <div class="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
-                <div>
-                    <p class="text-sm font-black text-[#0069FF]">VPS Cloud</p>
-                    <h2 class="mt-2 text-3xl font-black leading-tight text-slate-950">ماشین ابری بعدی را در چند دقیقه آماده کنید</h2>
-                    <p class="mt-3 max-w-2xl text-sm leading-8 text-slate-600">
-                        پلن، سیستم عامل و دیتاسنتر را انتخاب کنید. هزینه به صورت PAYG از کیف پول محاسبه می شود و هر زمان خواستید می توانید منابع را ارتقا دهید.
-                    </p>
-                    <div class="mt-5 flex flex-wrap gap-3">
-                        <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
-                            ساخت ماشین
-                        </a>
-                        <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
-                            مشاهده سرورها
-                        </a>
-                    </div>
-                </div>
+    @php
+        $walletIsBlocked = $wallet->is_locked || $wallet->balance < 0;
+        $metricCards = [
+            ['label' => 'کل ماشین ها', 'value' => $dashboardStats['total'], 'hint' => 'VPSهای فعال در حساب', 'tone' => 'text-slate-950'],
+            ['label' => 'روشن', 'value' => $summary['running'], 'hint' => 'در حال مصرف کامل منابع', 'tone' => 'text-[#0069FF]'],
+            ['label' => 'منابع', 'value' => $dashboardStats['cpu'].' CPU / '.$dashboardStats['ram'].'GB', 'hint' => $dashboardStats['disk'].'GB دیسک رزرو شده', 'tone' => 'text-slate-950'],
+            ['label' => 'برآورد ماهانه', 'value' => $wallets->format($dashboardStats['monthly_spend']), 'hint' => 'بر اساس وضعیت فعلی', 'tone' => 'text-emerald-700'],
+            ['label' => 'مصرف ثبت نشده', 'value' => $wallets->format($pendingUsage), 'hint' => 'در برداشت بعدی اعمال می شود', 'tone' => $pendingUsage > 0 ? 'text-amber-600' : 'text-emerald-600'],
+        ];
+    @endphp
 
-                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div class="flex items-center justify-between gap-3">
-                        <span class="text-sm font-black text-slate-950">آمادگی حساب</span>
-                        <span class="rounded-md px-2 py-1 text-[11px] font-black {{ $wallet->balance < 0 || $wallet->is_locked ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700' }}">{{ $wallet->is_locked ? 'کیف پول قفل' : 'آماده ساخت' }}</span>
-                    </div>
-                    <p class="mt-4 text-2xl font-black {{ $wallet->balance < 0 ? 'text-red-600' : 'text-slate-950' }}">{{ $wallets->format($wallet->balance) }}</p>
-                    <p class="mt-2 text-xs font-bold leading-6 text-slate-500">موجودی کیف پول برای پرداخت لحظه ای VPS و افزونه ها استفاده می شود.</p>
-                    <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-4 inline-flex w-full justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-black text-[#0069FF] ring-1 ring-slate-200 transition hover:bg-[#EBF3FF]">
-                        افزایش اعتبار
+    @if ($vmRows->isEmpty())
+        <section class="relative overflow-hidden rounded-[2rem] border border-[#B8D6FF] bg-[#F8FBFF] px-6 py-14 text-center shadow-sm shadow-[#0069FF]/10 sm:px-10 lg:min-h-[560px]">
+            <div class="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,#B8D6FF_0,transparent_58%)] opacity-70"></div>
+            <div class="relative mx-auto flex max-w-3xl flex-col items-center">
+                <div class="grid size-24 place-items-center rounded-3xl bg-[#0069FF] text-white shadow-2xl shadow-[#0069FF]/25">
+                    <svg class="size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M6 8a6 6 0 0 1 11.7-1.9A5 5 0 0 1 18 16H7a5 5 0 0 1-1-9.9Z" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9 16v3m3-3v3m3-3v3M8 21h8" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="mt-7 rounded-full bg-white px-4 py-2 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">شروع سریع VPS Cloud</span>
+                <h2 class="mt-5 text-4xl font-black leading-tight text-slate-950 md:text-5xl">اولین ماشین ابری خود را بسازید</h2>
+                <p class="mt-5 max-w-2xl text-base font-bold leading-9 text-slate-600">
+                    هنوز هیچ VPS برای این حساب ثبت نشده است. پلن، سیستم عامل و دیتاسنتر را انتخاب کنید و بعد از آماده شدن ماشین، هزینه، مانیتورینگ و بکاپ را از همین پنل دنبال کنید.
+                </p>
+                <div class="mt-8 flex flex-wrap justify-center gap-3">
+                    <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex items-center justify-center rounded-2xl bg-[#0069FF] px-7 py-4 text-sm font-black text-white shadow-lg shadow-[#0069FF]/25 transition hover:bg-[#0050D0]">
+                        ساخت اولین ماشین
+                    </a>
+                    <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-7 py-4 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-white hover:text-[#0069FF]">
+                        شارژ کیف پول
                     </a>
                 </div>
+                <div class="mt-8 grid w-full gap-3 sm:grid-cols-3">
+                    @foreach ([
+                        ['title' => 'پرداخت PAYG', 'body' => 'مصرف از کیف پول محاسبه می شود'],
+                        ['title' => 'IP اختصاصی', 'body' => 'بعد از آماده سازی به ماشین متصل می شود'],
+                        ['title' => 'مانیتورینگ و بکاپ', 'body' => 'پس از ساخت از منوی کنسول فعال است'],
+                    ] as $item)
+                        <div class="rounded-2xl border border-white bg-white/80 p-4 text-right shadow-sm shadow-slate-200/70">
+                            <p class="font-black text-slate-950">{{ $item['title'] }}</p>
+                            <p class="mt-2 text-xs font-bold leading-6 text-slate-500">{{ $item['body'] }}</p>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="mt-5 flex w-full max-w-xl flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm shadow-slate-200/70 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs font-black text-slate-500">آمادگی حساب</p>
+                        <p class="mt-1 text-xl font-black {{ $walletIsBlocked ? 'text-red-600' : 'text-slate-950' }}">{{ $wallets->format($wallet->balance) }}</p>
+                    </div>
+                    <span class="rounded-xl px-3 py-2 text-xs font-black {{ $walletIsBlocked ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700' }}">{{ $walletIsBlocked ? 'نیازمند شارژ یا رفع قفل' : 'آماده ساخت ماشین' }}</span>
+                </div>
             </div>
-        </div>
-
-        <aside class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            @foreach ([
-                ['label' => 'سرور فعال', 'value' => $summary['running'], 'hint' => 'در حال مصرف CPU/RAM', 'tone' => 'text-[#0069FF]'],
-                ['label' => 'سرور خاموش', 'value' => $summary['stopped'], 'hint' => 'فقط دیسک و IP', 'tone' => 'text-slate-950'],
-                ['label' => 'مصرف ثبت نشده', 'value' => $wallets->format($pendingUsage), 'hint' => 'در برداشت بعدی اعمال می شود', 'tone' => $pendingUsage > 0 ? 'text-amber-600' : 'text-emerald-600'],
-            ] as $metric)
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
+        </section>
+    @else
+        <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            @foreach ($metricCards as $metric)
+                <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
                     <p class="text-xs font-black text-slate-500">{{ $metric['label'] }}</p>
                     <p class="mt-2 truncate text-2xl font-black {{ $metric['tone'] }}">{{ $metric['value'] }}</p>
-                    <p class="mt-1 text-xs font-bold text-slate-400">{{ $metric['hint'] }}</p>
-                </div>
+                    <p class="mt-1 truncate text-xs font-bold text-slate-400">{{ $metric['hint'] }}</p>
+                </article>
             @endforeach
-        </aside>
-    </section>
+        </section>
 
-
-    <section class="mt-5 grid gap-5 xl:grid-cols-1">
-        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 class="text-lg font-black text-slate-950">سرورهای اخیر</h2>
-                    <p class="mt-1 text-sm text-slate-500">{{ $virtualMachines->count() }} ماشین در حساب شما ثبت شده است.</p>
+        <section class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_380px]">
+            <div class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                <div class="relative overflow-hidden bg-[#031B4E] p-6 text-white">
+                    <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(0,105,255,.45),transparent_28%),radial-gradient(circle_at_85%_10%,rgba(0,166,126,.28),transparent_24%)]"></div>
+                    <div class="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                            <p class="text-sm font-black text-[#8FBFFF]">Account Health</p>
+                            <h2 class="mt-2 text-3xl font-black leading-tight">وضعیت حساب شما شفاف است</h2>
+                            <p class="mt-3 max-w-2xl text-sm font-bold leading-8 text-[#C7D4EA]">
+                                {{ $summary['running'] }} ماشین روشن، {{ $summary['stopped'] }} ماشین خاموش و {{ $wallets->format($pendingUsage) }} مصرف ثبت نشده دارید.
+                            </p>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                            <p class="text-xs font-black text-[#9DB4DC]">موجودی کیف پول</p>
+                            <p class="mt-2 text-2xl font-black {{ $walletIsBlocked ? 'text-red-200' : 'text-white' }}">{{ $wallets->format($wallet->balance) }}</p>
+                            <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-4 inline-flex w-full justify-center rounded-xl bg-[#00A67E] px-4 py-2.5 text-sm font-black text-white transition hover:bg-[#008F6E]">افزایش اعتبار</a>
+                        </div>
+                    </div>
                 </div>
-                <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex w-fit justify-center rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50">همه سرورها</a>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-right text-sm">
-                    <thead class="border-b border-slate-200 bg-slate-50 text-xs font-black text-slate-500">
-                        <tr>
-                            <th class="px-5 py-3">ماشین</th>
-                            <th class="px-5 py-3">منطقه</th>
-                            <th class="px-5 py-3">پلن</th>
-                            <th class="px-5 py-3">وضعیت</th>
-                            <th class="px-5 py-3 text-left">هزینه ماهانه</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse ($vmRows->take(5) as $vm)
-                            <tr class="transition hover:bg-[#F8FBFF]">
-                                <td class="whitespace-nowrap px-5 py-4">
-                                    <p class="font-black text-slate-950" dir="ltr">{{ $vm['name'] }}</p>
-                                    <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ $vm['ip'] }}</p>
-                                </td>
-                                <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $vm['region'] }}</td>
-                                <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $vm['plan'] }}</td>
-                                <td class="whitespace-nowrap px-5 py-4">
-                                    <span class="inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-black {{ $vm['statusClass'] }}">
-                                        <span class="size-2 rounded-full {{ $vm['dot'] }}"></span>
-                                        {{ $vm['status'] }}
-                                    </span>
-                                </td>
-                                <td class="whitespace-nowrap px-5 py-4 text-left font-black text-slate-950">{{ $wallets->format($vm['cost']) }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-5 py-12 text-center">
-                                    <p class="text-sm font-black text-slate-950">هنوز سروری ندارید.</p>
-                                    <a href="{{ route('customer.servers.create', [], false) }}" class="mt-3 inline-flex rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">ساخت اولین ماشین</a>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
 
-        {{-- <aside class="space-y-5">
-            <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                <h2 class="text-base font-black text-slate-950">دیتاسنترهای آماده</h2>
-                <div class="mt-4 space-y-3">
-                    @foreach ([
-                        ['name' => 'تهران ۱', 'latency' => 'کمترین تاخیر داخل ایران', 'status' => 'آماده'],
-                        ['name' => 'شیراز ۱', 'latency' => 'ظرفیت اقتصادی', 'status' => 'آماده'],
-                        ['name' => 'فرانکفورت', 'latency' => 'اتصال بین الملل', 'status' => 'محدود'],
-                    ] as $region)
-                        <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
-                            <div>
-                                <p class="text-sm font-black text-slate-950">{{ $region['name'] }}</p>
-                                <p class="mt-1 text-xs font-bold text-slate-500">{{ $region['latency'] }}</p>
+                <div class="grid gap-4 p-5 lg:grid-cols-3">
+                    @foreach ($notifications as $notice)
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex items-start gap-3">
+                                <span class="mt-1 size-2.5 shrink-0 rounded-full {{ $notice['tone'] }}"></span>
+                                <div>
+                                    <p class="font-black text-slate-950">{{ $notice['title'] }}</p>
+                                    <p class="mt-2 text-xs font-bold leading-6 text-slate-500">{{ $notice['body'] }}</p>
+                                </div>
                             </div>
-                            <span class="rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-black text-emerald-700">{{ $region['status'] }}</span>
                         </div>
                     @endforeach
                 </div>
             </div>
 
-            <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                <h2 class="text-base font-black text-slate-950">ایمیج های محبوب</h2>
-                <div class="mt-4 flex flex-wrap gap-2">
-                    @foreach (['Ubuntu 24.04', 'Debian 12', 'Rocky Linux 9', 'Windows Server'] as $image)
-                        <span class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">{{ $image }}</span>
-                    @endforeach
+            <aside class="space-y-5">
+                <div class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black text-slate-500">صورتحساب</p>
+                            <h2 class="mt-1 font-black text-slate-950">آخرین وضعیت مالی</h2>
+                        </div>
+                        <span class="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-500">{{ $invoiceCount }} فاکتور</span>
+                    </div>
+                    <div class="mt-4 space-y-3 text-sm">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="font-bold text-slate-500">آخرین صورتحساب</span>
+                            <span class="font-black text-slate-950">{{ $latestInvoice?->number ?? 'صادر نشده' }}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="font-bold text-slate-500">مصرف ثبت نشده</span>
+                            <span class="font-black {{ $pendingUsage > 0 ? 'text-amber-600' : 'text-emerald-600' }}">{{ $wallets->format($pendingUsage) }}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="font-bold text-slate-500">وضعیت کیف پول</span>
+                            <span class="font-black {{ $walletIsBlocked ? 'text-red-600' : 'text-emerald-700' }}">{{ $walletIsBlocked ? 'نیازمند توجه' : 'فعال' }}</span>
+                        </div>
+                    </div>
+                    <a href="{{ route('customer.invoices.index', [], false) }}" class="mt-5 inline-flex w-full justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مشاهده صورتحساب ها</a>
                 </div>
-                <div class="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-                    <p class="text-sm font-black text-slate-950">افزونه پیشنهادی</p>
-                    <p class="mt-2 text-sm leading-7 text-slate-500">بکاپ روزانه و مانیتورینگ پایه را هنگام ساخت ماشین فعال کنید.</p>
+
+                <div class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                    <h2 class="font-black text-slate-950">آخرین تراکنش ها</h2>
+                    <div class="mt-4 space-y-3">
+                        @forelse ($transactions as $transaction)
+                            <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-black text-slate-950">{{ $transaction->description ?: 'تراکنش کیف پول' }}</p>
+                                    <p class="mt-1 text-xs font-bold text-slate-400" dir="ltr">{{ $transaction->created_at?->format('Y-m-d H:i') }}</p>
+                                </div>
+                                <span class="shrink-0 text-sm font-black {{ $transaction->amount < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $wallets->format($transaction->amount) }}</span>
+                            </div>
+                        @empty
+                            <p class="rounded-2xl bg-slate-50 px-4 py-5 text-center text-sm font-bold text-slate-500">هنوز تراکنشی ثبت نشده است.</p>
+                        @endforelse
+                    </div>
                 </div>
+            </aside>
+        </section>
+
+        <section class="mt-5 overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-black text-slate-950">ماشین های اخیر</h2>
+                    <p class="mt-1 text-sm text-slate-500">وضعیت، منابع و هزینه تقریبی VPSهای همین حساب.</p>
+                </div>
+                <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex w-fit justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">همه سرورها</a>
             </div>
-        </aside> --}}
-    </section>
+
+            <div class="grid gap-4 p-5 lg:grid-cols-2 2xl:grid-cols-3">
+                @foreach ($vmRows->take(6) as $vm)
+                    <article class="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[#B8D6FF] hover:shadow-lg hover:shadow-[#0069FF]/10">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="truncate text-lg font-black text-slate-950" dir="ltr">{{ $vm['name'] }}</p>
+                                <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr">{{ $vm['ip'] }} · {{ $vm['region'] }}</p>
+                            </div>
+                            <span class="inline-flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black {{ $vm['statusClass'] }}">
+                                <span class="size-2 rounded-full {{ $vm['dot'] }}"></span>
+                                {{ $vm['status'] }}
+                            </span>
+                        </div>
+                        <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                            <div class="rounded-xl bg-slate-50 px-2 py-3">
+                                <p class="text-[11px] font-black text-slate-400">CPU</p>
+                                <p class="mt-1 text-sm font-black text-slate-950" dir="ltr">{{ $vm['cpu'] }}</p>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-2 py-3">
+                                <p class="text-[11px] font-black text-slate-400">RAM</p>
+                                <p class="mt-1 text-sm font-black text-slate-950" dir="ltr">{{ $vm['ram'] }}</p>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-2 py-3">
+                                <p class="text-[11px] font-black text-slate-400">Disk</p>
+                                <p class="mt-1 text-sm font-black text-slate-950" dir="ltr">{{ $vm['disk'] }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                            <div>
+                                <p class="text-xs font-black text-slate-400">پلن / هزینه</p>
+                                <p class="mt-1 text-sm font-black text-slate-950">{{ $vm['plan'] }} · {{ $wallets->format($vm['cost']) }}</p>
+                            </div>
+                            <a href="{{ $vm['url'] }}" class="inline-flex shrink-0 rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white transition hover:bg-[#0069FF]">مشاهده</a>
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+        </section>
+    @endif
 @endsection

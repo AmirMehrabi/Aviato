@@ -36,6 +36,7 @@ class DashboardController extends Controller
                 : $this->billing->estimateStoppedMonthly($vm);
 
             return [
+                'id' => $vm->id,
                 'name' => $vm->name,
                 'ip' => $vm->ip_address ?: 'بدون IP',
                 'region' => $vm->node ?: 'نامشخص',
@@ -45,9 +46,19 @@ class DashboardController extends Controller
                 'dot' => $vm->status === VirtualMachine::STATUS_RUNNING ? 'bg-emerald-500' : 'bg-slate-400',
                 'cpu' => $vm->cpu_cores.' Core',
                 'ram' => $vm->ram_gb.' GB',
+                'disk' => $vm->disk_gb.' GB',
                 'cost' => $monthlyCost,
+                'url' => route('customer.servers.show', $vm, false),
             ];
         });
+
+        $dashboardStats = [
+            'total' => $virtualMachines->count(),
+            'cpu' => $virtualMachines->sum('cpu_cores'),
+            'ram' => $virtualMachines->sum('ram_gb'),
+            'disk' => $virtualMachines->sum('disk_gb'),
+            'monthly_spend' => $vmRows->sum('cost'),
+        ];
 
         $notifications = [
             ['title' => 'وضعیت کیف پول', 'body' => $wallet->balance < 0 ? 'کیف پول وارد محدوده بدهی شده است و بهتر است آن را شارژ کنید.' : 'کیف پول فعال است و تراکنش ها در لحظه ثبت می شوند.', 'tone' => $wallet->balance < 0 ? 'bg-red-500' : 'bg-emerald-500'],
@@ -64,6 +75,7 @@ class DashboardController extends Controller
             'summary' => $summary,
             'pendingUsage' => $pendingUsage,
             'vmRows' => $vmRows,
+            'dashboardStats' => $dashboardStats,
             'notifications' => $notifications,
             'latestInvoice' => $latestInvoice,
             'invoiceCount' => $customer->invoices()->count(),
