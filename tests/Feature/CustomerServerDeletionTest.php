@@ -83,7 +83,7 @@ class CustomerServerDeletionTest extends TestCase
             $mock->shouldReceive('waitForTask')->once()->with(Mockery::any(), 'pve1', 'UPID:delete', 300)->andReturn(['exitstatus' => 'OK']);
         });
 
-        app(DeleteVirtualMachineJob::class, ['virtualMachineId' => $vm->id])->handle(
+        (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
             app(\App\Services\IpPoolService::class),
         );
@@ -112,7 +112,7 @@ class CustomerServerDeletionTest extends TestCase
             $mock->shouldReceive('deleteVm')->never();
         });
 
-        app(DeleteVirtualMachineJob::class, ['virtualMachineId' => $vm->id])->handle(
+        (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
             app(\App\Services\IpPoolService::class),
         );
@@ -129,7 +129,7 @@ class CustomerServerDeletionTest extends TestCase
             $mock->shouldReceive('vmStatus')->once()->andThrow(new \RuntimeException('Proxmox unavailable'));
         });
 
-        app(DeleteVirtualMachineJob::class, ['virtualMachineId' => $vm->id])->handle(
+        (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
             app(\App\Services\IpPoolService::class),
         );
