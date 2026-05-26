@@ -22,7 +22,7 @@
         "title": @json($server->name),
         "description": @json(($server->ip_address ?: 'بدون IP').' - '.($server->node ?: 'نامشخص')),
         "type": "VM",
-        "url": @json(route('customer.servers.index', [], false).'?search='.$server->name),
+        "url": @json(route('customer.servers.show', $server, false)),
         "keywords": @json($server->name.' '.$server->hostname.' '.$server->ip_address.' '.$server->node.' '.$server->status)
     }@if (! $loop->last),@endif
 @endforeach
@@ -79,6 +79,7 @@
                         <th class="px-5 py-3">Provision</th>
                         <th class="px-5 py-3">وضعیت</th>
                         <th class="px-5 py-3 text-left">هزینه ماهانه</th>
+                        <th class="px-5 py-3">عملیات</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -119,10 +120,15 @@
                                 <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $statusClass }}">{{ $statusLabel }}</span>
                             </td>
                             <td class="whitespace-nowrap px-5 py-4 text-left font-black text-slate-950">{{ $wallets->format($monthlyCost) }}</td>
+                            <td class="whitespace-nowrap px-5 py-4">
+                                <a href="{{ route('customer.servers.show', $server, false) }}" class="inline-flex items-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
+                                    مشاهده
+                                </a>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-12 text-center">
+                            <td colspan="7" class="px-5 py-12 text-center">
                                 <p class="font-black text-slate-950">هنوز ماشینی برای این حساب ثبت نشده است.</p>
                                 <p class="mt-2 text-sm text-slate-500">با ساخت اولین VPS می توانید مصرف و هزینه را از همین صفحه پیگیری کنید.</p>
                                 <a href="{{ route('customer.servers.create', [], false) }}" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">ساخت اولین ماشین</a>

@@ -8,11 +8,13 @@ use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
+use App\Services\IpPoolService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ServerController extends Controller
@@ -23,6 +25,7 @@ class ServerController extends Controller
         private readonly WalletService $wallets,
         private readonly BillingService $billing,
         private readonly UsageBillingService $usageBilling,
+        private readonly IpPoolService $ipPool,
         private readonly CloudVmProvisioningService $cloudProvisioning,
     ) {}
 
@@ -142,6 +145,53 @@ class ServerController extends Controller
                 ->withInput($request->except('login_password'))
                 ->with('error', 'ساخت VPS ممکن نیست: '.$exception->getMessage());
         }
+    }
+
+    public function show(Request $request, VirtualMachine $virtualMachine): View
+    {
+        $server = $this->resolveCustomerServer($request, $virtualMachine);
+        $customer = $request->user('customer');
+        $wallet = $this->wallets->walletFor($customer);
+
+        $server->loadMissing(['bundle', 'proxmoxServer', 'cloudImage', 'reservedIpAddress.pool']);
+
+        return view('customer.servers.show', [
+            'customer' => $customer,
+            'wallet' => $wallet,
+            'wallets' => $this->wallets,
+            'server' => $server,
+            'billing' => $this->billing,
+            'invoiceCount' => $customer->invoices()->count(),
+        ]);
+    }
+
+    public function destroy(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $server = $this->resolveCustomerServer($request, $virtualMachine);
+
+        DB::transaction(function () use ($server): void {
+            $server->loadMissing('reservedIpAddress');
+            $address = $server->reservedIpAddress;
+
+            if ($address && (int) $address->virtual_machine_id === (int) $server->id) {
+                $this->ipPool->release($address);
+            }
+
+            $server->delete();
+        });
+
+        return redirect()
+            ->route('customer.servers.index')
+            ->with('status', 'سرور حذف شد و IP به IP Pool بازگردانده شد.');
+    }
+
+    private function resolveCustomerServer(Request $request, VirtualMachine $virtualMachine): VirtualMachine
+    {
+        $customer = $request->user('customer');
+
+        abort_if((int) $virtualMachine->customer_id !== (int) $customer->id, 404);
+
+        return $virtualMachine;
     }
 
     private function osFamilies($cloudImages): array
