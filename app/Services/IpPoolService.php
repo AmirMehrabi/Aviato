@@ -11,7 +11,7 @@ use RuntimeException;
 class IpPoolService
 {
     /**
-         * @param  array<int, string>  $excludedAddresses
+     * @param  array<int, string>  $excludedAddresses
      */
     public function reserveForVm(VirtualMachine $vm, array $excludedAddresses = []): IpAddress
     {

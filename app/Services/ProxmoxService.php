@@ -439,11 +439,11 @@ class ProxmoxService
      */
     public function assignedGuestIpAddresses(ProxmoxServer $server, ?string $nodeName = null): array
     {
-        return $this->runWithOperation($server, "guest-ip-inventory", function () use ($server, $nodeName): array {
+        return $this->runWithOperation($server, 'guest-ip-inventory', function () use ($server, $nodeName): array {
             $errors = [];
-            $nodes = collect($this->getData($server, "/nodes") ?? [])
+            $nodes = collect($this->getData($server, '/nodes') ?? [])
                 ->filter(function (array $node) use ($nodeName): bool {
-                    $current = $node["node"] ?? $node["name"] ?? null;
+                    $current = $node['node'] ?? $node['name'] ?? null;
 
                     return filled($current) && ($nodeName === null || $current === $nodeName);
                 })
@@ -453,22 +453,22 @@ class ProxmoxService
             $addresses = [];
 
             foreach ($this->nodeVmInventory($server, $nodes, $errors) as $guest) {
-                $node = $guest["node"] ?? null;
-                $vmid = isset($guest["vmid"]) ? (int) $guest["vmid"] : null;
-                $type = $guest["type"] ?? "qemu";
+                $node = $guest['node'] ?? null;
+                $vmid = isset($guest['vmid']) ? (int) $guest['vmid'] : null;
+                $type = $guest['type'] ?? 'qemu';
 
                 if (! $node || ! $vmid) {
                     continue;
                 }
 
-                $configPath = $type === "lxc"
+                $configPath = $type === 'lxc'
                     ? "/nodes/{$node}/lxc/{$vmid}/config"
                     : "/nodes/{$node}/qemu/{$vmid}/config";
 
                 $config = $this->getOptionalData($server, $configPath, $errors, []);
                 $addresses = array_merge($addresses, $this->extractIpAddresses($config));
 
-                if ($type === "qemu") {
+                if ($type === 'qemu') {
                     $interfaces = $this->getOptionalData($server, "/nodes/{$node}/qemu/{$vmid}/agent/network-get-interfaces", $errors, []);
                     $addresses = array_merge($addresses, $this->extractIpAddresses($interfaces));
                 }

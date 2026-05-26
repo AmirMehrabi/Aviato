@@ -10,8 +10,8 @@ use App\Models\IpPool;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Services\ProxmoxService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
@@ -25,10 +25,11 @@ class CloudVmProvisioningTest extends TestCase
     {
         Bus::fake();
 
-        $customer = Customer::factory()->create();
-        ->mock(ProxmoxService::class, function (): void {
-            ->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
         });
+
+        $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog();
 
@@ -55,6 +56,36 @@ class CloudVmProvisioningTest extends TestCase
         ]);
 
         Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_remote_assigned_pool_ip_is_skipped_when_reserving(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
+        [$image, $bundle] = $this->catalog('192.168.10.51');
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn(['192.168.10.50']);
+        });
+
+        $this->actingAs($customer, 'customer');
+        $this->post($this->customerBaseUrl.'/servers', [
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'customer-vps-102',
+            'hostname' => 'customer-vps-102',
+            'login_username' => 'ubuntu',
+        ])->assertRedirect($this->customerBaseUrl.'/servers');
+
+        $vm = VirtualMachine::query()->firstOrFail();
+        $this->assertSame('192.168.10.51', $vm->ip_address);
+        $this->assertDatabaseHas('ip_addresses', [
+            'address' => '192.168.10.51',
+            'virtual_machine_id' => $vm->id,
+            'status' => IpAddress::STATUS_RESERVED,
+        ]);
     }
 
     public function test_cloud_image_minimum_resources_are_enforced(): void
@@ -120,7 +151,7 @@ class CloudVmProvisioningTest extends TestCase
     /**
      * @return array{CloudImage, VmBundle}
      */
-    private function catalog(): array
+    private function catalog(string $poolEnd = '192.168.10.50'): array
     {
         $server = ProxmoxServer::create([
             'name' => 'THR Proxmox',
@@ -164,7 +195,7 @@ class CloudVmProvisioningTest extends TestCase
             'prefix_length' => 24,
             'nameservers' => '1.1.1.1',
             'start_ip' => '192.168.10.50',
-            'end_ip' => '192.168.10.50',
+            'end_ip' => $poolEnd,
             'is_active' => true,
         ]);
 
