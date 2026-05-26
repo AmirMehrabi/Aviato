@@ -432,9 +432,6 @@ class ProxmoxService
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    /**
      * @return array<int, string>
      */
     public function assignedGuestIpAddresses(ProxmoxServer $server, ?string $nodeName = null): array
@@ -481,7 +478,6 @@ class ProxmoxService
                 ->all();
         });
     }
-
     /**
     /**
      * @return array<int, int>
@@ -508,6 +504,7 @@ class ProxmoxService
                 ->all();
         });
     }
+    /**
 
      * @return array<int, string>
      */
