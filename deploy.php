@@ -59,4 +59,10 @@ after('deploy:vendors', 'npm:build');
 
 after('deploy:success', 'artisan:queue:restart');
 
+task('php-fpm:reload', function () {
+    run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
+});
+
+after('deploy:success', 'php-fpm:reload');
+
 after('deploy:failed', 'deploy:unlock');
