@@ -8,6 +8,7 @@ use App\Models\IpAddress;
 use App\Models\IpPool;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
+use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -77,6 +78,7 @@ class CustomerServerDeletionTest extends TestCase
 
         $this->mock(ProxmoxService::class, function ($mock): void {
             $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
             $mock->shouldReceive('shutdownVm')->once()->andReturn(['task_id' => 'UPID:shutdown']);
             $mock->shouldReceive('waitForTask')->once()->with(Mockery::any(), 'pve1', 'UPID:shutdown', 180)->andReturn(['exitstatus' => 'OK']);
             $mock->shouldReceive('deleteVm')->once()->andReturn(['task_id' => 'UPID:delete']);
@@ -85,7 +87,7 @@ class CustomerServerDeletionTest extends TestCase
 
         (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
-            app(\App\Services\IpPoolService::class),
+            app(IpPoolService::class),
         );
 
         $vm->refresh();
@@ -114,7 +116,7 @@ class CustomerServerDeletionTest extends TestCase
 
         (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
-            app(\App\Services\IpPoolService::class),
+            app(IpPoolService::class),
         );
 
         $this->assertSame(VirtualMachine::STATUS_DELETED, $vm->fresh()->status);
@@ -131,7 +133,7 @@ class CustomerServerDeletionTest extends TestCase
 
         (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
-            app(\App\Services\IpPoolService::class),
+            app(IpPoolService::class),
         );
 
         $vm->refresh();

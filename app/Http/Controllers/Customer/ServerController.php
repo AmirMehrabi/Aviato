@@ -175,7 +175,7 @@ class ServerController extends Controller
                 ->route('customer.servers.index')
                 ->with('status', 'درخواست ساخت VPS ثبت شد. IP: '.$result['vm']->ip_address)
                 ->with('provisioning_password', $result['password']);
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             return back()
                 ->withInput($request->except('login_password'))
                 ->with('error', 'ساخت VPS ممکن نیست: '.$exception->getMessage());

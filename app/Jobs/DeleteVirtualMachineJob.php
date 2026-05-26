@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class DeleteVirtualMachineJob implements ShouldQueue, ShouldBeUnique
+class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
 {
     use FoundationQueueable;
 
@@ -68,6 +68,13 @@ class DeleteVirtualMachineJob implements ShouldQueue, ShouldBeUnique
                         $vm->forceFill(['delete_task_id' => $shutdown['task_id'] ?? null])->save();
                         $proxmox->waitForTask($server, $node, (string) $shutdown['task_id'], 180);
                         $history[] = ['step' => 'shutdown_wait', 'result' => 'OK', 'at' => now()->toISOString()];
+
+                        $afterShutdown = $proxmox->vmStatus($server, $node, $vmid);
+                        $history[] = ['step' => 'status_after_shutdown', 'result' => $afterShutdown, 'at' => now()->toISOString()];
+
+                        if (($afterShutdown['status'] ?? null) === 'running') {
+                            throw new \RuntimeException('VM is still running after graceful shutdown.');
+                        }
                     } catch (Throwable $shutdownException) {
                         $history[] = ['step' => 'shutdown_failed', 'error' => $shutdownException->getMessage(), 'at' => now()->toISOString()];
                         $stop = $proxmox->stopVm($server, $node, $vmid);
