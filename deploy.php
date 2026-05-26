@@ -1,0 +1,62 @@
+<?php
+
+namespace Deployer;
+
+require 'recipe/laravel.php';
+
+set('application', 'aviato');
+set('repository', 'git@github.com:AmirMehrabi/Aviato.git');
+
+set('keep_releases', 5);
+set('default_timeout', 600);
+
+// You asked for composer update on each deploy.
+// Safer production default is "install", but this does what you asked.
+set('composer_action', 'update');
+
+set('composer_options', '--verbose --prefer-dist --no-progress --no-interaction --no-dev --optimize-autoloader');
+
+set('shared_files', [
+    '.env',
+]);
+
+set('shared_dirs', [
+    'storage',
+]);
+
+set('writable_dirs', [
+    'bootstrap/cache',
+    'storage',
+]);
+
+set('writable_mode', 'acl');
+
+// Used by GitHub Actions or your local computer.
+// This connects to the production server by SSH.
+host('production')
+    ->set('hostname', 'aviato.ir')
+    ->set('remote_user', 'deploy')
+    ->set('deploy_path', '/var/www/html/aviato')
+    ->set('branch', 'master');
+
+// Used only when you manually run Deployer from the production server itself.
+// Example: vendor/bin/dep deploy local -vvv
+localhost('local')
+    ->set('deploy_path', '/var/www/html/aviato')
+    ->set('branch', 'master');
+
+// Frontend build if package.json exists.
+task('npm:build', function () {
+    if (test('[ -f {{release_path}}/package.json ]')) {
+        run('cd {{release_path}} && npm ci && npm run build');
+    }
+});
+
+after('deploy:vendors', 'npm:build');
+
+// Laravel recipe already runs php artisan migrate --force.
+// Do not add another migration hook, or migrations may run twice.
+
+after('deploy:success', 'artisan:queue:restart');
+
+after('deploy:failed', 'deploy:unlock');
