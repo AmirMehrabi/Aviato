@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Models\CloudImage;
 use App\Models\VirtualMachine;
+use App\Models\VmBackup;
 use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
@@ -188,7 +189,24 @@ class ServerController extends Controller
         $customer = $request->user('customer');
         $wallet = $this->wallets->walletFor($customer);
 
-        $server->loadMissing(['bundle', 'proxmoxServer', 'cloudImage', 'reservedIpAddress.pool']);
+        $server->loadMissing([
+            'bundle',
+            'proxmoxServer',
+            'cloudImage',
+            'reservedIpAddress.pool',
+            'backupPolicy',
+            'backups' => fn ($query) => $query->latest()->limit(5),
+        ]);
+
+        $monthlyCost = $server->isActionLocked()
+            ? 0
+            : ($server->isRunning()
+                ? $this->billing->estimateMonthly($server)
+                : $this->billing->estimateStoppedMonthly($server));
+        $sshCommand = $server->ip_address
+            ? 'ssh '.($server->login_username ?: 'root').'@'.$server->ip_address
+            : null;
+        $latestBackup = $server->backups->first();
 
         return view('customer.servers.show', [
             'customer' => $customer,
@@ -196,6 +214,22 @@ class ServerController extends Controller
             'wallets' => $this->wallets,
             'server' => $server,
             'billing' => $this->billing,
+            'monthlyCost' => $monthlyCost,
+            'sshCommand' => $sshCommand,
+            'statusLabel' => $this->statusLabel($server->status),
+            'statusClass' => $this->statusClass($server->status),
+            'provisioningLabel' => $this->provisioningLabel($server->provisioning_status),
+            'provisioningClass' => $this->provisioningClass($server->provisioning_status),
+            'backupSummary' => [
+                'enabled' => (bool) $server->backupPolicy?->is_enabled,
+                'frequency' => $server->backupPolicy?->frequency,
+                'retention' => $server->backupPolicy?->retention_count,
+                'next_run_at' => $server->backupPolicy?->next_run_at,
+                'ready_count' => $server->backups->where('status', VmBackup::STATUS_READY)->count(),
+                'latest_status' => $latestBackup?->status,
+                'latest_at' => $latestBackup?->created_at,
+                'latest_error' => $latestBackup?->status === VmBackup::STATUS_FAILED ? $latestBackup->error : null,
+            ],
             'invoiceCount' => $customer->invoices()->count(),
         ]);
     }
@@ -316,6 +350,16 @@ class ServerController extends Controller
             VirtualMachine::PROVISION_FAILED => 'bg-red-50 text-red-600',
             VirtualMachine::PROVISION_PENDING => 'bg-blue-50 text-[#0069FF]',
             default => 'bg-slate-100 text-slate-600',
+        };
+    }
+
+    private function provisioningLabel(?string $status): string
+    {
+        return match ($status) {
+            VirtualMachine::PROVISION_READY => 'آماده',
+            VirtualMachine::PROVISION_FAILED => 'ناموفق',
+            VirtualMachine::PROVISION_PENDING => 'در حال آماده سازی',
+            default => $status ?: '-',
         };
     }
 }

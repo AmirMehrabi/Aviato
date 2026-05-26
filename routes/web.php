@@ -47,12 +47,12 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->defaults('portal', 'admin')
             ->name('admin.login.store');
 
-        Route::get($adminRegister, [RegisteredUserController::class, 'create'])
-            ->defaults('portal', 'admin')
-            ->name('admin.register');
-        Route::post($adminRegister, [RegisteredUserController::class, 'store'])
-            ->defaults('portal', 'admin')
-            ->name('admin.register.store');
+        // Route::get($adminRegister, [RegisteredUserController::class, 'create'])
+        //     ->defaults('portal', 'admin')
+        //     ->name('admin.register');
+        // Route::post($adminRegister, [RegisteredUserController::class, 'store'])
+        //     ->defaults('portal', 'admin')
+        //     ->name('admin.register.store');
     });
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
