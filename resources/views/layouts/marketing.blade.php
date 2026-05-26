@@ -33,6 +33,7 @@
                     <a href="{{ route('home') }}" class="transition hover:text-[#0069FF] {{ $activePage === 'home' ? 'text-[#0069FF]' : '' }}">خانه</a>
                     <a href="{{ route('solutions') }}" class="transition hover:text-[#0069FF] {{ $activePage === 'solutions' ? 'text-[#0069FF]' : '' }}">راهکارها</a>
                     <a href="{{ route('pricing') }}" class="transition hover:text-[#0069FF] {{ $activePage === 'pricing' ? 'text-[#0069FF]' : '' }}">قیمت گذاری</a>
+                    <a href="{{ route('changelog') }}" class="transition hover:text-[#0069FF] {{ $activePage === 'changelog' ? 'text-[#0069FF]' : '' }}">تغییرات</a>
                     <a href="{{ route('contact') }}" class="transition hover:text-[#0069FF] {{ $activePage === 'contact' ? 'text-[#0069FF]' : '' }}">تماس با ما</a>
                 </div>
                 <div class="flex items-center gap-2">
@@ -63,6 +64,7 @@
                     <a href="{{ route('home') }}" class="transition hover:text-[#0069FF]">خانه</a>
                     <a href="{{ route('solutions') }}" class="transition hover:text-[#0069FF]">راهکارها</a>
                     <a href="{{ route('pricing') }}" class="transition hover:text-[#0069FF]">قیمت گذاری</a>
+                    <a href="{{ route('changelog') }}" class="transition hover:text-[#0069FF]">تغییرات</a>
                     <a href="{{ route('contact') }}" class="transition hover:text-[#0069FF]">تماس با ما</a>
                 </div>
             </div>

@@ -21,6 +21,7 @@ use App\Http\Controllers\Customer\ServerController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
 use App\Models\VmBundle;
 use App\Services\WalletService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 $adminDomain = config('portals.admin.domain');
@@ -195,4 +196,16 @@ Route::get('/solutions', function (WalletService $wallets) {
         'wallets' => $wallets,
     ]);
 })->name('solutions');
+
+Route::get('/changelog', function () {
+    if (Auth::guard('admin')->check()) {
+        return redirect()->route('admin.dashboard');
+    }
+
+    if (Auth::guard('customer')->check()) {
+        return redirect()->route('dashboard');
+    }
+
+    return view('changelog');
+})->name('changelog');
 Route::view('/contact', 'contact')->name('contact');
