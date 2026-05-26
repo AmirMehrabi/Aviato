@@ -49,8 +49,8 @@
         <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-[72%] bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_86%)]"></div>
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] lg:items-center">
             <div>
-                <h1 class="max-w-4xl text-4xl font-black leading-[1.25] tracking-normal text-slate-950 md:text-6xl">
-                    Droplet ابری بخرید؛
+                <h1 class="max-w-2xl text-4xl font-black leading-[1.25] tracking-normal text-slate-950 md:text-4xl">
+                    سرور ابری بخرید؛
                     <span class="block text-[#0069FF]">در کمتر از یک دقیقه آنلاین شوید.</span>
                 </h1>
                 <p class="mt-6 max-w-2xl text-lg leading-9 text-slate-600 md:text-xl">
