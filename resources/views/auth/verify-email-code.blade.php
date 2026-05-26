@@ -26,6 +26,9 @@
                     @if (session('status'))
                         <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{{ session('status') }}</div>
                     @endif
+                    @if ($errors->any())
+                        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first() }}</div>
+                    @endif
 
                     @if ($isSmsMode)
                         <label class="block">
@@ -72,11 +75,6 @@
 </body>
 <script>
     (function () {
-        const status = @json(session('status'));
-        const firstError = @json($errors->first() ?: null);
-        if (status) alert(status);
-        if (firstError) alert(firstError);
-
         document.querySelectorAll('form[data-submit-loading]').forEach((form) => {
             form.addEventListener('submit', () => {
                 const button = form.querySelector('button[type="submit"]');
