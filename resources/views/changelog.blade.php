@@ -9,8 +9,8 @@
     $releases = [
         [
             'version' => '0.8.7',
-            'date' => '۲۷ مه ۲۰۲۶',
-            'tag' => 'بهبودهای رابط و auth',
+            'date' => 'ششم خرداد ۱۴۰۵',
+            // 'tag' => 'بهبودهای رابط و auth',
             // 'summary' => 'این نسخه روی تبدیل صفحه خانه به یک لندینگ فروش VPS و پاکسازی مسیرهای ورود و ثبت نام برای پنل‌ها تمرکز دارد.',
             'items' => [
                 'بازطراحی hero صفحه خانه با ظاهر browser-window و نگه داشتن کارت سفارش VPS داخل آن',
@@ -22,8 +22,8 @@
         ],
         [
             'version' => '0.8.6',
-            'date' => '۲۷ مه ۲۰۲۶',
-            'tag' => 'بهبودهای امروز',
+            'date' => 'پنجم خرداد ۱۴۰۵',
+            // 'tag' => 'بهبودهای امروز',
             'summary' => 'این نسخه روی روان‌تر شدن تجربه مشتری و پاکسازی وضعیت‌های ناسازگار تمرکز دارد؛ هم در ساخت سرور و هم در نگه‌داری داده‌های سرور.',
             'items' => [
                 'افزودن حالت loading برای دکمه «Add Server» تا کاربر وضعیت ارسال را ببیند',
@@ -34,7 +34,7 @@
         ],
         [
             'version' => '0.8.5',
-            'date' => '۲۶ مه ۲۰۲۶',
+            'date' => 'چهارم خرداد ۱۴۰۵',
             'tag' => 'اولین انتشار',
             'summary' => 'اولین نسخه عمومی آویاتو بود؛ یک شروع ساده برای ساخت، مدیریت و تحویل VPS با مسیر خرید روشن و تجربه قابل فهم برای مشتری.',
             'items' => [
@@ -65,13 +65,18 @@
                         <div>
                             <div class="flex flex-wrap items-center gap-3">
                                 <h2 class="text-3xl font-black text-slate-950">نسخه {{ $release['version'] }}</h2>
-                                <span class="rounded-full bg-[#EAF4FF] px-3 py-1 text-xs font-black text-[#0069FF]">{{ $release['tag'] }}</span>
+                                @if (isset($release['tag']))
+                                    <span class="rounded-full bg-[#EAF4FF] px-3 py-1 text-xs font-black text-[#0069FF]">{{ $release['tag'] }}</span>
+                                @endif
                             </div>
-                            <p class="mt-2 text-sm font-bold text-slate-500">منتشر شده در {{ $release['date'] }}</p>
+                            <p class="mt-2 text-sm  text-slate-500">انتشار در <span class="font-extrabold text-slate-800">{{ $release['date'] }}</span></p>
                         </div>
+                        @if (isset($release['summary']))
                         <div class="rounded-2xl bg-white px-4 py-3 text-sm leading-7 text-slate-600 md:max-w-sm">
                             {{ $release['summary'] }}
-                        </div>
+                        </div>                            
+                        @endif
+
                     </div>
                     <div class="px-6 py-6 md:px-8">
                         <ul class="grid gap-3 md:grid-cols-2">
