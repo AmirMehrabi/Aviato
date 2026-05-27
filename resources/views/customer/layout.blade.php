@@ -122,12 +122,14 @@
         ></div>
 
         <aside
-            class="fixed inset-y-0 right-0 z-40 hidden w-[230px] translate-x-full flex-col border-l border-white/10 bg-[#031B4E] py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:static lg:flex lg:translate-x-0 lg:shadow-none"
-            :class="{ '!flex translate-x-0': sidebarOpen }"
+            class="fixed inset-y-0 right-0 z-40 hidden w-[min(86vw,280px)] translate-x-full flex-col overflow-y-auto border-l border-white/10 bg-[#031B4E] px-4 py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:static lg:flex lg:w-[230px] lg:translate-x-0 lg:overflow-visible lg:px-0 lg:shadow-none"
+            :class="{ '!flex !translate-x-0': sidebarOpen }"
+            aria-label="منوی مشتری"
         >
-            <div class="flex items-center justify-between px-4">
+            <div class="flex items-center justify-between lg:px-4">
                 <a href="{{ route('dashboard', [], false) }}" class="flex items-center gap-2.5">
-                    <span class="grid size-9 place-items-center rounded-full border border-white/15 bg-white/10 text-base font-black text-white shadow-sm shadow-black/20">آ</span>
+                    <img src="{{ asset("assets/images/aviato_icon_color.png") }}" class="w-8" alt="Aviato Logo">
+                    {{-- <span class="grid size-9 place-items-center rounded-full border border-white/15 bg-white/10 text-base font-black text-white shadow-sm shadow-black/20">آ</span> --}}
                     <span>
                         <span class="block text-base font-black leading-5 text-white">آویاتو</span>
                         <span class="block text-[11px] font-bold leading-4 text-[#8FA6D2]">کنسول ابری</span>
@@ -157,6 +159,7 @@
                                 <a
                                     href="{{ $item['route'] ?: '#' }}"
                                     @if (! $item['route']) aria-disabled="true" @endif
+                                    @click="if (window.innerWidth < 1024) sidebarOpen = false"
                                     class="flex items-center gap-2.5 px-3 py-2 transition {{ $isActive ? 'bg-white/90 text-[#031B4E] shadow-sm shadow-black/10' : ($item['route'] ? 'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' : 'cursor-default text-[#6F86B5] opacity-70') }}"
                                 >
                                     <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -173,7 +176,7 @@
                 @endforeach
             </nav>
 
-            <div class="mt-7 border-t border-white/10 pt-4">
+            <div class="mt-7 border-t border-white/10 pt-4 lg:px-3">
                 <p class="px-3 text-[10px] font-black text-[#5F79AA]">مصرف</p>
                 <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
                     <div class="flex items-center justify-between gap-3">
@@ -199,6 +202,7 @@
                         type="button"
                         class="my-2 grid size-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] lg:hidden"
                         @click="sidebarOpen = true"
+                        :aria-expanded="sidebarOpen.toString()"
                         aria-label="باز کردن منو"
                     >
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

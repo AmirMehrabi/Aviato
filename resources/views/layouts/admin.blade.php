@@ -52,7 +52,7 @@
         }"
         @keydown.window.ctrl.k.prevent="openSearch()"
         @keydown.window.meta.k.prevent="openSearch()"
-        @keydown.window.escape="closePanels(); createOpen = false"
+        @keydown.window.escape="closePanels(); createOpen = false; sidebarOpen = false"
         @keydown.window="
             if ($event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes($event.target.tagName)) {
                 $event.preventDefault();
@@ -62,6 +62,7 @@
         class="min-h-screen overflow-x-hidden lg:flex"
     >
         <div
+            x-cloak
             x-show="sidebarOpen"
             x-transition.opacity
             class="fixed inset-0 z-30 bg-slate-950/35 lg:hidden"
@@ -70,8 +71,9 @@
         ></div>
 
         <aside
-            class="fixed inset-y-0 right-0 z-40 hidden w-64 translate-x-full flex-col border-l border-white/10 bg-[#0069FF] px-4 py-4 text-white shadow-2xl shadow-[#0069FF]/30 transition-transform duration-200 lg:static lg:flex lg:translate-x-0 lg:shadow-none"
-            :class="{ '!flex translate-x-0': sidebarOpen }"
+            class="fixed inset-y-0 right-0 z-40 hidden w-[min(86vw,288px)] translate-x-full flex-col overflow-y-auto border-l border-white/10 bg-[#0069FF] px-4 py-4 text-white shadow-2xl shadow-[#0069FF]/30 transition-transform duration-200 lg:static lg:flex lg:w-64 lg:translate-x-0 lg:overflow-visible lg:shadow-none"
+            :class="{ '!flex !translate-x-0': sidebarOpen }"
+            aria-label="منوی مدیریت"
         >
             <div class="flex items-center justify-between">
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2.5">
@@ -110,6 +112,7 @@
                 @foreach ($navItems as $item)
                     <a
                         href="{{ $item['route'] ? route($item['route']) : '#' }}"
+                        @click="if (window.innerWidth < 1024) sidebarOpen = false"
                         class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition {{ $item['active'] ? 'bg-white text-[#0069FF] shadow-sm' : 'text-white/80 hover:bg-white/15 hover:text-white' }}"
                     >
                         <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -140,6 +143,7 @@
                         type="button"
                         class="grid size-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] lg:hidden"
                         @click="sidebarOpen = true"
+                        :aria-expanded="sidebarOpen.toString()"
                         aria-label="باز کردن منو"
                     >
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
