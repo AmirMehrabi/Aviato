@@ -20,9 +20,9 @@ Artisan::command('billing:generate-monthly-invoices', function (InvoiceService $
     $this->info(sprintf('Generated %d monthly invoice(s).', $generated->count()));
 })->purpose('Generate monthly customer usage invoices');
 
-Artisan::command('virtual-machines:cleanup-stale {--server= : Limit scan to one Proxmox server ID} {--dry-run : Show stale records without deleting them} {--yes : Delete without an interactive confirmation}', function (StaleVirtualMachineCleanupService $cleanup) {
+Artisan::command('virtual-machines:cleanup-stale {--server= : Limit scan to one Proxmox server ID} {--include-deleting : Include records already locked in deleting status} {--dry-run : Show stale records without deleting them} {--yes : Delete without an interactive confirmation}', function (StaleVirtualMachineCleanupService $cleanup) {
     $serverId = $this->option('server') ? (int) $this->option('server') : null;
-    $reports = $cleanup->scanAll($serverId);
+    $reports = $cleanup->scanAll($serverId, (bool) $this->option('include-deleting'));
     $stale = $reports->flatMap(fn (array $report) => $report['stale']);
     $errors = $reports->filter(fn (array $report): bool => filled($report['error']));
 

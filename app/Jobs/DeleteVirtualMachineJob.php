@@ -8,8 +8,10 @@ use App\Services\ProxmoxService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
@@ -43,7 +45,7 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
 
         try {
             if (! $vm->proxmoxServer || ! $vm->node || ! $vm->vmid) {
-                throw new \RuntimeException('VM is missing Proxmox server, node, or VMID.');
+                throw new RuntimeException('VM is missing Proxmox server, node, or VMID.');
             }
 
             $vm->forceFill([
@@ -59,8 +61,9 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             $remoteStatus = $proxmox->vmStatus($server, $node, $vmid);
             $history[] = ['step' => 'status', 'result' => $remoteStatus, 'at' => now()->toISOString()];
             $this->recordHistory($vm, $history);
+            $remoteMissing = $remoteStatus === null;
 
-            if ($remoteStatus !== null) {
+            if (! $remoteMissing) {
                 if (($remoteStatus['status'] ?? null) === 'running') {
                     try {
                         $shutdown = $proxmox->shutdownVm($server, $node, $vmid, false);
@@ -72,26 +75,56 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
                         $afterShutdown = $proxmox->vmStatus($server, $node, $vmid);
                         $history[] = ['step' => 'status_after_shutdown', 'result' => $afterShutdown, 'at' => now()->toISOString()];
 
-                        if (($afterShutdown['status'] ?? null) === 'running') {
-                            throw new \RuntimeException('VM is still running after graceful shutdown.');
+                        if ($afterShutdown === null) {
+                            $remoteMissing = true;
+                            $history[] = ['step' => 'remote_missing_after_shutdown', 'result' => 'already_deleted', 'at' => now()->toISOString()];
+                        } elseif (($afterShutdown['status'] ?? null) === 'running') {
+                            throw new RuntimeException('VM is still running after graceful shutdown.');
                         }
                     } catch (Throwable $shutdownException) {
-                        $history[] = ['step' => 'shutdown_failed', 'error' => $shutdownException->getMessage(), 'at' => now()->toISOString()];
-                        $stop = $proxmox->stopVm($server, $node, $vmid);
-                        $history[] = ['step' => 'force_stop', 'result' => $stop, 'at' => now()->toISOString()];
-                        $vm->forceFill(['delete_task_id' => $stop['task_id'] ?? null])->save();
-                        $proxmox->waitForTask($server, $node, (string) $stop['task_id'], 180);
-                        $history[] = ['step' => 'force_stop_wait', 'result' => 'OK', 'at' => now()->toISOString()];
+                        if ($this->isRemoteMissingException($shutdownException)) {
+                            $remoteMissing = true;
+                            $history[] = ['step' => 'remote_missing_during_shutdown', 'error' => $shutdownException->getMessage(), 'at' => now()->toISOString()];
+                            $this->recordHistory($vm, $history);
+                        } else {
+                            $history[] = ['step' => 'shutdown_failed', 'error' => $shutdownException->getMessage(), 'at' => now()->toISOString()];
+
+                            try {
+                                $stop = $proxmox->stopVm($server, $node, $vmid);
+                                $history[] = ['step' => 'force_stop', 'result' => $stop, 'at' => now()->toISOString()];
+                                $vm->forceFill(['delete_task_id' => $stop['task_id'] ?? null])->save();
+                                $proxmox->waitForTask($server, $node, (string) $stop['task_id'], 180);
+                                $history[] = ['step' => 'force_stop_wait', 'result' => 'OK', 'at' => now()->toISOString()];
+                            } catch (Throwable $stopException) {
+                                if (! $this->isRemoteMissingException($stopException)) {
+                                    throw $stopException;
+                                }
+
+                                $remoteMissing = true;
+                                $history[] = ['step' => 'remote_missing_during_force_stop', 'error' => $stopException->getMessage(), 'at' => now()->toISOString()];
+                            }
+                        }
                     }
 
                     $this->recordHistory($vm, $history);
                 }
 
-                $delete = $proxmox->deleteVm($server, $node, $vmid, true);
-                $history[] = ['step' => 'delete', 'result' => $delete, 'at' => now()->toISOString()];
-                $vm->forceFill(['delete_task_id' => $delete['task_id'] ?? null])->save();
-                $proxmox->waitForTask($server, $node, (string) $delete['task_id'], 300);
-                $history[] = ['step' => 'delete_wait', 'result' => 'OK', 'at' => now()->toISOString()];
+                if (! $remoteMissing) {
+                    try {
+                        $delete = $proxmox->deleteVm($server, $node, $vmid, true);
+                        $history[] = ['step' => 'delete', 'result' => $delete, 'at' => now()->toISOString()];
+                        $vm->forceFill(['delete_task_id' => $delete['task_id'] ?? null])->save();
+                        $proxmox->waitForTask($server, $node, (string) $delete['task_id'], 300);
+                        $history[] = ['step' => 'delete_wait', 'result' => 'OK', 'at' => now()->toISOString()];
+                    } catch (Throwable $deleteException) {
+                        if (! $this->isRemoteMissingException($deleteException)) {
+                            throw $deleteException;
+                        }
+
+                        $remoteMissing = true;
+                        $history[] = ['step' => 'remote_missing_during_delete', 'error' => $deleteException->getMessage(), 'at' => now()->toISOString()];
+                    }
+                }
             } else {
                 $history[] = ['step' => 'remote_missing', 'result' => 'already_deleted', 'at' => now()->toISOString()];
             }
@@ -145,5 +178,21 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
         $vm->forceFill([
             'remote_state' => array_merge($vm->remote_state ?? [], ['delete_steps' => $history]),
         ])->save();
+    }
+
+    private function isRemoteMissingException(Throwable $exception): bool
+    {
+        if ($exception instanceof RequestException && $exception->response->status() === 404) {
+            return true;
+        }
+
+        $message = strtolower($exception->getMessage());
+
+        return str_contains($message, 'does not exist')
+            || str_contains($message, 'not found')
+            || str_contains($message, 'no such vm')
+            || str_contains($message, 'unable to find vmid')
+            || str_contains($message, 'configuration file')
+            || str_contains($message, 'already deleted');
     }
 }

@@ -123,6 +123,28 @@ class CustomerServerDeletionTest extends TestCase
         $this->assertSame(VirtualMachine::STATUS_DELETED, $vm->fresh()->status);
     }
 
+    public function test_delete_job_completes_when_remote_vm_disappears_before_delete_call(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, ['status' => VirtualMachine::STATUS_DELETING]);
+        $this->assignedAddress($vm);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
+            $mock->shouldReceive('shutdownVm')->never();
+            $mock->shouldReceive('deleteVm')->once()->andThrow(new \RuntimeException('Configuration file does not exist'));
+        });
+
+        (new DeleteVirtualMachineJob($vm->id))->handle(
+            app(ProxmoxService::class),
+            app(IpPoolService::class),
+        );
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::STATUS_DELETED, $vm->status);
+        $this->assertSame('remote_missing_during_delete', collect(data_get($vm->remote_state, 'delete_steps'))->last()['step']);
+    }
+
     public function test_delete_job_records_failure_and_keeps_vm_locked(): void
     {
         $customer = Customer::factory()->create();
@@ -189,6 +211,20 @@ class CustomerServerDeletionTest extends TestCase
         $this->expectExceptionMessage('VM still exists on Proxmox');
 
         app(StaleVirtualMachineCleanupService::class)->cleanup($vm, 'test');
+    }
+
+    public function test_stale_scan_can_include_deleting_records_for_manual_recovery(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, ['status' => VirtualMachine::STATUS_DELETING]);
+
+        $withoutDeleting = app(StaleVirtualMachineCleanupService::class)
+            ->staleFromRemoteVmids($vm->proxmoxServer, [], false);
+        $withDeleting = app(StaleVirtualMachineCleanupService::class)
+            ->staleFromRemoteVmids($vm->proxmoxServer, [], true);
+
+        $this->assertFalse($withoutDeleting->contains('id', $vm->id));
+        $this->assertTrue($withDeleting->contains('id', $vm->id));
     }
 
     /**

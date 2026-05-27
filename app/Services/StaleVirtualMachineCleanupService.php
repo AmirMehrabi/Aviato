@@ -7,6 +7,7 @@ use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -20,9 +21,9 @@ class StaleVirtualMachineCleanupService
     ) {}
 
     /**
-     * @return array{server: ProxmoxServer, remote_vmids: array<int, int>, stale: EloquentCollection<int, VirtualMachine>, checked_at: \Illuminate\Support\Carbon, error: string|null}
+     * @return array{server: ProxmoxServer, remote_vmids: array<int, int>, stale: EloquentCollection<int, VirtualMachine>, checked_at: Carbon, error: string|null}
      */
-    public function scanServer(ProxmoxServer $server): array
+    public function scanServer(ProxmoxServer $server, bool $includeDeleting = false): array
     {
         try {
             $remoteVmids = $this->proxmox->assignedGuestVmids($server);
@@ -30,7 +31,7 @@ class StaleVirtualMachineCleanupService
             return [
                 'server' => $server,
                 'remote_vmids' => $remoteVmids,
-                'stale' => $this->staleFromRemoteVmids($server, $remoteVmids),
+                'stale' => $this->staleFromRemoteVmids($server, $remoteVmids, $includeDeleting),
                 'checked_at' => now(),
                 'error' => null,
             ];
@@ -46,22 +47,22 @@ class StaleVirtualMachineCleanupService
     }
 
     /**
-     * @return Collection<int, array{server: ProxmoxServer, remote_vmids: array<int, int>, stale: EloquentCollection<int, VirtualMachine>, checked_at: \Illuminate\Support\Carbon, error: string|null}>
+     * @return Collection<int, array{server: ProxmoxServer, remote_vmids: array<int, int>, stale: EloquentCollection<int, VirtualMachine>, checked_at: Carbon, error: string|null}>
      */
-    public function scanAll(?int $serverId = null): Collection
+    public function scanAll(?int $serverId = null, bool $includeDeleting = false): Collection
     {
         return ProxmoxServer::query()
             ->when($serverId, fn ($query) => $query->whereKey($serverId))
             ->orderBy('name')
             ->get()
-            ->map(fn (ProxmoxServer $server): array => $this->scanServer($server));
+            ->map(fn (ProxmoxServer $server): array => $this->scanServer($server, $includeDeleting));
     }
 
     /**
      * @param  array<int, int|string>  $remoteVmids
      * @return EloquentCollection<int, VirtualMachine>
      */
-    public function staleFromRemoteVmids(ProxmoxServer $server, array $remoteVmids): EloquentCollection
+    public function staleFromRemoteVmids(ProxmoxServer $server, array $remoteVmids, bool $includeDeleting = false): EloquentCollection
     {
         $remoteLookup = collect($remoteVmids)
             ->filter(fn (mixed $vmid): bool => is_numeric($vmid))
@@ -69,7 +70,7 @@ class StaleVirtualMachineCleanupService
             ->unique()
             ->flip();
 
-        return $this->localCandidates($server)
+        return $this->localCandidates($server, $includeDeleting)
             ->reject(fn (VirtualMachine $vm): bool => $remoteLookup->has((int) $vm->vmid))
             ->values();
     }
@@ -155,13 +156,17 @@ class StaleVirtualMachineCleanupService
     /**
      * @return EloquentCollection<int, VirtualMachine>
      */
-    private function localCandidates(ProxmoxServer $server): EloquentCollection
+    private function localCandidates(ProxmoxServer $server, bool $includeDeleting = false): EloquentCollection
     {
         return $server->virtualMachines()
             ->notDeleted()
             ->with(['customer', 'bundle', 'reservedIpAddress'])
             ->whereNotNull('vmid')
-            ->whereNotIn('status', [VirtualMachine::STATUS_DELETING, VirtualMachine::STATUS_DELETED])
+            ->when(
+                $includeDeleting,
+                fn ($query) => $query->where('status', '!=', VirtualMachine::STATUS_DELETED),
+                fn ($query) => $query->whereNotIn('status', [VirtualMachine::STATUS_DELETING, VirtualMachine::STATUS_DELETED]),
+            )
             ->orderBy('vmid')
             ->get();
     }
