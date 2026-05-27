@@ -20,7 +20,7 @@
                     <span class="font-black">آویاتو</span>
                 </a>
                 @if (! $isAdminPortal)
-                    <a href="{{ route($portal.'.register', [], false) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
+                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
                         ثبت نام مشتری
                     </a>
                 @endif
