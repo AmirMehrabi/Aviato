@@ -1,7 +1,7 @@
 @extends('layouts.marketing')
 
 @section('title', 'چینج‌لاگ آویاتو | نسخه‌های منتشرشده')
-@section('description', 'نسخه‌های منتشرشده آویاتو و خلاصه تغییرات هر release برای کاربران مهمان.')
+@section('description', 'نسخه‌های منتشرشده آویاتو و خلاصه تغییرات هر release.')
 
 @php
     $activePage = 'changelog';
@@ -13,7 +13,7 @@
             'tag' => 'اولین انتشار',
             'summary' => 'اولین نسخه عمومی آویاتو بود؛ یک شروع ساده برای ساخت، مدیریت و تحویل VPS با مسیر خرید روشن و تجربه قابل فهم برای مشتری.',
             'items' => [
-                'معرفی صفحه اصلی و مسیر خرید اولیه برای کاربران مهمان',
+                'معرفی صفحه اصلی و مسیر خرید اولیه',
                 'راه اندازی ثبت نام، ورود و تایید حساب برای مشتریان',
                 'ساخت سرور مشتری با جریان ابتدایی انتخاب پلن و سیستم عامل',
                 'نمایش قابلیت‌های اصلی مثل بکاپ، مانیتورینگ و قیمت گذاری شفاف',
@@ -37,10 +37,9 @@
 @section('content')
     <section class="bg-gradient-to-b from-[#EBF3FF] via-white to-white px-4 pb-14 pt-16 md:px-8 md:pt-24 lg:px-10">
         <div class="mx-auto max-w-4xl text-center">
-            <p class="text-sm font-black text-[#0069FF]">فقط مهمان‌ها</p>
             <h1 class="mt-4 text-4xl font-black leading-tight md:text-5xl">تغییرات نسخه‌های آویاتو</h1>
             <p class="mt-6 text-lg leading-9 text-slate-600">
-                خلاصه releaseها برای کاربران مهمان. نسخه‌های آینده بعدا به همین صفحه اضافه می‌شوند.
+                خلاصه releaseها. نسخه‌های آینده بعدا به همین صفحه اضافه می‌شوند.
             </p>
         </div>
     </section>
@@ -75,7 +74,7 @@
             @endforeach
 
             <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-5 text-sm leading-7 text-slate-600">
-                نسخه‌های بعدی همین‌جا اضافه می‌شوند تا تغییرات آینده برای کاربران مهمان شفاف و ساده قابل پیگیری باشد.
+                نسخه‌های بعدی همین‌جا اضافه می‌شوند تا تغییرات آینده برای کاربران، شفاف و ساده قابل پیگیری باشد.
             </div>
         </div>
     </section>
