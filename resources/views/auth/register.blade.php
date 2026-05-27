@@ -3,16 +3,15 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $portal === 'admin' ? 'ثبت نام مدیر' : 'ثبت نام مشتری' }} | آویاتو</title>
+    <title>ثبت نام مشتری | آویاتو</title>
     <link rel="stylesheet" href="{{ asset('assets/fonts.css') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-[#F5F7FB] text-slate-950">
     @php
-        $isAdminPortal = $portal === 'admin';
         $verificationModeValue = $verificationMode ?? 'email';
-        $isCustomerEmailMode = ! $isAdminPortal && ($verificationMode ?? 'email') === 'email';
-        $isCustomerSmsMode = ! $isAdminPortal && ($verificationMode ?? 'email') === 'sms';
+        $isCustomerEmailMode = ($verificationMode ?? 'email') === 'email';
+        $isCustomerSmsMode = ($verificationMode ?? 'email') === 'sms';
     @endphp
 
     <main class="min-h-screen px-4 py-6 md:px-8 lg:px-10">
@@ -22,19 +21,19 @@
                     <span class="grid size-9 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">آ</span>
                     <span class="font-black">آویاتو</span>
                 </a>
-                <a href="{{ route($portal.'.login', [], false) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
+                <a href="{{ route('customer.login', [], false) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
                     ورود
                 </a>
             </header>
 
             <section class="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:py-14">
                 <div class="hidden lg:block">
-                    <p class="text-sm font-black text-[#0069FF]">{{ $isAdminPortal ? 'شروع مدیریت زیرساخت' : 'شروع خرید Droplet' }}</p>
+                    <p class="text-sm font-black text-[#0069FF]">شروع خرید Droplet</p>
                     <h1 class="mt-4 max-w-2xl text-5xl font-black leading-tight text-slate-950">
-                        {{ $isAdminPortal ? 'حساب مدیریتی بسازید و عملیات ابری را منظم نگه دارید.' : 'حساب بسازید، کیف پول را شارژ کنید و سرور آماده تحویل بگیرید.' }}
+                        حساب بسازید، کیف پول را شارژ کنید و سرور آماده تحویل بگیرید.
                     </h1>
                     <p class="mt-6 max-w-xl text-base leading-8 text-slate-600">
-                        {{ $isAdminPortal ? 'پس از ثبت نام، ابزارهای مدیریت مشتریان، سرورها، پلن ها و تنظیمات provisioning در دسترس شما قرار می گیرد.' : 'ثبت نام مسیر مستقیم خرید است؛ پلن را انتخاب می کنید، منابع را می بینید و ماشین از پنل مشتری ساخته می شود.' }}
+                        ثبت نام مسیر مستقیم خرید است؛ پلن را انتخاب می کنید، منابع را می بینید و ماشین از پنل مشتری ساخته می شود.
                     </p>
                     <div class="mt-8 overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-2xl shadow-[#031B4E]/20">
                         <p class="text-sm font-black text-[#8FC7FF]">آنچه بعد از ثبت نام دارید</p>
@@ -51,13 +50,9 @@
 
                 <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/10">
                     <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] px-6 py-7 md:px-8">
-                        <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">
-                            {{ $isAdminPortal ? 'پنل مدیران' : 'پنل مشتریان' }}
-                        </span>
+                        <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">پنل مشتریان</span>
                         <h2 class="mt-4 text-3xl font-black leading-tight text-slate-950">ثبت نام با ایمیل یا موبایل</h2>
-                        <p class="mt-2 text-sm leading-7 text-slate-600">
-                            {{ $isAdminPortal ? 'اطلاعات حساب را وارد کنید تا دسترسی شما ساخته شود.' : ($isCustomerSmsMode ? 'برای پنل مشتری، تایید شماره موبایل قبل از ورود الزامی است.' : ($verificationModeValue === 'disabled' ? 'تایید حساب مشتری غیرفعال است و پس از ثبت نام می‌توانید وارد شوید.' : 'برای پنل مشتری، تایید ایمیل قبل از ورود الزامی است.')) }}
-                        </p>
+                        <p class="mt-2 text-sm leading-7 text-slate-600">{{ $isCustomerSmsMode ? 'برای پنل مشتری، تایید شماره موبایل قبل از ورود الزامی است.' : ($verificationModeValue === 'disabled' ? 'تایید حساب مشتری غیرفعال است و پس از ثبت نام می‌توانید وارد شوید.' : 'برای پنل مشتری، تایید ایمیل قبل از ورود الزامی است.') }}</p>
                     </div>
 
                     <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 px-6 py-7 md:px-8" data-submit-loading>

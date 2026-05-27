@@ -10,7 +10,6 @@
 <body class="min-h-screen bg-[#F5F7FB] text-slate-950">
     @php
         $isAdminPortal = $portal === 'admin';
-        $registerLabel = $isAdminPortal ? 'ثبت نام مدیر' : 'ثبت نام مشتری';
     @endphp
 
     <main class="min-h-screen px-4 py-6 md:px-8 lg:px-10">
@@ -20,9 +19,11 @@
                     <span class="grid size-9 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">آ</span>
                     <span class="font-black">آویاتو</span>
                 </a>
-                <a href="{{ route($portal.'.register', [], false) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
-                    {{ $registerLabel }}
-                </a>
+                @if (! $isAdminPortal)
+                    <a href="{{ route($portal.'.register', [], false) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
+                        ثبت نام مشتری
+                    </a>
+                @endif
             </header>
 
             <section class="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[minmax(0,1fr)_440px] lg:py-14">
@@ -88,10 +89,12 @@
                             <span>ورود</span>
                         </button>
 
-                        <p class="text-center text-sm font-bold text-slate-500">
-                            حساب ندارید؟
-                            <a class="text-[#0069FF] transition hover:text-[#0050D0]" href="{{ route($portal.'.register', [], false) }}">{{ $registerLabel }}</a>
-                        </p>
+                        @if (! $isAdminPortal)
+                            <p class="text-center text-sm font-bold text-slate-500">
+                                حساب ندارید؟
+                                <a class="text-[#0069FF] transition hover:text-[#0050D0]" href="{{ route($portal.'.register', [], false) }}">ثبت نام مشتری</a>
+                            </p>
+                        @endif
                     </form>
                 </section>
             </section>

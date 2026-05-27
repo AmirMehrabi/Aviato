@@ -28,31 +28,23 @@ $adminDomain = config('portals.admin.domain');
 $customerDomain = config('portals.customer.domain');
 
 $adminLogin = config('portals.admin.login_path');
-$adminRegister = config('portals.admin.register_path');
 $adminHome = config('portals.admin.home_path');
 $customerLogin = config('portals.customer.login_path');
 $customerRegister = config('portals.customer.register_path');
 $customerHome = config('portals.customer.home_path');
 
-Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () use ($adminLogin, $adminRegister, $adminHome) {
+Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () use ($adminLogin, $adminHome) {
     Route::get('/', fn () => redirect('/'.trim($adminHome, '/')))
         ->middleware('auth:admin')
         ->name('admin.home');
 
-    Route::middleware('guest:admin')->group(function () use ($adminLogin, $adminRegister) {
+    Route::middleware('guest:admin')->group(function () use ($adminLogin) {
         Route::get($adminLogin, [AuthenticatedSessionController::class, 'create'])
             ->defaults('portal', 'admin')
             ->name('admin.login');
         Route::post($adminLogin, [AuthenticatedSessionController::class, 'store'])
             ->defaults('portal', 'admin')
             ->name('admin.login.store');
-
-        // Route::get($adminRegister, [RegisteredUserController::class, 'create'])
-        //     ->defaults('portal', 'admin')
-        //     ->name('admin.register');
-        // Route::post($adminRegister, [RegisteredUserController::class, 'store'])
-        //     ->defaults('portal', 'admin')
-        //     ->name('admin.register.store');
     });
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

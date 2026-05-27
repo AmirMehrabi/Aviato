@@ -4,7 +4,6 @@ return [
     'admin' => [
         'domain' => env('ADMIN_PORTAL_DOMAIN', 'admin.aviato.ir'),
         'login_path' => trim(env('ADMIN_LOGIN_PATH', 'login'), '/'),
-        'register_path' => trim(env('ADMIN_REGISTER_PATH', 'register'), '/'),
         'home_path' => trim(env('ADMIN_HOME_PATH', 'dashboard'), '/'),
     ],
 
