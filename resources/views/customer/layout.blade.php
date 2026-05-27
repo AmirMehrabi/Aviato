@@ -128,7 +128,7 @@
         >
             <div class="flex items-center justify-between lg:px-4">
                 <a href="{{ route('dashboard', [], false) }}" class="flex items-center gap-2.5">
-                    <img src="{{ asset("assets/images/aviato_icon_color.png") }}" class="w-8" alt="Aviato Logo">
+                    <img src="{{ asset("assets/images/aviato_icon_color.png") }}" class="w-10" alt="Aviato Logo">
                     {{-- <span class="grid size-9 place-items-center rounded-full border border-white/15 bg-white/10 text-base font-black text-white shadow-sm shadow-black/20">آ</span> --}}
                     <span>
                         <span class="block text-base font-black leading-5 text-white">آویاتو</span>
