@@ -59,7 +59,7 @@
         <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-full opacity-[0.35] [background-image:radial-gradient(#93c5fd_1px,transparent_1px)] [background-size:28px_28px]"></div>
 
         <div class="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(430px,0.92fr)_minmax(0,1.08fr)] lg:items-center">
-            <div class="order-2 lg:order-1">
+            <div class="order-2">
                 <div class="relative">
                     <div aria-hidden="true" class="absolute -inset-5 -z-10 rounded-[2rem] bg-[#0069FF]/10 blur-2xl"></div>
                     <div class="overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-2xl shadow-sky-200/70">
@@ -116,7 +116,7 @@
                 </div>
             </div>
 
-            <div class="order-1 lg:order-2">
+            <div class="order-1">
                 <h1 class="max-w-3xl text-4xl font-black leading-tight tracking-normal text-slate-950 md:text-6xl">
                     VPS ابری سریع،
                     <span class="block text-[#0069FF]">شفاف و آماده اجرا</span>
