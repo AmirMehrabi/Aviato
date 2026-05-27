@@ -44,10 +44,12 @@
     ];
 
     $faqs = [
-        ['q' => 'آویاتو چه تفاوتی با ابرهای عمومی بزرگ دارد؟', 'a' => 'تمرکز این صفحه روی خرید VPS است. منابع مشخص، قیمت روشن و مسیر خرید کوتاه دارید، نه فهرست طولانی سرویس های نامرتبط.'],
-        ['q' => 'آیا قیمت ها دستی در صفحه نوشته شده اند؟', 'a' => 'خیر. پلن های این صفحه از باندل های فعال پنل مدیریت خوانده می شوند و با تغییر قیمت یا منابع، نمایش عمومی هم به روز می شود.'],
-        ['q' => 'برای شروع باید قرارداد بلندمدت داشته باشم؟', 'a' => 'خیر. خرید بر پایه پلن های مشخص و کیف پول اعتباری انجام می شود تا شروع کار ساده و قابل کنترل باشد.'],
-        ['q' => 'اگر ندانم کدام پلن مناسب است چه کنم؟', 'a' => 'از پلن پیشنهادی شروع کنید یا در صفحه قیمت ها منابع را مقایسه کنید. انتخاب بهتر باید بر اساس مصرف واقعی CPU، RAM و دیسک باشد.'],
+        ['q' => 'بعد از خرید، سرور چه زمانی آماده استفاده می شود؟', 'a' => 'بعد از ثبت سفارش و پرداخت، ساخت VPS به صورت خودکار شروع می شود. هدف ما تحویل سریع است و پس از آماده شدن، IP و اطلاعات اتصال در پنل مشتری نمایش داده می شود.'],
+        ['q' => 'برای سایت یا اپلیکیشنم کدام پلن را انتخاب کنم؟', 'a' => 'اگر تازه شروع می کنید، از پلن کوچک تر شروع کنید و مصرف CPU، RAM و دیسک را زیر نظر بگیرید. برای فروشگاه، API یا سرویس production بهتر است پلنی انتخاب کنید که برای رشد کوتاه مدت هم ظرفیت داشته باشد.'],
+        ['q' => 'آیا دسترسی کامل به سرور دارم؟', 'a' => 'بله. VPS با دسترسی مدیریتی تحویل داده می شود تا بتوانید وب سرور، دیتابیس، Docker، ابزارهای مانیتورینگ و تنظیمات امنیتی مورد نیاز خودتان را نصب و مدیریت کنید.'],
+        ['q' => 'هزینه ها چطور محاسبه و پرداخت می شوند؟', 'a' => 'هزینه هر پلن قبل از خرید مشخص است و پرداخت از طریق کیف پول مشتری انجام می شود. قبل از سفارش، منابع و قیمت را می بینید تا هزینه ماهانه برایتان قابل پیش بینی باشد.'],
+        ['q' => 'اگر بعدا منابع بیشتری لازم داشته باشم چه می شود؟', 'a' => 'برای شروع لازم نیست بزرگ ترین پلن را انتخاب کنید. وقتی مصرف پروژه بالا رفت، می توانید پلن مناسب تر را انتخاب کنید یا برای مسیر ارتقا و جابه جایی از پشتیبانی کمک بگیرید.'],
+        ['q' => 'بکاپ و امنیت سرور با چه کسی است؟', 'a' => 'ما ابزارهای زیرساختی مثل IP اختصاصی، فایروال و بکاپ را فراهم می کنیم، اما تنظیمات داخل سیستم عامل، به روزرسانی نرم افزارها و نگهداری اپلیکیشن بر عهده مالک سرور است مگر سرویس مدیریتی جداگانه توافق شده باشد.'],
     ];
 @endphp
 
@@ -135,7 +137,7 @@
                 </div>
 
                 <div class="mt-10 grid gap-4 border-y border-sky-100 py-6 sm:grid-cols-3">
-                    @foreach ([['زیر ۶۰ ثانیه', 'هدف تحویل سرور'], ['NVMe', 'دیسک سریع برای اجرا'], ['قیمت روشن', 'قبل از ثبت سفارش']] as $metric)
+                    @foreach ([['کمتر از ۲ دقیقه', ' تحویل سرور'], ['NVMe', 'دیسک سریع'], ['قیمت روشن', 'قبل از ثبت سفارش']] as $metric)
                         <div class="border-r-2 border-[#0069FF] pr-4">
                             <p class="text-2xl font-black text-slate-950">{{ $metric[0] }}</p>
                             <p class="mt-1 text-sm font-bold text-slate-500">{{ $metric[1] }}</p>
@@ -151,8 +153,7 @@
             <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                 <div class="max-w-2xl">
                     <p class="text-sm font-black text-[#0069FF]">پلن های VPS</p>
-                    <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-5xl">منابع را ببینید، قیمت را بدانید، سرور را بسازید.</h2>
-                    <p class="mt-4 leading-8 text-slate-600">کارت ها از باندل های فعال پنل مدیریت خوانده می شوند؛ قیمت و منابع دستی و نمایشی نیستند.</p>
+                    <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">منابع را ببینید، قیمت را بدانید، سرور را بسازید.</h2>
                 </div>
                 <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-lg border border-sky-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:border-[#0069FF] hover:text-[#0069FF]">همه قیمت ها</a>
             </div>
@@ -204,7 +205,7 @@
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
             <div>
                 <p class="text-sm font-black text-[#0069FF]">چرا آویاتو؟</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-5xl">خرید VPS بدون کاتالوگ شلوغ ابرهای عمومی.</h2>
+                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">خرید VPS بدون کاتالوگ شلوغ ابرهای عمومی.</h2>
                 <p class="mt-5 leading-8 text-slate-600">
                     تصمیم خرید باید کوتاه باشد: پلن، منابع، قیمت و ساخت سرور. جزئیات اضافه فقط وقتی لازم است که به اجرای سرویس کمک کند.
                 </p>
@@ -225,7 +226,7 @@
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <div>
                 <p class="text-sm font-black text-[#0069FF]">برای چه کاری می خرید؟</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-5xl">VPS مناسب برای کارهای واقعی تیم شما.</h2>
+                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">VPS مناسب برای کارهای واقعی تیم شما.</h2>
                 <p class="mt-5 leading-8 text-slate-600">از سایت و API تا staging و worker، پلن باید با مصرف واقعی تیم هماهنگ باشد.</p>
                 <a href="{{ route('solutions') }}" class="mt-8 inline-flex rounded-lg border border-sky-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:border-[#0069FF] hover:text-[#0069FF]">دیدن راهکارها</a>
             </div>
@@ -248,7 +249,7 @@
         <div class="mx-auto max-w-7xl">
             <div class="max-w-3xl">
                 <p class="text-sm font-black text-sky-300">مسیر خرید</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight md:text-5xl">از انتخاب پلن تا SSH، سه مرحله روشن.</h2>
+                <h2 class="mt-3 text-3xl font-black leading-tight md:text-4xl">از انتخاب پلن تا SSH، سه مرحله روشن.</h2>
                 <p class="mt-5 leading-8 text-sky-100/75">فرآیند خرید باید زمان تیم را کم کند، نه اینکه قبل از اجرای سرویس یک پروژه جانبی بسازد.</p>
             </div>
 
@@ -268,7 +269,7 @@
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.75fr_1.25fr]">
             <div>
                 <p class="text-sm font-black text-[#0069FF]">اطمینان قبل از پرداخت</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-5xl">چیزهایی که قبل از خرید باید مشخص باشند.</h2>
+                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">چیزهایی که قبل از خرید باید مشخص باشند.</h2>
                 <p class="mt-5 leading-8 text-slate-600">خرید VPS برای production یعنی منابع، دسترسی، پشتیبانی و هزینه باید قبل از پرداخت قابل فهم باشد.</p>
             </div>
 
@@ -287,7 +288,7 @@
         <div class="mx-auto max-w-5xl">
             <div class="text-center">
                 <p class="text-sm font-black text-[#0069FF]">سوالات قبل از خرید</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-5xl">تصمیم آخر را راحت تر بگیرید.</h2>
+                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">تصمیم آخر را راحت تر بگیرید.</h2>
             </div>
 
             <div class="mt-10 divide-y divide-sky-100 rounded-2xl border border-sky-100 bg-white shadow-sm shadow-sky-100">
@@ -310,7 +311,7 @@
         <div class="mx-auto max-w-7xl overflow-hidden rounded-2xl bg-[#0069FF] p-7 text-white shadow-2xl shadow-[#0069FF]/20 md:p-12">
             <div class="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
-                    <h2 class="max-w-3xl text-3xl font-black leading-tight md:text-5xl">VPS را انتخاب کنید و سرور را وارد کار واقعی کنید.</h2>
+                    <h2 class="max-w-3xl text-3xl font-black leading-tight md:text-4xl">VPS را انتخاب کنید و سرور را وارد کار واقعی کنید.</h2>
                     <p class="mt-4 max-w-2xl leading-8 text-blue-50">اگر تصمیم خرید روشن است، ثبت نام کنید. اگر هنوز مقایسه می کنید، قیمت ها و منابع را کامل ببینید.</p>
                 </div>
                 <div class="flex flex-col gap-3 sm:flex-row lg:flex-col">
