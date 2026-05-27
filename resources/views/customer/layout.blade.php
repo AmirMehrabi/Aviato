@@ -115,15 +115,15 @@
         <div
             x-cloak
             x-show="sidebarOpen"
-            x-transition.opacity
+            x-transition.opacity.duration.200ms
             class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden"
             @click="sidebarOpen = false"
             aria-hidden="true"
         ></div>
 
         <aside
-            class="fixed inset-y-0 right-0 z-40 hidden w-[min(86vw,280px)] translate-x-full flex-col overflow-y-auto border-l border-white/10 bg-[#031B4E] px-4 py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:static lg:flex lg:w-[230px] lg:translate-x-0 lg:overflow-visible lg:px-0 lg:shadow-none"
-            :class="{ '!flex !translate-x-0': sidebarOpen }"
+            class="pointer-events-none fixed inset-y-0 right-0 z-40 flex w-[min(86vw,280px)] translate-x-full flex-col overflow-y-auto border-l border-white/10 bg-[#031B4E] px-4 py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:pointer-events-auto lg:static lg:w-[230px] lg:translate-x-0 lg:overflow-visible lg:px-0 lg:shadow-none"
+            :class="{ '!pointer-events-auto !translate-x-0': sidebarOpen }"
             aria-label="منوی مشتری"
         >
             <div class="flex items-center justify-between lg:px-4">
