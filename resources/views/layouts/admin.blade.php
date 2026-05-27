@@ -77,7 +77,8 @@
         >
             <div class="flex items-center justify-between">
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2.5">
-                    <span class="grid size-9 place-items-center rounded-lg bg-white/20 text-base font-black text-white shadow-lg shadow-black/20">آ</span>
+                    <img src="{{ asset("assets/images/aviato_icon_white.png") }}" class="w-10" alt="Aviato Logo">
+
                     <span>
                         <span class="block text-base font-black text-white">آویاتو</span>
                         <span class="block text-[11px] text-white/70">کنسول مدیریت</span>
