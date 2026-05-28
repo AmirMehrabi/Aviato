@@ -8,6 +8,7 @@ loadEnvFile();
 const listenHost = process.env.CONSOLE_PROXY_HOST || '127.0.0.1';
 const listenPort = Number(process.env.CONSOLE_PROXY_PORT || 8787);
 const appUrl = (process.env.CONSOLE_PROXY_INTERNAL_URL || process.env.APP_URL || 'http://127.0.0.1').replace(/\/$/, '');
+const appHostHeader = process.env.CONSOLE_PROXY_INTERNAL_HOST || '';
 const proxySecret = process.env.CONSOLE_PROXY_SECRET || '';
 
 if (!proxySecret) {
@@ -18,7 +19,13 @@ if (!proxySecret) {
 const server = http.createServer((request, response) => {
     if (request.url === '/health' || request.url === '/console-ws/health') {
         response.writeHead(200, { 'content-type': 'application/json' });
-        response.end(JSON.stringify({ ok: true, app_url: appUrl, listen_host: listenHost, listen_port: listenPort }));
+        response.end(JSON.stringify({
+            ok: true,
+            app_url: appUrl,
+            app_host_header: appHostHeader || null,
+            listen_host: listenHost,
+            listen_port: listenPort,
+        }));
         return;
     }
 
@@ -124,15 +131,27 @@ server.listen(listenPort, listenHost, () => {
 });
 
 async function resolveSession(sessionId) {
-    const response = await fetch(`${appUrl}/api/console-proxy/sessions/${sessionId}`, {
-        headers: {
-            Accept: 'application/json',
-            'X-Console-Proxy-Secret': proxySecret,
-        },
-    });
+    const sessionUrl = `${appUrl}/api/console-proxy/sessions/${sessionId}`;
+    const headers = {
+        Accept: 'application/json',
+        'X-Console-Proxy-Secret': proxySecret,
+    };
+
+    if (appHostHeader) {
+        headers.Host = appHostHeader;
+    }
+
+    let response;
+
+    try {
+        response = await fetch(sessionUrl, { headers });
+    } catch (error) {
+        throw new Error(`Could not reach Laravel console session endpoint at ${sessionUrl}: ${error.cause?.message || error.message}`);
+    }
 
     if (!response.ok) {
-        throw new Error(`Laravel rejected console session with HTTP ${response.status}.`);
+        const body = await response.text().catch(() => '');
+        throw new Error(`Laravel rejected console session at ${sessionUrl} with HTTP ${response.status}: ${body.slice(0, 250)}`);
     }
 
     return response.json();
