@@ -210,8 +210,13 @@
                                 </div>
                             </div>
 
-                            <div class="mt-5 grid grid-cols-3 gap-2">
+                            <div class="mt-5 grid grid-cols-2 gap-2 xl:grid-cols-4">
                                 <a href="{{ $server['show_url'] }}" class="inline-flex justify-center rounded-xl bg-slate-950 px-3 py-2.5 text-xs font-black text-white transition hover:bg-[#0069FF]">مشاهده و اتصال</a>
+                                @if ($server['console_ready'])
+                                    <a href="{{ $server['console_url'] }}" class="inline-flex justify-center rounded-xl bg-[#0069FF] px-3 py-2.5 text-xs font-black text-white transition hover:bg-[#0050D0]">Console</a>
+                                @else
+                                    <span class="inline-flex cursor-not-allowed justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-black text-slate-400">Console</span>
+                                @endif
                                 <a href="{{ $server['monitoring_url'] }}" class="inline-flex justify-center rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مانیتورینگ</a>
                                 <a href="{{ $server['backup_url'] }}" class="inline-flex justify-center rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">بکاپ</a>
                             </div>

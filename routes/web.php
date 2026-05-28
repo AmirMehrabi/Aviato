@@ -17,6 +17,7 @@ use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\MonitoringController;
 use App\Http\Controllers\Customer\PaymentController;
+use App\Http\Controllers\Customer\ServerConsoleController;
 use App\Http\Controllers\Customer\ServerController;
 use App\Http\Controllers\Customer\VmUpgradeController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
@@ -151,6 +152,8 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::get('servers/create', [ServerController::class, 'create'])->name('customer.servers.create');
         Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');
         Route::get('servers/statuses', [ServerController::class, 'statuses'])->name('customer.servers.statuses');
+        Route::get('servers/{virtualMachine}/console', [ServerConsoleController::class, 'show'])->name('customer.servers.console.show');
+        Route::post('servers/{virtualMachine}/console/session', [ServerConsoleController::class, 'session'])->name('customer.servers.console.session');
         Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->name('customer.servers.show');
         Route::post('servers/{virtualMachine}/upgrades/bundle', [VmUpgradeController::class, 'storeBundle'])->name('customer.servers.upgrades.bundle.store');
         Route::post('servers/{virtualMachine}/upgrades/extra-disk', [VmUpgradeController::class, 'storeExtraDisk'])->name('customer.servers.upgrades.extra-disk.store');
@@ -170,6 +173,9 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('customer.invoices.show');
     });
 });
+
+Route::get('/api/console-proxy/sessions/{session}', [ServerConsoleController::class, 'proxySession'])
+    ->name('console-proxy.sessions.show');
 
 Route::get('/', function (WalletService $wallets) {
     return view('home', [

@@ -19,6 +19,8 @@
     $isLocked = $server->isActionLocked();
     $monitoringUrl = route('customer.monitoring.index', ['server' => $server->id], false);
     $backupUrl = route('customer.backups.index', [], false);
+    $consoleReady = $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $isLocked;
+    $consoleUrl = route('customer.servers.console.show', $server, false);
     $formattedMonthlyCost = $isLocked ? 'قفل حذف' : $wallets->format($monthlyCost);
     $backupFrequency = match ($backupSummary['frequency']) {
         'daily' => 'روزانه',
@@ -119,7 +121,12 @@
                             </div>
                         @endif
                         <div class="mt-4 flex flex-wrap gap-2">
-                            <a href="{{ $monitoringUrl }}" class="inline-flex flex-1 justify-center rounded-xl bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white transition hover:bg-[#0050D0]">مانیتورینگ</a>
+                            @if ($consoleReady)
+                                <a href="{{ $consoleUrl }}" class="inline-flex flex-1 justify-center rounded-xl bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white transition hover:bg-[#0050D0]">Console</a>
+                            @else
+                                <span class="inline-flex flex-1 cursor-not-allowed justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-black text-slate-400">Console</span>
+                            @endif
+                            <a href="{{ $monitoringUrl }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مانیتورینگ</a>
                             <a href="{{ $backupUrl }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">بکاپ ها</a>
                             <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-50">سرورها</a>
                         </div>

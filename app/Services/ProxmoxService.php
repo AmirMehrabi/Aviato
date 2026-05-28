@@ -25,7 +25,9 @@ class ProxmoxService
     }
 
     /**
-     * @return array<string, mixed>
+     * Create a short-lived QEMU console proxy session for noVNC.
+     *
+     * @return array{port: int, ticket: string, headers: array<string, string>, raw: array<string, mixed>}
      */
     private function fetchSummary(ProxmoxServer $server): array
     {
@@ -191,6 +193,33 @@ class ProxmoxService
                 'status' => is_array($status) ? $status : [],
                 'errors' => $errors,
                 'fetched_at' => now()->toISOString(),
+            ];
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function qemuConsoleSession(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        return $this->runWithOperation($server, 'qemu-console-session', function () use ($server, $node, $vmid): array {
+            $payload = $this->request($server)
+                ->asForm()
+                ->post("/nodes/{$node}/qemu/{$vmid}/vncproxy", [
+                    'websocket' => 1,
+                ])
+                ->throw()
+                ->json('data');
+
+            if (! is_array($payload) || ! isset($payload['port'], $payload['ticket'])) {
+                throw new RuntimeException('Proxmox did not return console proxy details.');
+            }
+
+            return [
+                'port' => (int) $payload['port'],
+                'ticket' => (string) $payload['ticket'],
+                'headers' => $this->websocketAuthHeaders($server),
+                'raw' => $payload,
             ];
         });
     }
@@ -1343,7 +1372,7 @@ class ProxmoxService
         return (int) round((microtime(true) - $startedAt) * 1000);
     }
 
-    /**  array<string, string> */
+    /** @return array<string, string> */
     protected function websocketAuthHeaders(ProxmoxServer $server): array
     {
         if ($server->usesApiToken()) {

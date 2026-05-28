@@ -19,7 +19,7 @@
         <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-[76%] bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_88%)]"></div>
         <div class="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_420px] lg:items-end">
             <div>
-                <p class="text-sm font-black text-[#0069FF]">قیمت گذاری واقعی از دیتابیس</p>
+                <p class="text-sm font-black text-[#0069FF]">قیمت گذاری شفاف</p>
                 <h1 class="mt-4 max-w-4xl text-4xl font-black leading-tight text-slate-950 md:text-6xl">پلن Droplet را شفاف انتخاب کنید، بدون مذاکره و حدس.</h1>
                 <p class="mt-6 max-w-3xl text-lg leading-9 text-slate-600">این قیمت ها از باندل های فعال VM خوانده می شوند. هر پلن منابع مشخص دارد، نرخ ماهانه و ساعتی آن قابل مشاهده است و مسیر خرید مستقیم به ساخت حساب مشتری می رسد.</p>
             </div>

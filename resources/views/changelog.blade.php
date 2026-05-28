@@ -1,6 +1,6 @@
 @extends('layouts.marketing')
 
-@section('title', 'چینج‌لاگ آویاتو | نسخه‌های منتشرشده')
+@section('title', 'لیست تغییرات آویاتو | نسخه‌های منتشرشده')
 @section('description', 'نسخه‌های منتشرشده آویاتو و خلاصه تغییرات هر release.')
 
 @php

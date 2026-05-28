@@ -42,6 +42,10 @@ class ServerConsoleController extends Controller
         $server = $this->resolveCustomerServer($request, $virtualMachine);
 
         try {
+            if (blank(config('console.proxy_secret'))) {
+                throw new RuntimeException('Console proxy secret is not configured.');
+            }
+
             $this->assertConsoleReady($server);
 
             $console = $this->proxmox->qemuConsoleSession(
@@ -85,7 +89,9 @@ class ServerConsoleController extends Controller
 
     public function proxySession(Request $request, string $session): JsonResponse
     {
-        abort_unless(hash_equals((string) config('console.proxy_secret'), (string) $request->header('X-Console-Proxy-Secret')), 403);
+        $secret = (string) config('console.proxy_secret');
+
+        abort_unless($secret !== '' && hash_equals($secret, (string) $request->header('X-Console-Proxy-Secret')), 403);
 
         $payload = Cache::pull($this->cacheKey($session));
 
