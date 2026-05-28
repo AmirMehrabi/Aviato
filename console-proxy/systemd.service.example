@@ -1,0 +1,16 @@
+[Unit]
+Description=Aviato customer VM console websocket proxy
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/html/proxmox
+ExecStart=/usr/bin/npm run console-proxy
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

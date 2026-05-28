@@ -1,6 +1,9 @@
 import http from 'node:http';
+import fs from 'node:fs';
 import process from 'node:process';
 import { WebSocket, WebSocketServer } from 'ws';
+
+loadEnvFile();
 
 const listenHost = process.env.CONSOLE_PROXY_HOST || '127.0.0.1';
 const listenPort = Number(process.env.CONSOLE_PROXY_PORT || 8787);
@@ -13,9 +16,15 @@ if (!proxySecret) {
 }
 
 const server = http.createServer((request, response) => {
-    if (request.url === '/health') {
+    if (request.url === '/health' || request.url === '/console-ws/health') {
         response.writeHead(200, { 'content-type': 'application/json' });
-        response.end(JSON.stringify({ ok: true }));
+        response.end(JSON.stringify({ ok: true, app_url: appUrl, listen_host: listenHost, listen_port: listenPort }));
+        return;
+    }
+
+    if (request.url === '/console-ws' || request.url === '/') {
+        response.writeHead(426, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ ok: false, message: 'WebSocket upgrade required.' }));
         return;
     }
 
@@ -32,6 +41,8 @@ wss.on('connection', async (client, request) => {
         const requestUrl = new URL(request.url || '/', 'http://localhost');
         const sessionId = requestUrl.searchParams.get('session');
 
+        console.log('Console websocket accepted', { path: requestUrl.pathname, has_session: Boolean(sessionId) });
+
         if (!sessionId || !/^[0-9a-f-]{36}$/i.test(sessionId)) {
             closeWithReason(client, 1008, 'Invalid console session.');
             return;
@@ -40,12 +51,26 @@ wss.on('connection', async (client, request) => {
         const session = await resolveSession(sessionId);
         const target = proxmoxWebsocketUrl(session);
 
+        console.log('Console session resolved', {
+            session_id: session.session_id,
+            vm_id: session.vm_id,
+            node: session.node,
+            vmid: session.vmid,
+            proxmox_host: session.proxmox_host,
+            proxmox_port: session.proxmox_port,
+        });
+
         upstream = new WebSocket(target, {
             headers: session.headers || {},
             rejectUnauthorized: Boolean(session.verify_tls),
         });
 
         upstream.on('open', () => {
+            console.log('Proxmox console websocket opened', {
+                session_id: session.session_id,
+                vm_id: session.vm_id,
+            });
+
             client.on('message', (message, isBinary) => {
                 if (upstream?.readyState === WebSocket.OPEN) {
                     upstream.send(message, { binary: isBinary });
@@ -59,6 +84,13 @@ wss.on('connection', async (client, request) => {
         });
 
         upstream.on('close', (code, reason) => {
+            console.log('Proxmox console websocket closed', {
+                session_id: session.session_id,
+                vm_id: session.vm_id,
+                code,
+                reason: reason?.toString(),
+            });
+
             if (client.readyState === WebSocket.OPEN || client.readyState === WebSocket.CONNECTING) {
                 client.close(code || 1000, reason?.toString() || 'Proxmox console closed.');
             }
@@ -104,6 +136,38 @@ async function resolveSession(sessionId) {
     }
 
     return response.json();
+}
+
+function loadEnvFile() {
+    const envPath = process.env.CONSOLE_PROXY_ENV || '.env';
+
+    if (!fs.existsSync(envPath)) {
+        return;
+    }
+
+    const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+
+        if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) {
+            continue;
+        }
+
+        const index = trimmed.indexOf('=');
+        const key = trimmed.slice(0, index).trim();
+        let value = trimmed.slice(index + 1).trim();
+
+        if (process.env[key] !== undefined) {
+            continue;
+        }
+
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+        }
+
+        process.env[key] = value.replace(/\$\{([^}]+)\}/g, (_, envKey) => process.env[envKey] || '');
+    }
 }
 
 function proxmoxWebsocketUrl(session) {

@@ -1,0 +1,13 @@
+# Put this inside the public customer portal server block.
+# It keeps Proxmox private and only exposes the local console proxy.
+
+location /console-ws {
+    proxy_pass http://127.0.0.1:8787;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+    proxy_buffering off;
+}
