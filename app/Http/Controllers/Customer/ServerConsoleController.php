@@ -6,12 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
 use App\Services\WalletService;
-use App\Services\WebsockifyConsoleTokenService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -20,7 +18,6 @@ class ServerConsoleController extends Controller
     public function __construct(
         private readonly ProxmoxService $proxmox,
         private readonly WalletService $wallets,
-        private readonly WebsockifyConsoleTokenService $websockifyTokens,
     ) {}
 
     public function show(Request $request, VirtualMachine $virtualMachine): View
@@ -51,29 +48,14 @@ class ServerConsoleController extends Controller
                 (int) $server->vmid,
             );
 
-            $token = Str::random(48);
             $ttl = max(15, (int) config('console.session_ttl', 60));
             $expiresAt = now()->addSeconds($ttl);
 
-            $this->websockifyTokens->publish(
-                $server->proxmoxServer,
-                $token,
-                (int) $console['port'],
-                $expiresAt,
-            );
-
             return response()->json([
-                'session_id' => $token,
-                'websocket_url' => $this->websockifyUrl((int) $server->proxmox_server_id, $token),
+                'websocket_url' => $this->proxmoxWebsocketUrl($server, (int) $console['port'], (string) $console['ticket']),
                 'password' => (string) $console['ticket'],
                 'expires_in' => $ttl,
                 'expires_at' => $expiresAt->toISOString(),
-                'debug' => [
-                    'websockify_target' => config('console.websockify.target_host', '127.0.0.1').':'.(int) $console['port'],
-                    'proxmox_host' => $server->proxmoxServer->host,
-                    'proxmox_node' => (string) $server->node,
-                    'vmid' => (int) $server->vmid,
-                ],
             ]);
         } catch (Throwable $exception) {
             report($exception);
@@ -119,9 +101,17 @@ class ServerConsoleController extends Controller
         }
     }
 
-    private function websockifyUrl(int $proxmoxServerId, string $token): string
+    private function proxmoxWebsocketUrl(VirtualMachine $server, int $port, string $ticket): string
     {
-        return rtrim((string) config('console.websockify.public_path', '/console-ws'), '/')
-            .'/'.$proxmoxServerId.'?token='.rawurlencode($token);
+        $path = rtrim((string) config('console.proxy_path', '/console-ws'), '/')
+            .'/'.$server->proxmox_server_id
+            .'/nodes/'.rawurlencode((string) $server->node)
+            .'/qemu/'.(int) $server->vmid
+            .'/vncwebsocket';
+
+        return $path.'?'.http_build_query([
+            'port' => $port,
+            'vncticket' => $ticket,
+        ]);
     }
 }

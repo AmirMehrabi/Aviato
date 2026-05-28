@@ -3,13 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
-use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
-use App\Services\WebsockifyConsoleTokenService;
-use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery;
 use Tests\TestCase;
 
 class CustomerConsoleTest extends TestCase
@@ -23,7 +19,7 @@ class CustomerConsoleTest extends TestCase
         parent::setUp();
 
         config([
-            'console.websockify.public_path' => '/console-ws',
+            'console.proxy_path' => '/console-ws',
         ]);
     }
 
@@ -66,11 +62,6 @@ class CustomerConsoleTest extends TestCase
                     'raw' => ['port' => 5901, 'ticket' => 'PVEVNC:secret-ticket'],
                 ]);
         });
-        $this->mock(WebsockifyConsoleTokenService::class, function ($mock): void {
-            $mock->shouldReceive('publish')
-                ->once()
-                ->with(Mockery::type(ProxmoxServer::class), Mockery::type('string'), 5901, Mockery::type(CarbonInterface::class));
-        });
 
         $this->actingAs($customer, 'customer');
 
@@ -79,8 +70,8 @@ class CustomerConsoleTest extends TestCase
             ->assertJsonPath('password', 'PVEVNC:secret-ticket')
             ->assertJsonMissing(['vncticket' => 'PVEVNC:secret-ticket']);
 
-        $this->assertStringStartsWith('/console-ws/'.$vm->proxmox_server_id.'?token=', $response->json('websocket_url'));
-        $this->assertNotEmpty($response->json('session_id'));
+        $this->assertStringStartsWith('/console-ws/'.$vm->proxmox_server_id.'/nodes/pve1/qemu/101/vncwebsocket?', $response->json('websocket_url'));
+        $this->assertStringContainsString('port=5901', $response->json('websocket_url'));
     }
 
     public function test_console_session_rejects_incomplete_vm(): void

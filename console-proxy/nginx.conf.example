@@ -1,24 +1,15 @@
-# Put these locations inside the public customer portal server block.
-# Each location proxies websocket traffic to websockify on a private Proxmox node.
-# Adjust the numeric route and upstream IP/port for each ProxmoxServer record.
+# Put one location inside the public customer portal server block per ProxmoxServer record.
+# This only exposes Proxmox's vncwebsocket endpoint for that server ID.
 
-location /console-ws/1/ {
-    proxy_pass http://192.168.111.168:6080/;
+location ~ ^/console-ws/1(/nodes/[^/]+/qemu/[0-9]+/vncwebsocket)$ {
+    proxy_pass https://192.168.111.168:8006/api2/json$1$is_args$args;
     proxy_http_version 1.1;
+    proxy_ssl_verify off;
+
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-    proxy_read_timeout 3600s;
-    proxy_send_timeout 3600s;
-    proxy_buffering off;
-}
+    proxy_set_header Authorization "PVEAPIToken=root@pam!panel=SECRET";
 
-location = /console-ws/1 {
-    proxy_pass http://192.168.111.168:6080/;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
     proxy_read_timeout 3600s;
     proxy_send_timeout 3600s;
     proxy_buffering off;
