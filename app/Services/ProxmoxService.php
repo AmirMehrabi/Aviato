@@ -25,9 +25,7 @@ class ProxmoxService
     }
 
     /**
-     * Create a short-lived QEMU console proxy session for noVNC.
-     *
-     * @return array{port: int, ticket: string, headers: array<string, string>, raw: array<string, mixed>}
+     * @return array<string, mixed>
      */
     private function fetchSummary(ProxmoxServer $server): array
     {
@@ -198,7 +196,9 @@ class ProxmoxService
     }
 
     /**
-     * @return array<string, mixed>
+     * Create a short-lived QEMU console proxy session for noVNC.
+     *
+     * @return array{port: int, ticket: string, headers: array<string, string>, raw: array<string, mixed>}
      */
     public function qemuConsoleSession(ProxmoxServer $server, string $node, int $vmid): array
     {
