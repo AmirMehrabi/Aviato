@@ -9,6 +9,7 @@ use App\Services\WalletService;
 use App\Services\WebsockifyConsoleTokenService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -76,6 +77,15 @@ class ServerConsoleController extends Controller
                 'error' => $exception->getMessage(),
             ], 422);
         }
+    }
+
+    public function redirectSession(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $server = $this->resolveCustomerServer($request, $virtualMachine);
+
+        return redirect()
+            ->route('customer.servers.console.show', $server)
+            ->with('error', 'برای ساخت نشست Console باید از صفحه Console استفاده کنید.');
     }
 
     private function resolveCustomerServer(Request $request, VirtualMachine $virtualMachine): VirtualMachine

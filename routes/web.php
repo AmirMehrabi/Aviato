@@ -153,6 +153,7 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');
         Route::get('servers/statuses', [ServerController::class, 'statuses'])->name('customer.servers.statuses');
         Route::get('servers/{virtualMachine}/console', [ServerConsoleController::class, 'show'])->name('customer.servers.console.show');
+        Route::get('servers/{virtualMachine}/console/session', [ServerConsoleController::class, 'redirectSession'])->name('customer.servers.console.session.redirect');
         Route::post('servers/{virtualMachine}/console/session', [ServerConsoleController::class, 'session'])->name('customer.servers.console.session');
         Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->name('customer.servers.show');
         Route::post('servers/{virtualMachine}/upgrades/bundle', [VmUpgradeController::class, 'storeBundle'])->name('customer.servers.upgrades.bundle.store');
