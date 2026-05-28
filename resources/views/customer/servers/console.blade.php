@@ -21,7 +21,6 @@
     <section
         x-data="customerVmConsole({
             sessionUrl: @js($consoleSessionUrl),
-            proxyUrl: @js($consoleProxyUrl),
             csrf: @js(csrf_token()),
         })"
         x-init="connect()"

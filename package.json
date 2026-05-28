@@ -4,7 +4,6 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "console-proxy": "node console-proxy/server.js",
         "dev": "vite"
     },
     "devDependencies": {
@@ -16,7 +15,6 @@
     },
     "dependencies": {
         "@novnc/novnc": "^1.6.0",
-        "alpinejs": "^3.15.12",
-        "ws": "^8.18.0"
+        "alpinejs": "^3.15.12"
     }
 }

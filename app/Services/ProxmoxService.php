@@ -205,9 +205,7 @@ class ProxmoxService
         return $this->runWithOperation($server, 'qemu-console-session', function () use ($server, $node, $vmid): array {
             $payload = $this->request($server)
                 ->asForm()
-                ->post("/nodes/{$node}/qemu/{$vmid}/vncproxy", [
-                    'websocket' => 1,
-                ])
+                ->post("/nodes/{$node}/qemu/{$vmid}/vncproxy")
                 ->throw()
                 ->json('data');
 

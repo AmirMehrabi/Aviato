@@ -6,7 +6,10 @@ use App\Models\Customer;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
+use App\Services\WebsockifyConsoleTokenService;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 class CustomerConsoleTest extends TestCase
@@ -20,8 +23,7 @@ class CustomerConsoleTest extends TestCase
         parent::setUp();
 
         config([
-            'console.proxy_secret' => 'testing-console-secret',
-            'console.proxy_url' => '/console-ws',
+            'console.websockify.public_path' => '/console-ws',
         ]);
     }
 
@@ -64,29 +66,21 @@ class CustomerConsoleTest extends TestCase
                     'raw' => ['port' => 5901, 'ticket' => 'PVEVNC:secret-ticket'],
                 ]);
         });
+        $this->mock(WebsockifyConsoleTokenService::class, function ($mock): void {
+            $mock->shouldReceive('publish')
+                ->once()
+                ->with(Mockery::type(ProxmoxServer::class), Mockery::type('string'), 5901, Mockery::type(CarbonInterface::class));
+        });
 
         $this->actingAs($customer, 'customer');
 
         $response = $this->postJson($this->customerBaseUrl.'/servers/'.$vm->id.'/console/session')
             ->assertOk()
-            ->assertJsonPath('proxy_url', '/console-ws')
+            ->assertJsonPath('password', 'PVEVNC:secret-ticket')
             ->assertJsonMissing(['vncticket' => 'PVEVNC:secret-ticket']);
 
-        $sessionId = $response->json('session_id');
-
-        $this->getJson('/api/console-proxy/sessions/'.$sessionId, [
-            'X-Console-Proxy-Secret' => 'testing-console-secret',
-        ])
-            ->assertOk()
-            ->assertJsonPath('vm_id', $vm->id)
-            ->assertJsonPath('node', 'pve1')
-            ->assertJsonPath('vmid', 101)
-            ->assertJsonPath('port', 5901)
-            ->assertJsonPath('vncticket', 'PVEVNC:secret-ticket');
-
-        $this->getJson('/api/console-proxy/sessions/'.$sessionId, [
-            'X-Console-Proxy-Secret' => 'testing-console-secret',
-        ])->assertNotFound();
+        $this->assertStringStartsWith('/console-ws/'.$vm->proxmox_server_id.'?token=', $response->json('websocket_url'));
+        $this->assertNotEmpty($response->json('session_id'));
     }
 
     public function test_console_session_rejects_incomplete_vm(): void
@@ -99,11 +93,6 @@ class CustomerConsoleTest extends TestCase
         $this->postJson($this->customerBaseUrl.'/servers/'.$vm->id.'/console/session')
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Console session could not be started.');
-    }
-
-    public function test_console_proxy_session_requires_shared_secret(): void
-    {
-        $this->getJson('/api/console-proxy/sessions/missing')->assertForbidden();
     }
 
     private function readyVm(Customer $customer, array $overrides = []): VirtualMachine

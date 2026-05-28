@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
 use App\Services\WalletService;
+use App\Services\WebsockifyConsoleTokenService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -19,6 +19,7 @@ class ServerConsoleController extends Controller
     public function __construct(
         private readonly ProxmoxService $proxmox,
         private readonly WalletService $wallets,
+        private readonly WebsockifyConsoleTokenService $websockifyTokens,
     ) {}
 
     public function show(Request $request, VirtualMachine $virtualMachine): View
@@ -32,7 +33,6 @@ class ServerConsoleController extends Controller
             'wallets' => $this->wallets,
             'server' => $server->loadMissing('proxmoxServer'),
             'consoleSessionUrl' => route('customer.servers.console.session', $server, false),
-            'consoleProxyUrl' => config('console.proxy_url'),
             'invoiceCount' => $customer->invoices()->count(),
         ]);
     }
@@ -42,10 +42,6 @@ class ServerConsoleController extends Controller
         $server = $this->resolveCustomerServer($request, $virtualMachine);
 
         try {
-            if (blank(config('console.proxy_secret'))) {
-                throw new RuntimeException('Console proxy secret is not configured.');
-            }
-
             $this->assertConsoleReady($server);
 
             $console = $this->proxmox->qemuConsoleSession(
@@ -54,28 +50,23 @@ class ServerConsoleController extends Controller
                 (int) $server->vmid,
             );
 
-            $sessionId = (string) Str::uuid();
+            $token = Str::random(48);
             $ttl = max(15, (int) config('console.session_ttl', 60));
+            $expiresAt = now()->addSeconds($ttl);
 
-            Cache::put($this->cacheKey($sessionId), [
-                'session_id' => $sessionId,
-                'vm_id' => $server->id,
-                'customer_id' => $server->customer_id,
-                'proxmox_host' => $server->proxmoxServer->host,
-                'proxmox_port' => (int) $server->proxmoxServer->port,
-                'verify_tls' => (bool) $server->proxmoxServer->verify_tls,
-                'node' => (string) $server->node,
-                'vmid' => (int) $server->vmid,
-                'port' => (int) $console['port'],
-                'vncticket' => (string) $console['ticket'],
-                'headers' => $console['headers'],
-                'expires_at' => now()->addSeconds($ttl)->toISOString(),
-            ], now()->addSeconds($ttl));
+            $this->websockifyTokens->publish(
+                $server->proxmoxServer,
+                $token,
+                (int) $console['port'],
+                $expiresAt,
+            );
 
             return response()->json([
-                'session_id' => $sessionId,
-                'proxy_url' => config('console.proxy_url'),
+                'session_id' => $token,
+                'websocket_url' => $this->websockifyUrl((int) $server->proxmox_server_id, $token),
+                'password' => (string) $console['ticket'],
                 'expires_in' => $ttl,
+                'expires_at' => $expiresAt->toISOString(),
             ]);
         } catch (Throwable $exception) {
             report($exception);
@@ -85,35 +76,6 @@ class ServerConsoleController extends Controller
                 'error' => $exception->getMessage(),
             ], 422);
         }
-    }
-
-    public function proxySession(Request $request, string $session): JsonResponse
-    {
-        $secret = (string) config('console.proxy_secret');
-
-        abort_unless($secret !== '' && hash_equals($secret, (string) $request->header('X-Console-Proxy-Secret')), 403);
-
-        $payload = Cache::get($this->cacheKey($session));
-
-        if (! is_array($payload)) {
-            return response()->json([
-                'message' => 'Console proxy session was not found or has expired.',
-                'session_id' => $session,
-            ], 404);
-        }
-
-        return response()->json($payload);
-    }
-
-    public function consumeProxySession(Request $request, string $session): JsonResponse
-    {
-        $secret = (string) config('console.proxy_secret');
-
-        abort_unless($secret !== '' && hash_equals($secret, (string) $request->header('X-Console-Proxy-Secret')), 403);
-
-        Cache::forget($this->cacheKey($session));
-
-        return response()->json(['consumed' => true]);
     }
 
     private function resolveCustomerServer(Request $request, VirtualMachine $virtualMachine): VirtualMachine
@@ -141,8 +103,9 @@ class ServerConsoleController extends Controller
         }
     }
 
-    private function cacheKey(string $session): string
+    private function websockifyUrl(int $proxmoxServerId, string $token): string
     {
-        return 'customer-console:'.$session;
+        return rtrim((string) config('console.websockify.public_path', '/console-ws'), '/')
+            .'/'.$proxmoxServerId.'?token='.rawurlencode($token);
     }
 }

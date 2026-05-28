@@ -1,8 +1,9 @@
-# Put this inside the public customer portal server block.
-# It keeps Proxmox private and only exposes the local console proxy.
+# Put these locations inside the public customer portal server block.
+# Each location proxies websocket traffic to websockify on a private Proxmox node.
+# Adjust the numeric route and upstream IP/port for each ProxmoxServer record.
 
-location /console-ws {
-    proxy_pass http://127.0.0.1:8787;
+location /console-ws/1 {
+    proxy_pass http://192.168.111.168:6080;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";

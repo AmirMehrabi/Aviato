@@ -40,9 +40,12 @@ window.customerVmConsole = function customerVmConsole(config) {
         openRfb(session) {
             this.disconnect(false);
 
-            const wsUrl = this.proxyWebsocketUrl(session.proxy_url, session.session_id);
+            const wsUrl = this.websocketUrl(session.websocket_url);
             this.rfb = new RFB(this.$refs.screen, wsUrl, {
                 shared: true,
+                credentials: {
+                    password: session.password || '',
+                },
             });
             this.rfb.scaleViewport = true;
             this.rfb.resizeSession = true;
@@ -66,14 +69,12 @@ window.customerVmConsole = function customerVmConsole(config) {
                 this.statusText = 'اتصال ناموفق';
             });
         },
-        proxyWebsocketUrl(proxyUrl, sessionId) {
-            const base = proxyUrl.startsWith('ws://') || proxyUrl.startsWith('wss://')
-                ? proxyUrl
-                : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}${proxyUrl.startsWith('/') ? proxyUrl : `/${proxyUrl}`}`;
-            const url = new URL(base);
-            url.searchParams.set('session', sessionId);
+        websocketUrl(url) {
+            if (url.startsWith('ws://') || url.startsWith('wss://')) {
+                return url;
+            }
 
-            return url.toString();
+            return `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}${url.startsWith('/') ? url : `/${url}`}`;
         },
         reconnect() {
             this.disconnect(false);
