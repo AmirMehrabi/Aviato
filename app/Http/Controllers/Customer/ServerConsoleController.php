@@ -68,6 +68,12 @@ class ServerConsoleController extends Controller
                 'password' => (string) $console['ticket'],
                 'expires_in' => $ttl,
                 'expires_at' => $expiresAt->toISOString(),
+                'debug' => [
+                    'websockify_target' => config('console.websockify.target_host', '127.0.0.1').':'.(int) $console['port'],
+                    'proxmox_host' => $server->proxmoxServer->host,
+                    'proxmox_node' => (string) $server->node,
+                    'vmid' => (int) $server->vmid,
+                ],
             ]);
         } catch (Throwable $exception) {
             report($exception);
