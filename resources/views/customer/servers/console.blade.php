@@ -55,6 +55,7 @@
                 <span class="text-xs font-bold text-slate-400" dir="ltr">noVNC</span>
             </div>
 
+            
             <div class="relative h-[68vh] min-h-[420px] bg-black" dir="ltr">
                 <div x-ref="screen" class="absolute inset-0"></div>
                 <div x-show="loading || error" class="absolute inset-0 grid place-items-center bg-slate-950/80 p-6 text-center text-white">
