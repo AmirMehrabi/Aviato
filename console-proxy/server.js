@@ -151,7 +151,10 @@ async function resolveSession(sessionId) {
 
     if (!response.ok) {
         const body = await response.text().catch(() => '');
-        throw new Error(`Laravel rejected console session at ${sessionUrl} with HTTP ${response.status}: ${body.slice(0, 250)}`);
+        const server = response.headers.get('server') || 'unknown';
+        const contentType = response.headers.get('content-type') || 'unknown';
+
+        throw new Error(`Laravel session lookup failed at ${sessionUrl} with HTTP ${response.status} from ${server} (${contentType}): ${body.slice(0, 250)}`);
     }
 
     return response.json();
