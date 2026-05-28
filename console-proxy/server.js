@@ -78,6 +78,14 @@ wss.on('connection', async (client, request) => {
                 vm_id: session.vm_id,
             });
 
+            consumeSession(session.session_id).catch((error) => {
+                console.error('Console proxy session cleanup failed', {
+                    session_id: session.session_id,
+                    vm_id: session.vm_id,
+                    message: error.message,
+                });
+            });
+
             client.on('message', (message, isBinary) => {
                 if (upstream?.readyState === WebSocket.OPEN) {
                     upstream.send(message, { binary: isBinary });
@@ -158,6 +166,27 @@ async function resolveSession(sessionId) {
     }
 
     return response.json();
+}
+
+async function consumeSession(sessionId) {
+    const sessionUrl = `${appUrl}/api/console-proxy/sessions/${sessionId}`;
+    const headers = {
+        Accept: 'application/json',
+        'X-Console-Proxy-Secret': proxySecret,
+    };
+
+    if (appHostHeader) {
+        headers.Host = appHostHeader;
+    }
+
+    const response = await fetch(sessionUrl, {
+        method: 'DELETE',
+        headers,
+    });
+
+    if (!response.ok) {
+        throw new Error(`Laravel rejected console session cleanup with HTTP ${response.status}.`);
+    }
 }
 
 function loadEnvFile() {

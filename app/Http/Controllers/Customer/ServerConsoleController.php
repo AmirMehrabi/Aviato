@@ -93,11 +93,27 @@ class ServerConsoleController extends Controller
 
         abort_unless($secret !== '' && hash_equals($secret, (string) $request->header('X-Console-Proxy-Secret')), 403);
 
-        $payload = Cache::pull($this->cacheKey($session));
+        $payload = Cache::get($this->cacheKey($session));
 
-        abort_unless(is_array($payload), 404);
+        if (! is_array($payload)) {
+            return response()->json([
+                'message' => 'Console proxy session was not found or has expired.',
+                'session_id' => $session,
+            ], 404);
+        }
 
         return response()->json($payload);
+    }
+
+    public function consumeProxySession(Request $request, string $session): JsonResponse
+    {
+        $secret = (string) config('console.proxy_secret');
+
+        abort_unless($secret !== '' && hash_equals($secret, (string) $request->header('X-Console-Proxy-Secret')), 403);
+
+        Cache::forget($this->cacheKey($session));
+
+        return response()->json(['consumed' => true]);
     }
 
     private function resolveCustomerServer(Request $request, VirtualMachine $virtualMachine): VirtualMachine

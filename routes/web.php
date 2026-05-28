@@ -176,6 +176,8 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
 
 Route::get('/api/console-proxy/sessions/{session}', [ServerConsoleController::class, 'proxySession'])
     ->name('console-proxy.sessions.show');
+Route::delete('/api/console-proxy/sessions/{session}', [ServerConsoleController::class, 'consumeProxySession'])
+    ->name('console-proxy.sessions.destroy');
 
 Route::get('/', function (WalletService $wallets) {
     return view('home', [
