@@ -55,7 +55,7 @@ class WalletTransaction extends Model
     public function isUsageCharge(): bool
     {
         return $this->type === self::TYPE_CHARGE
-            && in_array(($this->metadata['category'] ?? null), ['payg_usage', 'backup_storage'], true);
+            && in_array(($this->metadata['category'] ?? null), ['payg_usage', 'backup_storage', 'extra_disk_storage'], true);
     }
 
     protected function casts(): array

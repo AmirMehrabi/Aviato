@@ -126,7 +126,14 @@ class VirtualMachineController extends Controller
 
     public function show(VirtualMachine $virtualMachine): View
     {
-        $virtualMachine->load(['customer', 'proxmoxServer', 'bundle', 'cloudImage']);
+        $virtualMachine->load([
+            'customer',
+            'proxmoxServer',
+            'bundle',
+            'cloudImage',
+            'disks',
+            'upgradeOrders' => fn ($query) => $query->with(['toBundle', 'disk'])->latest()->limit(10),
+        ]);
 
         return view('admin.virtual-machines.show', [
             'vm' => $virtualMachine,

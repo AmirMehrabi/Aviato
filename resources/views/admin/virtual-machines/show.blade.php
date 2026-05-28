@@ -45,5 +45,37 @@
 ] as $card)<div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-bold text-slate-500">{{ $card['label'] }}</p><p class="mt-3 text-xl font-black {{ $card['tone'] }}">{{ $card['value'] }}</p></div>@endforeach
 </section>
 <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]"><section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="text-xl font-black">مشخصات سخت‌افزار و Billing</h2><div class="mt-5 grid gap-3 md:grid-cols-4"><div class="rounded-xl bg-slate-50 p-4 text-center"><p class="text-2xl font-black">{{ $vm->cpu_cores }}</p><p class="text-xs text-slate-500">CPU Core فقط روشن</p></div><div class="rounded-xl bg-slate-50 p-4 text-center"><p class="text-2xl font-black">{{ $vm->ram_gb }}GB</p><p class="text-xs text-slate-500">RAM فقط روشن</p></div><div class="rounded-xl bg-slate-50 p-4 text-center"><p class="text-2xl font-black">{{ $vm->disk_gb }}GB</p><p class="text-xs text-slate-500">Disk همیشه</p></div><div class="rounded-xl bg-slate-50 p-4 text-center"><p class="text-2xl font-black">{{ $vm->ip_count }}</p><p class="text-xs text-slate-500">IP همیشه</p></div></div><div class="mt-5 rounded-xl border border-dashed border-slate-300 p-4"><p class="font-black">باندل</p><p class="mt-2 text-sm text-slate-600">{{ $vm->bundle ? $vm->bundle->name . ' - ' . $money->format($vm->bundle->monthly_price) . ' / ماه روشن' : 'Custom pricing از قیمت منابع' }}</p></div></section><section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="text-xl font-black">Proxmox</h2><div class="mt-5 space-y-3 text-sm"><p><span class="font-bold text-slate-500">Server:</span> {{ $vm->proxmoxServer?->name ?: '—' }}</p><p><span class="font-bold text-slate-500">Node:</span> <span dir="ltr">{{ $vm->node ?: '—' }}</span></p><p><span class="font-bold text-slate-500">VMID:</span> <span dir="ltr">{{ $vm->vmid ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Template:</span> <span dir="ltr">{{ $vm->template_vmid ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Image:</span> <span dir="ltr">{{ $vm->cloudImage?->name ?: $vm->iso_volume ?: $vm->os_template ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Storage:</span> <span dir="ltr">{{ $vm->storage ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Bridge:</span> <span dir="ltr">{{ $vm->network_bridge ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Login:</span> <span dir="ltr">{{ $vm->login_username ?: '—' }}</span></p></div></section></div>
+<div class="mt-6 grid gap-6 xl:grid-cols-2">
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-xl font-black">دیسک های اضافه</h2>
+        <div class="mt-5 space-y-3">
+            @forelse($vm->disks as $disk)
+                <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-4 text-sm">
+                    <div><p class="font-black" dir="ltr">{{ $disk->disk_device }} · {{ $disk->size_gb }}GB</p><p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $disk->storage ?: 'default' }}</p></div>
+                    <span class="rounded-lg px-3 py-1 text-xs font-black {{ $disk->status === 'ready' ? 'bg-emerald-50 text-emerald-700' : ($disk->status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700') }}">{{ $disk->status }}</span>
+                </div>
+            @empty
+                <p class="rounded-xl bg-slate-50 p-4 text-sm font-bold text-slate-500">دیسک اضافه ای ثبت نشده است.</p>
+            @endforelse
+        </div>
+    </section>
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-xl font-black">Upgrade Orders</h2>
+        <div class="mt-5 space-y-3">
+            @forelse($vm->upgradeOrders as $order)
+                <div class="rounded-xl border border-slate-100 p-4 text-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="font-black">{{ $order->type }} #{{ $order->id }}</p>
+                        <span class="rounded-lg px-3 py-1 text-xs font-black {{ $order->status === 'succeeded' ? 'bg-emerald-50 text-emerald-700' : ($order->status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700') }}">{{ $order->status }}</span>
+                    </div>
+                    <p class="mt-2 text-xs font-bold text-slate-500">Delta: {{ $money->format($order->estimated_monthly_delta) }} / month · Applied: {{ $order->applied_at?->format('Y/m/d H:i') ?: '—' }}</p>
+                    @if($order->failure_reason)<p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{{ $order->failure_reason }}</p>@endif
+                </div>
+            @empty
+                <p class="rounded-xl bg-slate-50 p-4 text-sm font-bold text-slate-500">No upgrade orders yet.</p>
+            @endforelse
+        </div>
+    </section>
+</div>
 </div>
 @endsection

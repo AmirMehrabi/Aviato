@@ -375,6 +375,61 @@ class ProxmoxService
     }
 
     /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public function updateVmHardware(ProxmoxServer $server, string $node, int $vmid, array $options): array
+    {
+        $payload = array_filter([
+            'cores' => isset($options['cpu_cores']) ? (int) $options['cpu_cores'] : null,
+            'memory' => isset($options['ram_gb']) ? (int) $options['ram_gb'] * 1024 : null,
+        ], fn (mixed $value): bool => $value !== null && $value !== '');
+
+        $taskId = $this->request($server)
+            ->asForm()
+            ->put("/nodes/{$node}/qemu/{$vmid}/config", $payload)
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public function attachDisk(ProxmoxServer $server, string $node, int $vmid, array $options): array
+    {
+        $device = (string) $options['device'];
+        $storage = (string) $options['storage'];
+        $sizeGb = (int) $options['size_gb'];
+        $payload = [$device => "{$storage}:{$sizeGb}"];
+        $taskId = $this->request($server)
+            ->asForm()
+            ->put("/nodes/{$node}/qemu/{$vmid}/config", $payload)
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    public function nextScsiDiskDevice(array $config): string
+    {
+        for ($slot = 1; $slot <= 30; $slot++) {
+            $device = 'scsi'.$slot;
+
+            if (! array_key_exists($device, $config)) {
+                return $device;
+            }
+        }
+
+        throw new RuntimeException('No free SCSI disk slot is available for this VM.');
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function startVm(ProxmoxServer $server, string $node, int $vmid): array
@@ -1286,6 +1341,40 @@ class ProxmoxService
     private function durationMs(float $startedAt): int
     {
         return (int) round((microtime(true) - $startedAt) * 1000);
+    }
+
+    /**  array<string, string> */
+    protected function websocketAuthHeaders(ProxmoxServer $server): array
+    {
+        if ($server->usesApiToken()) {
+            return ['Authorization' => $this->tokenAuthorization($server)];
+        }
+
+        if (blank($server->password)) {
+            throw new RuntimeException('A password or API token is required to connect to this Proxmox server.');
+        }
+
+        $response = Http::baseUrl($server->baseUrl().'/api2/json')
+            ->acceptJson()
+            ->timeout(10)
+            ->connectTimeout(5)
+            ->withOptions(['verify' => $server->verify_tls])
+            ->asForm()
+            ->post('/access/ticket', [
+                'username' => $server->proxmoxUser(),
+                'password' => $server->password,
+            ])
+            ->throw()
+            ->json('data');
+
+        if (! is_array($response) || ! isset($response['ticket'], $response['CSRFPreventionToken'])) {
+            throw new RuntimeException('Proxmox did not return websocket authentication details.');
+        }
+
+        return [
+            'Cookie' => 'PVEAuthCookie='.$response['ticket'],
+            'CSRFPreventionToken' => (string) $response['CSRFPreventionToken'],
+        ];
     }
 
     protected function tokenAuthorization(ProxmoxServer $server): string

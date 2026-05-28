@@ -87,27 +87,45 @@ class InvoiceService
             ]);
 
             $transactions
-                ->groupBy(fn (WalletTransaction $transaction): string => ($transaction->metadata['category'] ?? 'payg_usage').'|'.($transaction->metadata['vm_id'] ?? 'unknown'))
+                ->groupBy(fn (WalletTransaction $transaction): string => implode('|', [
+                    $transaction->metadata['category'] ?? 'payg_usage',
+                    $transaction->metadata['vm_id'] ?? 'unknown',
+                    $transaction->metadata['backup_id'] ?? '',
+                    $transaction->metadata['disk_id'] ?? '',
+                ]))
                 ->each(function ($group) use ($invoice): void {
                     $first = $group->first();
                     $meta = $first->metadata ?? [];
                     $category = $meta['category'] ?? 'payg_usage';
                     $resource = $meta['resource_snapshot'] ?? [];
                     $backup = $meta['backup_snapshot'] ?? [];
+                    $disk = $meta['disk_snapshot'] ?? [];
                     $hours = (float) $group->sum(fn (WalletTransaction $transaction): float => (float) ($transaction->metadata['hours'] ?? 0));
                     $subtotal = (int) abs($group->sum('amount'));
-                    $label = ($meta['vm_name'] ?? 'VM').($category === 'backup_storage' ? ' - Backup' : '');
+                    $label = ($meta['vm_name'] ?? 'VM').match ($category) {
+                        'backup_storage' => ' - Backup',
+                        'extra_disk_storage' => ' - Extra Disk',
+                        default => '',
+                    };
                     $windowStart = collect($group)->map(fn (WalletTransaction $transaction) => $transaction->metadata['period_start'] ?? null)->filter()->sort()->first();
                     $windowEnd = collect($group)->map(fn (WalletTransaction $transaction) => $transaction->metadata['period_end'] ?? null)->filter()->sort()->last();
-                    $description = $category === 'backup_storage'
-                        ? sprintf(
+                    $description = match ($category) {
+                        'backup_storage' => sprintf(
                             'بازه مصرف بکاپ: %s تا %s | فضای بکاپ: %sGB | Storage: %s',
                             $windowStart ? CarbonImmutable::parse($windowStart)->format('Y/m/d H:i') : '—',
                             $windowEnd ? CarbonImmutable::parse($windowEnd)->format('Y/m/d H:i') : '—',
                             $backup['size_gb'] ?? '—',
                             $backup['storage'] ?? '—',
-                        )
-                        : sprintf(
+                        ),
+                        'extra_disk_storage' => sprintf(
+                            'بازه مصرف دیسک اضافه: %s تا %s | دیسک: %s | حجم: %sGB | Storage: %s',
+                            $windowStart ? CarbonImmutable::parse($windowStart)->format('Y/m/d H:i') : '—',
+                            $windowEnd ? CarbonImmutable::parse($windowEnd)->format('Y/m/d H:i') : '—',
+                            $disk['disk_device'] ?? '—',
+                            $disk['size_gb'] ?? '—',
+                            $disk['storage'] ?? '—',
+                        ),
+                        default => sprintf(
                             'بازه مصرف: %s تا %s | منابع: %s vCPU / %sGB RAM / %sGB Disk / %s IP',
                             $windowStart ? CarbonImmutable::parse($windowStart)->format('Y/m/d H:i') : '—',
                             $windowEnd ? CarbonImmutable::parse($windowEnd)->format('Y/m/d H:i') : '—',
@@ -115,7 +133,8 @@ class InvoiceService
                             $resource['ram_gb'] ?? '—',
                             $resource['disk_gb'] ?? '—',
                             $resource['ip_count'] ?? '—',
-                        );
+                        ),
+                    };
 
                     InvoiceItem::create([
                         'invoice_id' => $invoice->id,
@@ -129,6 +148,8 @@ class InvoiceService
                         'subtotal' => $subtotal,
                         'meta' => [
                             'resource_snapshot' => $resource,
+                            'backup_snapshot' => $backup,
+                            'disk_snapshot' => $disk,
                             'transaction_ids' => $group->pluck('id')->all(),
                             'period_start' => $windowStart,
                             'period_end' => $windowEnd,

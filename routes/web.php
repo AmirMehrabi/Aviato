@@ -18,6 +18,7 @@ use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\MonitoringController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\ServerController;
+use App\Http\Controllers\Customer\VmUpgradeController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
 use App\Models\VmBundle;
 use App\Services\WalletService;
@@ -151,6 +152,8 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');
         Route::get('servers/statuses', [ServerController::class, 'statuses'])->name('customer.servers.statuses');
         Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->name('customer.servers.show');
+        Route::post('servers/{virtualMachine}/upgrades/bundle', [VmUpgradeController::class, 'storeBundle'])->name('customer.servers.upgrades.bundle.store');
+        Route::post('servers/{virtualMachine}/upgrades/extra-disk', [VmUpgradeController::class, 'storeExtraDisk'])->name('customer.servers.upgrades.extra-disk.store');
         Route::delete('servers/{virtualMachine}', [ServerController::class, 'destroy'])->name('customer.servers.destroy');
         Route::get('backups', [BackupController::class, 'index'])->name('customer.backups.index');
         Route::post('backups/servers/{virtualMachine}', [BackupController::class, 'storeManual'])->name('customer.backups.manual.store');

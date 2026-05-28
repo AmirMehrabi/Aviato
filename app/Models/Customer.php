@@ -54,6 +54,11 @@ class Customer extends Authenticatable
         return $this->hasMany(VirtualMachine::class);
     }
 
+    public function vmUpgradeOrders(): HasMany
+    {
+        return $this->hasMany(VmUpgradeOrder::class)->latest();
+    }
+
     public function suspend(?string $reason = null): void
     {
         $this->forceFill([

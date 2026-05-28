@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Models\CloudImage;
+use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
 use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
 use App\Services\UsageBillingService;
+use App\Services\VmUpgradeService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +31,7 @@ class ServerController extends Controller
         private readonly BillingService $billing,
         private readonly UsageBillingService $usageBilling,
         private readonly CloudVmProvisioningService $cloudProvisioning,
+        private readonly VmUpgradeService $upgrades,
     ) {}
 
     public function index(Request $request): View
@@ -61,15 +64,16 @@ class ServerController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $summarySource = $customer->virtualMachines()->notDeleted()->with('bundle')->get();
+        $summarySource = $customer->virtualMachines()->notDeleted()->with(['bundle', 'disks'])->get();
         $pendingUsage = $summarySource
             ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
             ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
         $monthlySpend = $summarySource
             ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
-            ->sum(fn (VirtualMachine $vm): int => $vm->isRunning()
+            ->sum(fn (VirtualMachine $vm): int => ($vm->isRunning()
                 ? $this->billing->estimateMonthly($vm)
-                : $this->billing->estimateStoppedMonthly($vm));
+                : $this->billing->estimateStoppedMonthly($vm))
+                + $vm->disks->where('status', 'ready')->sum(fn ($disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth())));
 
         return view('customer.servers.index', [
             'customer' => $customer,
@@ -236,7 +240,24 @@ class ServerController extends Controller
             'reservedIpAddress.pool',
             'backupPolicy',
             'backups' => fn ($query) => $query->latest()->limit(5),
+            'disks' => fn ($query) => $query->latest(),
+            'upgradeOrders' => fn ($query) => $query->with(['toBundle', 'disk'])->latest()->limit(6),
         ]);
+
+        $eligibleBundles = VmBundle::query()
+            ->where('is_active', true)
+            ->where('id', '!=', $server->vm_bundle_id)
+            ->orderBy('sort_order')
+            ->orderBy('monthly_price')
+            ->get()
+            ->filter(fn (VmBundle $bundle): bool => $bundle->cpu_cores >= $server->cpu_cores
+                && $bundle->ram_gb >= $server->ram_gb
+                && $bundle->disk_gb >= $server->disk_gb)
+            ->values();
+        $hasPendingUpgrade = $server->upgradeOrders->contains(fn ($order): bool => $order->isPending());
+        $extraDiskOptions = collect([10, 25, 50, 100, 250, 500])
+            ->map(fn (int $size): array => $this->upgrades->previewExtraDisk($server, $size))
+            ->values();
 
         $monthlyCost = $server->isActionLocked()
             ? 0
@@ -270,6 +291,12 @@ class ServerController extends Controller
                 'latest_at' => $latestBackup?->created_at,
                 'latest_error' => $latestBackup?->status === VmBackup::STATUS_FAILED ? $latestBackup->error : null,
             ],
+            'eligibleBundles' => $eligibleBundles,
+            'bundlePreviews' => $eligibleBundles->mapWithKeys(fn (VmBundle $bundle): array => [
+                $bundle->id => $this->upgrades->previewBundleUpgrade($server, $bundle),
+            ]),
+            'extraDiskOptions' => $extraDiskOptions,
+            'hasPendingUpgrade' => $hasPendingUpgrade,
             'invoiceCount' => $customer->invoices()->count(),
         ]);
     }

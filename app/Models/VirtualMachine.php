@@ -103,6 +103,22 @@ class VirtualMachine extends Model
         return $this->hasMany(VmBackup::class);
     }
 
+    public function upgradeOrders(): HasMany
+    {
+        return $this->hasMany(VmUpgradeOrder::class)->latest();
+    }
+
+    public function disks(): HasMany
+    {
+        return $this->hasMany(VmDisk::class);
+    }
+
+    public function pendingUpgradeOrders(): HasMany
+    {
+        return $this->hasMany(VmUpgradeOrder::class)
+            ->whereIn('status', [VmUpgradeOrder::STATUS_PENDING, VmUpgradeOrder::STATUS_APPLYING]);
+    }
+
     public function isRunning(): bool
     {
         return $this->status === self::STATUS_RUNNING;

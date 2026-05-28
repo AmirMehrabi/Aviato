@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
+use App\Models\VmDisk;
 use App\Models\WalletTransaction;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -120,6 +121,19 @@ class UsageBillingService
                 }
             });
 
+        VmDisk::query()
+            ->with('virtualMachine.customer')
+            ->where('status', VmDisk::STATUS_READY)
+            ->chunk(100, function ($disks) use (&$transactions, $until): void {
+                foreach ($disks as $disk) {
+                    $transaction = $this->chargeExtraDisk($disk, $until);
+
+                    if ($transaction) {
+                        $transactions->push($transaction);
+                    }
+                }
+            });
+
         return $transactions;
     }
 
@@ -159,6 +173,45 @@ class UsageBillingService
         );
 
         $backup->forceFill(['last_billed_at' => $until])->save();
+
+        return $transaction;
+    }
+
+    public function chargeExtraDisk(VmDisk $disk, ?CarbonInterface $until = null): ?WalletTransaction
+    {
+        $disk->loadMissing('virtualMachine.customer');
+        $until ??= now();
+        $from = $disk->last_billed_at ?? $disk->created_at ?? $until;
+        $hours = max(0, $from->floatDiffInHours($until));
+        $hourly = $this->billing->extraDiskHourly($disk);
+        $amount = (int) round($hours * $hourly);
+
+        if ($amount <= 0 || ! $disk->virtualMachine?->customer) {
+            return null;
+        }
+
+        $transaction = $this->wallets->charge(
+            $disk->virtualMachine->customer,
+            $amount,
+            'کسر فضای دیسک اضافه برای VM '.$disk->virtualMachine->name,
+            metadata: [
+                'category' => 'extra_disk_storage',
+                'vm_id' => $disk->virtual_machine_id,
+                'vm_name' => $disk->virtualMachine->name,
+                'disk_id' => $disk->id,
+                'period_start' => $from->toIso8601String(),
+                'period_end' => $until->toIso8601String(),
+                'hours' => round($hours, 4),
+                'hourly_rate' => $hourly,
+                'disk_snapshot' => [
+                    'disk_device' => $disk->disk_device,
+                    'size_gb' => $disk->size_gb,
+                    'storage' => $disk->storage,
+                ],
+            ],
+        );
+
+        $disk->forceFill(['last_billed_at' => $until])->save();
 
         return $transaction;
     }

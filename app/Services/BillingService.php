@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
+use App\Models\VmDisk;
 use Illuminate\Support\Collection;
 
 class BillingService
@@ -57,11 +58,21 @@ class BillingService
         return $backup->sizeGb() * $this->rate($rates, ResourceRate::BACKUP);
     }
 
+    public function diskHourly(int $sizeGb): float
+    {
+        return $sizeGb * $this->rate($this->rates(), ResourceRate::DISK);
+    }
+
+    public function extraDiskHourly(VmDisk $disk): float
+    {
+        return $this->diskHourly($disk->size_gb);
+    }
+
     public function customerSummary(int $customerId): array
     {
         $vms = VirtualMachine::query()
             ->notDeleted()
-            ->with('bundle')
+            ->with(['bundle', 'disks'])
             ->where('customer_id', $customerId)
             ->get();
 
@@ -70,7 +81,8 @@ class BillingService
             'stopped' => $vms->where('status', VirtualMachine::STATUS_STOPPED)->count(),
             'monthly_spend' => $vms
                 ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
-                ->sum(fn (VirtualMachine $vm): int => $vm->isRunning() ? $this->estimateMonthly($vm) : $this->estimateStoppedMonthly($vm)),
+                ->sum(fn (VirtualMachine $vm): int => ($vm->isRunning() ? $this->estimateMonthly($vm) : $this->estimateStoppedMonthly($vm))
+                    + $vm->disks->where('status', VmDisk::STATUS_READY)->sum(fn (VmDisk $disk): int => (int) round($this->extraDiskHourly($disk) * ResourceRate::hoursPerMonth()))),
             'unbilled_accrued' => $vms
                 ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
                 ->sum(fn (VirtualMachine $vm): int => $this->currentAccrued($vm)),
