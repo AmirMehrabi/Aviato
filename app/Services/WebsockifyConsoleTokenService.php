@@ -34,6 +34,14 @@ class WebsockifyConsoleTokenService
             throw new RuntimeException('Console websockify SSH user is not configured.');
         }
 
+        if ($sshKey === '') {
+            throw new RuntimeException('Console websockify SSH key is not configured. Set CONSOLE_WEBSOCKIFY_SSH_KEY to a private key readable by the PHP web user.');
+        }
+
+        if (! is_readable($sshKey)) {
+            throw new RuntimeException('Console websockify SSH key is not readable by the PHP web user: '.$sshKey);
+        }
+
         $line = $token.': '.$targetHost.':'.$port;
         $remote = $sshUser.'@'.$server->host;
         $remoteCommand = $this->remoteCommand($tokenFile, $token, $line, $expiresAt->timestamp);
@@ -45,15 +53,18 @@ class WebsockifyConsoleTokenService
             '-o',
             'BatchMode=yes',
             '-o',
-            'StrictHostKeyChecking=accept-new',
+            'IdentitiesOnly=yes',
+            '-o',
+            'StrictHostKeyChecking=no',
+            '-o',
+            'UserKnownHostsFile=/dev/null',
+            '-o',
+            'LogLevel=ERROR',
             '-o',
             'ConnectTimeout='.$timeout,
+            '-i',
+            $sshKey,
         ];
-
-        if ($sshKey !== '') {
-            $command[] = '-i';
-            $command[] = $sshKey;
-        }
 
         $command[] = $remote;
         $command[] = $remoteCommand;
