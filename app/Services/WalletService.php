@@ -48,7 +48,15 @@ class WalletService
         $currency ??= AppSetting::currency();
         $prefix = $amount < 0 ? '-' : '';
 
-        return $prefix.number_format(abs($amount)).' '.$currency;
+        return $prefix.number_format(abs($amount)).' '.$this->currencyLabel($currency);
+    }
+
+    private function currencyLabel(string $currency): string
+    {
+        return match ($currency) {
+            'IRR', 'IRT' => 'تومان',
+            default => $currency,
+        };
     }
 
     private function record(
