@@ -18,9 +18,9 @@
         <div class="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.95fr_1.05fr]">
             <div class="space-y-5">
                 @foreach ([
-                    ['title' => 'فروش و پیش فروش', 'body' => 'sales@avieto.ir', 'meta' => 'شنبه تا چهارشنبه، ۹ تا ۱۸'],
-                    ['title' => 'پشتیبانی فنی', 'body' => 'support@avieto.ir', 'meta' => 'برای مشتریان فعال و تیکت های فنی'],
-                    ['title' => 'تماس مستقیم', 'body' => '۰۳۴-۱۲۳۴۵۶۷۸', 'meta' => 'پاسخ گویی نمونه برای تماس های تجاری'],
+                    ['title' => 'فروش و پیش فروش', 'body' => 'sales@aviato.ir', 'meta' => 'شنبه تا چهارشنبه، ۹ تا ۱۸'],
+                    ['title' => 'پشتیبانی فنی', 'body' => 'support@aviato.ir', 'meta' => 'برای مشتریان فعال و تیکت های فنی'],
+                    ['title' => 'تماس مستقیم', 'body' => '۰۳۴-۹۱۰۹-۷۹۵۳', 'meta' => 'پاسخ گویی نمونه برای تماس های تجاری'],
                     ['title' => 'آدرس دفتر', 'body' => 'کرمان، میدان قرنی، ساختمان پدر، واحد ۳۰۲', 'meta' => 'قرار ملاقات حضوری با هماهنگی قبلی'],
                 ] as $contact)
                     <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
