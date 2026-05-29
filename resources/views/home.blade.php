@@ -1,6 +1,6 @@
 @extends('layouts.marketing')
 
-@section('title', 'آویاتو | خرید VPS ابری سریع و شفاف')
+@section('title', 'آویاتو | ارائه‌ی راهکارهای ابری')
 @section('description', 'VPS ابری آویاتو با دیسک NVMe، IP اختصاصی، منابع شفاف، قیمت قابل پیش بینی و پشتیبانی فارسی برای اجرای سریع سرویس ها.')
 
 @php
