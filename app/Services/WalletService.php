@@ -48,7 +48,20 @@ class WalletService
         $currency ??= AppSetting::currency();
         $prefix = $amount < 0 ? '-' : '';
 
-        return $prefix.number_format(abs($amount)).' '.$this->currencyLabel($currency);
+        return $prefix.$this->formattedAmount(abs($amount), $currency).' '.$this->currencyLabel($currency);
+    }
+
+    private function formattedAmount(int $amount, string $currency): string
+    {
+        if ($currency !== 'IRR') {
+            return number_format($amount);
+        }
+
+        if ($amount % 10 === 0) {
+            return number_format(intdiv($amount, 10));
+        }
+
+        return number_format($amount / 10, 1);
     }
 
     private function currencyLabel(string $currency): string
