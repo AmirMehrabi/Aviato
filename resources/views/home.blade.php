@@ -1,7 +1,7 @@
 @extends('layouts.marketing')
 
-@section('title', 'آویاتو | ارائه‌ی راهکارهای ابری')
-@section('description', 'VPS ابری آویاتو با دیسک NVMe، IP اختصاصی، منابع شفاف، قیمت قابل پیش بینی و پشتیبانی فارسی برای اجرای سریع سرویس ها.')
+@section('title', 'آویاتو | خرید سرور مجازی')
+@section('description', 'خرید VPS آویاتو با دیسک NVMe، IP اختصاصی، قیمت مشخص و پشتیبانی فارسی برای راه اندازی سایت، فروشگاه و اپلیکیشن.')
 
 @php
     $activePage = 'home';
@@ -11,45 +11,45 @@
     $recommendedIndex = min(1, max(0, $marketingBundles->count() - 1));
 
     $planMeta = [
-        ['label' => 'شروع سریع', 'use' => 'سایت، وردپرس، API سبک'],
-        ['label' => 'پیشنهاد خرید', 'use' => 'SaaS، فروشگاه، production'],
-        ['label' => 'بار پایدار', 'use' => 'دیتابیس، worker، سرویس پرترافیک'],
-        ['label' => 'منابع بیشتر', 'use' => 'تیم های عملیاتی و پروژه های سنگین'],
+        ['label' => 'شروع آسان', 'use' => 'سایت، وردپرس و پروژه های کوچک'],
+        ['label' => 'پیشنهاد ما', 'use' => 'فروشگاه، اپلیکیشن و سرویس های در حال رشد'],
+        ['label' => 'برای کارهای جدی تر', 'use' => 'دیتابیس، پردازش و سایت های پربازدید'],
+        ['label' => 'منابع بیشتر', 'use' => 'تیم ها و پروژه هایی که قدرت بیشتری می خواهند'],
     ];
 
     $differenceRows = [
-        ['title' => 'مسیر خرید کوتاه تر', 'body' => 'به جای کاتالوگ شلوغ سرویس های ابری، روی انتخاب VPS، منابع، قیمت و ساخت سرور تمرکز می کنید.'],
-        ['title' => 'منابع و قیمت شفاف', 'body' => 'CPU، RAM، دیسک NVMe، IP و هزینه ماهانه قبل از خرید روشن است و از باندل های فعال پنل خوانده می شود.'],
-        ['title' => 'آماده برای اجرای واقعی', 'body' => 'IP اختصاصی، دیسک سریع، بکاپ، فایروال و پشتیبانی فارسی کمک می کند سرویس را زودتر به production برسانید.'],
+        ['title' => 'خرید ساده و سریع', 'body' => 'پلن ها را می بینید، منابع و قیمت را مقایسه می کنید و بعد سرور خود را می سازید.'],
+        ['title' => 'قیمت و منابع مشخص', 'body' => 'CPU، RAM، دیسک NVMe، تعداد IP و هزینه ماهانه قبل از خرید برای شما مشخص است.'],
+        ['title' => 'مناسب برای شروع کار', 'body' => 'با IP اختصاصی، دیسک سریع، بکاپ، فایروال و پشتیبانی فارسی راحت تر سرویس خود را راه اندازی می کنید.'],
     ];
 
     $useCases = [
-        ['title' => 'Laravel و WordPress', 'body' => 'برای سایت، پنل، فروشگاه و API با IP اختصاصی و دسترسی کامل.'],
-        ['title' => 'SaaS و API', 'body' => 'برای سرویس هایی که به منابع مشخص، هزینه قابل کنترل و ارتقای سریع نیاز دارند.'],
-        ['title' => 'Database و Worker', 'body' => 'برای نودهای پردازشی، صف، دیتابیس سبک و سرویس های داخلی تیم.'],
-        ['title' => 'Staging و تست', 'body' => 'برای محیط های جدا، تست release و ساخت sandbox بدون درگیری با زیرساخت اصلی.'],
+        ['title' => 'سایت و وردپرس', 'body' => 'برای سایت شرکتی، وبلاگ، فروشگاه و پنل های مدیریتی.'],
+        ['title' => 'اپلیکیشن و API', 'body' => 'برای سرویس هایی که باید همیشه آنلاین باشند و منابع مشخص داشته باشند.'],
+        ['title' => 'دیتابیس و پردازش', 'body' => 'برای دیتابیس های سبک، کارهای پس زمینه و پردازش های روزمره.'],
+        ['title' => 'تست و تمرین', 'body' => 'برای ساخت محیط تست، بررسی نسخه جدید و جدا کردن پروژه ها از هم.'],
     ];
 
     $steps = [
-        ['number' => '01', 'title' => 'پلن را انتخاب کنید', 'body' => 'منابع هر VPS قبل از خرید مشخص است؛ از کارت های همین صفحه یا قیمت ها شروع کنید.'],
-        ['number' => '02', 'title' => 'حساب را آماده کنید', 'body' => 'ثبت نام کنید، کیف پول را شارژ کنید و خرید را در پنل مشتری ادامه دهید.'],
-        ['number' => '03', 'title' => 'با SSH وصل شوید', 'body' => 'بعد از ساخت، IP و اطلاعات اتصال در پنل نمایش داده می شود.'],
+        ['number' => '01', 'title' => 'پلن را انتخاب کنید', 'body' => 'منابع و قیمت هر VPS را ببینید و پلنی را انتخاب کنید که به کار شما می آید.'],
+        ['number' => '02', 'title' => 'ثبت نام و پرداخت کنید', 'body' => 'حساب کاربری بسازید، کیف پول را شارژ کنید و سفارش را در پنل مشتری ثبت کنید.'],
+        ['number' => '03', 'title' => 'وارد سرور شوید', 'body' => 'بعد از آماده شدن سرور، IP و اطلاعات اتصال در پنل نمایش داده می شود.'],
     ];
 
     $operations = [
-        ['title' => 'NVMe', 'body' => 'دیسک سریع برای وب اپ، دیتابیس و پردازش های روزمره.'],
-        ['title' => 'IP اختصاصی', 'body' => 'برای DNS، SSL، اتصال مستقیم و جداسازی سرویس.'],
-        ['title' => 'بکاپ و فایروال', 'body' => 'برای کاهش ریسک خطای انسانی و محدود کردن دسترسی های حساس.'],
-        ['title' => 'پشتیبانی فارسی', 'body' => 'برای انتخاب پلن، شروع کار و رفع مشکل های رایج VPS.'],
+        ['title' => 'دیسک NVMe', 'body' => 'سرعت بهتر برای سایت، فروشگاه، دیتابیس و کارهای روزمره.'],
+        ['title' => 'IP اختصاصی', 'body' => 'برای دامنه، SSL، اتصال مستقیم و جدا نگه داشتن سرویس ها.'],
+        ['title' => 'بکاپ و فایروال', 'body' => 'برای کم کردن ریسک و کنترل دسترسی های مهم سرور.'],
+        ['title' => 'پشتیبانی فارسی', 'body' => 'برای انتخاب پلن، شروع کار و حل مشکل های رایج سرور مجازی.'],
     ];
 
     $faqs = [
-        ['q' => 'بعد از خرید، سرور چه زمانی آماده استفاده می شود؟', 'a' => 'بعد از ثبت سفارش و پرداخت، ساخت VPS به صورت خودکار شروع می شود. هدف ما تحویل سریع است و پس از آماده شدن، IP و اطلاعات اتصال در پنل مشتری نمایش داده می شود.'],
-        ['q' => 'برای سایت یا اپلیکیشنم کدام پلن را انتخاب کنم؟', 'a' => 'اگر تازه شروع می کنید، از پلن کوچک تر شروع کنید و مصرف CPU، RAM و دیسک را زیر نظر بگیرید. برای فروشگاه، API یا سرویس production بهتر است پلنی انتخاب کنید که برای رشد کوتاه مدت هم ظرفیت داشته باشد.'],
-        ['q' => 'آیا دسترسی کامل به سرور دارم؟', 'a' => 'بله. VPS با دسترسی مدیریتی تحویل داده می شود تا بتوانید وب سرور، دیتابیس، Docker، ابزارهای مانیتورینگ و تنظیمات امنیتی مورد نیاز خودتان را نصب و مدیریت کنید.'],
-        ['q' => 'هزینه ها چطور محاسبه و پرداخت می شوند؟', 'a' => 'هزینه هر پلن قبل از خرید مشخص است و پرداخت از طریق کیف پول مشتری انجام می شود. قبل از سفارش، منابع و قیمت را می بینید تا هزینه ماهانه برایتان قابل پیش بینی باشد.'],
-        ['q' => 'اگر بعدا منابع بیشتری لازم داشته باشم چه می شود؟', 'a' => 'برای شروع لازم نیست بزرگ ترین پلن را انتخاب کنید. وقتی مصرف پروژه بالا رفت، می توانید پلن مناسب تر را انتخاب کنید یا برای مسیر ارتقا و جابه جایی از پشتیبانی کمک بگیرید.'],
-        ['q' => 'بکاپ و امنیت سرور با چه کسی است؟', 'a' => 'ما ابزارهای زیرساختی مثل IP اختصاصی، فایروال و بکاپ را فراهم می کنیم، اما تنظیمات داخل سیستم عامل، به روزرسانی نرم افزارها و نگهداری اپلیکیشن بر عهده مالک سرور است مگر سرویس مدیریتی جداگانه توافق شده باشد.'],
+        ['q' => 'بعد از خرید، سرور چه زمانی آماده می شود؟', 'a' => 'بعد از ثبت سفارش و پرداخت، ساخت VPS به صورت خودکار شروع می شود. وقتی سرور آماده شد، IP و اطلاعات اتصال را در پنل مشتری می بینید.'],
+        ['q' => 'برای سایت یا اپلیکیشنم کدام پلن بهتر است؟', 'a' => 'اگر تازه شروع کرده اید، معمولا یک پلن کوچک تر کافی است. برای فروشگاه، سایت پربازدید یا اپلیکیشنی که کاربر زیادی دارد، بهتر است پلنی انتخاب کنید که کمی فضای رشد هم داشته باشد.'],
+        ['q' => 'آیا دسترسی کامل به سرور دارم؟', 'a' => 'بله. سرور با دسترسی مدیریتی تحویل داده می شود و می توانید وب سرور، دیتابیس، Docker و ابزارهای مورد نیاز خودتان را نصب کنید.'],
+        ['q' => 'هزینه ها چطور پرداخت می شوند؟', 'a' => 'قیمت هر پلن قبل از سفارش مشخص است و پرداخت از کیف پول مشتری انجام می شود. قبل از خرید، منابع و هزینه ماهانه را می بینید.'],
+        ['q' => 'اگر بعدا منابع بیشتری لازم داشته باشم چه کنم؟', 'a' => 'لازم نیست از اول بزرگ ترین پلن را بخرید. وقتی پروژه بزرگ تر شد، می توانید پلن مناسب تری انتخاب کنید یا برای انتخاب مسیر بهتر از پشتیبانی کمک بگیرید.'],
+        ['q' => 'امنیت و نگهداری سرور با چه کسی است؟', 'a' => 'ما امکانات زیرساختی مثل IP اختصاصی، فایروال و بکاپ را فراهم می کنیم. نصب نرم افزارها، به روزرسانی سیستم عامل و نگهداری اپلیکیشن داخل سرور بر عهده شماست، مگر اینکه سرویس مدیریتی جداگانه داشته باشید.'],
     ];
 @endphp
 
@@ -138,24 +138,24 @@
 
             <div class="order-1">
                 <h1 class="max-w-3xl text-4xl font-black leading-tight tracking-normal text-slate-950 md:text-6xl">
-                    VPS ابری سریع،
-                    <span class="block text-[#0069FF]">شفاف و آماده اجرا</span>
+                    سرور مجازی سریع،
+                    <span class="block text-[#0069FF]">با قیمت مشخص</span>
                 </h1>
                 <p class="mt-6 max-w-2xl text-base leading-9 text-slate-600 md:text-lg">
-                    سرور مجازی با دیسک NVMe، IP اختصاصی، قیمت قابل پیش بینی و پشتیبانی فارسی. برای تیم هایی که می خواهند سریع خرید کنند و سرویس را اجرا کنند.
+                    VPS آویاتو برای راه اندازی سایت، فروشگاه و اپلیکیشن است. پلن ها روشن هستند، قیمت را قبل از خرید می بینید و برای شروع کار پشتیبانی فارسی دارید.
                 </p>
 
                 <div class="mt-9 flex flex-col gap-3 sm:flex-row">
                     <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-7 py-4 text-base font-black text-white shadow-xl shadow-[#0069FF]/25 transition hover:bg-[#0050D0]">
-                        شروع خرید VPS
+                        خرید سرور مجازی
                     </a>
                     <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-lg border border-sky-200 bg-white px-7 py-4 text-base font-black text-slate-800 shadow-sm transition hover:border-[#0069FF] hover:text-[#0069FF]">
-                        مشاهده قیمت ها
+                        دیدن پلن ها و قیمت ها
                     </a>
                 </div>
 
                 <div class="mt-10 grid gap-4 border-y border-sky-100 py-6 sm:grid-cols-3">
-                    @foreach ([['کمتر از ۲ دقیقه', ' تحویل سرور'], ['NVMe', 'دیسک سریع'], ['قیمت روشن', 'قبل از ثبت سفارش']] as $metric)
+                    @foreach ([['راه اندازی سریع', 'بعد از ثبت سفارش'], ['NVMe', 'دیسک سریع'], ['قیمت مشخص', 'قبل از پرداخت']] as $metric)
                         <div class="border-r-2 border-[#0069FF] pr-4">
                             <p class="text-2xl font-black text-slate-950">{{ $metric[0] }}</p>
                             <p class="mt-1 text-sm font-bold text-slate-500">{{ $metric[1] }}</p>
@@ -171,9 +171,9 @@
             <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                 <div class="max-w-2xl">
                     <p class="text-sm font-black text-[#0069FF]">پلن های VPS</p>
-                    <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">منابع را ببینید، قیمت را بدانید، سرور را بسازید.</h2>
+                    <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">پلن مناسب خود را راحت انتخاب کنید.</h2>
                 </div>
-                <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-lg border border-sky-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:border-[#0069FF] hover:text-[#0069FF]">همه قیمت ها</a>
+                <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-lg border border-sky-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:border-[#0069FF] hover:text-[#0069FF]">همه پلن ها</a>
             </div>
 
             <div class="mt-10 grid gap-5 lg:grid-cols-3">
@@ -196,7 +196,7 @@
                             <p class="mt-1 text-sm font-bold text-slate-500">ماهانه</p>
                         </div>
 
-                        <p class="mt-5 min-h-16 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'VPS آماده برای اجرای سرویس های وب، API و محیط production.' }}</p>
+                        <p class="mt-5 min-h-16 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'VPS آماده برای سایت، فروشگاه، اپلیکیشن و سرویس های آنلاین.' }}</p>
 
                         <div class="mt-7 grid grid-cols-2 gap-2 text-sm font-black text-slate-700">
                             <span class="rounded-lg bg-white p-3 ring-1 ring-sky-100" dir="ltr">{{ $bundle->cpu_cores }} vCPU</span>
@@ -206,13 +206,13 @@
                         </div>
 
                         <a href="{{ route('customer.register') }}" class="mt-7 inline-flex w-full justify-center rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">
-                            انتخاب این پلن
+                            خرید این پلن
                         </a>
                     </article>
                 @empty
                     <div class="rounded-2xl border border-dashed border-sky-200 bg-sky-50 p-8 text-center lg:col-span-3">
-                        <h3 class="text-xl font-black text-slate-950">هنوز پلن فعالی برای نمایش منتشر نشده است.</h3>
-                        <p class="mt-3 text-sm leading-7 text-slate-600">بعد از فعال کردن باندل ها در پنل مدیریت، قیمت ها به صورت خودکار در صفحه خانه و قیمت گذاری نمایش داده می شوند.</p>
+                        <h3 class="text-xl font-black text-slate-950">فعلا پلنی برای نمایش وجود ندارد.</h3>
+                        <p class="mt-3 text-sm leading-7 text-slate-600">بعد از فعال شدن پلن ها در پنل مدیریت، قیمت ها به صورت خودکار در صفحه خانه و صفحه قیمت ها نمایش داده می شوند.</p>
                     </div>
                 @endforelse
             </div>
@@ -223,9 +223,9 @@
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
             <div>
                 <p class="text-sm font-black text-[#0069FF]">چرا آویاتو؟</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">خرید VPS بدون کاتالوگ شلوغ ابرهای عمومی.</h2>
+                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">خرید VPS بدون پیچیدگی اضافه.</h2>
                 <p class="mt-5 leading-8 text-slate-600">
-                    تصمیم خرید باید کوتاه باشد: پلن، منابع، قیمت و ساخت سرور. جزئیات اضافه فقط وقتی لازم است که به اجرای سرویس کمک کند.
+                    برای خرید سرور مجازی باید بدانید چه منابعی می گیرید، چقدر پرداخت می کنید و چطور سرور را تحویل می گیرید. ما همین مسیر را ساده کرده ایم.
                 </p>
             </div>
 
@@ -244,9 +244,9 @@
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <div>
                 <p class="text-sm font-black text-[#0069FF]">برای چه کاری می خرید؟</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">VPS مناسب برای کارهای واقعی تیم شما.</h2>
-                <p class="mt-5 leading-8 text-slate-600">از سایت و API تا staging و worker، پلن باید با مصرف واقعی تیم هماهنگ باشد.</p>
-                <a href="{{ route('solutions') }}" class="mt-8 inline-flex rounded-lg border border-sky-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:border-[#0069FF] hover:text-[#0069FF]">دیدن راهکارها</a>
+                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">برای سایت، فروشگاه، اپلیکیشن و تست.</h2>
+                <p class="mt-5 leading-8 text-slate-600">هر پروژه به اندازه خودش منابع می خواهد. پلنی را انتخاب کنید که با نیاز امروز شما هماهنگ است و برای رشد هم جا دارد.</p>
+                <a href="{{ route('solutions') }}" class="mt-8 inline-flex rounded-lg border border-sky-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:border-[#0069FF] hover:text-[#0069FF]">دیدن کاربردها</a>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -267,8 +267,8 @@
         <div class="mx-auto max-w-7xl">
             <div class="max-w-3xl">
                 <p class="text-sm font-black text-sky-300">مسیر خرید</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight md:text-4xl">از انتخاب پلن تا SSH، سه مرحله روشن.</h2>
-                <p class="mt-5 leading-8 text-sky-100/75">فرآیند خرید باید زمان تیم را کم کند، نه اینکه قبل از اجرای سرویس یک پروژه جانبی بسازد.</p>
+                <h2 class="mt-3 text-3xl font-black leading-tight md:text-4xl">از انتخاب پلن تا ورود به سرور، در چند قدم ساده.</h2>
+                <p class="mt-5 leading-8 text-sky-100/75">بعد از انتخاب پلن و ثبت سفارش، سرور شما ساخته می شود و اطلاعات اتصال در پنل قرار می گیرد.</p>
             </div>
 
             <div class="mt-10 grid gap-4 md:grid-cols-3">
@@ -287,8 +287,8 @@
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.75fr_1.25fr]">
             <div>
                 <p class="text-sm font-black text-[#0069FF]">اطمینان قبل از پرداخت</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">چیزهایی که قبل از خرید باید مشخص باشند.</h2>
-                <p class="mt-5 leading-8 text-slate-600">خرید VPS برای production یعنی منابع، دسترسی، پشتیبانی و هزینه باید قبل از پرداخت قابل فهم باشد.</p>
+                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">قبل از خرید، همه چیز را واضح ببینید.</h2>
+                <p class="mt-5 leading-8 text-slate-600">منابع، دسترسی، پشتیبانی و هزینه ماهانه باید قبل از پرداخت برای شما روشن باشد.</p>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -306,7 +306,7 @@
         <div class="mx-auto max-w-5xl">
             <div class="text-center">
                 <p class="text-sm font-black text-[#0069FF]">سوالات قبل از خرید</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">تصمیم آخر را راحت تر بگیرید.</h2>
+                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">پاسخ چند سوال رایج.</h2>
             </div>
 
             <div class="mt-10 divide-y divide-sky-100 rounded-2xl border border-sky-100 bg-white shadow-sm shadow-sky-100">
@@ -329,12 +329,12 @@
         <div class="mx-auto max-w-7xl overflow-hidden rounded-2xl bg-[#0069FF] p-7 text-white shadow-2xl shadow-[#0069FF]/20 md:p-12">
             <div class="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
-                    <h2 class="max-w-3xl text-3xl font-black leading-tight md:text-4xl">VPS را انتخاب کنید و سرور را وارد کار واقعی کنید.</h2>
-                    <p class="mt-4 max-w-2xl leading-8 text-blue-50">اگر تصمیم خرید روشن است، ثبت نام کنید. اگر هنوز مقایسه می کنید، قیمت ها و منابع را کامل ببینید.</p>
+                    <h2 class="max-w-3xl text-3xl font-black leading-tight md:text-4xl">پلن خود را انتخاب کنید و سرور مجازی بسازید.</h2>
+                    <p class="mt-4 max-w-2xl leading-8 text-blue-50">اگر آماده خرید هستید، ثبت نام کنید. اگر هنوز مقایسه می کنید، پلن ها و قیمت ها را کامل ببینید.</p>
                 </div>
                 <div class="flex flex-col gap-3 sm:flex-row lg:flex-col">
-                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-lg bg-white px-7 py-4 text-base font-black text-[#0069FF] transition hover:bg-blue-50">شروع خرید VPS</a>
-                    <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-lg border border-white/30 px-7 py-4 text-base font-black text-white transition hover:bg-white/10">مشاهده قیمت ها</a>
+                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-lg bg-white px-7 py-4 text-base font-black text-[#0069FF] transition hover:bg-blue-50">خرید سرور مجازی</a>
+                    <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-lg border border-white/30 px-7 py-4 text-base font-black text-white transition hover:bg-white/10">دیدن پلن ها و قیمت ها</a>
                 </div>
             </div>
         </div>
