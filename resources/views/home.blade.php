@@ -154,14 +154,14 @@
                     </a>
                 </div>
 
-                <div class="mt-10 grid gap-4 border-y border-sky-100 py-6 sm:grid-cols-3">
+                {{-- <div class="mt-10 grid gap-4 border-y border-sky-100 py-6 sm:grid-cols-3">
                     @foreach ([['راه اندازی سریع', 'بعد از ثبت سفارش'], ['NVMe', 'دیسک سریع'], ['قیمت مشخص', 'قبل از پرداخت']] as $metric)
                         <div class="border-r-2 border-[#0069FF] pr-4">
                             <p class="text-2xl font-black text-slate-950">{{ $metric[0] }}</p>
                             <p class="mt-1 text-sm font-bold text-slate-500">{{ $metric[1] }}</p>
                         </div>
                     @endforeach
-                </div>
+                </div> --}}
             </div>
         </div>
     </section>
