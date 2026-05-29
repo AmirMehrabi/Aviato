@@ -50,7 +50,7 @@
             x-data="{ scrolled: false }"
             x-init="scrolled = window.scrollY > 12; window.addEventListener('scroll', () => scrolled = window.scrollY > 12, { passive: true })"
             :class="scrolled ? 'h-14 border-slate-200/80 bg-white/95 shadow-lg shadow-slate-950/5' : 'h-[4.75rem] border-transparent bg-transparent'"
-            class="fixed inset-x-0 top-0 z-50 border-b backdrop-blur transition-all duration-300"
+            class="fixed inset-x-0 top-0 z-50 border-b border-transparent backdrop-blur transition-all duration-300"
         >
             <nav class="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
                 <a href="{{ route('home') }}" class="flex min-w-0 items-center" aria-label="آویاتو">
@@ -64,7 +64,7 @@
 
                 <div
                     :class="scrolled ? 'bg-slate-50/95 ring-slate-200/80 shadow-sm shadow-slate-950/5' : '{{ $darkHeaderTop ? 'bg-white/10 ring-white/10' : 'bg-white/65 ring-sky-100/80 shadow-sm shadow-sky-100/60' }}'"
-                    class="hidden items-center gap-1 rounded-full p-1 text-sm font-black ring-1 backdrop-blur transition-all duration-300 lg:flex"
+                    class="hidden items-center gap-1 rounded-full p-1 text-sm font-black ring-1 {{ $darkHeaderTop ? 'bg-white/10 ring-white/10' : 'bg-white/65 ring-sky-100/80 shadow-sm shadow-sky-100/60' }} backdrop-blur transition-all duration-300 lg:flex"
                 >
                     @foreach ($marketingNavItems as $item)
                         @php($isActive = $activePage === $item['key'])
@@ -84,7 +84,7 @@
                     <a
                         href="{{ route('customer.login') }}"
                         :class="scrolled ? 'border-slate-200 bg-white text-slate-700 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]' : '{{ $darkHeaderTop ? 'border-white/20 bg-white/10 text-white hover:bg-white/15' : 'border-slate-200 bg-white/80 text-slate-700 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]' }}'"
-                        class="hidden items-center justify-center rounded-lg border px-4 py-2 text-sm font-black shadow-sm transition sm:inline-flex"
+                        class="hidden items-center justify-center rounded-lg border {{ $darkHeaderTop ? 'border-white/20 bg-white/10 text-white' : 'border-slate-200 bg-white/80 text-slate-700' }} px-4 py-2 text-sm font-black shadow-sm transition sm:inline-flex"
                     >
                         ورود
                     </a>
