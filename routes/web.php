@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\CustomerEmailVerificationController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\InvoiceController;
@@ -207,4 +208,5 @@ Route::get('/changelog', function () {
 
     return view('changelog');
 })->name('changelog');
-Route::view('/contact', 'contact')->name('contact');
+Route::get('/contact', [ContactController::class, 'create'])->name('contact');
+Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
