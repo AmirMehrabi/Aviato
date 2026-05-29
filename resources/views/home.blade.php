@@ -96,7 +96,7 @@
                                             <h2 class="mt-1 text-base font-black text-slate-950">سیستم عامل را انتخاب کنید</h2>
                                         </div>
                                         <div class="grid gap-2 p-4 md:grid-cols-3">
-                                            @foreach ([['U', 'Ubuntu', '۳ نسخه آماده', 'bg-orange-100 text-orange-700 border-orange-200'], ['D', 'Debian', '۲ نسخه آماده', 'bg-red-100 text-red-700 border-red-200'], ['W', 'Windows', '۲ نسخه آماده', 'bg-sky-100 text-sky-700 border-sky-200']] as $family)
+                                            @foreach ([['U', 'Ubuntu', '۳ نسخه آماده', 'bg-orange-100 text-orange-700 border-orange-200'], ['D', 'Debian', '۲ نسخه آماده', 'bg-red-100 text-red-700 border-red-200']] as $family)
                                                 <div class="flex items-center gap-3 rounded-lg border p-3 text-right {{ $loop->first ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white' }}">
                                                     <span class="grid size-9 shrink-0 place-items-center rounded-lg border text-xs font-black {{ $family[3] }}">{{ $family[0] }}</span>
                                                     <span class="min-w-0">
@@ -127,9 +127,9 @@
                                                 <span class="block text-sm font-black text-slate-950">{{ $heroBundle?->name ?? 'پلن پیشنهادی' }}</span>
                                                 <span class="mt-2 block text-xs leading-6 text-slate-500">{{ $heroBundle?->description ?: 'مناسب سایت و فروشگاه فعال' }}</span>
                                                 <span class="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
-                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><b>{{ $heroBundle?->cpu_cores ?? 4 }}</b><br>CPU</span>
-                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><b>{{ $heroBundle?->ram_gb ?? 8 }}</b><br>RAM</span>
-                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><b>{{ $heroBundle?->disk_gb ?? 80 }}</b><br>Disk</span>
+                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->cpu_cores ?? 4 }}</b><br>CPU</span>
+                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->ram_gb ?? 8 }}</b><br>RAM</span>
+                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->disk_gb ?? 80 }}</b><br>Disk</span>
                                                 </span>
                                             </div>
                                         </div>
