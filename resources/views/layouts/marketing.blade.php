@@ -35,7 +35,7 @@
 <body class="overflow-x-hidden bg-white text-slate-950 antialiased @yield('body_class')">
     @php
         $activePage = $activePage ?? 'home';
-        $darkHeaderTop = in_array($activePage, ['solutions'], true);
+        $darkHeaderTop = in_array($activePage, ['home', 'solutions'], true);
         $marketingNavItems = [
             ['label' => 'خانه', 'route' => 'home', 'key' => 'home'],
             ['label' => 'قیمت‌ها', 'route' => 'pricing', 'key' => 'pricing'],
@@ -83,7 +83,7 @@
                 <div class="flex shrink-0 items-center gap-2">
                     <a
                         href="{{ route('customer.login') }}"
-                        :class="scrolled ? 'border-slate-200 bg-white text-slate-700 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]' : '{{ $darkHeaderTop ? 'border-white/20 bg-white/10 text-white hover:bg-white/15' : 'border-slate-200 bg-white/80 text-slate-700 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]' }}'"
+                        :class="scrolled ? '!border-slate-200 !bg-white !text-slate-700 hover:!border-[#B8D6FF] hover:!bg-[#EBF3FF] hover:!text-[#0069FF]' : '{{ $darkHeaderTop ? 'border-white/20 bg-white/10 text-white hover:bg-white/15' : 'border-slate-200 bg-white/80 text-slate-700 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]' }}'"
                         class="hidden items-center justify-center rounded-lg border {{ $darkHeaderTop ? 'border-white/20 bg-white/10 text-white' : 'border-slate-200 bg-white/80 text-slate-700' }} px-4 py-2 text-sm font-black shadow-sm transition sm:inline-flex"
                     >
                         ورود

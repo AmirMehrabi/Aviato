@@ -54,81 +54,118 @@
 @endphp
 
 @section('content')
-    <section id="top" class="relative isolate overflow-hidden border-b border-sky-100 bg-white px-4 pb-16 pt-12 md:px-8 md:pb-24 md:pt-20 lg:px-10">
-        <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-[76%] bg-[linear-gradient(180deg,#f1f8ff_0%,#ffffff_88%)]"></div>
-        <div aria-hidden="true" class="absolute left-[-7rem] top-16 -z-10 h-72 w-72 rounded-full bg-[#0080FF]/10 blur-3xl"></div>
-        <div aria-hidden="true" class="absolute right-[-6rem] top-28 -z-10 h-60 w-60 rounded-full bg-sky-200/45 blur-3xl"></div>
-        <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-full opacity-[0.35] [background-image:radial-gradient(#93c5fd_1px,transparent_1px)] [background-size:28px_28px]"></div>
+    <section id="top" class="relative isolate overflow-hidden bg-[#06162E] px-4 pb-16 pt-12 text-white md:px-8 md:pb-24 md:pt-20 lg:px-10">
+        <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-full bg-[radial-gradient(circle_at_top_right,rgba(0,128,255,0.28),transparent_34%),linear-gradient(180deg,#071B3A_0%,#06162E_72%)]"></div>
+        <div aria-hidden="true" class="absolute left-[-7rem] top-16 -z-10 h-72 w-72 rounded-full bg-[#0080FF]/20 blur-3xl"></div>
+        <div aria-hidden="true" class="absolute right-[-6rem] top-28 -z-10 h-60 w-60 rounded-full bg-sky-300/10 blur-3xl"></div>
+        <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-full opacity-[0.16] [background-image:radial-gradient(#93c5fd_1px,transparent_1px)] [background-size:28px_28px]"></div>
 
         <div class="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(430px,0.92fr)_minmax(0,1.08fr)] lg:items-center">
-            <div class="order-2">
-                <div class="relative">
+            <div class="order-2 hidden lg:block">
+                <div class="relative mx-auto max-w-[720px]">
                     <div aria-hidden="true" class="absolute -inset-5 -z-10 rounded-[2rem] bg-[#0069FF]/10 blur-2xl"></div>
-                    <div class="overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-2xl shadow-sky-200/70">
-                        <div class="flex items-center justify-between gap-4 border-b border-sky-100 bg-slate-50 px-5 py-3">
+                    <div class="overflow-hidden rounded-2xl border border-white/10 bg-[#F8FAFC] shadow-2xl shadow-slate-950/30">
+                        <div class="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-3">
                             <div class="flex items-center gap-2">
                                 <span class="size-3 rounded-full bg-[#ff5f57] ring-1 ring-black/5"></span>
                                 <span class="size-3 rounded-full bg-[#febc2e] ring-1 ring-black/5"></span>
                                 <span class="size-3 rounded-full bg-[#28c840] ring-1 ring-black/5"></span>
                             </div>
-                            <div class="flex items-center gap-2 rounded-full border border-sky-100 bg-white px-3 py-1.5 text-xs font-bold text-slate-500">
-                                <svg class="size-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 7h16M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                                aviato.ir/servers/create
+                            <div class="flex min-w-0 flex-1 justify-center">
+                                <div class="max-w-xs truncate rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-center text-xs font-bold text-slate-500" dir="ltr">
+                                    aviato.ir/servers/create
+                                </div>
                             </div>
-                            <div class="h-4 w-16"></div>
+                            <div class="h-4 w-14"></div>
                         </div>
 
-                        <div class="relative">
-                            <div aria-hidden="true" class="absolute -inset-5 -z-10 rounded-[2rem] bg-[#0069FF]/10 blur-2xl"></div>
-                            <div class="flex items-center justify-between gap-4 border-b border-sky-100 bg-slate-950 px-5 py-4 text-white">
+                        <div class="p-4">
+                            <div class="mb-4 flex items-center justify-between gap-4">
                                 <div>
-                                    <p class="text-xs font-black text-sky-300">Create VPS</p>
-                                    <p class="mt-1 text-lg font-black">aviato-cloud-01</p>
+                                    <p class="text-xs font-black uppercase text-[#0069FF]">ساخت VPS جدید</p>
+                                    <p class="mt-1 text-sm font-black text-slate-950">سیستم عامل، پلن و دسترسی اولیه را انتخاب کنید</p>
                                 </div>
-                                <span class="rounded-md bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-200">Ready</span>
+                                <span class="rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] px-3 py-2 text-xs font-black text-[#0069FF]">کیف پول آماده</span>
                             </div>
 
-                            <div class="grid gap-0 md:grid-cols-[1fr_220px]">
-                                <div class="space-y-4 bg-white p-5">
-                                    <div class="grid grid-cols-2 gap-3">
-                                        @foreach ([['Ubuntu', '22.04 LTS'], ['Tehran', 'Region 1'], [($heroBundle?->cpu_cores ?? 4) . ' vCPU', 'Dedicated'], [$heroBundle ? $heroBundle->disk_gb . 'GB' : 'NVMe', 'NVMe']] as $item)
-                                            <div class="rounded-lg border border-sky-100 bg-sky-50/70 p-4">
-                                                <p class="text-base font-black text-slate-950" dir="ltr">{{ $item[0] }}</p>
-                                                <p class="mt-1 text-xs font-bold text-slate-500">{{ $item[1] }}</p>
-                                            </div>
-                                        @endforeach
-                                    </div>
+                            <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_210px]">
+                                <div class="space-y-4">
+                                    <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                                        <div class="border-b border-slate-100 px-4 py-3">
+                                            <p class="text-xs font-black uppercase text-[#0069FF]">Step 1</p>
+                                            <h2 class="mt-1 text-base font-black text-slate-950">سیستم عامل را انتخاب کنید</h2>
+                                        </div>
+                                        <div class="grid gap-2 p-4 md:grid-cols-3">
+                                            @foreach ([['U', 'Ubuntu', '۳ نسخه آماده', 'bg-orange-100 text-orange-700 border-orange-200'], ['D', 'Debian', '۲ نسخه آماده', 'bg-red-100 text-red-700 border-red-200'], ['W', 'Windows', '۲ نسخه آماده', 'bg-sky-100 text-sky-700 border-sky-200']] as $family)
+                                                <div class="flex items-center gap-3 rounded-lg border p-3 text-right {{ $loop->first ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white' }}">
+                                                    <span class="grid size-9 shrink-0 place-items-center rounded-lg border text-xs font-black {{ $family[3] }}">{{ $family[0] }}</span>
+                                                    <span class="min-w-0">
+                                                        <span class="block text-sm font-black text-slate-950">{{ $family[1] }}</span>
+                                                        <span class="mt-1 block text-[11px] font-bold text-slate-500">{{ $family[2] }}</span>
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </section>
 
-                                    <div class="rounded-xl border border-[#B8D6FF] bg-[#EAF4FF] p-4">
-                                        <div class="flex items-center justify-between gap-4">
-                                            <div>
-                                                <p class="text-xs font-black text-[#0069FF]">پلن پیشنهادی</p>
-                                                <h2 class="mt-1 text-2xl font-black text-slate-950">{{ $heroBundle?->name ?? 'VPS آماده' }}</h2>
+                                    <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                                        <div class="border-b border-slate-100 px-4 py-3">
+                                            <p class="text-xs font-black uppercase text-[#0069FF]">Step 2</p>
+                                            <h2 class="mt-1 text-base font-black text-slate-950">نسخه و پلن VPS</h2>
+                                        </div>
+                                        <div class="grid gap-3 p-4 md:grid-cols-[1fr_1.15fr]">
+                                            <div class="flex items-center gap-3 rounded-lg bg-[#F2F8FF] p-3">
+                                                <span class="size-4 rounded-full border-4 border-[#0069FF] bg-white"></span>
+                                                <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-orange-100 text-xs font-black text-orange-700">U</span>
+                                                <span class="min-w-0">
+                                                    <span class="block text-sm font-black text-slate-950">Ubuntu 22.04 LTS</span>
+                                                    <span class="mt-1 block text-[11px] font-bold text-slate-500">Cloud-init ready</span>
+                                                </span>
                                             </div>
-                                            <span class="rounded-md bg-[#0069FF] px-3 py-1 text-xs font-black text-white">پیشنهادی</span>
+                                            <div class="relative rounded-xl border border-[#0069FF] bg-[#F2F8FF] p-3 text-right ring-4 ring-[#0069FF]/10">
+                                                <span class="absolute left-3 top-3 rounded-md bg-[#0069FF] px-2 py-1 text-[10px] font-black text-white">پیشنهادی</span>
+                                                <span class="block text-sm font-black text-slate-950">{{ $heroBundle?->name ?? 'پلن پیشنهادی' }}</span>
+                                                <span class="mt-2 block text-xs leading-6 text-slate-500">{{ $heroBundle?->description ?: 'مناسب سایت و فروشگاه فعال' }}</span>
+                                                <span class="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
+                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><b>{{ $heroBundle?->cpu_cores ?? 4 }}</b><br>CPU</span>
+                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><b>{{ $heroBundle?->ram_gb ?? 8 }}</b><br>RAM</span>
+                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><b>{{ $heroBundle?->disk_gb ?? 80 }}</b><br>Disk</span>
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-black text-slate-700">
-                                            <span class="rounded-md bg-white px-2 py-3" dir="ltr">{{ $heroBundle?->cpu_cores ?? '4' }} CPU</span>
-                                            <span class="rounded-md bg-white px-2 py-3" dir="ltr">{{ $heroBundle?->ram_gb ?? '8' }}GB RAM</span>
-                                            <span class="rounded-md bg-white px-2 py-3" dir="ltr">{{ $heroBundle?->ip_count ?? 1 }} IP</span>
+                                    </section>
+
+                                    <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                                        <div class="border-b border-slate-100 px-4 py-3">
+                                            <p class="text-xs font-black uppercase text-[#0069FF]">Step 3</p>
+                                            <h2 class="mt-1 text-base font-black text-slate-950">دسترسی اولیه</h2>
                                         </div>
-                                    </div>
+                                        <div class="grid gap-3 p-4 md:grid-cols-2">
+                                            <div>
+                                                <span class="text-xs font-black text-slate-700">نام VPS</span>
+                                                <div class="mt-2 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-xs font-bold text-slate-500" dir="ltr">web-01</div>
+                                            </div>
+                                            <div>
+                                                <span class="text-xs font-black text-slate-700">Username</span>
+                                                <div class="mt-2 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-xs font-bold text-slate-500" dir="ltr">ubuntu</div>
+                                            </div>
+                                        </div>
+                                    </section>
                                 </div>
 
-                                <aside class="bg-slate-950 p-5 text-white">
-                                    <p class="text-sm font-black text-sky-300">خلاصه خرید</p>
-                                    <div class="mt-5 space-y-4 text-sm">
-                                        <div class="flex justify-between gap-4"><span class="text-slate-300">پلن</span><span class="font-black">{{ $heroBundle?->name ?? 'Cloud VPS' }}</span></div>
-                                        <div class="flex justify-between gap-4"><span class="text-slate-300">IP عمومی</span><span class="font-black">{{ $heroBundle?->ip_count ?? 1 }} عدد</span></div>
-                                        <div class="flex justify-between gap-4"><span class="text-slate-300">دیسک</span><span class="font-black" dir="ltr">{{ $heroBundle ? $heroBundle->disk_gb . 'GB' : 'NVMe' }}</span></div>
+                                <aside class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
+                                    <h2 class="text-base font-black text-slate-950">خلاصه ساخت</h2>
+                                    <div class="mt-4 space-y-3 text-xs">
+                                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="font-black text-slate-950">Ubuntu</span></div>
+                                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">پلن</span><span class="font-black text-slate-950">{{ $heroBundle?->name ?? '—' }}</span></div>
+                                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class="font-black text-slate-950" dir="ltr">{{ $heroBundle?->cpu_cores ?? 4 }} CPU / {{ $heroBundle?->ram_gb ?? 8 }}GB</span></div>
+                                        <div class="rounded-lg bg-slate-50 p-3">
+                                            <p class="text-[11px] font-black text-slate-500">هزینه ماهانه تقریبی</p>
+                                            <p class="mt-2 text-lg font-black text-slate-950">{{ $heroBundle ? $wallets->format($heroBundle->monthly_price) : '—' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-dashed border-slate-300 p-3 text-[11px] leading-5 text-slate-500">IP به صورت خودکار تخصیص داده می شود.</div>
                                     </div>
-                                    <div class="mt-8 border-t border-white/10 pt-5">
-                                        <p class="text-xs font-bold text-slate-300">هزینه ماهانه</p>
-                                        <p class="mt-2 text-3xl font-black">{{ $heroBundle ? $wallets->format($heroBundle->monthly_price) : 'مشاهده قیمت' }}</p>
-                                    </div>
-                                    <a href="{{ route('customer.register') }}" class="mt-6 inline-flex w-full justify-center rounded-lg bg-[#0069FF] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">ساخت سرور</a>
+                                    <a href="{{ route('customer.register') }}" class="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#0069FF] px-4 py-3 text-xs font-black text-white transition hover:bg-[#0050D0]">ساخت VPS</a>
                                 </aside>
                             </div>
                         </div>
@@ -137,11 +174,11 @@
             </div>
 
             <div class="order-1">
-                <h1 class="max-w-3xl text-4xl font-black leading-tight tracking-normal text-slate-950 md:text-6xl">
+                <h1 class="max-w-3xl text-4xl font-black leading-tight tracking-normal text-white md:text-6xl">
                     سرور مجازی سریع،
-                    <span class="block text-[#0069FF]">با قیمت مشخص</span>
+                    <span class="block text-[#8FC7FF]">با قیمت مشخص</span>
                 </h1>
-                <p class="mt-6 max-w-2xl text-base leading-9 text-slate-600 md:text-lg">
+                <p class="mt-6 max-w-2xl text-base leading-9 text-slate-300 md:text-lg">
                     VPS آویاتو برای راه اندازی سایت، فروشگاه و اپلیکیشن است. پلن ها روشن هستند، قیمت را قبل از خرید می بینید و برای شروع کار پشتیبانی فارسی دارید.
                 </p>
 
@@ -149,7 +186,7 @@
                     <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-7 py-4 text-base font-black text-white shadow-xl shadow-[#0069FF]/25 transition hover:bg-[#0050D0]">
                         خرید سرور مجازی
                     </a>
-                    <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-lg border border-sky-200 bg-white px-7 py-4 text-base font-black text-slate-800 shadow-sm transition hover:border-[#0069FF] hover:text-[#0069FF]">
+                    <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-lg border border-white/20 px-7 py-4 text-base font-black text-white shadow-sm transition hover:bg-white/10">
                         دیدن پلن ها و قیمت ها
                     </a>
                 </div>
