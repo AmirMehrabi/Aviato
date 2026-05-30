@@ -87,15 +87,15 @@ class CloudImageController extends Controller
 
     private function validated(Request $request, ?CloudImage $image = null): array
     {
-        
+
         $data = $request->validate([
             'proxmox_server_id' => ['required', 'integer', 'exists:proxmox_servers,id'],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('cloud_images', 'slug')->ignore($image)],
             'description' => ['nullable', 'string', 'max:1000'],
-            'os_family' => ['required', Rule::in(['ubuntu', 'debian', 'rocky', 'routeros', 'windows'])],
+            'os_family' => ['required', Rule::in(['ubuntu', 'debian', 'rocky', 'router_os', 'windows'])],
             'os_version' => ['required', 'string', 'max:100'],
-            'logo_key' => ['required', Rule::in(['ubuntu', 'debian', 'rocky', 'routeros', 'windows'])],
+            'logo_key' => ['required', Rule::in(['ubuntu', 'debian', 'rocky', 'router_os', 'windows'])],
             'node' => ['required', 'string', 'max:255'],
             'template_vmid' => ['required', 'integer', 'min:1'],
             'default_username' => ['required', 'string', 'max:64'],
