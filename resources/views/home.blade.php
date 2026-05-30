@@ -65,7 +65,7 @@
                 <div class="relative mx-auto max-w-[720px]">
                     <div aria-hidden="true" class="absolute -inset-5 -z-10 rounded-[2rem] bg-[#0069FF]/10 blur-2xl"></div>
                     <div class="overflow-hidden rounded-2xl border border-white/10 bg-[#F8FAFC] shadow-2xl shadow-slate-950/30">
-                        <div class="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-3">
+                        <div class="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-1">
                             <div class="flex items-center gap-2">
                                 <span class="size-3 rounded-full bg-[#ff5f57] ring-1 ring-black/5"></span>
                                 <span class="size-3 rounded-full bg-[#febc2e] ring-1 ring-black/5"></span>
@@ -95,9 +95,11 @@
                                             <h2 class="mt-1 text-sm font-black text-slate-950">۱- سیستم عامل را انتخاب کنید</h2>
                                         </div>
                                         <div class="grid gap-2 p-4 md:grid-cols-3">
-                                            @foreach ([['U', 'Ubuntu', '۳ نسخه آماده', 'bg-orange-100 text-orange-700 border-orange-200'], ['D', 'Debian', '۲ نسخه آماده', 'bg-red-100 text-red-700 border-red-200']] as $family)
-                                                <div class="flex items-center gap-3 rounded-lg border p-3 text-right {{ $loop->first ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white' }}">
-                                                    <span class="grid size-9 shrink-0 place-items-center rounded-lg border text-xs font-black {{ $family[3] }}">{{ $family[0] }}</span>
+                                            @foreach ([['assets/images/distro/ubuntu.png', 'Ubuntu', '۳ نسخه آماده', 'bg-orange-100 text-orange-700 border-orange-200'], ['assets/images/distro/debian.png', 'Debian', '۲ نسخه آماده', 'bg-red-100 text-red-700 border-red-200']] as $family)
+                                                <div class="flex items-center gap-3 rounded-lg border p-3 text-right ">
+                                                    <span class="grid rounded-full size-9 shrink-0 place-items-center  border text-xs font-black {{ $family[3] }}">
+                                                        <img src="{{ asset($family[0]) }}" class="size-9" alt="Ubuntu Logo">
+                                                    </span>
                                                     <span class="min-w-0">
                                                         <span class="block text-sm font-black text-slate-950">{{ $family[1] }}</span>
                                                         {{-- <span class="mt-1 block text-[11px] font-bold text-slate-500">{{ $family[2] }}</span> --}}
@@ -113,8 +115,9 @@
                                         </div>
                                         <div class="grid gap-3 p-4 md:grid-cols-[1fr_1.15fr]">
                                             <div class="flex items-center gap-3 rounded-lg bg-[#F2F8FF] p-3">
-                                                <span class="size-4 rounded-full border-4 border-[#0069FF] bg-white"></span>
-                                                <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-orange-100 text-xs font-black text-orange-700">U</span>
+                                                {{-- <span class="size-4 rounded-full border-4 border-[#0069FF] bg-white"></span> --}}
+                                                <img src="{{ asset("assets/images/distro/ubuntu.png") }}" class="size-9" alt="Ubuntu Logo">
+                                                {{-- <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-orange-100 text-xs font-black text-orange-700">U</span> --}}
                                                 <span class="min-w-0">
                                                     <span class="block text-sm font-black text-slate-950">Ubuntu 22.04 LTS</span>
                                                     {{-- <span class="mt-1 block text-[11px] font-bold text-slate-500">Cloud-init ready</span> --}}
@@ -123,11 +126,11 @@
                                             <div class="relative rounded-xl border border-[#0069FF] bg-[#F2F8FF] p-3 text-right ring-4 ring-[#0069FF]/10">
                                                 <span class="absolute left-3 top-3 rounded-md bg-[#0069FF] px-2 py-1 text-[10px] font-black text-white">پیشنهادی</span>
                                                 <span class="block text-sm font-black text-slate-950">{{ $heroBundle?->name ?? 'پلن پیشنهادی' }}</span>
-                                                <span class="mt-2 block text-xs leading-6 text-slate-500">{{ $heroBundle?->description ?: 'مناسب سایت و فروشگاه فعال' }}</span>
+                                                {{-- <span class="mt-2 block text-xs leading-6 text-slate-500">{{ $heroBundle?->description ?: 'مناسب سایت و فروشگاه فعال' }}</span> --}}
                                                 <span class="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
-                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->cpu_cores ?? 4 }}</b><br>CPU</span>
-                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->ram_gb ?? 8 }}</b><br>RAM</span>
-                                                    <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->disk_gb ?? 80 }}</b><br>Disk</span>
+                                                    <span class="rounded-lg bg-white p-1 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->cpu_cores ?? 4 }}</b><br>CPU</span>
+                                                    <span class="rounded-lg bg-white p-1 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->ram_gb ?? 8 }}</b><br>RAM</span>
+                                                    <span class="rounded-lg bg-white p-1 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->disk_gb ?? 80 }}</b><br>Disk</span>
                                                 </span>
                                             </div>
                                         </div>
@@ -137,7 +140,7 @@
                                         <div class="border-b border-slate-100 px-4 py-1">
                                             <h2 class="mt-1 text-sm font-black text-slate-950">۳- دسترسی اولیه</h2>
                                         </div>
-                                        <div class="grid gap-3 p-4 md:grid-cols-2">
+                                        <div class="grid gap-3 px-4 pt-2 pb-4 md:grid-cols-2">
                                             <div>
                                                 <span class="text-xs font-black text-slate-700">نام VPS</span>
                                                 <div class="mt-2 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-xs font-bold text-slate-500" dir="ltr">web-01</div>
