@@ -180,9 +180,7 @@ class ServerController extends Controller
         $cloudImages = CloudImage::query()
             ->with(['proxmoxServer', 'allowedBundles'])
             ->where('is_active', true)
-            ->orderBy('os_family')
             ->orderBy('sort_order')
-            ->orderBy('name')
             ->get();
 
         return view('customer.servers.create', [
