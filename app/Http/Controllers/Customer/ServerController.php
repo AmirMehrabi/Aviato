@@ -383,6 +383,7 @@ class ServerController extends Controller
             'ubuntu' => 'Ubuntu',
             'debian' => 'Debian',
             'rocky' => 'Rocky Linux',
+            'router_os' => 'RouterOS',
             'windows' => 'Windows Server',
         ];
 
