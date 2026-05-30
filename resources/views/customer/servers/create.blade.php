@@ -54,7 +54,6 @@
     >
         <form x-ref="createForm" method="POST" action="{{ route('customer.servers.store') }}" class="space-y-5">
             @csrf
-            @if (session('error'))<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>@endif
             @if ($errors->any())<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ $errors->first() }}</div>@endif
 
             <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">

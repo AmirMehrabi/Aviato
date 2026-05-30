@@ -70,9 +70,6 @@
         }"
         class="space-y-5"
     >
-        @if (session('status'))<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
-        @if (session('error'))<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>@endif
-
         <section class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
             <div class="relative overflow-hidden bg-[#031B4E] p-6 text-white">
                 <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(0,105,255,.5),transparent_30%),radial-gradient(circle_at_86%_12%,rgba(0,166,126,.25),transparent_25%)]"></div>
