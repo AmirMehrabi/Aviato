@@ -1,6 +1,6 @@
 @extends('layouts.marketing')
 
-@section('title', 'قیمت سرور مجازی | آویاتو')
+@section('title', 'آویاتو: قیمت‌گذاری سرویس‌های ابری')
 @section('description', 'قیمت پلن های VPS آویاتو با منابع مشخص، دیسک NVMe، IP اختصاصی و پرداخت ماهانه یا ساعتی.')
 
 @php

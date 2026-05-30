@@ -1,6 +1,6 @@
 @extends('layouts.marketing')
 
-@section('title', 'کاربردهای سرور مجازی | آویاتو')
+@section('title', 'آویاتو: راهکارهای ما')
 @section('description', 'راهنمای ساده آویاتو برای انتخاب VPS مناسب سایت، فروشگاه، اپلیکیشن، دیتابیس و محیط تست.')
 
 @php

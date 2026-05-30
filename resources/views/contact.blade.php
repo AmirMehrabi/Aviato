@@ -1,6 +1,6 @@
 @extends('layouts.marketing')
 
-@section('title', 'تماس با ما | آویاتو')
+@section('title', 'آویاتو: تماس با ما')
 @section('description', 'تماس با آویاتو برای سوال درباره خرید سرور مجازی، انتخاب پلن، پشتیبانی و هماهنگی فروش.')
 
 @php($activePage = 'contact')

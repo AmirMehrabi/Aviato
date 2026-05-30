@@ -38,9 +38,9 @@
         $darkHeaderTop = in_array($activePage, ['home', 'solutions'], true);
         $marketingNavItems = [
             ['label' => 'خانه', 'route' => 'home', 'key' => 'home'],
-            ['label' => 'قیمت‌ها', 'route' => 'pricing', 'key' => 'pricing'],
-            ['label' => 'راهکارها', 'route' => 'solutions', 'key' => 'solutions'],
-            ['label' => 'تغییرات', 'route' => 'changelog', 'key' => 'changelog'],
+            ['label' => 'قیمت‌گذاری', 'route' => 'pricing', 'key' => 'pricing'],
+            ['label' => 'راهکارهای ما', 'route' => 'solutions', 'key' => 'solutions'],
+            ['label' => 'لیست تغییرات', 'route' => 'changelog', 'key' => 'changelog'],
             ['label' => 'تماس', 'route' => 'contact', 'key' => 'contact'],
         ];
     @endphp
@@ -129,8 +129,8 @@
                     <p class="text-sm font-black text-white">خرید و بررسی</p>
                     <div class="mt-4 grid gap-3 text-sm font-bold text-sky-100/70">
                         <a href="{{ route('home') }}" class="transition hover:text-white">خانه</a>
-                        <a href="{{ route('pricing') }}" class="transition hover:text-white">قیمت ها</a>
-                        <a href="{{ route('solutions') }}" class="transition hover:text-white">راهکارها</a>
+                        <a href="{{ route('pricing') }}" class="transition hover:text-white">قیمت‌گذاری</a>
+                        <a href="{{ route('solutions') }}" class="transition hover:text-white">راهکارهای ما</a>
                         <a href="{{ route('customer.register') }}" class="transition hover:text-white">ثبت نام مشتری</a>
                     </div>
                 </div>
