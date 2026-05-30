@@ -96,8 +96,8 @@
                                         </div>
                                         <div class="grid gap-2 p-4 md:grid-cols-3">
                                             @foreach ([['assets/images/distro/ubuntu.png', 'Ubuntu', '۳ نسخه آماده', 'bg-orange-100 text-orange-700 border-orange-200'], ['assets/images/distro/debian.png', 'Debian', '۲ نسخه آماده', 'bg-red-100 text-red-700 border-red-200']] as $family)
-                                                <div class="flex items-center gap-3 rounded-lg border p-3 text-right ">
-                                                    <span class="grid rounded-full size-9 shrink-0 place-items-center  border text-xs font-black {{ $family[3] }}">
+                                                <div class="flex items-center gap-1.5 rounded-lg border p-3 text-right {{ $loop->first ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white' }}">
+                                                    <span class="grid size-9 rounded-full shrink-0 place-items-center  border text-xs font-black {{ $family[3] }}">
                                                         <img src="{{ asset($family[0]) }}" class="size-9" alt="Ubuntu Logo">
                                                     </span>
                                                     <span class="min-w-0">
