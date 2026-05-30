@@ -15,6 +15,16 @@ class CloudImageBundleWhitelistTest extends TestCase
 
     private string $adminBaseUrl = 'https://admin.localhost';
 
+    public function test_admin_cloud_image_form_loads_with_bundle_whitelist_section(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin, 'admin');
+        $this->get($this->adminBaseUrl.'/cloud-images/create')
+            ->assertOk()
+            ->assertSee('Whitelist پلن‌ها');
+    }
+
     public function test_admin_can_assign_allowed_bundles_to_cloud_image(): void
     {
         $admin = User::factory()->create();

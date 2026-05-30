@@ -86,7 +86,7 @@ class CloudImageController extends Controller
                 ->orderBy('name')
                 ->get(),
             'selectedBundleIds' => $image->exists
-                ? $image->allowedBundles()->pluck('id')->all()
+                ? $image->allowedBundles()->pluck('vm_bundles.id')->all()
                 : [],
             'servers' => ProxmoxServer::query()->orderBy('datacenter')->orderBy('name')->pluck('name', 'id'),
             'osFamilies' => [
