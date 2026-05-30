@@ -11,6 +11,7 @@
     @php
         $isSmsMode = ($mode ?? 'email') === 'sms';
     @endphp
+    
     <main class="min-h-screen px-4 py-6 md:px-8 lg:px-10">
         <div class="mx-auto flex min-h-[calc(100vh-3rem)] max-w-lg items-center">
             <section class="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/10">
