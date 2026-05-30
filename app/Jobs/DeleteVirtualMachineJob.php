@@ -41,7 +41,21 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             ->with(['proxmoxServer', 'reservedIpAddress'])
             ->findOrFail($this->virtualMachineId);
 
+        Log::info('Cloud VM deletion job started', [
+            'virtual_machine_id' => $vm->id,
+            'status' => $vm->status,
+            'proxmox_server_id' => $vm->proxmox_server_id,
+            'node' => $vm->node,
+            'vmid' => $vm->vmid,
+            'attempt' => $this->attempts(),
+            'has_queue_job' => $this->job !== null,
+        ]);
+
         if ($vm->isDeleted()) {
+            Log::info('Cloud VM deletion job skipped because VM is already deleted', [
+                'virtual_machine_id' => $vm->id,
+            ]);
+
             return;
         }
 
@@ -49,6 +63,13 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
 
         try {
             if (! $vm->proxmoxServer || ! $vm->node || ! $vm->vmid) {
+                Log::info('Cloud VM deletion job cannot contact Proxmox because VM connection data is incomplete', [
+                    'virtual_machine_id' => $vm->id,
+                    'has_proxmox_server' => (bool) $vm->proxmoxServer,
+                    'node' => $vm->node,
+                    'vmid' => $vm->vmid,
+                ]);
+
                 throw new RuntimeException('VM is missing Proxmox server, node, or VMID.');
             }
 
@@ -67,6 +88,13 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             $history[] = ['step' => 'config', 'result' => $config, 'at' => now()->toISOString()];
 
             if ($config === null) {
+                Log::info('Cloud VM deletion found no matching Proxmox config; finalizing locally', [
+                    'virtual_machine_id' => $vm->id,
+                    'proxmox_server_id' => $server->id,
+                    'node' => $node,
+                    'vmid' => $vmid,
+                ]);
+
                 $this->recordHistory($vm, $history);
                 $deletions->finalizeLocalDelete($vm, 'remote_config_missing', [
                     'step' => 'remote_config_missing',
@@ -78,6 +106,15 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             }
 
             if (! $this->remoteVmMatchesPanelVm($vm, $config)) {
+                Log::warning('Cloud VM deletion blocked remote delete because Proxmox VM identity mismatched; finalizing locally', [
+                    'virtual_machine_id' => $vm->id,
+                    'proxmox_server_id' => $server->id,
+                    'node' => $node,
+                    'vmid' => $vmid,
+                    'expected_name' => $vm->name,
+                    'remote_name' => $config['name'] ?? null,
+                ]);
+
                 $this->recordHistory($vm, $history);
                 $deletions->finalizeLocalDelete($vm, 'remote_identity_mismatch', [
                     'step' => 'remote_identity_mismatch',
@@ -100,6 +137,13 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             if (! $remoteMissing) {
                 if (($remoteStatus['status'] ?? null) === 'running') {
                     try {
+                        Log::info('Cloud VM deletion requesting Proxmox shutdown', [
+                            'virtual_machine_id' => $vm->id,
+                            'proxmox_server_id' => $server->id,
+                            'node' => $node,
+                            'vmid' => $vmid,
+                        ]);
+
                         $shutdown = $proxmox->shutdownVm($server, $node, $vmid, false);
                         $history[] = ['step' => 'shutdown', 'result' => $shutdown, 'at' => now()->toISOString()];
                         $vm->forceFill(['delete_task_id' => $shutdown['task_id'] ?? null])->save();
@@ -124,6 +168,13 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
                             $history[] = ['step' => 'shutdown_failed', 'error' => $shutdownException->getMessage(), 'at' => now()->toISOString()];
 
                             try {
+                                Log::info('Cloud VM deletion requesting Proxmox force stop', [
+                                    'virtual_machine_id' => $vm->id,
+                                    'proxmox_server_id' => $server->id,
+                                    'node' => $node,
+                                    'vmid' => $vmid,
+                                ]);
+
                                 $stop = $proxmox->stopVm($server, $node, $vmid);
                                 $history[] = ['step' => 'force_stop', 'result' => $stop, 'at' => now()->toISOString()];
                                 $vm->forceFill(['delete_task_id' => $stop['task_id'] ?? null])->save();
@@ -145,6 +196,13 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
 
                 if (! $remoteMissing) {
                     try {
+                        Log::info('Cloud VM deletion requesting Proxmox delete', [
+                            'virtual_machine_id' => $vm->id,
+                            'proxmox_server_id' => $server->id,
+                            'node' => $node,
+                            'vmid' => $vmid,
+                        ]);
+
                         $delete = $proxmox->deleteVm($server, $node, $vmid, true);
                         $history[] = ['step' => 'delete', 'result' => $delete, 'at' => now()->toISOString()];
                         $vm->forceFill(['delete_task_id' => $delete['task_id'] ?? null])->save();

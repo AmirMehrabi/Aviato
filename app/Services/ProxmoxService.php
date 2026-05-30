@@ -556,25 +556,77 @@ class ProxmoxService
             'purge' => $purge ? 1 : 0,
             'destroy-unreferenced-disks' => 1,
         ];
+        $startedAt = microtime(true);
+        $path = "/nodes/{$node}/qemu/{$vmid}";
+
+        $this->logInfo('Proxmox API request starting', $server, [
+            'method' => 'DELETE',
+            'path' => $path,
+            'payload' => $payload,
+        ]);
 
         try {
-            $taskId = $this->request($server)
+            $response = $this->request($server)
                 ->asForm()
-                ->send('DELETE', "/nodes/{$node}/qemu/{$vmid}", ['form_params' => $payload])
-                ->throw()
-                ->json('data');
+                ->send('DELETE', $path, ['form_params' => $payload]);
+
+            $this->logInfo('Proxmox API response received', $server, [
+                'method' => 'DELETE',
+                'path' => $path,
+                'payload' => $payload,
+                'status' => $response->status(),
+                'effective_uri' => (string) $response->effectiveUri(),
+                'duration_ms' => $this->durationMs($startedAt),
+                'content_type' => $response->header('content-type'),
+                'body_preview' => $this->bodyPreview($response->body()),
+            ]);
+
+            $taskId = $response->throw()->json('data');
         } catch (RequestException $exception) {
             if (! $this->isUnsupportedDestroyUnreferencedDisks($exception)) {
+                $this->logHttpFailure($server, 'DELETE '.$path, $exception, [
+                    'payload' => $payload,
+                    'duration_ms' => $this->durationMs($startedAt),
+                ]);
+
                 throw $exception;
             }
 
-            unset($payload['destroy-unreferenced-disks']);
+            $this->logInfo('Proxmox delete rejected destroy-unreferenced-disks; retrying with purge only', $server, [
+                'method' => 'DELETE',
+                'path' => $path,
+                'payload' => $payload,
+                'status' => $exception->response->status(),
+                'body_preview' => $this->bodyPreview($exception->response->body()),
+            ]);
 
-            $taskId = $this->request($server)
+            unset($payload['destroy-unreferenced-disks']);
+            $retryStartedAt = microtime(true);
+
+            $this->logInfo('Proxmox API request starting', $server, [
+                'method' => 'DELETE',
+                'path' => $path,
+                'payload' => $payload,
+                'retry' => true,
+            ]);
+
+            $response = $this->request($server)
                 ->asForm()
-                ->send('DELETE', "/nodes/{$node}/qemu/{$vmid}", ['form_params' => $payload])
-                ->throw()
-                ->json('data');
+                ->send('DELETE', $path, ['form_params' => $payload]);
+
+            $this->logInfo('Proxmox API response received', $server, [
+                'method' => 'DELETE',
+                'path' => $path,
+                'payload' => $payload,
+                'retry' => true,
+                'status' => $response->status(),
+                'effective_uri' => (string) $response->effectiveUri(),
+                'duration_ms' => $this->durationMs($retryStartedAt),
+                'content_type' => $response->header('content-type'),
+                'body_preview' => $this->bodyPreview($response->body()),
+            ]);
+
+            $taskId = $response->throw()->json('data');
         }
 
         return ['task_id' => $taskId, 'payload' => $payload];

@@ -7,6 +7,7 @@ use App\Models\IpAddress;
 use App\Models\VirtualMachine;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class VirtualMachineDeletionService
 {
@@ -20,6 +21,16 @@ class VirtualMachineDeletionService
      */
     public function requestDelete(VirtualMachine $vm, string $actor = 'system'): array
     {
+        Log::info('Virtual machine delete requested', [
+            'virtual_machine_id' => $vm->id,
+            'uuid' => $vm->uuid,
+            'actor' => $actor,
+            'status' => $vm->status,
+            'proxmox_server_id' => $vm->proxmox_server_id,
+            'node' => $vm->node,
+            'vmid' => $vm->vmid,
+        ]);
+
         $queued = false;
         $status = 'queued';
 
@@ -32,12 +43,22 @@ class VirtualMachineDeletionService
 
             if ($locked->isDeleted()) {
                 $status = 'already_deleted';
+                Log::info('Virtual machine delete request skipped because VM is already deleted', [
+                    'virtual_machine_id' => $locked->id,
+                    'actor' => $actor,
+                ]);
 
                 return $locked;
             }
 
             if ($locked->isDeleting() && ! $locked->delete_failed_at && ! $locked->deleteAttemptIsStale()) {
                 $status = 'already_queued';
+                Log::info('Virtual machine delete request skipped because delete is already active', [
+                    'virtual_machine_id' => $locked->id,
+                    'actor' => $actor,
+                    'delete_requested_at' => $locked->delete_requested_at?->toISOString(),
+                    'delete_started_at' => $locked->delete_started_at?->toISOString(),
+                ]);
 
                 return $locked;
             }
@@ -64,6 +85,14 @@ class VirtualMachineDeletionService
             ])->save();
 
             $queued = true;
+            Log::info('Virtual machine marked deleting and ready for delete execution', [
+                'virtual_machine_id' => $locked->id,
+                'actor' => $actor,
+                'requeued_stale_delete' => $locked->deleteAttemptIsStale(),
+                'proxmox_server_id' => $locked->proxmox_server_id,
+                'node' => $locked->node,
+                'vmid' => $locked->vmid,
+            ]);
 
             return $locked;
         });
@@ -73,6 +102,14 @@ class VirtualMachineDeletionService
         }
 
         if (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid) {
+            Log::info('Virtual machine delete finalized locally because Proxmox connection data is incomplete', [
+                'virtual_machine_id' => $vm->id,
+                'actor' => $actor,
+                'proxmox_server_id' => $vm->proxmox_server_id,
+                'node' => $vm->node,
+                'vmid' => $vm->vmid,
+            ]);
+
             $result = $this->finalizeLocalDelete($vm, 'missing_proxmox_connection', [
                 'actor' => $actor,
                 'reason' => 'missing_proxmox_connection',
@@ -80,6 +117,14 @@ class VirtualMachineDeletionService
 
             return ['status' => 'local_deleted', 'queued' => false, 'finalized' => true, 'vm' => $result['vm']];
         }
+
+        Log::info('Virtual machine delete job dispatching', [
+            'virtual_machine_id' => $vm->id,
+            'actor' => $actor,
+            'proxmox_server_id' => $vm->proxmox_server_id,
+            'node' => $vm->node,
+            'vmid' => $vm->vmid,
+        ]);
 
         DeleteVirtualMachineJob::dispatch($vm->id);
 
@@ -92,6 +137,12 @@ class VirtualMachineDeletionService
      */
     public function finalizeLocalDelete(VirtualMachine $vm, string $source, array $remoteEvidence = []): array
     {
+        Log::info('Virtual machine local delete finalization starting', [
+            'virtual_machine_id' => $vm->id,
+            'source' => $source,
+            'remote_evidence' => $remoteEvidence,
+        ]);
+
         return DB::transaction(function () use ($vm, $source, $remoteEvidence): array {
             $locked = VirtualMachine::query()
                 ->with(['reservedIpAddress', 'customer', 'bundle'])
@@ -100,6 +151,11 @@ class VirtualMachineDeletionService
                 ->firstOrFail();
 
             if ($locked->isDeleted()) {
+                Log::info('Virtual machine local delete finalization skipped because VM is already deleted', [
+                    'virtual_machine_id' => $locked->id,
+                    'source' => $source,
+                ]);
+
                 return [
                     'vm' => $locked,
                     'wallet_transaction' => null,
@@ -137,6 +193,14 @@ class VirtualMachineDeletionService
                     'wallet_transaction_id' => $walletTransaction?->id,
                 ]),
             ])->save();
+
+            Log::info('Virtual machine local delete finalization completed', [
+                'virtual_machine_id' => $locked->id,
+                'source' => $source,
+                'deleted_vmid' => $deletedVmid,
+                'released_ip' => $releasedIp,
+                'wallet_transaction_id' => $walletTransaction?->id,
+            ]);
 
             return [
                 'vm' => $locked,
