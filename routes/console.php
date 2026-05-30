@@ -1,8 +1,12 @@
 <?php
 
+use App\Jobs\DeleteVirtualMachineJob;
+use App\Models\VirtualMachine;
 use App\Services\InvoiceService;
+use App\Services\ProxmoxService;
 use App\Services\StaleVirtualMachineCleanupService;
 use App\Services\UsageBillingService;
+use App\Services\VirtualMachineDeletionService;
 use App\Services\VmBackupService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -19,6 +23,156 @@ Artisan::command('billing:generate-monthly-invoices', function (InvoiceService $
 
     $this->info(sprintf('Generated %d monthly invoice(s).', $generated->count()));
 })->purpose('Generate monthly customer usage invoices');
+
+Artisan::command('virtual-machines:inspect-delete {virtualMachine : Local VM id, UUID, name, or Proxmox VMID} {--server= : Required when identifying by VMID if it is ambiguous} {--sync : Run the delete job immediately instead of only queueing it} {--yes : Skip the confirmation prompt}', function (ProxmoxService $proxmox, VirtualMachineDeletionService $deletions) {
+    $identifier = (string) $this->argument('virtualMachine');
+    $serverId = $this->option('server') ? (int) $this->option('server') : null;
+
+    $query = VirtualMachine::query()
+        ->with(['customer', 'proxmoxServer', 'bundle', 'reservedIpAddress']);
+
+    $matches = (clone $query)
+        ->where(function ($query) use ($identifier): void {
+            $query->where('uuid', $identifier)
+                ->orWhere('name', $identifier)
+                ->when(ctype_digit($identifier), function ($query) use ($identifier): void {
+                    $query->orWhereKey((int) $identifier)
+                        ->orWhere('vmid', (int) $identifier);
+                });
+        })
+        ->when($serverId !== null, fn ($query) => $query->where('proxmox_server_id', $serverId))
+        ->get();
+
+    if ($matches->isEmpty()) {
+        $this->error(sprintf('No virtual machine matched "%s".', $identifier));
+
+        return Command::FAILURE;
+    }
+
+    if ($matches->count() > 1) {
+        $this->warn(sprintf('"%s" matched multiple local virtual machines.', $identifier));
+        $this->table(
+            ['ID', 'UUID', 'VMID', 'Name', 'Proxmox', 'Customer', 'Status'],
+            $matches->map(fn (VirtualMachine $vm): array => [
+                $vm->id,
+                $vm->uuid,
+                $vm->vmid ?? '—',
+                $vm->name,
+                $vm->proxmoxServer?->name ?? '#'.$vm->proxmox_server_id,
+                $vm->customer?->name ?? '—',
+                $vm->status,
+            ])->all(),
+        );
+        $this->line('Pass a UUID/local ID, or add --server=<id> when using a Proxmox VMID.');
+
+        return Command::FAILURE;
+    }
+
+    /** @var VirtualMachine $vm */
+    $vm = $matches->first();
+
+    $this->info('Application record');
+    $this->table(
+        ['Field', 'Value'],
+        [
+            ['ID', $vm->id],
+            ['UUID', $vm->uuid],
+            ['Name', $vm->name],
+            ['Hostname', $vm->hostname ?? '—'],
+            ['Customer', $vm->customer?->name ?? '—'],
+            ['Proxmox server', $vm->proxmoxServer?->name.' (#'.$vm->proxmox_server_id.')'],
+            ['Node', $vm->node ?? '—'],
+            ['VMID', $vm->vmid ?? '—'],
+            ['IP', $vm->ip_address ?? $vm->reservedIpAddress?->address ?? '—'],
+            ['Status', $vm->status],
+            ['Provisioning', $vm->provisioning_status],
+            ['CPU cores', $vm->cpu_cores],
+            ['RAM GB', $vm->ram_gb],
+            ['Disk GB', $vm->disk_gb],
+            ['Delete requested at', $vm->delete_requested_at?->toDateTimeString() ?? '—'],
+            ['Delete failed at', $vm->delete_failed_at?->toDateTimeString() ?? '—'],
+            ['Delete error', $vm->delete_error ?? '—'],
+        ],
+    );
+
+    if (! $vm->proxmoxServer || ! $vm->node || ! $vm->vmid) {
+        $this->warn('This VM does not have enough Proxmox connection data. Confirmation will finalize the local delete only.');
+    } else {
+        $this->info('Proxmox record');
+
+        try {
+            $status = $proxmox->vmStatus($vm->proxmoxServer, $vm->node, (int) $vm->vmid);
+            $config = $proxmox->vmConfigOrNull($vm->proxmoxServer, $vm->node, (int) $vm->vmid);
+
+            if ($status === null && $config === null) {
+                $this->warn('Proxmox did not return a VM for this node and VMID.');
+            } else {
+                $this->table(
+                    ['Field', 'Value'],
+                    [
+                        ['Node', $vm->node],
+                        ['VMID', $vm->vmid],
+                        ['Status', $status['status'] ?? '—'],
+                        ['Remote name', $config['name'] ?? '—'],
+                        ['CPUs', $config['cores'] ?? $config['sockets'] ?? '—'],
+                        ['Memory MB', $config['memory'] ?? '—'],
+                        ['Boot order', $config['boot'] ?? '—'],
+                        ['Machine', $config['machine'] ?? '—'],
+                    ],
+                );
+
+                if (($config['name'] ?? null) !== null && ($config['name'] ?? null) !== $vm->name) {
+                    $this->warn(sprintf(
+                        'Remote name "%s" does not match local name "%s"; the normal delete job will not destroy a mismatched remote VM.',
+                        $config['name'],
+                        $vm->name,
+                    ));
+                }
+            }
+        } catch (Throwable $exception) {
+            $this->error('Could not query Proxmox: '.$exception->getMessage());
+
+            return Command::FAILURE;
+        }
+    }
+
+    if (! $this->option('yes') && ! $this->confirm(sprintf(
+        'Delete VM #%d (%s, VMID %s) using the normal remote-first delete lifecycle?',
+        $vm->id,
+        $vm->name,
+        $vm->vmid ?? 'none',
+    ))) {
+        $this->info('Delete cancelled.');
+
+        return Command::SUCCESS;
+    }
+
+    $result = $deletions->requestDelete($vm, 'artisan');
+
+    if ($result['finalized']) {
+        $this->info(sprintf('VM #%d was finalized locally as deleted.', $result['vm']->id));
+
+        return Command::SUCCESS;
+    }
+
+    if (! $result['queued']) {
+        $this->info(sprintf('No delete job was queued. Status: %s.', $result['status']));
+
+        return Command::SUCCESS;
+    }
+
+    if ($this->option('sync')) {
+        $this->info('Running delete job now...');
+        (new DeleteVirtualMachineJob($result['vm']->id))->handle($proxmox, $deletions);
+        $this->info(sprintf('Delete job completed. Current local status: %s.', $result['vm']->refresh()->status));
+
+        return Command::SUCCESS;
+    }
+
+    $this->info(sprintf('Delete job queued for VM #%d. Make sure a queue worker is running on the default queue.', $result['vm']->id));
+
+    return Command::SUCCESS;
+})->purpose('Inspect a local and Proxmox VM record, then delete it after confirmation');
 
 Artisan::command('virtual-machines:cleanup-stale {--server= : Limit scan to one Proxmox server ID} {--include-deleting : Include records already locked in deleting status} {--dry-run : Show stale records without deleting them} {--yes : Delete without an interactive confirmation}', function (StaleVirtualMachineCleanupService $cleanup) {
     $serverId = $this->option('server') ? (int) $this->option('server') : null;
