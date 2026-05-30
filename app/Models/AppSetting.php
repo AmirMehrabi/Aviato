@@ -10,10 +10,20 @@ use Illuminate\Support\Facades\Cache;
 class AppSetting extends Model
 {
     public const BILLING_CURRENCY = 'billing.currency';
+
     public const CUSTOMER_VERIFICATION_MODE = 'customer.verification.mode';
+
+    public const SMS_GATEWAY = 'sms.gateway';
+
     public const SMS0098_USERNAME = 'sms0098.username';
+
     public const SMS0098_PASSWORD = 'sms0098.password';
+
     public const SMS0098_PANEL_NO = 'sms0098.panel_no';
+
+    public const KAVENEGAR_API_KEY = 'kavenegar.api_key';
+
+    public const KAVENEGAR_TEMPLATE = 'kavenegar.template';
 
     public static function getValue(string $key, mixed $default = null): mixed
     {
@@ -71,6 +81,21 @@ class AppSetting extends Model
             'disabled' => 'غیرفعال (بدون تایید)',
             'email' => 'تایید با ایمیل',
             'sms' => 'تایید با پیامک',
+        ];
+    }
+
+    public static function smsGateway(): string
+    {
+        $gateway = (string) static::getValue(self::SMS_GATEWAY, 'sms0098');
+
+        return in_array($gateway, array_keys(static::smsGateways()), true) ? $gateway : 'sms0098';
+    }
+
+    public static function smsGateways(): array
+    {
+        return [
+            'sms0098' => 'SMS0098',
+            'kavenegar' => 'Kavenegar Lookup',
         ];
     }
 }

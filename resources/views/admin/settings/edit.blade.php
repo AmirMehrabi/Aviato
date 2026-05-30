@@ -16,16 +16,26 @@
             @csrf @method('PATCH')
             <x-form.select name="currency" label="واحد پولی Billing" :selected="$currency" :options="$currencies" />
             <x-form.select name="customer_verification_mode" label="روش تایید ثبت نام مشتری" :selected="$verificationMode" :options="$verificationModes" />
+            <x-form.select name="sms_gateway" label="درگاه ارسال پیامک" :selected="$smsGateway" :options="$smsGateways" />
 
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h2 class="text-sm font-black text-slate-900">تنظیمات درگاه پیامک SMS0098</h2>
-                <p class="mt-1 text-xs leading-6 text-slate-500">فقط زمانی استفاده می‌شود که روش تایید روی پیامک باشد.</p>
+                <p class="mt-1 text-xs leading-6 text-slate-500">زمانی استفاده می‌شود که روش تایید روی پیامک و درگاه انتخابی SMS0098 باشد.</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <x-form.input name="sms0098_username" label="Username" :value="$sms0098Username" dir-ltr />
                     <x-form.input name="sms0098_panel_no" label="Panel Number (PnlNo / FROM)" :value="$sms0098PanelNo" dir-ltr />
                 </div>
                 <div class="mt-4">
                     <x-form.input name="sms0098_password" type="password" label="Password" value="" dir-ltr help="برای حفظ رمز فعلی، این فیلد را خالی بگذارید." />
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h2 class="text-sm font-black text-slate-900">تنظیمات Lookup کاوه‌نگار</h2>
+                <p class="mt-1 text-xs leading-6 text-slate-500">کاوه‌نگار متن مستقیم دریافت نمی‌کند؛ کد تایید به عنوان token در template تنظیم‌شده ارسال می‌شود.</p>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <x-form.input name="kavenegar_template" label="Template" :value="$kavenegarTemplate" dir-ltr />
+                    <x-form.input name="kavenegar_api_key" type="password" label="API Key" value="" dir-ltr help="برای حفظ کلید فعلی، این فیلد را خالی بگذارید." />
                 </div>
             </div>
 

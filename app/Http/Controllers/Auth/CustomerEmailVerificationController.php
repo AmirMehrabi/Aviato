@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\CustomerVerificationCodeMail;
 use App\Models\AppSetting;
 use App\Models\Customer;
-use App\Services\Sms\Sms0098Client;
+use App\Services\Sms\VerificationSmsSender;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -125,7 +125,7 @@ class CustomerEmailVerificationController extends Controller
         ])->save();
 
         if ($mode === 'sms') {
-            app(Sms0098Client::class)->sendVerificationCode((string) $customer->phone, $code);
+            app(VerificationSmsSender::class)->send((string) $customer->phone, $code);
 
             return;
         }
