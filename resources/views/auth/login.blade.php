@@ -37,8 +37,8 @@
                     <div class="mt-8 grid max-w-2xl grid-cols-3 gap-3">
                         @foreach ([
                             ['title' => 'NVMe', 'body' => 'دیسک سریع'],
-                            ['title' => 'PAYG', 'body' => 'پرداخت مصرفی'],
-                            ['title' => 'Backup', 'body' => 'بکاپ روزانه'],
+                            ['title' => 'PAYG', 'body' => 'پرداخت براساس مصرف'],
+                            ['title' => 'Backup', 'body' => 'بکاپ برنامه‌ریزی شده'],
                         ] as $item)
                             <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                                 <p class="text-lg font-black text-slate-950">{{ $item['title'] }}</p>
@@ -49,15 +49,18 @@
                 </div>
 
                 <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/10">
-                    <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] px-6 py-7 md:px-8">
+                    <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] p-4 md:px-8">
+                        @if ($isAdminPortal)
                         <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">
-                            {{ $isAdminPortal ? 'پنل مدیران' : 'پنل مشتریان' }}
-                        </span>
-                        <h2 class="mt-4 text-3xl font-black leading-tight text-slate-950">ورود با ایمیل یا موبایل</h2>
-                        <p class="mt-2 text-sm leading-7 text-slate-600">برای ادامه، اطلاعات حساب خود را وارد کنید.</p>
+                            پنل مدیران
+                        </span>                            
+                        @endif
+
+                        <h2 class="text-3xl font-black leading-tight text-slate-950">ورود</h2>
+                        {{-- <p class="mt-2 text-sm leading-7 text-slate-600">برای ادامه، اطلاعات حساب خود را وارد کنید.</p> --}}
                     </div>
 
-                    <form method="POST" action="{{ route($portal.'.login.store', [], false) }}" class="space-y-5 px-6 py-7 md:px-8" data-submit-loading>
+                    <form method="POST" action="{{ route($portal.'.login.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading>
                         @csrf
 
                         @if (session('status'))

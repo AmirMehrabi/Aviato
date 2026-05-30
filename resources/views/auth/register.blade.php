@@ -37,7 +37,7 @@
                     <div class="mt-8 overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-2xl shadow-[#031B4E]/20">
                         <p class="text-sm font-black text-[#8FC7FF]">آنچه بعد از ثبت نام دارید</p>
                         <div class="mt-5 grid gap-3 text-sm font-bold text-[#C7D4EA]">
-                            @foreach (['مدیریت ماشین های ابری', 'کیف پول و پرداخت مصرفی', 'بکاپ، مانیتورینگ و صورتحساب'] as $item)
+                            @foreach (['مدیریت ماشین های ابری', 'کیف پول و پرداخت براساس میزان مصرف', 'بکاپ، مانیتورینگ و مدیریت صورت‌حساب‌ها'] as $item)
                                 <div class="flex items-center gap-2">
                                     <span class="size-2 rounded-full bg-[#0069FF]"></span>
                                     <span>{{ $item }}</span>
@@ -48,13 +48,13 @@
                 </div>
 
                 <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/10">
-                    <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] px-6 py-7 md:px-8">
-                        <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">پنل مشتریان</span>
-                        <h2 class="mt-4 text-3xl font-black leading-tight text-slate-950">ثبت نام با ایمیل یا موبایل</h2>
-                        <p class="mt-2 text-sm leading-7 text-slate-600">{{ $isCustomerSmsMode ? 'بعد از ثبت نام، کد OTP با پیامک برای موبایل شما ارسال می شود.' : ($verificationModeValue === 'disabled' ? 'تایید حساب مشتری غیرفعال است و پس از ثبت نام می‌توانید وارد شوید.' : 'بعد از ثبت نام، کد OTP به ایمیل شما ارسال می شود.') }}</p>
+                    <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] p-4 md:px-8">
+                        {{-- <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">پنل مشتریان</span> --}}
+                        <h2 class="text-3xl font-black leading-tight text-slate-950">ثبت نام</h2>
+                        {{-- <p class="mt-2 text-sm leading-7 text-slate-600">{{ $isCustomerSmsMode ? 'بعد از ثبت نام، کد OTP با پیامک برای موبایل شما ارسال می شود.' : ($verificationModeValue === 'disabled' ? 'تایید حساب مشتری غیرفعال است و پس از ثبت نام می‌توانید وارد شوید.' : 'بعد از ثبت نام، کد OTP به ایمیل شما ارسال می شود.') }}</p> --}}
                     </div>
 
-                    <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 px-6 py-7 md:px-8" data-submit-loading>
+                    <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading>
                         @csrf
 
                         @if (session('status'))
