@@ -397,7 +397,7 @@ class ProxmoxService
         try {
             return $this->vmConfig($server, $node, $vmid);
         } catch (RequestException $exception) {
-            if ($exception->response->status() === 404) {
+            if ($this->isMissingVmConfigResponse($exception)) {
                 return null;
             }
 
@@ -418,6 +418,24 @@ class ProxmoxService
             ->json('data');
 
         return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    private function isMissingVmConfigResponse(RequestException $exception): bool
+    {
+        $status = $exception->response->status();
+
+        if ($status === 404) {
+            return true;
+        }
+
+        $message = strtolower($exception->response->body());
+
+        return $status === 500
+            && (
+                str_contains($message, 'configuration file')
+                || str_contains($message, 'does not exist')
+                || str_contains($message, 'no such file')
+            );
     }
 
     /**
