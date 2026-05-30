@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\DeleteVirtualMachineJob;
 use App\Models\CloudImage;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
@@ -12,13 +11,13 @@ use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
 use App\Services\UsageBillingService;
+use App\Services\VirtualMachineDeletionService;
 use App\Services\VmUpgradeService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Throwable;
 
@@ -31,6 +30,7 @@ class ServerController extends Controller
         private readonly BillingService $billing,
         private readonly UsageBillingService $usageBilling,
         private readonly CloudVmProvisioningService $cloudProvisioning,
+        private readonly VirtualMachineDeletionService $deletions,
         private readonly VmUpgradeService $upgrades,
     ) {}
 
@@ -105,6 +105,7 @@ class ServerController extends Controller
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
                 'is_deleting' => $server->isDeleting(),
                 'delete_failed' => $server->isDeleting() && $server->delete_failed_at !== null,
+                'delete_stale' => $server->deleteAttemptIsStale(),
                 'is_deleted' => $server->isDeleted(),
                 'is_locked' => $server->isActionLocked(),
                 'ssh_ready' => $server->ip_address && $server->provisioning_status === VirtualMachine::PROVISION_READY,
@@ -130,6 +131,7 @@ class ServerController extends Controller
                     ->where('status', VirtualMachine::STATUS_DELETING)
                     ->whereNotNull('delete_failed_at')
                     ->count(),
+                'delete_stale' => $summarySource->filter->deleteAttemptIsStale()->count(),
                 'pending_usage' => $pendingUsage,
                 'monthly_spend' => $monthlySpend,
             ],
@@ -149,7 +151,7 @@ class ServerController extends Controller
 
         $servers = $customer->virtualMachines()
             ->when($ids->isNotEmpty(), fn ($query) => $query->whereIn('uuid', $ids))
-            ->get(['id', 'uuid', 'status', 'provisioning_status', 'delete_failed_at', 'deleted_at']);
+            ->get(['id', 'uuid', 'status', 'provisioning_status', 'delete_requested_at', 'delete_started_at', 'delete_failed_at', 'deleted_at', 'updated_at']);
 
         return response()->json([
             'servers' => $servers->map(fn (VirtualMachine $server): array => [
@@ -161,9 +163,10 @@ class ServerController extends Controller
                 'provisioning_label' => $this->provisioningLabel($server->provisioning_status),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
-                'action_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null),
+                'action_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null && ! $server->deleteAttemptIsStale()),
                 'is_deleting' => $server->isDeleting(),
                 'delete_failed' => $server->isDeleting() && $server->delete_failed_at !== null,
+                'delete_stale' => $server->deleteAttemptIsStale(),
                 'is_deleted' => $server->isDeleted(),
             ])->values(),
         ]);
@@ -316,56 +319,29 @@ class ServerController extends Controller
     public function destroy(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
         $server = $this->resolveCustomerServer($request, $virtualMachine);
-        $server->loadMissing(['reservedIpAddress', 'proxmoxServer']);
+        $server->loadMissing(['reservedIpAddress', 'proxmoxServer', 'customer', 'bundle']);
 
-        if ($server->isActionLocked() && ! $server->delete_failed_at) {
+        try {
+            $result = $this->deletions->requestDelete($server, 'customer');
+        } catch (Throwable $exception) {
+            return back()->with('error', 'درخواست حذف سرور ثبت نشد: '.$exception->getMessage());
+        }
+
+        if ($result['status'] === 'already_queued') {
             return redirect()
                 ->route('customer.servers.index')
                 ->with('status', 'این سرور قبلا وارد صف حذف شده است.');
         }
 
-        if (! $server->proxmoxServer || ! $server->node || ! $server->vmid) {
-            return back()->with('error', 'اتصال این سرور به کامل نیست؛ حذف انجام نشد.');
-        }
-
-        $queued = false;
-
-        try {
-            DB::transaction(function () use ($server, &$queued): void {
-                $locked = VirtualMachine::query()
-                    ->whereKey($server->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
-                if ($locked->isActionLocked() && ! $locked->delete_failed_at) {
-                    return;
-                }
-
-                $this->usageBilling->chargeVm($locked);
-
-                $locked->forceFill([
-                    'status' => VirtualMachine::STATUS_DELETING,
-                    'delete_requested_at' => now(),
-                    'delete_started_at' => null,
-                    'delete_failed_at' => null,
-                    'delete_error' => null,
-                    'delete_task_id' => null,
-                    'desired_state' => array_merge($locked->desired_state ?? [], ['status' => VirtualMachine::STATUS_DELETING]),
-                ])->save();
-
-                $queued = true;
-            });
-
-            if ($queued) {
-                DeleteVirtualMachineJob::dispatch($server->id);
-            }
-        } catch (Throwable $exception) {
-            return back()->with('error', 'درخواست حذف سرور ثبت نشد: '.$exception->getMessage());
+        if ($result['finalized']) {
+            return redirect()
+                ->route('customer.servers.index')
+                ->with('status', 'سرور در Proxmox پیدا نشد یا اتصال آن کامل نبود؛ رکورد پنل پاک شد، IP آزاد شد و Billing متوقف شد.');
         }
 
         return redirect()
             ->route('customer.servers.index')
-            ->with('status', 'درخواست حذف سرور ثبت شد. تا پایان حذف، عملیات روی این سرور غیرفعال است.');
+            ->with('status', 'درخواست حذف سرور ثبت شد. Billing متوقف شد و وضعیت حذف از همین صفحه به‌روزرسانی می‌شود.');
     }
 
     private function resolveCustomerServer(Request $request, VirtualMachine $virtualMachine): VirtualMachine

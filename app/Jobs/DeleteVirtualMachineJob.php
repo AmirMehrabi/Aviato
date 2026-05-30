@@ -3,13 +3,12 @@
 namespace App\Jobs;
 
 use App\Models\VirtualMachine;
-use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
+use App\Services\VirtualMachineDeletionService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
@@ -36,7 +35,7 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
         return 'delete-vm-'.$this->virtualMachineId;
     }
 
-    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools): void
+    public function handle(ProxmoxService $proxmox, VirtualMachineDeletionService $deletions): void
     {
         $vm = VirtualMachine::query()
             ->with(['proxmoxServer', 'reservedIpAddress'])
@@ -63,6 +62,36 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             $server = $vm->proxmoxServer;
             $node = $vm->node;
             $vmid = (int) $vm->vmid;
+
+            $config = $proxmox->vmConfigOrNull($server, $node, $vmid);
+            $history[] = ['step' => 'config', 'result' => $config, 'at' => now()->toISOString()];
+
+            if ($config === null) {
+                $this->recordHistory($vm, $history);
+                $deletions->finalizeLocalDelete($vm, 'remote_config_missing', [
+                    'step' => 'remote_config_missing',
+                    'node' => $node,
+                    'vmid' => $vmid,
+                ]);
+
+                return;
+            }
+
+            if (! $this->remoteVmMatchesPanelVm($vm, $config)) {
+                $this->recordHistory($vm, $history);
+                $deletions->finalizeLocalDelete($vm, 'remote_identity_mismatch', [
+                    'step' => 'remote_identity_mismatch',
+                    'node' => $node,
+                    'vmid' => $vmid,
+                    'expected_name' => $vm->name,
+                    'remote_name' => $config['name'] ?? null,
+                ]);
+
+                return;
+            }
+
+            $this->recordHistory($vm, $history);
+
             $remoteStatus = $proxmox->vmStatus($server, $node, $vmid);
             $history[] = ['step' => 'status', 'result' => $remoteStatus, 'at' => now()->toISOString()];
             $this->recordHistory($vm, $history);
@@ -134,29 +163,12 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
                 $history[] = ['step' => 'remote_missing', 'result' => 'already_deleted', 'at' => now()->toISOString()];
             }
 
-            DB::transaction(function () use ($vm, $ipPools, $history): void {
-                $vm->refresh()->loadMissing('reservedIpAddress');
-                $address = $vm->reservedIpAddress;
-
-                if ($address && (int) $address->virtual_machine_id === (int) $vm->id) {
-                    $ipPools->release($address);
-                }
-
-                $vm->forceFill([
-                    'status' => VirtualMachine::STATUS_DELETED,
-                    'vmid' => null,
-                    'deleted_at' => now(),
-                    'delete_failed_at' => null,
-                    'delete_error' => null,
-                    'delete_task_id' => null,
-                    'desired_state' => array_merge($vm->desired_state ?? [], ['status' => VirtualMachine::STATUS_DELETED]),
-                    'remote_state' => array_merge($vm->remote_state ?? [], [
-                        'delete_steps' => $history,
-                        'deleted_vmid' => $vm->vmid,
-                        'deleted_at' => now()->toISOString(),
-                    ]),
-                ])->save();
-            });
+            $this->recordHistory($vm, $history);
+            $deletions->finalizeLocalDelete($vm, 'remote_deleted', [
+                'step' => 'remote_deleted',
+                'node' => $node,
+                'vmid' => $vmid,
+            ]);
         } catch (Throwable $exception) {
             $hasAttemptsRemaining = $this->hasAttemptsRemaining();
 
@@ -212,5 +224,13 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
     private function hasAttemptsRemaining(): bool
     {
         return $this->job !== null && $this->attempts() < $this->tries;
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    private function remoteVmMatchesPanelVm(VirtualMachine $vm, array $config): bool
+    {
+        return ($config['name'] ?? null) === $vm->name;
     }
 }

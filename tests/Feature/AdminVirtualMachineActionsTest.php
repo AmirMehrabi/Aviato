@@ -102,7 +102,8 @@ class AdminVirtualMachineActionsTest extends TestCase
         $this->assertSame(VirtualMachine::STATUS_DELETED, $vm->status);
         $this->assertNull($vm->vmid);
         $this->assertNotNull($vm->deleted_at);
-        $this->assertSame('admin_local_delete', data_get($vm->remote_state, 'delete_steps.0.step'));
+        $this->assertSame('local_finalize', data_get($vm->remote_state, 'delete_steps.0.step'));
+        $this->assertSame('missing_proxmox_connection', data_get($vm->remote_state, 'delete_finalized_by'));
         Bus::assertNotDispatched(DeleteVirtualMachineJob::class);
     }
 

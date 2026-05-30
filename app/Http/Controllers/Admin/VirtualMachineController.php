@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\DeleteVirtualMachineJob;
 use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Models\CloudImage;
 use App\Models\Customer;
@@ -15,12 +14,11 @@ use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
-use App\Services\UsageBillingService;
+use App\Services\VirtualMachineDeletionService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Throwable;
 
@@ -31,7 +29,7 @@ class VirtualMachineController extends Controller
         private readonly ProxmoxService $proxmox,
         private readonly CloudVmProvisioningService $cloudProvisioning,
         private readonly IpPoolService $ipPools,
-        private readonly UsageBillingService $usageBilling,
+        private readonly VirtualMachineDeletionService $deletions,
     ) {}
 
     public function index(Request $request): View
@@ -229,99 +227,27 @@ class VirtualMachineController extends Controller
 
     public function destroy(VirtualMachine $virtualMachine): RedirectResponse
     {
-        $virtualMachine->loadMissing('proxmoxServer');
+        $virtualMachine->loadMissing(['proxmoxServer', 'reservedIpAddress', 'customer', 'bundle']);
 
         if ($virtualMachine->isDeleted()) {
             return back()->with('status', 'این VM قبلا حذف شده است.');
         }
 
-        if ($virtualMachine->isDeleting() && ! $virtualMachine->delete_failed_at) {
-            return back()->with('status', 'این VM قبلا وارد صف حذف شده است.');
-        }
-
-        if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
-            try {
-                DB::transaction(function () use ($virtualMachine): void {
-                    $locked = VirtualMachine::query()
-                        ->whereKey($virtualMachine->id)
-                        ->with('reservedIpAddress')
-                        ->lockForUpdate()
-                        ->firstOrFail();
-
-                    if ($locked->isDeleted() || ($locked->isDeleting() && ! $locked->delete_failed_at)) {
-                        return;
-                    }
-
-                    $this->usageBilling->chargeVm($locked);
-
-                    if ($locked->reservedIpAddress && (int) $locked->reservedIpAddress->virtual_machine_id === (int) $locked->id) {
-                        $this->ipPools->release($locked->reservedIpAddress);
-                    }
-
-                    $locked->forceFill([
-                        'status' => VirtualMachine::STATUS_DELETED,
-                        'deleted_at' => now(),
-                        'delete_requested_at' => $locked->delete_requested_at ?? now(),
-                        'delete_started_at' => $locked->delete_started_at ?? now(),
-                        'delete_failed_at' => null,
-                        'delete_error' => null,
-                        'delete_task_id' => null,
-                        'desired_state' => array_merge($locked->desired_state ?? [], ['status' => VirtualMachine::STATUS_DELETED]),
-                        'remote_state' => array_merge($locked->remote_state ?? [], [
-                            'delete_steps' => array_merge(data_get($locked->remote_state, 'delete_steps', []), [[
-                                'step' => 'admin_local_delete',
-                                'result' => 'missing_proxmox_connection',
-                                'at' => now()->toISOString(),
-                            ]]),
-                            'deleted_vmid' => $locked->vmid,
-                            'deleted_at' => now()->toISOString(),
-                        ]),
-                        'vmid' => null,
-                    ])->save();
-                });
-
-                return redirect()->route('admin.virtual-machines.index')->with('status', 'VM از پنل حذف شد؛ اتصال Proxmox برای حذف ریموت کامل نبود.');
-            } catch (Throwable $exception) {
-                return back()->with('error', 'درخواست حذف VM ثبت نشد: '.$exception->getMessage());
-            }
-        }
-
-        $queued = false;
-
         try {
-            DB::transaction(function () use ($virtualMachine, &$queued): void {
-                $locked = VirtualMachine::query()
-                    ->whereKey($virtualMachine->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
-                if ($locked->isDeleted() || ($locked->isDeleting() && ! $locked->delete_failed_at)) {
-                    return;
-                }
-
-                $this->usageBilling->chargeVm($locked);
-
-                $locked->forceFill([
-                    'status' => VirtualMachine::STATUS_DELETING,
-                    'delete_requested_at' => now(),
-                    'delete_started_at' => null,
-                    'delete_failed_at' => null,
-                    'delete_error' => null,
-                    'delete_task_id' => null,
-                    'desired_state' => array_merge($locked->desired_state ?? [], ['status' => VirtualMachine::STATUS_DELETING]),
-                ])->save();
-
-                $queued = true;
-            });
-
-            if ($queued) {
-                DeleteVirtualMachineJob::dispatch($virtualMachine->id);
-            }
-
-            return redirect()->route('admin.virtual-machines.index')->with('status', 'VM وارد صف حذف شد.');
+            $result = $this->deletions->requestDelete($virtualMachine, 'admin');
         } catch (Throwable $exception) {
             return back()->with('error', 'درخواست حذف VM ثبت نشد: '.$exception->getMessage());
         }
+
+        if ($result['status'] === 'already_queued') {
+            return back()->with('status', 'این VM قبلا وارد صف حذف شده است.');
+        }
+
+        if ($result['finalized']) {
+            return redirect()->route('admin.virtual-machines.index')->with('status', 'VM در Proxmox پیدا نشد یا اتصال آن کامل نبود؛ رکورد پنل پاک شد، IP آزاد شد و Billing متوقف شد.');
+        }
+
+        return redirect()->route('admin.virtual-machines.index')->with('status', 'VM وارد صف حذف شد.');
     }
 
     public function start(VirtualMachine $virtualMachine): RedirectResponse

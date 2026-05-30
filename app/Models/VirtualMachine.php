@@ -153,6 +153,19 @@ class VirtualMachine extends Model
         return in_array($this->status, [self::STATUS_DELETING, self::STATUS_DELETED], true);
     }
 
+    public function deleteAttemptIsStale(int $minutes = 15): bool
+    {
+        if (! $this->isDeleting() || $this->delete_failed_at) {
+            return false;
+        }
+
+        $lastDeleteActivity = $this->delete_started_at
+            ?? $this->delete_requested_at
+            ?? $this->updated_at;
+
+        return $lastDeleteActivity === null || $lastDeleteActivity->lte(now()->subMinutes($minutes));
+    }
+
     /**
      * @param  Builder<VirtualMachine>  $query
      * @return Builder<VirtualMachine>

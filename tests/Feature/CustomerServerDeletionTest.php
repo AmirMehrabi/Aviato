@@ -8,9 +8,9 @@ use App\Models\IpAddress;
 use App\Models\IpPool;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
-use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\StaleVirtualMachineCleanupService;
+use App\Services\VirtualMachineDeletionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
@@ -56,6 +56,26 @@ class CustomerServerDeletionTest extends TestCase
             ->assertSessionHas('status');
 
         Bus::assertNotDispatched(DeleteVirtualMachineJob::class);
+    }
+
+    public function test_customer_can_requeue_stale_delete_without_failure_marker(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, [
+            'status' => VirtualMachine::STATUS_DELETING,
+            'delete_requested_at' => now()->subMinutes(20),
+            'delete_started_at' => now()->subMinutes(20),
+            'delete_failed_at' => null,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid)
+            ->assertRedirect($this->customerBaseUrl.'/servers')
+            ->assertSessionHas('status');
+
+        Bus::assertDispatched(DeleteVirtualMachineJob::class);
     }
 
     public function test_customer_can_retry_failed_delete(): void
@@ -119,6 +139,7 @@ class CustomerServerDeletionTest extends TestCase
         $address = $this->assignedAddress($vm);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfigOrNull')->once()->andReturn(['name' => 'customer-vps-101']);
             $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
             $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
             $mock->shouldReceive('shutdownVm')->once()->andReturn(['task_id' => 'UPID:shutdown']);
@@ -129,7 +150,7 @@ class CustomerServerDeletionTest extends TestCase
 
         (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
-            app(IpPoolService::class),
+            app(VirtualMachineDeletionService::class),
         );
 
         $vm->refresh();
@@ -151,14 +172,15 @@ class CustomerServerDeletionTest extends TestCase
         $this->assignedAddress($vm);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('vmStatus')->once()->andReturn(null);
+            $mock->shouldReceive('vmConfigOrNull')->once()->andReturn(null);
+            $mock->shouldReceive('vmStatus')->never();
             $mock->shouldReceive('shutdownVm')->never();
             $mock->shouldReceive('deleteVm')->never();
         });
 
         (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
-            app(IpPoolService::class),
+            app(VirtualMachineDeletionService::class),
         );
 
         $this->assertSame(VirtualMachine::STATUS_DELETED, $vm->fresh()->status);
@@ -171,6 +193,7 @@ class CustomerServerDeletionTest extends TestCase
         $this->assignedAddress($vm);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfigOrNull')->once()->andReturn(['name' => 'customer-vps-101']);
             $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
             $mock->shouldReceive('shutdownVm')->never();
             $mock->shouldReceive('deleteVm')->once()->andThrow(new \RuntimeException('Configuration file does not exist'));
@@ -178,12 +201,36 @@ class CustomerServerDeletionTest extends TestCase
 
         (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
-            app(IpPoolService::class),
+            app(VirtualMachineDeletionService::class),
         );
 
         $vm->refresh();
         $this->assertSame(VirtualMachine::STATUS_DELETED, $vm->status);
-        $this->assertSame('remote_missing_during_delete', collect(data_get($vm->remote_state, 'delete_steps'))->last()['step']);
+        $this->assertSame('local_finalize', collect(data_get($vm->remote_state, 'delete_steps'))->last()['step']);
+        $this->assertSame('remote_deleted', data_get($vm->remote_state, 'delete_finalized_by'));
+    }
+
+    public function test_delete_job_locally_deletes_without_remote_delete_when_vmid_identity_mismatches(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, ['status' => VirtualMachine::STATUS_DELETING]);
+        $this->assignedAddress($vm);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfigOrNull')->once()->andReturn(['name' => 'another-customer-vps']);
+            $mock->shouldReceive('vmStatus')->never();
+            $mock->shouldReceive('shutdownVm')->never();
+            $mock->shouldReceive('deleteVm')->never();
+        });
+
+        (new DeleteVirtualMachineJob($vm->id))->handle(
+            app(ProxmoxService::class),
+            app(VirtualMachineDeletionService::class),
+        );
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::STATUS_DELETED, $vm->status);
+        $this->assertSame('remote_identity_mismatch', data_get($vm->remote_state, 'delete_finalized_by'));
     }
 
     public function test_delete_job_records_failure_and_keeps_vm_locked(): void
@@ -192,12 +239,12 @@ class CustomerServerDeletionTest extends TestCase
         $vm = $this->vm($customer, ['status' => VirtualMachine::STATUS_DELETING]);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('vmStatus')->once()->andThrow(new \RuntimeException('Proxmox unavailable'));
+            $mock->shouldReceive('vmConfigOrNull')->once()->andThrow(new \RuntimeException('Proxmox unavailable'));
         });
 
         (new DeleteVirtualMachineJob($vm->id))->handle(
             app(ProxmoxService::class),
-            app(IpPoolService::class),
+            app(VirtualMachineDeletionService::class),
         );
 
         $vm->refresh();

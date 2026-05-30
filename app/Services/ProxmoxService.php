@@ -390,6 +390,22 @@ class ProxmoxService
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public function vmConfigOrNull(ProxmoxServer $server, string $node, int $vmid): ?array
+    {
+        try {
+            return $this->vmConfig($server, $node, $vmid);
+        } catch (RequestException $exception) {
+            if ($exception->response->status() === 404) {
+                return null;
+            }
+
+            throw $exception;
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function resizeDisk(ProxmoxServer $server, string $node, int $vmid, string $disk, int $sizeGb): array
@@ -536,14 +552,45 @@ class ProxmoxService
      */
     public function deleteVm(ProxmoxServer $server, string $node, int $vmid, bool $purge = true): array
     {
-        $payload = ['purge' => $purge ? 1 : 0];
-        $taskId = $this->request($server)
-            ->asForm()
-            ->delete("/nodes/{$node}/qemu/{$vmid}", $payload)
-            ->throw()
-            ->json('data');
+        $payload = [
+            'purge' => $purge ? 1 : 0,
+            'destroy-unreferenced-disks' => 1,
+        ];
+
+        try {
+            $taskId = $this->request($server)
+                ->asForm()
+                ->send('DELETE', "/nodes/{$node}/qemu/{$vmid}", ['form_params' => $payload])
+                ->throw()
+                ->json('data');
+        } catch (RequestException $exception) {
+            if (! $this->isUnsupportedDestroyUnreferencedDisks($exception)) {
+                throw $exception;
+            }
+
+            unset($payload['destroy-unreferenced-disks']);
+
+            $taskId = $this->request($server)
+                ->asForm()
+                ->send('DELETE', "/nodes/{$node}/qemu/{$vmid}", ['form_params' => $payload])
+                ->throw()
+                ->json('data');
+        }
 
         return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    private function isUnsupportedDestroyUnreferencedDisks(RequestException $exception): bool
+    {
+        if ($exception->response->status() >= 500) {
+            return false;
+        }
+
+        $body = strtolower($exception->response->body());
+
+        return str_contains($body, 'destroy-unreferenced-disks')
+            || str_contains($body, 'unknown option')
+            || str_contains($body, 'parameter verification failed');
     }
 
     /**

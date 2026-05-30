@@ -19,16 +19,18 @@
         'provisioning_label' => $server['provisioning_label'],
         'provisioning_class' => $server['provisioning_class'],
         'provisioning_pending' => $server['provisioning_pending'],
-        'action_pending' => $server['provisioning_pending'] || ($server['is_deleting'] && ! $server['delete_failed']),
+        'action_pending' => $server['provisioning_pending'] || ($server['is_deleting'] && ! $server['delete_failed'] && ! $server['delete_stale']),
         'is_deleting' => $server['is_deleting'],
         'delete_failed' => $server['delete_failed'],
+        'delete_stale' => $server['delete_stale'],
         'is_deleted' => $server['is_deleted'],
     ])->values();
     $attentionItems = collect([
         $summary['failed'] > 0 ? ['tone' => 'red', 'text' => $summary['failed'].' ماشین با Provisioning ناموفق نیازمند بررسی است.'] : null,
         $summary['delete_failed'] > 0 ? ['tone' => 'red', 'text' => $summary['delete_failed'].' حذف ناموفق مانده است؛ از صفحه همان سرور دوباره تلاش کنید.'] : null,
+        $summary['delete_stale'] > 0 ? ['tone' => 'red', 'text' => $summary['delete_stale'].' حذف بیش از حد منتظر مانده است؛ از صفحه همان سرور دوباره تلاش کنید.'] : null,
         $summary['pending'] > 0 ? ['tone' => 'blue', 'text' => $summary['pending'].' ماشین هنوز در حال آماده سازی است؛ SSH بعد از آماده شدن فعال می شود.'] : null,
-        $summary['deleting'] > 0 ? ['tone' => 'amber', 'text' => $summary['deleting'].' ماشین در صف حذف است و عملیات آن قفل شده است.'] : null,
+        $summary['deleting'] > 0 ? ['tone' => 'amber', 'text' => $summary['deleting'].' ماشین در حال حذف است؛ Billing آن متوقف شده و وضعیت از همین صفحه به‌روزرسانی می‌شود.'] : null,
         $summary['pending_usage'] > 0 ? ['tone' => 'amber', 'text' => 'مصرف ثبت نشده فعلی: '.$wallets->format($summary['pending_usage'])] : null,
     ])->filter()->values();
 @endphp
@@ -195,7 +197,7 @@
                                 </div>
                                 <div class="flex items-center justify-between gap-3">
                                     <span class="font-bold text-slate-500">هزینه ماهانه</span>
-                                    <span class="font-black text-slate-950">{{ $server['is_locked'] ? 'قفل حذف' : $wallets->format($server['monthly_cost']) }}</span>
+                                    <span class="font-black text-slate-950">{{ $server['is_deleting'] ? 'متوقف شده' : $wallets->format($server['monthly_cost']) }}</span>
                                 </div>
                                 <div class="flex items-center justify-between gap-3">
                                     <span class="font-bold text-slate-500">محاسبه</span>
@@ -244,6 +246,7 @@
                     provisioning_pending: false,
                     action_pending: false,
                     is_deleting: false,
+                    delete_stale: false,
                     is_deleted: false,
                 };
             },

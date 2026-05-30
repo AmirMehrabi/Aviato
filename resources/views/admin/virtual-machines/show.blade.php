@@ -36,7 +36,7 @@
                     <button class="rounded-lg bg-emerald-300 px-5 py-3 text-sm font-black text-emerald-950">روشن کردن</button>
                 </form>
             @endif
-            @if(! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at))
+            @if(! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at || $vm->deleteAttemptIsStale()))
                 <form method="POST" action="{{ route('admin.virtual-machines.destroy', $vm) }}" onsubmit="return confirm('Delete this VM from Proxmox and the panel? If it is already missing from Proxmox, the panel record will still be removed.');">
                     @csrf
                     @method('DELETE')
