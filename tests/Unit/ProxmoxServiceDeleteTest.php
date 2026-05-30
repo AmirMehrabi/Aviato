@@ -57,6 +57,20 @@ class ProxmoxServiceDeleteTest extends TestCase
         });
     }
 
+    public function test_vm_config_or_null_treats_missing_config_file_as_missing_vm(): void
+    {
+        Http::fake([
+            'https://pve.local:8006/api2/json/nodes/pve1/qemu/101/config' => Http::response([
+                'data' => null,
+                'message' => "Configuration file 'nodes/pve1/qemu-server/101.conf' does not exist\n",
+            ], 500),
+        ]);
+
+        $result = app(ProxmoxService::class)->vmConfigOrNull($this->server(), 'pve1', 101);
+
+        $this->assertNull($result);
+    }
+
     public function test_delete_vm_retries_without_unreferenced_disk_cleanup_when_proxmox_rejects_option(): void
     {
         Http::fakeSequence()
