@@ -22,6 +22,7 @@
             'node' => $image->node,
             'template_vmid' => $image->template_vmid,
             'default_username' => $image->default_username,
+            'cloud_init_enabled' => $image->cloud_init_enabled,
             'min_cpu_cores' => $image->min_cpu_cores,
             'min_ram_gb' => $image->min_ram_gb,
             'min_disk_gb' => $image->min_disk_gb,
@@ -58,7 +59,9 @@
             </label>
 
             <x-form.input name="name" label="نام VM در Proxmox" value="" dir-ltr />
-            <x-form.input name="hostname" label="Hostname" value="" dir-ltr />
+            <div x-show="cloudInitEnabled">
+                <x-form.input name="hostname" label="Hostname" value="" dir-ltr x-bind:disabled="!cloudInitEnabled" />
+            </div>
 
             <label class="md:col-span-2">
                 <span class="text-sm font-black text-slate-700">باندل سخت‌افزاری</span>
@@ -73,13 +76,20 @@
             <x-form.input name="cpu_cores" type="number" label="CPU Core" value="2" x-model="form.cpu_cores" />
             <x-form.input name="ram_gb" type="number" label="RAM (GB)" value="4" x-model="form.ram_gb" />
             <x-form.input name="disk_gb" type="number" label="Disk (GB)" value="50" x-model="form.disk_gb" />
-            <x-form.input name="login_username" label="Cloud-init Username" value="ubuntu" dir-ltr x-model="form.login_username" />
-            <x-form.input name="login_password" type="password" label="Password" help="اختیاری؛ اگر SSH key هم خالی باشد یک password امن ساخته و یک‌بار نمایش داده می‌شود." />
-            <label>
+            <div x-show="cloudInitEnabled">
+                <x-form.input name="login_username" label="Cloud-init Username" value="ubuntu" dir-ltr x-model="form.login_username" x-bind:disabled="!cloudInitEnabled" />
+            </div>
+            <div x-show="cloudInitEnabled">
+                <x-form.input name="login_password" type="password" label="Password" help="اختیاری؛ اگر SSH key هم خالی باشد یک password امن ساخته و یک‌بار نمایش داده می‌شود." x-bind:disabled="!cloudInitEnabled" />
+            </div>
+            <label x-show="cloudInitEnabled">
                 <span class="text-sm font-black text-slate-700">SSH Public Key</span>
-                <textarea name="ssh_public_key" rows="4" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#105D52] focus:outline-none">{{ old('ssh_public_key') }}</textarea>
+                <textarea name="ssh_public_key" rows="4" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#105D52] focus:outline-none">{{ old('ssh_public_key') }}</textarea>
                 @error('ssh_public_key') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
             </label>
+            <div x-show="!cloudInitEnabled" class="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+                این template بدون CloudInit است؛ hostname، username، password و SSH key تنظیم نمی‌شوند.
+            </div>
 
             <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="start_after_create" value="1" checked class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">بعد از Provisioning روشن شود</span></label>
             <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="onboot" value="1" class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">Start on boot</span></label>
@@ -113,9 +123,12 @@ function cloudVmCreate(config) {
         get selectedImage() {
             return this.images.find((image) => String(image.id) === String(this.form.cloud_image_id));
         },
+        get cloudInitEnabled() {
+            return this.selectedImage ? Boolean(this.selectedImage.cloud_init_enabled) : true;
+        },
         applyImage() {
             if (!this.selectedImage) return;
-            this.form.login_username = this.selectedImage.default_username || 'ubuntu';
+            this.form.login_username = this.cloudInitEnabled ? (this.selectedImage.default_username || 'ubuntu') : '';
             this.form.cpu_cores = Math.max(Number(this.form.cpu_cores || 0), Number(this.selectedImage.min_cpu_cores));
             this.form.ram_gb = Math.max(Number(this.form.ram_gb || 0), Number(this.selectedImage.min_ram_gb));
             this.form.disk_gb = Math.max(Number(this.form.disk_gb || 0), Number(this.selectedImage.min_disk_gb));

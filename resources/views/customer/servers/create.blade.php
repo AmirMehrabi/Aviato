@@ -48,6 +48,7 @@
                 'logo_key' => $image->logo_key ?: $image->os_family,
                 'server' => $image->proxmoxServer?->datacenter ?: $image->proxmoxServer?->name,
                 'default_username' => $image->default_username,
+                'cloud_init_enabled' => $image->cloud_init_enabled,
             ])->values()),
         })"
         class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"
@@ -94,8 +95,9 @@
                             <span class="grid size-10 shrink-0 place-items-center rounded-lg text-sm font-black" :class="logoClasses(image.logo_key)" x-text="logoText(image.logo_key)"></span>
                             <span class="min-w-0 flex-1">
                                 <span class="block font-black text-slate-950" x-text="image.os_version || image.name"></span>
-                                <span class="mt-1 block text-xs font-bold text-slate-500" x-text="image.description || image.server || 'Cloud-init ready template'"></span>
+                                <span class="mt-1 block text-xs font-bold text-slate-500" x-text="image.description || image.server || (image.cloud_init_enabled ? 'CloudInit ready template' : 'Template بدون CloudInit')"></span>
                             </span>
+                            <span x-show="!image.cloud_init_enabled" class="hidden rounded-md bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-200 md:inline">No CloudInit</span>
                             <span class="hidden rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-500 md:inline" x-text="image.server || 'Auto'"></span>
                         </label>
                     </template>
@@ -141,22 +143,27 @@
                         <input name="name" x-model="form.name" @input="syncHostname()" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none" placeholder="web-01">
                         @error('name') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                     </label>
-                    <label class="block">
+                    <label x-show="cloudInitEnabled" class="block">
                         <span class="text-sm font-black text-slate-700">Hostname</span>
-                        <input name="hostname" x-model="form.hostname" readonly dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left font-bold text-slate-500 focus:outline-none">
+                        <input name="hostname" x-model="form.hostname" :disabled="!cloudInitEnabled" readonly dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left font-bold text-slate-500 focus:outline-none">
                         <span class="mt-1 block text-xs text-slate-500">به صورت خودکار از نام VPS و سیستم عامل ساخته می‌شود.</span>
                     </label>
-                    <label class="block">
+                    <label x-show="cloudInitEnabled" class="block">
                         <span class="text-sm font-black text-slate-700">Username</span>
-                        <input name="login_username" x-model="form.login_username" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
+                        <input name="login_username" x-model="form.login_username" :disabled="!cloudInitEnabled" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
                         @error('login_username') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                     </label>
-                    <x-form.input name="login_password" type="password" label="Password" help="اختیاری؛ اگر SSH key خالی باشد password امن ساخته می‌شود." />
-                    <label class="md:col-span-2">
+                    <div x-show="cloudInitEnabled">
+                        <x-form.input name="login_password" type="password" label="Password" help="اختیاری؛ اگر SSH key خالی باشد password امن ساخته می‌شود." x-bind:disabled="!cloudInitEnabled" />
+                    </div>
+                    <label x-show="cloudInitEnabled" class="md:col-span-2">
                         <span class="text-sm font-black text-slate-700">SSH Public Key</span>
-                        <textarea name="ssh_public_key" rows="4" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">{{ old('ssh_public_key') }}</textarea>
+                        <textarea name="ssh_public_key" rows="4" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">{{ old('ssh_public_key') }}</textarea>
                         @error('ssh_public_key') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                     </label>
+                    <div x-show="!cloudInitEnabled" class="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-900">
+                        این template با CloudInit ساخته نشده است؛ username، hostname، password و SSH key هنگام ساخت تنظیم نمی‌شوند.
+                    </div>
                 </div>
             </section>
 
@@ -171,6 +178,7 @@
                 <div class="mt-5 space-y-4 text-sm">
                     <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="font-black text-slate-950" x-text="selectedOsLabel || '—'"></span></div>
                     <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">نسخه</span><span class="font-black text-slate-950" x-text="selectedImage?.os_version || '—'"></span></div>
+                    <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">CloudInit</span><span class="font-black text-slate-950" x-text="cloudInitEnabled ? 'فعال' : 'غیرفعال'"></span></div>
                     <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">پلن</span><span class="font-black text-slate-950" x-text="selectedBundle?.name || '—'"></span></div>
                     <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class="font-black text-slate-950" dir="ltr" x-text="`${form.cpu_cores} CPU / ${form.ram_gb}GB / ${form.disk_gb}GB`"></span></div>
                     <div class="rounded-lg bg-slate-50 p-4">
@@ -182,7 +190,7 @@
                         <p class="text-xs font-black text-slate-500">هزینه ماهانه تقریبی</p>
                         <p class="mt-2 text-2xl font-black text-slate-950" x-text="selectedBundle?.price || '—'"></p>
                     </div>
-                    <div class="rounded-lg border border-dashed border-slate-300 p-4 text-xs leading-6 text-slate-500">IP به صورت خودکار از Pool آزاد تخصیص داده می‌شود.</div>
+                    <div class="rounded-lg border border-dashed border-slate-300 p-4 text-xs leading-6 text-slate-500">اگر IP آزاد در Pool وجود داشته باشد، به صورت خودکار رزرو می‌شود.</div>
                 </div>
                 <button type="button" @click="submit()" :disabled="!canSubmit" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-black transition" :class="canSubmit ? 'bg-[#0069FF] text-white hover:bg-[#0050D0]' : 'cursor-not-allowed bg-slate-200 text-slate-500'">
                     <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
@@ -231,6 +239,7 @@
             get filteredImages() { return this.images.filter((image) => image.os_family === this.form.os_family); },
             get selectedImage() { return this.images.find((image) => String(image.id) === String(this.form.cloud_image_id)); },
             get selectedBundle() { return this.bundles.find((bundle) => String(bundle.id) === String(this.form.vm_bundle_id)); },
+            get cloudInitEnabled() { return this.selectedImage ? Boolean(this.selectedImage.cloud_init_enabled) : true; },
             get selectedOsLabel() {
                 return this.osFamilies.find((family) => family.key === this.form.os_family)?.label || '';
             },
@@ -245,7 +254,7 @@
             },
             applyImage() {
                 if (!this.selectedImage) return;
-                this.form.login_username = this.selectedImage.default_username || 'ubuntu';
+                this.form.login_username = this.cloudInitEnabled ? (this.selectedImage.default_username || 'ubuntu') : '';
                 this.syncHostname();
             },
             applyBundle() {
@@ -255,6 +264,10 @@
                 this.form.disk_gb = this.selectedBundle.disk_gb;
             },
             syncHostname() {
+                if (!this.cloudInitEnabled) {
+                    this.form.hostname = '';
+                    return;
+                }
                 const name = this.slug(this.form.name || 'vps');
                 const os = this.slug(this.selectedOsLabel || this.form.os_family || 'cloud');
                 this.form.hostname = `${os}-${name}`.replace(/^-+|-+$/g, '');

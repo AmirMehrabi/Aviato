@@ -18,6 +18,8 @@
     <x-form.input name="min_disk_gb" type="number" label="Minimum Disk (GB)" :value="$image->min_disk_gb ?: 10" />
     <x-form.input name="sort_order" type="number" label="ترتیب نمایش" :value="$image->sort_order ?? 0" />
     <label class="md:col-span-2"><span class="text-sm font-black text-slate-700">توضیحات</span><textarea name="description" rows="4" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#105D52] focus:outline-none">{{ old('description', $image->description) }}</textarea>@error('description') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror</label>
+    <input type="hidden" name="cloud_init_enabled" value="0">
+    <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="cloud_init_enabled" value="1" @checked(old('cloud_init_enabled', $image->cloud_init_enabled ?? true)) class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">CloudInit فعال است</span></label>
     <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $image->is_active ?? true)) class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">فعال</span></label>
 </div>
 <div class="mt-6 flex gap-3">

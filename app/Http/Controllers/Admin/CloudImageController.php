@@ -29,6 +29,7 @@ class CloudImageController extends Controller
             'disk_device' => 'scsi0',
             'network_bridge' => 'vmbr0',
             'ostype' => 'l26',
+            'cloud_init_enabled' => true,
             'min_cpu_cores' => 1,
             'min_ram_gb' => 1,
             'min_disk_gb' => 10,
@@ -101,6 +102,7 @@ class CloudImageController extends Controller
             'disk_device' => ['required', 'string', 'max:32'],
             'network_bridge' => ['required', 'string', 'max:64'],
             'ostype' => ['required', 'string', 'max:32'],
+            'cloud_init_enabled' => ['nullable', 'boolean'],
             'min_cpu_cores' => ['required', 'integer', 'min:1', 'max:512'],
             'min_ram_gb' => ['required', 'integer', 'min:1', 'max:1048576'],
             'min_disk_gb' => ['required', 'integer', 'min:1', 'max:1048576'],
@@ -110,6 +112,9 @@ class CloudImageController extends Controller
 
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
         $data['logo_key'] = $data['logo_key'] ?: $data['os_family'];
+        $data['cloud_init_enabled'] = $request->has('cloud_init_enabled')
+            ? $request->boolean('cloud_init_enabled')
+            : ($image?->cloud_init_enabled ?? true);
         $data['is_active'] = $request->boolean('is_active');
         $data['sort_order'] = $data['sort_order'] ?? 0;
 

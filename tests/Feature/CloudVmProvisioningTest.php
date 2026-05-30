@@ -10,6 +10,7 @@ use App\Models\IpPool;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
+use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -86,6 +87,113 @@ class CloudVmProvisioningTest extends TestCase
             'virtual_machine_id' => $vm->id,
             'status' => IpAddress::STATUS_RESERVED,
         ]);
+    }
+
+    public function test_customer_can_queue_cloud_vps_without_available_ip(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
+        [$image, $bundle] = $this->catalog();
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn(['192.168.10.50']);
+        });
+
+        $this->actingAs($customer, 'customer');
+        $this->post($this->customerBaseUrl.'/servers', [
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'no-ip-vps',
+        ])->assertRedirect($this->customerBaseUrl.'/servers');
+
+        $vm = VirtualMachine::query()->firstOrFail();
+        $this->assertNull($vm->ip_address_id);
+        $this->assertNull($vm->ip_address);
+        $this->assertSame(0, $vm->ip_count);
+        Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_disabled_cloud_init_image_ignores_guest_access_fields(): void
+    {
+        Bus::fake();
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
+        });
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
+        [$image, $bundle] = $this->catalog();
+        $image->update(['cloud_init_enabled' => false]);
+
+        $this->actingAs($customer, 'customer');
+        $this->post($this->customerBaseUrl.'/servers', [
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'plain-template-vps',
+            'hostname' => 'should-not-apply',
+            'login_username' => 'should-not-apply',
+            'login_password' => 'should-not-apply',
+            'ssh_public_key' => 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey customer@example.com',
+        ])->assertRedirect($this->customerBaseUrl.'/servers');
+
+        $vm = VirtualMachine::query()->firstOrFail();
+        $this->assertNull($vm->hostname);
+        $this->assertNull($vm->login_username);
+        $this->assertNull($vm->login_password);
+        $this->assertNull($vm->ssh_public_key);
+    }
+
+    public function test_provisioning_skips_cloud_init_payload_when_image_disables_it(): void
+    {
+        [$image, $bundle] = $this->catalog();
+        $image->update(['cloud_init_enabled' => false]);
+        $customer = Customer::factory()->create();
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'template_vmid' => $image->template_vmid,
+            'name' => 'plain-template-vps',
+            'node' => $image->node,
+            'storage' => $image->storage,
+            'network_bridge' => $image->network_bridge,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 0,
+            'status' => VirtualMachine::STATUS_STOPPED,
+            'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('nextVmid')->once()->andReturn(['vmid' => 101]);
+            $mock->shouldReceive('assignedGuestVmids')->once()->andReturn([]);
+            $mock->shouldReceive('cloneCloudTemplate')->once()->andReturn(['task_id' => null]);
+            $mock->shouldReceive('configureCloudInit')->once()->withArgs(function ($server, array $options): bool {
+                return $options['login_username'] === null
+                    && $options['login_password'] === null
+                    && $options['ssh_public_key'] === null
+                    && $options['ipconfig0'] === null
+                    && $options['nameserver'] === null
+                    && $options['cicustom'] === null;
+            })->andReturn(['task_id' => null, 'payload' => []]);
+            $mock->shouldReceive('resizeDisk')->once()->andReturn(['task_id' => null]);
+            $mock->shouldReceive('regenerateCloudInit')->never();
+            $mock->shouldReceive('startVm')->never();
+            $mock->shouldReceive('vmConfig')->once()->andReturn([]);
+        });
+
+        (new ProvisionCloudVirtualMachine($vm->id, ['start_after_create' => false]))->handle(
+            app(ProxmoxService::class),
+            app(IpPoolService::class),
+        );
+
+        $this->assertSame(VirtualMachine::PROVISION_READY, $vm->refresh()->provisioning_status);
+        $this->assertNull($vm->ip_address);
     }
 
     public function test_cloud_image_minimum_resources_are_enforced(): void
@@ -189,10 +297,10 @@ class CloudVmProvisioningTest extends TestCase
         ]);
 
         $this->actingAs($owner, 'customer');
-        $this->getJson($this->customerBaseUrl.'/servers/statuses?ids[]='.$owned->id.'&ids[]='.$foreign->id)
+        $this->getJson($this->customerBaseUrl.'/servers/statuses?ids[]='.$owned->uuid.'&ids[]='.$foreign->uuid)
             ->assertOk()
             ->assertJsonCount(1, 'servers')
-            ->assertJsonPath('servers.0.id', $owned->id)
+            ->assertJsonPath('servers.0.id', $owned->uuid)
             ->assertJsonPath('servers.0.status_label', 'خاموش')
             ->assertJsonPath('servers.0.provisioning_pending', true);
     }
