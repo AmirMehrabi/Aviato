@@ -75,7 +75,7 @@
                                 <span class="grid size-12 shrink-0 place-items-center rounded-lg text-base font-black" :class="logoClasses(family.logo_key)" x-text="logoText(family.logo_key)"></span>
                                 <span class="min-w-0">
                                     <span class="block font-black text-slate-950" x-text="family.label"></span>
-                                    <span class="mt-1 block text-xs font-bold text-slate-500" x-text="`${family.count} نسخه آماده`"></span>
+                                    {{-- <span class="mt-1 block text-xs font-bold text-slate-500" x-text="`${family.count} نسخه آماده`"></span> --}}
                                 </span>
                             </button>
                         </template>
