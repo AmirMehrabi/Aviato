@@ -24,6 +24,19 @@ class UsageBillingService
     {
         $until ??= now();
         $from = $vm->last_billed_at ?? $vm->created_at ?? $until;
+
+        if ($vm->isActionLocked()) {
+            return [
+                'from' => $from,
+                'until' => $until,
+                'hours' => 0,
+                'hourly_rate' => 0,
+                'amount' => 0,
+                'status' => $vm->status,
+                'is_running' => false,
+            ];
+        }
+
         $hours = max(0, $from->floatDiffInHours($until));
         $hourly = $vm->isRunning()
             ? $this->billing->hourlyWhenRunning($vm)
@@ -218,8 +231,10 @@ class UsageBillingService
 
     public function customerPendingUsage(Customer $customer): int
     {
-        return $customer->virtualMachines
-            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+        return $customer->virtualMachines()
+            ->notDeleted()
+            ->with('bundle')
+            ->get()
             ->sum(fn (VirtualMachine $vm): int => $this->estimateVmUsage($vm)['amount']);
     }
 }

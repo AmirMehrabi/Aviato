@@ -9,6 +9,7 @@ use App\Models\VmBundle;
 use App\Models\WalletTransaction;
 use App\Services\InvoiceService;
 use App\Services\PaymentService;
+use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -127,6 +128,94 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertSame('payg_usage', $transaction->metadata['category']);
         $this->assertSame('vm-billable', $transaction->metadata['vm_name']);
         $this->assertTrue($vm->last_billed_at->equalTo(now()));
+
+        CarbonImmutable::setTestNow();
+    }
+
+    public function test_deleted_vm_is_not_counted_in_wallet_pending_usage(): void
+    {
+        CarbonImmutable::setTestNow('2026-06-15 12:00:00');
+
+        $customer = Customer::factory()->create();
+        $bundle = VmBundle::create([
+            'name' => 'Starter',
+            'slug' => 'starter',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'monthly_price' => 730000,
+            'hourly_price' => 1000,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'barooneh',
+            'cpu_cores' => 4,
+            'ram_gb' => 8,
+            'disk_gb' => 75,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_DELETED,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'last_billed_at' => now()->subHours(3),
+            'created_at' => now()->subDays(2),
+            'updated_at' => now()->subDays(2),
+        ]);
+
+        $this->assertSame(0, app(UsageBillingService::class)->estimateVmUsage($vm)['amount']);
+        $this->assertSame(0, app(UsageBillingService::class)->customerPendingUsage($customer));
+
+        $this->actingAs($customer, 'customer');
+        $this->get($this->customerBaseUrl.'/wallet')
+            ->assertOk()
+            ->assertSee('0 تومان')
+            ->assertDontSee('300 تومان');
+
+        CarbonImmutable::setTestNow();
+    }
+
+    public function test_usage_charge_command_skips_deleted_vm(): void
+    {
+        CarbonImmutable::setTestNow('2026-06-15 12:00:00');
+
+        $customer = Customer::factory()->create();
+        $bundle = VmBundle::create([
+            'name' => 'Starter',
+            'slug' => 'starter',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'monthly_price' => 730000,
+            'hourly_price' => 1000,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $lastBilledAt = now()->subHours(3);
+
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'deleted-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_DELETED,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'last_billed_at' => $lastBilledAt,
+            'created_at' => now()->subDays(2),
+            'updated_at' => now()->subDays(2),
+        ]);
+
+        Artisan::call('billing:charge-usage');
+
+        $this->assertDatabaseCount('wallet_transactions', 0);
+        $this->assertSame(0, $customer->wallet()->firstOrFail()->balance);
+        $this->assertTrue($vm->refresh()->last_billed_at->equalTo($lastBilledAt));
 
         CarbonImmutable::setTestNow();
     }

@@ -12,16 +12,28 @@ class BillingService
 {
     public function estimateMonthly(VirtualMachine $vm): int
     {
+        if ($vm->isActionLocked()) {
+            return 0;
+        }
+
         return (int) round($this->hourlyWhenRunning($vm) * ResourceRate::hoursPerMonth());
     }
 
     public function estimateStoppedMonthly(VirtualMachine $vm): int
     {
+        if ($vm->isActionLocked()) {
+            return 0;
+        }
+
         return (int) round($this->persistentHourly($vm) * ResourceRate::hoursPerMonth());
     }
 
     public function currentAccrued(VirtualMachine $vm): int
     {
+        if ($vm->isActionLocked()) {
+            return 0;
+        }
+
         $from = $vm->last_billed_at ?? $vm->created_at ?? now();
         $hours = max(0, $from->floatDiffInHours(now()));
         $hourly = $vm->isRunning() ? $this->hourlyWhenRunning($vm) : $this->persistentHourly($vm);

@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'customer_id',
+    'uuid',
     'proxmox_server_id',
     'vm_bundle_id',
     'cloud_image_id',
@@ -67,6 +69,18 @@ class VirtualMachine extends Model
     public const PROVISION_READY = 'ready';
 
     public const PROVISION_FAILED = 'failed';
+
+    protected static function booted(): void
+    {
+        static::creating(function (VirtualMachine $virtualMachine): void {
+            $virtualMachine->uuid ??= (string) Str::uuid();
+        });
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
+    }
 
     public function customer(): BelongsTo
     {
