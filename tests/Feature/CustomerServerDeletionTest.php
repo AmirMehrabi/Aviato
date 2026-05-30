@@ -58,6 +58,30 @@ class CustomerServerDeletionTest extends TestCase
         Bus::assertNotDispatched(DeleteVirtualMachineJob::class);
     }
 
+    public function test_customer_can_retry_failed_delete(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, [
+            'status' => VirtualMachine::STATUS_DELETING,
+            'delete_requested_at' => now()->subMinutes(10),
+            'delete_failed_at' => now()->subMinute(),
+            'delete_error' => 'Proxmox unavailable',
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid)
+            ->assertRedirect($this->customerBaseUrl.'/servers')
+            ->assertSessionHas('status');
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::STATUS_DELETING, $vm->status);
+        $this->assertNull($vm->delete_failed_at);
+        $this->assertNull($vm->delete_error);
+        Bus::assertDispatched(DeleteVirtualMachineJob::class);
+    }
+
     public function test_deleting_status_keeps_customer_polling_active(): void
     {
         $customer = Customer::factory()->create();
@@ -69,6 +93,23 @@ class CustomerServerDeletionTest extends TestCase
             ->assertJsonPath('servers.0.status_label', 'در حال حذف')
             ->assertJsonPath('servers.0.action_pending', true)
             ->assertJsonPath('servers.0.is_deleting', true);
+    }
+
+    public function test_failed_delete_status_does_not_keep_customer_polling_locked(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, [
+            'status' => VirtualMachine::STATUS_DELETING,
+            'delete_failed_at' => now(),
+            'delete_error' => 'Proxmox unavailable',
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->getJson($this->customerBaseUrl.'/servers/statuses?ids[]='.$vm->uuid)
+            ->assertOk()
+            ->assertJsonPath('servers.0.action_pending', false)
+            ->assertJsonPath('servers.0.is_deleting', true)
+            ->assertJsonPath('servers.0.delete_failed', true);
     }
 
     public function test_delete_job_shuts_down_deletes_and_releases_ip(): void

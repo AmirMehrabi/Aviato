@@ -20,7 +20,12 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 900;
 
-    public int $tries = 1;
+    public int $tries = 5;
+
+    /**
+     * @var array<int, int>
+     */
+    public array $backoff = [30, 90, 180, 300, 600];
 
     public int $uniqueFor = 900;
 
@@ -153,9 +158,13 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
                 ])->save();
             });
         } catch (Throwable $exception) {
+            $hasAttemptsRemaining = $this->hasAttemptsRemaining();
+
             Log::error('Cloud VM deletion failed', [
                 'virtual_machine_id' => $vm->id,
                 'vmid' => $vm->vmid,
+                'attempt' => $this->attempts(),
+                'will_retry' => $hasAttemptsRemaining,
                 'message' => $exception->getMessage(),
             ]);
 
@@ -167,6 +176,10 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
                 'delete_error' => $exception->getMessage(),
                 'remote_state' => array_merge($vm->remote_state ?? [], ['delete_steps' => $history]),
             ])->save();
+
+            if ($hasAttemptsRemaining) {
+                throw $exception;
+            }
         }
     }
 
@@ -194,5 +207,10 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             || str_contains($message, 'unable to find vmid')
             || str_contains($message, 'configuration file')
             || str_contains($message, 'already deleted');
+    }
+
+    private function hasAttemptsRemaining(): bool
+    {
+        return $this->job !== null && $this->attempts() < $this->tries;
     }
 }

@@ -104,6 +104,7 @@ class ServerController extends Controller
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
                 'is_deleting' => $server->isDeleting(),
+                'delete_failed' => $server->isDeleting() && $server->delete_failed_at !== null,
                 'is_deleted' => $server->isDeleted(),
                 'is_locked' => $server->isActionLocked(),
                 'ssh_ready' => $server->ip_address && $server->provisioning_status === VirtualMachine::PROVISION_READY,
@@ -121,7 +122,14 @@ class ServerController extends Controller
                 'stopped' => $summarySource->where('status', VirtualMachine::STATUS_STOPPED)->count(),
                 'pending' => $summarySource->where('provisioning_status', VirtualMachine::PROVISION_PENDING)->count(),
                 'failed' => $summarySource->where('provisioning_status', VirtualMachine::PROVISION_FAILED)->count(),
-                'deleting' => $summarySource->where('status', VirtualMachine::STATUS_DELETING)->count(),
+                'deleting' => $summarySource
+                    ->where('status', VirtualMachine::STATUS_DELETING)
+                    ->whereNull('delete_failed_at')
+                    ->count(),
+                'delete_failed' => $summarySource
+                    ->where('status', VirtualMachine::STATUS_DELETING)
+                    ->whereNotNull('delete_failed_at')
+                    ->count(),
                 'pending_usage' => $pendingUsage,
                 'monthly_spend' => $monthlySpend,
             ],
@@ -141,7 +149,7 @@ class ServerController extends Controller
 
         $servers = $customer->virtualMachines()
             ->when($ids->isNotEmpty(), fn ($query) => $query->whereIn('uuid', $ids))
-            ->get(['id', 'uuid', 'status', 'provisioning_status', 'deleted_at']);
+            ->get(['id', 'uuid', 'status', 'provisioning_status', 'delete_failed_at', 'deleted_at']);
 
         return response()->json([
             'servers' => $servers->map(fn (VirtualMachine $server): array => [
@@ -153,8 +161,9 @@ class ServerController extends Controller
                 'provisioning_label' => $this->provisioningLabel($server->provisioning_status),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
-                'action_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING || $server->isDeleting(),
+                'action_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null),
                 'is_deleting' => $server->isDeleting(),
+                'delete_failed' => $server->isDeleting() && $server->delete_failed_at !== null,
                 'is_deleted' => $server->isDeleted(),
             ])->values(),
         ]);
@@ -309,7 +318,7 @@ class ServerController extends Controller
         $server = $this->resolveCustomerServer($request, $virtualMachine);
         $server->loadMissing(['reservedIpAddress', 'proxmoxServer']);
 
-        if ($server->isActionLocked()) {
+        if ($server->isActionLocked() && ! $server->delete_failed_at) {
             return redirect()
                 ->route('customer.servers.index')
                 ->with('status', 'این سرور قبلا وارد صف حذف شده است.');
@@ -328,7 +337,7 @@ class ServerController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                if ($locked->isActionLocked()) {
+                if ($locked->isActionLocked() && ! $locked->delete_failed_at) {
                     return;
                 }
 

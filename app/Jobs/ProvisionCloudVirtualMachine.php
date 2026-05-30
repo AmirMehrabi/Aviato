@@ -16,7 +16,12 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
     public int $timeout = 600;
 
-    public int $tries = 1;
+    public int $tries = 3;
+
+    /**
+     * @var array<int, int>
+     */
+    public array $backoff = [30, 90, 180];
 
     /**
      * @param  array<string, mixed>  $options
@@ -40,11 +45,14 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             throw new \RuntimeException('Provisioning cannot continue without Proxmox server and cloud image.');
         }
 
-        $history = [];
+        $history = data_get($vm->remote_state, 'steps', []);
         $remoteCreated = false;
 
         try {
-            $vmid = $this->nextAvailableVmid($proxmox, $vm);
+            $vmid = $this->provisioningVmid($proxmox, $vm);
+            $remoteCreated = $vm->vmid
+                && (int) $vm->vmid === $vmid
+                && $this->remoteVmMatchesPanelVm($proxmox, $vm, $vmid);
 
             $vm->forceFill([
                 'vmid' => $vmid,
@@ -52,20 +60,24 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'remote_state' => ['steps' => $history],
             ])->save();
 
-            $clone = $proxmox->cloneCloudTemplate($server, [
-                'node' => $vm->node,
-                'template_vmid' => $vm->template_vmid,
-                'newid' => $vmid,
-                'name' => $vm->name,
-                'storage' => $vm->storage,
-                'description' => 'Created from Aviato panel for customer #'.$vm->customer_id,
-            ]);
-            $history[] = ['step' => 'clone', 'result' => $clone];
-            $vm->forceFill(['provisioning_task_id' => $clone['task_id'] ?? null, 'remote_state' => ['steps' => $history]])->save();
-            if (! empty($clone['task_id'])) {
-                $history[] = ['step' => 'clone_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $clone['task_id'])];
+            if ($remoteCreated) {
+                $history[] = ['step' => 'clone_resume', 'result' => ['vmid' => $vmid], 'at' => now()->toISOString()];
+            } else {
+                $clone = $proxmox->cloneCloudTemplate($server, [
+                    'node' => $vm->node,
+                    'template_vmid' => $vm->template_vmid,
+                    'newid' => $vmid,
+                    'name' => $vm->name,
+                    'storage' => $vm->storage,
+                    'description' => 'Created from Aviato panel for customer #'.$vm->customer_id,
+                ]);
+                $history[] = ['step' => 'clone', 'result' => $clone];
+                $vm->forceFill(['provisioning_task_id' => $clone['task_id'] ?? null, 'remote_state' => ['steps' => $history]])->save();
+                if (! empty($clone['task_id'])) {
+                    $history[] = ['step' => 'clone_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $clone['task_id'])];
+                }
+                $remoteCreated = true;
             }
-            $remoteCreated = true;
 
             $cloudInitEnabled = (bool) $image->cloud_init_enabled;
             $config = $proxmox->configureCloudInit($server, [
@@ -121,23 +133,30 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'remote_state' => ['steps' => $history, 'finished_at' => now()->toISOString()],
             ])->save();
         } catch (Throwable $exception) {
+            $hasAttemptsRemaining = $this->hasAttemptsRemaining();
+
             Log::error('Cloud VM provisioning failed', [
                 'virtual_machine_id' => $vm->id,
                 'vmid' => $vm->vmid,
+                'attempt' => $this->attempts(),
+                'will_retry' => $hasAttemptsRemaining,
                 'message' => $exception->getMessage(),
             ]);
 
-            if (! $remoteCreated && $address) {
+            if ($address && ! $hasAttemptsRemaining && ! $this->remoteVmMatchesPanelVm($proxmox, $vm, (int) $vm->vmid)) {
                 $ipPools->release($address);
             }
 
             $vm->forceFill([
                 'status' => VirtualMachine::STATUS_STOPPED,
-                'provisioning_status' => VirtualMachine::PROVISION_FAILED,
+                'provisioning_status' => $hasAttemptsRemaining
+                    ? VirtualMachine::PROVISION_PENDING
+                    : VirtualMachine::PROVISION_FAILED,
                 'remote_state' => [
                     'steps' => $history,
                     'error' => $exception->getMessage(),
-                    'failed_at' => now()->toISOString(),
+                    $hasAttemptsRemaining ? 'retrying_at' : 'failed_at' => now()->toISOString(),
+                    'attempt' => $this->attempts(),
                 ],
             ])->save();
 
@@ -173,5 +192,30 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
         }
 
         return $candidate;
+    }
+
+    private function provisioningVmid(ProxmoxService $proxmox, VirtualMachine $vm): int
+    {
+        if ($vm->vmid && $this->remoteVmMatchesPanelVm($proxmox, $vm, (int) $vm->vmid)) {
+            return (int) $vm->vmid;
+        }
+
+        return $this->nextAvailableVmid($proxmox, $vm);
+    }
+
+    private function remoteVmMatchesPanelVm(ProxmoxService $proxmox, VirtualMachine $vm, int $vmid): bool
+    {
+        try {
+            $config = $proxmox->vmConfig($vm->proxmoxServer, $vm->node, $vmid);
+        } catch (Throwable) {
+            return false;
+        }
+
+        return ($config['name'] ?? null) === $vm->name;
+    }
+
+    private function hasAttemptsRemaining(): bool
+    {
+        return $this->job !== null && $this->attempts() < $this->tries;
     }
 }

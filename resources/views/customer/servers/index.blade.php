@@ -19,12 +19,14 @@
         'provisioning_label' => $server['provisioning_label'],
         'provisioning_class' => $server['provisioning_class'],
         'provisioning_pending' => $server['provisioning_pending'],
-        'action_pending' => $server['provisioning_pending'] || $server['is_deleting'],
+        'action_pending' => $server['provisioning_pending'] || ($server['is_deleting'] && ! $server['delete_failed']),
         'is_deleting' => $server['is_deleting'],
+        'delete_failed' => $server['delete_failed'],
         'is_deleted' => $server['is_deleted'],
     ])->values();
     $attentionItems = collect([
         $summary['failed'] > 0 ? ['tone' => 'red', 'text' => $summary['failed'].' ماشین با Provisioning ناموفق نیازمند بررسی است.'] : null,
+        $summary['delete_failed'] > 0 ? ['tone' => 'red', 'text' => $summary['delete_failed'].' حذف ناموفق مانده است؛ از صفحه همان سرور دوباره تلاش کنید.'] : null,
         $summary['pending'] > 0 ? ['tone' => 'blue', 'text' => $summary['pending'].' ماشین هنوز در حال آماده سازی است؛ SSH بعد از آماده شدن فعال می شود.'] : null,
         $summary['deleting'] > 0 ? ['tone' => 'amber', 'text' => $summary['deleting'].' ماشین در صف حذف است و عملیات آن قفل شده است.'] : null,
         $summary['pending_usage'] > 0 ? ['tone' => 'amber', 'text' => 'مصرف ثبت نشده فعلی: '.$wallets->format($summary['pending_usage'])] : null,

@@ -367,15 +367,12 @@
             </div>
         </section>
 
-        @if ($server->isDeleting())
+        @if ($server->isDeleting() && ! $server->delete_failed_at)
             <section class="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-5">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="font-black text-amber-950">حذف این سرور در حال انجام است</h2>
                         <p class="mt-2 text-sm font-bold leading-7 text-amber-800">تا پایان خاموش سازی و حذف از Proxmox، عملیات مدیریتی روی این سرور غیرفعال است.</p>
-                        @if ($server->delete_failed_at && $server->delete_error)
-                            <p class="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">آخرین خطا: {{ $server->delete_error }}</p>
-                        @endif
                     </div>
                     <span class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-100 px-4 py-3 text-sm font-black text-amber-800 sm:w-auto">
                         <span class="size-4 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-700"></span>
@@ -391,12 +388,15 @@
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <p class="text-xs font-black text-red-600">Danger Zone</p>
-                            <h2 class="mt-1 font-black text-red-950">حذف دائمی سرور</h2>
+                            <h2 class="mt-1 font-black text-red-950">{{ $server->delete_failed_at ? 'تلاش دوباره برای حذف سرور' : 'حذف دائمی سرور' }}</h2>
                             <p class="mt-2 text-sm font-bold leading-7 text-red-800">VM ابتدا خاموش و سپس از Proxmox حذف می شود. پس از حذف موفق، IP رزرو شده آزاد می شود. بکاپ ها جداگانه نگهداری می شوند.</p>
+                            @if ($server->delete_failed_at && $server->delete_error)
+                                <p class="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700">آخرین خطا: {{ $server->delete_error }}</p>
+                            @endif
                         </div>
                         <button type="submit" x-bind:disabled="submitting" class="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-wait disabled:opacity-70 lg:w-auto">
                             <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-                            <span x-text="submitting ? 'در حال ثبت...' : 'حذف سرور'">حذف سرور</span>
+                            <span x-text="submitting ? 'در حال ثبت...' : @js($server->delete_failed_at ? 'تلاش دوباره' : 'حذف سرور')">{{ $server->delete_failed_at ? 'تلاش دوباره' : 'حذف سرور' }}</span>
                         </button>
                     </div>
                 </form>
