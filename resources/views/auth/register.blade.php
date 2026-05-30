@@ -28,11 +28,11 @@
             <section class="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:py-14">
                 <div class="hidden lg:block">
                     <p class="text-sm font-black text-[#0069FF]">شروع خرید Droplet</p>
-                    <h1 class="mt-4 max-w-2xl text-5xl font-black leading-tight text-slate-950">
-                        حساب بسازید، کیف پول را شارژ کنید و سرور آماده تحویل بگیرید.
+                    <h1 class="mt-4 max-w-2xl text-3xl font-black leading-tight text-slate-950">
+                        حساب بسازید، کیف پول خود را شارژ کنید و سرور آماده تحویل بگیرید.
                     </h1>
                     <p class="mt-6 max-w-xl text-base leading-8 text-slate-600">
-                        ثبت نام مسیر مستقیم خرید است؛ پلن را انتخاب می کنید، منابع را می بینید و ماشین از پنل مشتری ساخته می شود.
+                        ثبت نام سرراست است؛ پلن را انتخاب می کنید، منابع را می بینید و ماشین از پنل مشتری ساخته می شود.
                     </p>
                     <div class="mt-8 overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-2xl shadow-[#031B4E]/20">
                         <p class="text-sm font-black text-[#8FC7FF]">آنچه بعد از ثبت نام دارید</p>

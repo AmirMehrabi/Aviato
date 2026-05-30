@@ -28,7 +28,7 @@
             <section class="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[minmax(0,1fr)_440px] lg:py-14">
                 <div class="hidden lg:block">
                     <p class="text-sm font-black text-[#0069FF]">{{ $isAdminPortal ? 'کنسول مدیریت آویاتو' : 'کنسول ابری مشتریان' }}</p>
-                    <h1 class="mt-4 max-w-2xl text-5xl font-black leading-tight text-slate-950">
+                    <h1 class="mt-4 max-w-2xl text-3xl font-black leading-tight text-slate-950">
                         {{ $isAdminPortal ? 'مدیریت زیرساخت و فروش از یک پنل متمرکز.' : 'ساخت و مدیریت Droplet در کمتر از یک دقیقه.' }}
                     </h1>
                     <p class="mt-6 max-w-xl text-base leading-8 text-slate-600">
