@@ -126,7 +126,7 @@ class VirtualMachineDeletionService
             'vmid' => $vm->vmid,
         ]);
 
-        DeleteVirtualMachineJob::dispatch($vm->id);
+        DeleteVirtualMachineJob::dispatch($vm->id)->onQueue(DeleteVirtualMachineJob::QUEUE);
 
         return ['status' => 'queued', 'queued' => true, 'finalized' => false, 'vm' => $vm];
     }

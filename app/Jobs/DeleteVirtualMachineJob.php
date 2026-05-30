@@ -17,6 +17,8 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
 {
     use FoundationQueueable;
 
+    public const QUEUE = 'deletions';
+
     public int $timeout = 900;
 
     public int $tries = 5;

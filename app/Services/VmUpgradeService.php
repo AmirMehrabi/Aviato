@@ -91,7 +91,7 @@ class VmUpgradeService
             ]);
         });
 
-        ApplyVmUpgradeJob::dispatch($order->id);
+        ApplyVmUpgradeJob::dispatch($order->id)->onQueue(ApplyVmUpgradeJob::QUEUE);
 
         return $order;
     }
@@ -133,7 +133,7 @@ class VmUpgradeService
             return $order;
         });
 
-        ApplyVmUpgradeJob::dispatch($order->id);
+        ApplyVmUpgradeJob::dispatch($order->id)->onQueue(ApplyVmUpgradeJob::QUEUE);
 
         return $order;
     }

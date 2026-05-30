@@ -14,6 +14,8 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 {
     use FoundationQueueable;
 
+    public const QUEUE = 'provisioning';
+
     public int $timeout = 600;
 
     public int $tries = 3;

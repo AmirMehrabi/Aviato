@@ -88,7 +88,7 @@ class CloudVmProvisioningService
             ProvisionCloudVirtualMachine::dispatch($vm->id, [
                 'start_after_create' => (bool) ($data['start_after_create'] ?? true),
                 'onboot' => (bool) ($data['onboot'] ?? false),
-            ]);
+            ])->onQueue(ProvisionCloudVirtualMachine::QUEUE);
         }
 
         return ['vm' => $vm->refresh(), 'password' => $password];

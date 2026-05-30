@@ -15,6 +15,8 @@ class ApplyVmUpgradeJob implements ShouldQueue
 {
     use Queueable;
 
+    public const QUEUE = 'upgrades';
+
     public function __construct(public int $orderId) {}
 
     public function handle(ProxmoxService $proxmox): void

@@ -24,7 +24,7 @@ class VmBackupService
             'node' => $vm->node,
         ]);
 
-        RunVmBackupJob::dispatch($backup->id);
+        RunVmBackupJob::dispatch($backup->id)->onQueue(RunVmBackupJob::QUEUE);
 
         return $backup;
     }
@@ -89,7 +89,7 @@ class VmBackupService
                         'node' => $vm->node,
                     ]);
 
-                    RunVmBackupJob::dispatch($backup->id);
+                    RunVmBackupJob::dispatch($backup->id)->onQueue(RunVmBackupJob::QUEUE);
                     $policy->forceFill(['last_run_at' => now()])->save();
                     $policy->scheduleNext();
                     $queued->push($backup);

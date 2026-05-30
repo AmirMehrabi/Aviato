@@ -196,7 +196,7 @@ class VirtualMachineController extends Controller
             ProvisionCloudVirtualMachine::dispatch($virtualMachine->id, [
                 'start_after_create' => (bool) data_get($virtualMachine->desired_state, 'start_after_create', true),
                 'onboot' => (bool) data_get($virtualMachine->desired_state, 'onboot', false),
-            ]);
+            ])->onQueue(ProvisionCloudVirtualMachine::QUEUE);
 
             return back()->with('status', 'Provisioning retry queued. The VMID will be recalculated before cloning.');
         } catch (Throwable $exception) {

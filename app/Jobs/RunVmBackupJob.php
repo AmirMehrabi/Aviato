@@ -12,6 +12,8 @@ class RunVmBackupJob implements ShouldQueue
 {
     use Queueable;
 
+    public const QUEUE = 'backups';
+
     public int $timeout = 1800;
 
     public int $tries = 1;
