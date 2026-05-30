@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ProxmoxServer;
+use App\Models\VirtualMachine;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -552,38 +553,60 @@ class ProxmoxService
     {
         return $this->runWithOperation($server, 'guest-ip-inventory', function () use ($server, $nodeName): array {
             $errors = [];
-            $nodes = collect($this->getData($server, '/nodes') ?? [])
-                ->filter(function (array $node) use ($nodeName): bool {
-                    $current = $node['node'] ?? $node['name'] ?? null;
+            try {
+                $nodes = collect($this->getData($server, '/nodes') ?? [])
+                    ->filter(function (array $node) use ($nodeName): bool {
+                        $current = $node['node'] ?? $node['name'] ?? null;
 
-                    return filled($current) && ($nodeName === null || $current === $nodeName);
-                })
-                ->values()
-                ->all();
+                        return filled($current) && ($nodeName === null || $current === $nodeName);
+                    })
+                    ->values()
+                    ->all();
+            } catch (\Throwable $exception) {
+                $this->logInfo('Proxmox node inventory unavailable; using local VM IP inventory fallback', $server, [
+                    'node' => $nodeName,
+                    'exception_class' => $exception::class,
+                    'exception_message' => $exception->getMessage(),
+                ]);
+
+                return $this->localAssignedGuestIpAddresses($server, $nodeName);
+            }
 
             $addresses = [];
 
-            foreach ($this->nodeVmInventory($server, $nodes, $errors) as $guest) {
-                $node = $guest['node'] ?? null;
-                $vmid = isset($guest['vmid']) ? (int) $guest['vmid'] : null;
-                $type = $guest['type'] ?? 'qemu';
+            try {
+                foreach ($this->nodeVmInventory($server, $nodes, $errors) as $guest) {
+                    $node = $guest['node'] ?? null;
+                    $vmid = isset($guest['vmid']) ? (int) $guest['vmid'] : null;
+                    $type = $guest['type'] ?? 'qemu';
 
-                if (! $node || ! $vmid) {
-                    continue;
+                    if (! $node || ! $vmid) {
+                        continue;
+                    }
+
+                    if ($type === 'qemu') {
+                        $interfaces = $this->qemuGuestAgentNetworkInterfaces($server, $node, $vmid, $errors);
+                        $addresses = array_merge($addresses, $this->extractIpAddresses($interfaces));
+                    }
+
+                    $configPath = $type === 'lxc'
+                        ? "/nodes/{$node}/lxc/{$vmid}/config"
+                        : "/nodes/{$node}/qemu/{$vmid}/config";
+
+                    $config = $this->getOptionalData($server, $configPath, $errors, []);
+                    $addresses = array_merge($addresses, $this->extractIpAddresses($config));
                 }
+            } catch (\Throwable $exception) {
+                $this->logInfo('Proxmox guest IP inventory unavailable; using local VM IP inventory fallback', $server, [
+                    'node' => $nodeName,
+                    'exception_class' => $exception::class,
+                    'exception_message' => $exception->getMessage(),
+                ]);
 
-                $configPath = $type === 'lxc'
-                    ? "/nodes/{$node}/lxc/{$vmid}/config"
-                    : "/nodes/{$node}/qemu/{$vmid}/config";
-
-                $config = $this->getOptionalData($server, $configPath, $errors, []);
-                $addresses = array_merge($addresses, $this->extractIpAddresses($config));
-
-                if ($type === 'qemu') {
-                    $interfaces = $this->getOptionalData($server, "/nodes/{$node}/qemu/{$vmid}/agent/network-get-interfaces", $errors, []);
-                    $addresses = array_merge($addresses, $this->extractIpAddresses($interfaces));
-                }
+                return $this->localAssignedGuestIpAddresses($server, $nodeName);
             }
+
+            $addresses = array_merge($addresses, $this->localAssignedGuestIpAddresses($server, $nodeName));
 
             return collect($addresses)
                 ->filter(fn (string $address): bool => filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false)
@@ -856,6 +879,96 @@ class ProxmoxService
 
             return $default;
         }
+    }
+
+    /**
+     * @param  array<string, string>  $errors
+     * @return array<int, mixed>
+     */
+    private function qemuGuestAgentNetworkInterfaces(ProxmoxServer $server, string $node, int $vmid, array &$errors): array
+    {
+        $path = "/nodes/{$node}/qemu/{$vmid}/agent/network-get-interfaces";
+        $startedAt = microtime(true);
+
+        $this->logInfo('Proxmox API request starting', $server, [
+            'method' => 'GET',
+            'path' => $path,
+            'query' => [],
+        ]);
+
+        try {
+            $response = $this->request($server)->get($path);
+            $durationMs = $this->durationMs($startedAt);
+
+            $this->logInfo('Proxmox API response received', $server, [
+                'method' => 'GET',
+                'path' => $path,
+                'query' => [],
+                'status' => $response->status(),
+                'effective_uri' => (string) $response->effectiveUri(),
+                'duration_ms' => $durationMs,
+                'content_type' => $response->header('content-type'),
+                'body_preview' => $this->bodyPreview($response->body()),
+            ]);
+
+            if ($response->failed() && $this->isGuestAgentUnavailableResponse($response->status(), $response->body())) {
+                $errors[$path] = 'guest-agent-unavailable';
+                $this->logInfo('Proxmox QEMU guest agent unavailable; using VM config fallback', $server, [
+                    'node' => $node,
+                    'vmid' => $vmid,
+                    'status' => $response->status(),
+                    'duration_ms' => $durationMs,
+                ]);
+
+                return [];
+            }
+
+            return $response->throw()->json('data') ?? [];
+        } catch (ConnectionException $exception) {
+            $errors[$path] = 'connection-failed';
+            $this->logError('Proxmox API connection failed', $server, [
+                'method' => 'GET',
+                'path' => $path,
+                'query' => [],
+                'duration_ms' => $this->durationMs($startedAt),
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+            ]);
+
+            return [];
+        } catch (RequestException $exception) {
+            $errors[$path] = 'HTTP '.$exception->response->status();
+            $this->logHttpFailure($server, 'optional endpoint '.$path, $exception, [
+                'optional' => true,
+                'query' => [],
+                'using_default' => [],
+            ]);
+
+            return [];
+        }
+    }
+
+    private function isGuestAgentUnavailableResponse(int $status, string $body): bool
+    {
+        return $status === 500 && str_contains(strtolower($body), 'qemu guest agent is not running');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function localAssignedGuestIpAddresses(ProxmoxServer $server, ?string $nodeName = null): array
+    {
+        return VirtualMachine::query()
+            ->where('proxmox_server_id', $server->id)
+            ->when($nodeName !== null, fn ($query) => $query->where('node', $nodeName))
+            ->whereNotNull('ip_address')
+            ->whereNull('deleted_at')
+            ->where('status', '!=', VirtualMachine::STATUS_DELETED)
+            ->pluck('ip_address')
+            ->filter(fn (mixed $address): bool => is_string($address) && filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
