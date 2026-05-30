@@ -36,7 +36,7 @@ Artisan::command('virtual-machines:inspect-delete {virtualMachine : Local VM id,
             $query->where('uuid', $identifier)
                 ->orWhere('name', $identifier)
                 ->when(ctype_digit($identifier), function ($query) use ($identifier): void {
-                    $query->orWhereKey((int) $identifier)
+                    $query->orWhere('id', (int) $identifier)
                         ->orWhere('vmid', (int) $identifier);
                 });
         })
