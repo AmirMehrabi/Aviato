@@ -69,10 +69,13 @@
                             <button
                                 type="button"
                                 @click="selectOs(family.key)"
-                                class="group flex min-h-28 items-center gap-4 rounded-lg border p-4 text-right transition"
+                                class="group flex min-h-28 items-center gap-2 rounded-lg border p-2 text-right transition"
                                 :class="form.os_family === family.key ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white hover:border-[#B8D6FF] hover:bg-[#F8FBFF]'"
                             >
-                                <span class="grid size-12 shrink-0 place-items-center rounded-lg text-base font-black" :class="logoClasses(family.logo_key)" x-text="logoText(family.logo_key)"></span>
+                                <span class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200" :class="logoFrameClasses(family.logo_key)">
+                                    <img x-show="logoAsset(family.logo_key)" :src="logoAsset(family.logo_key)" :alt="family.label + ' logo'" class="size-full object-contain p-1.5">
+                                    <span x-show="!logoAsset(family.logo_key)" class="text-base font-black" :class="logoClasses(family.logo_key)" x-text="logoText(family.logo_key)"></span>
+                                </span>
                                 <span class="min-w-0">
                                     <span class="block font-black text-slate-950" x-text="family.label"></span>
                                     {{-- <span class="mt-1 block text-xs font-bold text-slate-500" x-text="`${family.count} نسخه آماده`"></span> --}}
@@ -93,7 +96,10 @@
                     <template x-for="image in filteredImages" :key="image.id">
                         <label class="flex cursor-pointer items-center gap-4 px-5 py-4 transition hover:bg-slate-50" :class="String(form.cloud_image_id) === String(image.id) ? 'bg-[#F2F8FF]' : 'bg-white'">
                             <input type="radio" name="cloud_image_id" :value="image.id" x-model="form.cloud_image_id" @change="applyImage()" class="size-4 border-slate-300 text-[#0069FF] focus:ring-[#0069FF]">
-                            <span class="grid size-10 shrink-0 place-items-center rounded-lg text-sm font-black" :class="logoClasses(image.logo_key)" x-text="logoText(image.logo_key)"></span>
+                            <span class="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200" :class="logoFrameClasses(image.logo_key)">
+                                <img x-show="logoAsset(image.logo_key)" :src="logoAsset(image.logo_key)" :alt="image.name + ' logo'" class="size-full object-contain p-1">
+                                <span x-show="!logoAsset(image.logo_key)" class="text-sm font-black" :class="logoClasses(image.logo_key)" x-text="logoText(image.logo_key)"></span>
+                            </span>
                             <span class="min-w-0 flex-1">
                                 <span class="block font-black text-slate-950" x-text="image.os_version || image.name"></span>
                                 <span class="mt-1 block text-xs font-bold text-slate-500" x-text="image.description || image.server || (image.cloud_init_enabled ? 'CloudInit ready template' : 'Template بدون CloudInit')"></span>
@@ -323,10 +329,27 @@
             logoText(key) {
                 return { ubuntu: 'U', debian: 'D', rocky: 'R', windows: 'W' }[key] || 'OS';
             },
+            logoAsset(key) {
+                return {
+                    ubuntu: @js(asset('assets/images/distro/ubuntu.png')),
+                    debian: @js(asset('assets/images/distro/debian.png')),
+                    router_os: @js(asset('assets/images/distro/router_os.png')),
+                }[key] || '';
+            },
+            logoFrameClasses(key) {
+                return {
+                    ubuntu: 'bg-orange-50',
+                    debian: 'bg-red-50',
+                    router_os: 'bg-slate-50',
+                    rocky: 'bg-emerald-50',
+                    windows: 'bg-sky-50',
+                }[key] || 'bg-slate-50';
+            },
             logoClasses(key) {
                 return {
                     ubuntu: 'bg-[#E95420] text-white',
                     debian: 'bg-[#A81D33] text-white',
+                    router_os: 'bg-slate-900 text-white',
                     rocky: 'bg-[#10B981] text-white',
                     windows: 'bg-[#0078D4] text-white',
                 }[key] || 'bg-slate-900 text-white';
