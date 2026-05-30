@@ -510,14 +510,19 @@ class ProxmoxService
      */
     public function shutdownVm(ProxmoxServer $server, string $node, int $vmid, bool $forceStopFallback = true): array
     {
+        $payload = [
+            'timeout' => 60,
+            'forceStop' => 1,
+        ];
+
         try {
             $taskId = $this->request($server)
                 ->asForm()
-                ->post("/nodes/{$node}/qemu/{$vmid}/status/shutdown")
+                ->post("/nodes/{$node}/qemu/{$vmid}/status/shutdown", $payload)
                 ->throw()
                 ->json('data');
 
-            return ['task_id' => $taskId];
+            return ['task_id' => $taskId, 'payload' => $payload];
         } catch (RequestException $exception) {
             if (! $forceStopFallback) {
                 throw $exception;
@@ -545,6 +550,27 @@ class ProxmoxService
             ->json('data');
 
         return ['task_id' => $taskId, 'fallback' => 'force_stop'];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function waitForVmStopped(ProxmoxServer $server, string $node, int $vmid, int $timeoutSeconds = 60): ?array
+    {
+        $deadline = now()->addSeconds($timeoutSeconds);
+        $lastStatus = null;
+
+        while (now()->lessThanOrEqualTo($deadline)) {
+            $lastStatus = $this->vmStatus($server, $node, $vmid);
+
+            if ($lastStatus === null || ($lastStatus['status'] ?? null) === 'stopped') {
+                return $lastStatus;
+            }
+
+            sleep(2);
+        }
+
+        throw new RuntimeException('Timed out waiting for Proxmox VM '.$vmid.' to stop. Last status: '.json_encode($lastStatus));
     }
 
     /**

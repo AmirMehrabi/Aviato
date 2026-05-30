@@ -141,9 +141,9 @@ class CustomerServerDeletionTest extends TestCase
         $this->mock(ProxmoxService::class, function ($mock): void {
             $mock->shouldReceive('vmConfigOrNull')->once()->andReturn(['name' => 'customer-vps-101']);
             $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
-            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
             $mock->shouldReceive('shutdownVm')->once()->andReturn(['task_id' => 'UPID:shutdown']);
             $mock->shouldReceive('waitForTask')->once()->with(Mockery::any(), 'pve1', 'UPID:shutdown', 180)->andReturn(['exitstatus' => 'OK']);
+            $mock->shouldReceive('waitForVmStopped')->once()->with(Mockery::any(), 'pve1', 101, 60)->andReturn(['status' => 'stopped']);
             $mock->shouldReceive('deleteVm')->once()->andReturn(['task_id' => 'UPID:delete']);
             $mock->shouldReceive('waitForTask')->once()->with(Mockery::any(), 'pve1', 'UPID:delete', 300)->andReturn(['exitstatus' => 'OK']);
         });

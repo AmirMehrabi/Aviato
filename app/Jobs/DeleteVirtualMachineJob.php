@@ -150,7 +150,7 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
                         $proxmox->waitForTask($server, $node, (string) $shutdown['task_id'], 180);
                         $history[] = ['step' => 'shutdown_wait', 'result' => 'OK', 'at' => now()->toISOString()];
 
-                        $afterShutdown = $proxmox->vmStatus($server, $node, $vmid);
+                        $afterShutdown = $proxmox->waitForVmStopped($server, $node, $vmid, 60);
                         $history[] = ['step' => 'status_after_shutdown', 'result' => $afterShutdown, 'at' => now()->toISOString()];
 
                         if ($afterShutdown === null) {
