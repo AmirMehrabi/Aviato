@@ -49,6 +49,7 @@
                 'server' => $image->proxmoxServer?->datacenter ?: $image->proxmoxServer?->name,
                 'default_username' => $image->default_username,
                 'cloud_init_enabled' => $image->cloud_init_enabled,
+                'allowed_bundle_ids' => $image->allowedBundles->pluck('id')->values()->all(),
             ])->values()),
         })"
         class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"
@@ -110,8 +111,8 @@
                     <p class="text-xs font-black uppercase text-[#0069FF]">Step 3</p>
                     <h2 class="mt-1 text-xl font-black text-slate-950">پلن VPS را انتخاب کنید</h2>
                 </div>
-                <div class="grid gap-4 p-5 lg:grid-cols-3">
-                    <template x-for="(bundle, index) in bundles" :key="bundle.id">
+                    <div class="grid gap-4 p-5 lg:grid-cols-3">
+                    <template x-for="(bundle, index) in visibleBundles" :key="bundle.id">
                         <label
                             class="relative cursor-pointer rounded-xl border p-4 text-right transition"
                             :class="planClasses(bundle, index)"
@@ -129,6 +130,11 @@
                             <span class="mt-5 block text-left text-xl font-black text-slate-950"><span x-text="bundle.price"></span> <small class="text-xs text-slate-500">/ ماه</small></span>
                         </label>
                     </template>
+                </div>
+                <div x-show="selectedImage && !visibleBundles.length" class="border-t border-slate-100 px-5 py-4">
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-900">
+                        برای این نسخه فعلا هیچ پلنی تعریف نشده است. لطفا یک Cloud Image دیگر انتخاب کنید یا در بخش مدیریت برای این Image پلن تعریف کنید.
+                    </div>
                 </div>
             </section>
 
@@ -238,13 +244,18 @@
             },
             get filteredImages() { return this.images.filter((image) => image.os_family === this.form.os_family); },
             get selectedImage() { return this.images.find((image) => String(image.id) === String(this.form.cloud_image_id)); },
-            get selectedBundle() { return this.bundles.find((bundle) => String(bundle.id) === String(this.form.vm_bundle_id)); },
+            get visibleBundles() {
+                if (!this.selectedImage) return [];
+                const allowed = new Set((this.selectedImage.allowed_bundle_ids || []).map((id) => String(id)));
+                return this.bundles.filter((bundle) => allowed.has(String(bundle.id)));
+            },
+            get selectedBundle() { return this.visibleBundles.find((bundle) => String(bundle.id) === String(this.form.vm_bundle_id)); },
             get cloudInitEnabled() { return this.selectedImage ? Boolean(this.selectedImage.cloud_init_enabled) : true; },
             get selectedOsLabel() {
                 return this.osFamilies.find((family) => family.key === this.form.os_family)?.label || '';
             },
             get canSubmit() {
-                return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.form.name.trim().length > 0;
+                return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && this.form.name.trim().length > 0;
             },
             selectOs(family) {
                 this.form.os_family = family;
@@ -256,12 +267,37 @@
                 if (!this.selectedImage) return;
                 this.form.login_username = this.cloudInitEnabled ? (this.selectedImage.default_username || 'ubuntu') : '';
                 this.syncHostname();
+                this.syncBundleSelection();
             },
             applyBundle() {
                 if (!this.selectedBundle) return;
                 this.form.cpu_cores = this.selectedBundle.cpu_cores;
                 this.form.ram_gb = this.selectedBundle.ram_gb;
                 this.form.disk_gb = this.selectedBundle.disk_gb;
+            },
+            syncBundleSelection() {
+                if (!this.selectedImage) {
+                    this.form.vm_bundle_id = '';
+                    return;
+                }
+
+                const current = this.visibleBundles.find((bundle) => String(bundle.id) === String(this.form.vm_bundle_id));
+                const nextBundle = current || this.visibleBundles[0];
+
+                if (nextBundle) {
+                    this.form.vm_bundle_id = String(nextBundle.id);
+                    this.applyBundle();
+                    return;
+                }
+
+                this.form.vm_bundle_id = '';
+                this.applyMinimumResources();
+            },
+            applyMinimumResources() {
+                if (!this.selectedImage) return;
+                this.form.cpu_cores = Math.max(Number(this.form.cpu_cores || 0), Number(this.selectedImage.min_cpu_cores || 1));
+                this.form.ram_gb = Math.max(Number(this.form.ram_gb || 0), Number(this.selectedImage.min_ram_gb || 1));
+                this.form.disk_gb = Math.max(Number(this.form.disk_gb || 0), Number(this.selectedImage.min_disk_gb || 10));
             },
             syncHostname() {
                 if (!this.cloudInitEnabled) {
@@ -298,7 +334,7 @@
             planClasses(bundle, index) {
                 const selected = String(this.form.vm_bundle_id) === String(bundle.id);
                 if (selected) return 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10';
-                if (index === this.bundles.length - 1 && this.bundles.length > 2) return 'border-slate-300 bg-slate-50 hover:border-slate-400';
+                if (index === this.visibleBundles.length - 1 && this.visibleBundles.length > 2) return 'border-slate-300 bg-slate-50 hover:border-slate-400';
                 return 'border-slate-200 bg-white hover:border-[#B8D6FF] hover:bg-[#F8FBFF]';
             },
         };

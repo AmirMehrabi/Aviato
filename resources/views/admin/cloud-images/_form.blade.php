@@ -1,4 +1,10 @@
 @csrf
+@inject('wallets', 'App\Services\WalletService')
+@php
+    $selectedBundleIds = collect(old('bundle_ids', $selectedBundleIds ?? []))
+        ->map(fn ($id) => (string) $id)
+        ->all();
+@endphp
 <div class="grid gap-5 md:grid-cols-2">
     <x-form.select name="proxmox_server_id" label="Proxmox Server" :selected="$image->proxmox_server_id" :options="$servers->prepend('انتخاب سرور', '')" />
     <x-form.input name="name" label="نام Image" :value="$image->name" dir-ltr />
@@ -22,6 +28,35 @@
     <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="cloud_init_enabled" value="1" @checked(old('cloud_init_enabled', $image->cloud_init_enabled ?? true)) class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">CloudInit فعال است</span></label>
     <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $image->is_active ?? true)) class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">فعال</span></label>
 </div>
+
+<div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+            <h2 class="text-base font-black text-slate-950">Whitelist پلن‌ها</h2>
+            <p class="mt-1 text-sm leading-6 text-slate-500">فقط پلن‌های انتخاب‌شده در صفحه ساخت VPS نمایش داده می‌شوند. اگر این Cloud Image فعال باشد، باید حداقل یک پلن انتخاب شود.</p>
+        </div>
+        @error('bundle_ids') <span class="text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+    </div>
+
+    <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        @foreach ($bundles as $bundle)
+            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 transition hover:border-[#105D52]/40 hover:bg-[#F8FBFA]">
+                <input
+                    type="checkbox"
+                    name="bundle_ids[]"
+                    value="{{ $bundle->id }}"
+                    @checked(in_array((string) $bundle->id, $selectedBundleIds, true))
+                    class="mt-1 size-4 rounded border-slate-300 text-[#105D52] focus:ring-[#105D52]"
+                >
+                <span class="min-w-0">
+                    <span class="block font-black text-slate-950">{{ $bundle->name }}</span>
+                    <span class="mt-1 block text-xs leading-5 text-slate-500">{{ $bundle->cpu_cores }} CPU / {{ $bundle->ram_gb }}GB RAM / {{ $bundle->disk_gb }}GB Disk - {{ $wallets->format($bundle->monthly_price) }} / ماه</span>
+                </span>
+            </label>
+        @endforeach
+    </div>
+</div>
+
 <div class="mt-6 flex gap-3">
     <button class="rounded-lg bg-[#105D52] px-5 py-3 text-sm font-black text-white">ذخیره</button>
     <a href="{{ route('admin.cloud-images.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a>

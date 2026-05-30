@@ -5,18 +5,20 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CloudImage;
 use App\Models\ProxmoxServer;
+use App\Models\VmBundle;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CloudImageController extends Controller
 {
     public function index(): View
     {
         return view('admin.cloud-images.index', [
-            'images' => CloudImage::query()->with('proxmoxServer')->orderBy('sort_order')->orderBy('name')->get(),
+            'images' => CloudImage::query()->with(['proxmoxServer', 'allowedBundles'])->orderBy('sort_order')->orderBy('name')->get(),
         ]);
     }
 
@@ -39,7 +41,12 @@ class CloudImageController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        CloudImage::create($this->validated($request));
+        $data = $this->validated($request);
+        $bundleIds = $data['bundle_ids'] ?? [];
+        unset($data['bundle_ids']);
+
+        $image = CloudImage::create($data);
+        $image->allowedBundles()->sync($bundleIds);
 
         return redirect()->route('admin.cloud-images.index')->with('status', 'Cloud image saved.');
     }
@@ -51,7 +58,12 @@ class CloudImageController extends Controller
 
     public function update(Request $request, CloudImage $cloudImage): RedirectResponse
     {
-        $cloudImage->update($this->validated($request, $cloudImage));
+        $data = $this->validated($request, $cloudImage);
+        $bundleIds = $data['bundle_ids'] ?? [];
+        unset($data['bundle_ids']);
+
+        $cloudImage->update($data);
+        $cloudImage->allowedBundles()->sync($bundleIds);
 
         return redirect()->route('admin.cloud-images.index')->with('status', 'Cloud image updated.');
     }
@@ -67,6 +79,15 @@ class CloudImageController extends Controller
     {
         return [
             'image' => $image,
+            'bundles' => VmBundle::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('monthly_price')
+                ->orderBy('name')
+                ->get(),
+            'selectedBundleIds' => $image->exists
+                ? $image->allowedBundles()->pluck('id')->all()
+                : [],
             'servers' => ProxmoxServer::query()->orderBy('datacenter')->orderBy('name')->pluck('name', 'id'),
             'osFamilies' => [
                 'ubuntu' => 'Ubuntu',
@@ -109,6 +130,8 @@ class CloudImageController extends Controller
             'min_disk_gb' => ['required', 'integer', 'min:1', 'max:1048576'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'is_active' => ['nullable', 'boolean'],
+            'bundle_ids' => ['nullable', 'array'],
+            'bundle_ids.*' => ['integer', Rule::exists('vm_bundles', 'id')->where('is_active', true)],
         ]);
 
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
@@ -118,6 +141,13 @@ class CloudImageController extends Controller
             : ($image?->cloud_init_enabled ?? true);
         $data['is_active'] = $request->boolean('is_active');
         $data['sort_order'] = $data['sort_order'] ?? 0;
+        $data['bundle_ids'] = array_values(array_map('intval', $data['bundle_ids'] ?? []));
+
+        if ($data['is_active'] && empty($data['bundle_ids'])) {
+            throw ValidationException::withMessages([
+                'bundle_ids' => 'برای Cloud Image فعال باید حداقل یک پلن انتخاب شود.',
+            ]);
+        }
 
         return $data;
     }

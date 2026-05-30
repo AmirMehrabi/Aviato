@@ -199,21 +199,36 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
 
 Route::get('/', function (WalletService $wallets) {
     return view('home', [
-        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+        'bundles' => VmBundle::query()
+            ->where('is_active', true)
+            ->where('show_on_marketing', true)
+            ->orderBy('sort_order')
+            ->orderBy('monthly_price')
+            ->get(),
         'wallets' => $wallets,
     ]);
 })->name('home');
 
 Route::get('/pricing', function (WalletService $wallets) {
     return view('pricing', [
-        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+        'bundles' => VmBundle::query()
+            ->where('is_active', true)
+            ->where('show_on_marketing', true)
+            ->orderBy('sort_order')
+            ->orderBy('monthly_price')
+            ->get(),
         'wallets' => $wallets,
     ]);
 })->name('pricing');
 
 Route::get('/solutions', function (WalletService $wallets) {
     return view('solutions', [
-        'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+        'bundles' => VmBundle::query()
+            ->where('is_active', true)
+            ->where('show_on_marketing', true)
+            ->orderBy('sort_order')
+            ->orderBy('monthly_price')
+            ->get(),
         'wallets' => $wallets,
     ]);
 })->name('solutions');

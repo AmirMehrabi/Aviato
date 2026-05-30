@@ -19,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ServerController extends Controller
@@ -177,7 +178,7 @@ class ServerController extends Controller
         $customer = $request->user('customer');
         $wallet = $this->wallets->walletFor($customer);
         $cloudImages = CloudImage::query()
-            ->with('proxmoxServer')
+            ->with(['proxmoxServer', 'allowedBundles'])
             ->where('is_active', true)
             ->orderBy('os_family')
             ->orderBy('sort_order')
@@ -228,6 +229,19 @@ class ServerController extends Controller
         $data['start_after_create'] = true;
         $data['onboot'] = false;
 
+        $image = CloudImage::query()
+            ->where('is_active', true)
+            ->with('allowedBundles')
+            ->findOrFail($data['cloud_image_id']);
+
+        if (! empty($data['vm_bundle_id']) && ! $image->allowedBundles->contains(fn ($bundle): bool => (int) $bundle->id === (int) $data['vm_bundle_id'])) {
+            return back()
+                ->withErrors([
+                    'vm_bundle_id' => 'این پلن برای این Cloud Image مجاز نیست.',
+                ])
+                ->withInput($request->except('login_password'));
+        }
+
         try {
             $result = $this->cloudProvisioning->create($customer, $data);
 
@@ -235,6 +249,10 @@ class ServerController extends Controller
                 ->route('customer.servers.index')
                 ->with('status', 'درخواست ساخت VPS ثبت شد. IP: '.$result['vm']->ip_address)
                 ->with('provisioning_password', $result['password']);
+        } catch (ValidationException $exception) {
+            return back()
+                ->withErrors($exception->errors())
+                ->withInput($request->except('login_password'));
         } catch (Throwable $exception) {
             return back()
                 ->withInput($request->except('login_password'))

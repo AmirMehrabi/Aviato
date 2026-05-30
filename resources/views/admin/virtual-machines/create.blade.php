@@ -26,6 +26,7 @@
             'min_cpu_cores' => $image->min_cpu_cores,
             'min_ram_gb' => $image->min_ram_gb,
             'min_disk_gb' => $image->min_disk_gb,
+            'allowed_bundle_ids' => $image->allowedBundles->pluck('id')->values()->all(),
         ])->values()),
     })"
 >
@@ -67,10 +68,13 @@
                 <span class="text-sm font-black text-slate-700">باندل سخت‌افزاری</span>
                 <select name="vm_bundle_id" x-model="form.vm_bundle_id" @change="applyBundle()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#105D52] focus:outline-none">
                     <option value="">Custom منابع دستی</option>
-                    <template x-for="bundle in bundles" :key="bundle.id">
+                    <template x-for="bundle in visibleBundles" :key="bundle.id">
                         <option :value="bundle.id" x-text="`${bundle.name} - ${bundle.cpu_cores} CPU / ${bundle.ram_gb}GB RAM / ${bundle.disk_gb}GB - ${bundle.price}`"></option>
                     </template>
                 </select>
+                <p x-show="selectedImage && !visibleBundles.length" class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-6 text-amber-900">
+                    برای این Image هیچ پلن فعالی تعریف نشده است؛ می‌توانید منابع را به صورت دستی وارد کنید.
+                </p>
             </label>
 
             <x-form.input name="cpu_cores" type="number" label="CPU Core" value="2" x-model="form.cpu_cores" />
@@ -123,6 +127,11 @@ function cloudVmCreate(config) {
         get selectedImage() {
             return this.images.find((image) => String(image.id) === String(this.form.cloud_image_id));
         },
+        get visibleBundles() {
+            if (!this.selectedImage) return [];
+            const allowed = new Set((this.selectedImage.allowed_bundle_ids || []).map((id) => String(id)));
+            return this.bundles.filter((bundle) => allowed.has(String(bundle.id)));
+        },
         get cloudInitEnabled() {
             return this.selectedImage ? Boolean(this.selectedImage.cloud_init_enabled) : true;
         },
@@ -132,6 +141,7 @@ function cloudVmCreate(config) {
             this.form.cpu_cores = Math.max(Number(this.form.cpu_cores || 0), Number(this.selectedImage.min_cpu_cores));
             this.form.ram_gb = Math.max(Number(this.form.ram_gb || 0), Number(this.selectedImage.min_ram_gb));
             this.form.disk_gb = Math.max(Number(this.form.disk_gb || 0), Number(this.selectedImage.min_disk_gb));
+            this.syncBundleSelection();
         },
         applyBundle() {
             const bundle = this.bundles.find((item) => String(item.id) === String(this.form.vm_bundle_id));
@@ -139,6 +149,23 @@ function cloudVmCreate(config) {
             this.form.cpu_cores = bundle.cpu_cores;
             this.form.ram_gb = bundle.ram_gb;
             this.form.disk_gb = bundle.disk_gb;
+        },
+        syncBundleSelection() {
+            if (!this.selectedImage) {
+                this.form.vm_bundle_id = '';
+                return;
+            }
+
+            const current = this.visibleBundles.find((bundle) => String(bundle.id) === String(this.form.vm_bundle_id));
+            const nextBundle = current || this.visibleBundles[0];
+
+            if (nextBundle) {
+                this.form.vm_bundle_id = String(nextBundle.id);
+                this.applyBundle();
+                return;
+            }
+
+            this.form.vm_bundle_id = '';
         },
     };
 }

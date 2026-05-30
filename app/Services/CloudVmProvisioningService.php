@@ -29,7 +29,7 @@ class CloudVmProvisioningService
     {
         $image = CloudImage::query()
             ->where('is_active', true)
-            ->with('proxmoxServer')
+            ->with(['proxmoxServer', 'allowedBundles'])
             ->findOrFail($data['cloud_image_id']);
 
         $server = $image->proxmoxServer;

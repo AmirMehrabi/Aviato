@@ -21,7 +21,7 @@ class VmBundleController extends Controller
 
     public function create(): View
     {
-        return view('admin.billing.bundles.create', ['bundle' => new VmBundle(['ip_count' => 1, 'is_active' => true])]);
+        return view('admin.billing.bundles.create', ['bundle' => new VmBundle(['ip_count' => 1, 'is_active' => true, 'show_on_marketing' => true])]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -63,10 +63,12 @@ class VmBundleController extends Controller
             'monthly_price' => ['required', 'integer', 'min:0'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'is_active' => ['nullable', 'boolean'],
+            'show_on_marketing' => ['nullable', 'boolean'],
         ]);
 
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
         $data['is_active'] = $request->boolean('is_active');
+        $data['show_on_marketing'] = $request->boolean('show_on_marketing', true);
         $data['sort_order'] = $data['sort_order'] ?? 0;
 
         return $data;

@@ -20,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class VirtualMachineController extends Controller
@@ -80,7 +81,7 @@ class VirtualMachineController extends Controller
                 ->orderBy('name')
                 ->get(),
             'cloudImages' => CloudImage::query()
-                ->with('proxmoxServer')
+                ->with(['proxmoxServer', 'allowedBundles'])
                 ->where('is_active', true)
                 ->orderBy('sort_order')
                 ->orderBy('name')
@@ -106,6 +107,18 @@ class VirtualMachineController extends Controller
     {
         $data = $this->validatedForCloud($request);
         $customer = Customer::findOrFail($data['customer_id']);
+        $image = CloudImage::query()
+            ->where('is_active', true)
+            ->with('allowedBundles')
+            ->findOrFail($data['cloud_image_id']);
+
+        if (! empty($data['vm_bundle_id']) && ! $image->allowedBundles->contains(fn ($bundle): bool => (int) $bundle->id === (int) $data['vm_bundle_id'])) {
+            return back()
+                ->withErrors([
+                    'vm_bundle_id' => 'این پلن برای این Cloud Image مجاز نیست.',
+                ])
+                ->withInput($request->except('login_password'));
+        }
 
         try {
             $result = $this->cloudProvisioning->create($customer, $data);
@@ -115,6 +128,10 @@ class VirtualMachineController extends Controller
             return redirect()->route('admin.virtual-machines.show', $vm)
                 ->with('status', $message)
                 ->with('provisioning_password', $result['password']);
+        } catch (ValidationException $exception) {
+            return back()
+                ->withErrors($exception->errors())
+                ->withInput($request->except('login_password'));
         } catch (Throwable $exception) {
             return back()
                 ->withInput($request->except('login_password'))

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -49,6 +50,14 @@ class CloudImage extends Model
     public function virtualMachines(): HasMany
     {
         return $this->hasMany(VirtualMachine::class);
+    }
+
+    public function allowedBundles(): BelongsToMany
+    {
+        return $this->belongsToMany(VmBundle::class)
+            ->orderBy('sort_order')
+            ->orderBy('monthly_price')
+            ->orderBy('name');
     }
 
     protected function casts(): array

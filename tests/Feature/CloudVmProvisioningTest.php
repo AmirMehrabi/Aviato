@@ -242,10 +242,41 @@ class CloudVmProvisioningTest extends TestCase
         Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
     }
 
+    public function test_customer_create_rejects_bundle_not_whitelisted_for_image(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
+        [$image, $allowedBundle] = $this->catalog();
+        $disallowedBundle = VmBundle::create([
+            'name' => 'Pro',
+            'slug' => 'pro',
+            'cpu_cores' => 4,
+            'ram_gb' => 8,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'monthly_price' => 1490000,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/create')->post($this->customerBaseUrl.'/servers', [
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $disallowedBundle->id,
+            'name' => 'blocked-by-whitelist',
+            'login_username' => 'ubuntu',
+        ])->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHasErrors('vm_bundle_id');
+
+        $this->assertDatabaseCount('virtual_machines', 0);
+        Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
     public function test_create_page_exposes_os_family_and_version_options(): void
     {
         $customer = Customer::factory()->create();
-        [$image] = $this->catalog();
+        [$image, $bundle] = $this->catalog();
 
         $this->actingAs($customer, 'customer');
         $response = $this->get($this->customerBaseUrl.'/servers/create');
@@ -254,6 +285,8 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertSame('ubuntu', $response->viewData('osFamilies')[0]['key']);
         $this->assertSame('Ubuntu', $response->viewData('osFamilies')[0]['label']);
         $this->assertTrue($response->viewData('cloudImages')->contains($image));
+        $viewImage = $response->viewData('cloudImages')->firstWhere('id', $image->id);
+        $this->assertSame([$bundle->id], $viewImage->allowedBundles->pluck('id')->all());
     }
 
     public function test_customer_can_poll_owned_server_statuses(): void
@@ -366,6 +399,8 @@ class CloudVmProvisioningTest extends TestCase
             'monthly_price' => 790000,
             'is_active' => true,
         ]);
+
+        $image->allowedBundles()->sync([$bundle->id]);
 
         return [$image, $bundle];
     }
