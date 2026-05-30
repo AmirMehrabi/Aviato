@@ -16,6 +16,9 @@
         </div>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#0A3D37]">ویرایش</a>
+            @if($vm->proxmoxServer && $vm->node && $vm->vmid && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $vm->isActionLocked())
+                <a href="{{ route('admin.virtual-machines.console.show', $vm) }}" class="rounded-lg bg-sky-300 px-5 py-3 text-sm font-black text-sky-950">Console</a>
+            @endif
 
             @if($vm->provisioning_status === 'failed' && $vm->cloud_image_id)
                 <form method="POST" action="{{ route('admin.virtual-machines.retry-provisioning', $vm) }}" onsubmit="return confirm('Retry provisioning for this VM?')">
@@ -31,6 +34,13 @@
                 <form method="POST" action="{{ route('admin.virtual-machines.start', $vm) }}">
                     @csrf
                     <button class="rounded-lg bg-emerald-300 px-5 py-3 text-sm font-black text-emerald-950">روشن کردن</button>
+                </form>
+            @endif
+            @if(! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at))
+                <form method="POST" action="{{ route('admin.virtual-machines.destroy', $vm) }}" onsubmit="return confirm('Delete this VM from Proxmox and the panel? If it is already missing from Proxmox, the panel record will still be removed.');">
+                    @csrf
+                    @method('DELETE')
+                    <button class="rounded-lg bg-red-400 px-5 py-3 text-sm font-black text-red-950">حذف سرور</button>
                 </form>
             @endif
         </div>

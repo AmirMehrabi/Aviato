@@ -315,7 +315,7 @@ class ServerController extends Controller
         }
 
         if (! $server->proxmoxServer || ! $server->node || ! $server->vmid) {
-            return back()->with('error', 'اتصال این سرور به Proxmox کامل نیست؛ حذف انجام نشد.');
+            return back()->with('error', 'اتصال این سرور به کامل نیست؛ حذف انجام نشد.');
         }
 
         $queued = false;

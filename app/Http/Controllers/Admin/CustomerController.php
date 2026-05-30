@@ -11,6 +11,7 @@ use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CustomerController extends Controller
 {
@@ -131,6 +132,17 @@ class CustomerController extends Controller
         $customer->activate();
 
         return back()->with('status', 'مشتری فعال شد.');
+    }
+
+    public function impersonate(Request $request, Customer $customer): RedirectResponse
+    {
+        Auth::guard('customer')->login($customer);
+
+        $request->session()->put('impersonated_by_admin_id', $request->user('admin')?->id);
+        $request->session()->put('impersonated_customer_id', $customer->id);
+
+        return redirect()->route('dashboard')
+            ->with('status', 'شما اکنون به عنوان '.$customer->name.' وارد پورتال مشتری شده‌اید.');
     }
 
     /**

@@ -231,12 +231,59 @@ class VirtualMachineController extends Controller
     {
         $virtualMachine->loadMissing('proxmoxServer');
 
-        if ($virtualMachine->isActionLocked()) {
+        if ($virtualMachine->isDeleted()) {
+            return back()->with('status', 'این VM قبلا حذف شده است.');
+        }
+
+        if ($virtualMachine->isDeleting() && ! $virtualMachine->delete_failed_at) {
             return back()->with('status', 'این VM قبلا وارد صف حذف شده است.');
         }
 
         if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
-            return back()->with('error', 'اتصال این VM به Proxmox کامل نیست؛ حذف انجام نشد.');
+            try {
+                DB::transaction(function () use ($virtualMachine): void {
+                    $locked = VirtualMachine::query()
+                        ->whereKey($virtualMachine->id)
+                        ->with('reservedIpAddress')
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    if ($locked->isDeleted() || ($locked->isDeleting() && ! $locked->delete_failed_at)) {
+                        return;
+                    }
+
+                    $this->usageBilling->chargeVm($locked);
+
+                    if ($locked->reservedIpAddress && (int) $locked->reservedIpAddress->virtual_machine_id === (int) $locked->id) {
+                        $this->ipPools->release($locked->reservedIpAddress);
+                    }
+
+                    $locked->forceFill([
+                        'status' => VirtualMachine::STATUS_DELETED,
+                        'deleted_at' => now(),
+                        'delete_requested_at' => $locked->delete_requested_at ?? now(),
+                        'delete_started_at' => $locked->delete_started_at ?? now(),
+                        'delete_failed_at' => null,
+                        'delete_error' => null,
+                        'delete_task_id' => null,
+                        'desired_state' => array_merge($locked->desired_state ?? [], ['status' => VirtualMachine::STATUS_DELETED]),
+                        'remote_state' => array_merge($locked->remote_state ?? [], [
+                            'delete_steps' => array_merge(data_get($locked->remote_state, 'delete_steps', []), [[
+                                'step' => 'admin_local_delete',
+                                'result' => 'missing_proxmox_connection',
+                                'at' => now()->toISOString(),
+                            ]]),
+                            'deleted_vmid' => $locked->vmid,
+                            'deleted_at' => now()->toISOString(),
+                        ]),
+                        'vmid' => null,
+                    ])->save();
+                });
+
+                return redirect()->route('admin.virtual-machines.index')->with('status', 'VM از پنل حذف شد؛ اتصال Proxmox برای حذف ریموت کامل نبود.');
+            } catch (Throwable $exception) {
+                return back()->with('error', 'درخواست حذف VM ثبت نشد: '.$exception->getMessage());
+            }
         }
 
         $queued = false;
@@ -248,7 +295,7 @@ class VirtualMachineController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                if ($locked->isActionLocked()) {
+                if ($locked->isDeleted() || ($locked->isDeleting() && ! $locked->delete_failed_at)) {
                     return;
                 }
 

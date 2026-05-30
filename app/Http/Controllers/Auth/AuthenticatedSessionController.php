@@ -64,9 +64,17 @@ class AuthenticatedSessionController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
-        $portal = Auth::guard('admin')->check() ? 'admin' : 'customer';
+        $routeName = (string) $request->route()?->getName();
+        $portal = str_starts_with($routeName, 'customer.') ? 'customer' : 'admin';
 
         Auth::guard($portal)->logout();
+
+        if ($portal === 'customer' && Auth::guard('admin')->check()) {
+            $request->session()->forget(['impersonated_by_admin_id', 'impersonated_customer_id']);
+            $request->session()->regenerateToken();
+
+            return redirect($this->portalPath('admin', 'home_path'));
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

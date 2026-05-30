@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResourceRateController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\VirtualMachineConsoleController;
 use App\Http\Controllers\Admin\VirtualMachineController;
 use App\Http\Controllers\Admin\VmBundleController;
 use App\Http\Controllers\Admin\WalletController;
@@ -72,6 +73,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.customers.suspend');
         Route::patch('customers/{customer}/activate', [CustomerController::class, 'activate'])
             ->name('admin.customers.activate');
+        Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])
+            ->name('admin.customers.impersonate');
         Route::resource('customers', CustomerController::class)
             ->names('admin.customers');
 
@@ -83,6 +86,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.virtual-machines.stop');
         Route::post('virtual-machines/{virtualMachine}/retry-provisioning', [VirtualMachineController::class, 'retryProvisioning'])
             ->name('admin.virtual-machines.retry-provisioning');
+        Route::get('virtual-machines/{virtualMachine}/console', [VirtualMachineConsoleController::class, 'show'])
+            ->name('admin.virtual-machines.console.show');
+        Route::post('virtual-machines/{virtualMachine}/console/session', [VirtualMachineConsoleController::class, 'session'])
+            ->name('admin.virtual-machines.console.session');
         Route::resource('virtual-machines', VirtualMachineController::class)
             ->parameters(['virtual-machines' => 'virtualMachine'])
             ->names('admin.virtual-machines');
