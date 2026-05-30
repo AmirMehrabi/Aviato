@@ -91,9 +91,8 @@
                             <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_210px]">
                                 <div class="space-y-4">
                                     <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                                        <div class="border-b border-slate-100 px-4 py-3">
-                                            <p class="text-xs font-black uppercase text-[#0069FF]">Step 1</p>
-                                            <h2 class="mt-1 text-base font-black text-slate-950">سیستم عامل را انتخاب کنید</h2>
+                                        <div class="border-b border-slate-100 px-4 py-1">
+                                            <h2 class="mt-1 text-sm font-black text-slate-950">۱- سیستم عامل را انتخاب کنید</h2>
                                         </div>
                                         <div class="grid gap-2 p-4 md:grid-cols-3">
                                             @foreach ([['U', 'Ubuntu', '۳ نسخه آماده', 'bg-orange-100 text-orange-700 border-orange-200'], ['D', 'Debian', '۲ نسخه آماده', 'bg-red-100 text-red-700 border-red-200']] as $family)
@@ -101,7 +100,7 @@
                                                     <span class="grid size-9 shrink-0 place-items-center rounded-lg border text-xs font-black {{ $family[3] }}">{{ $family[0] }}</span>
                                                     <span class="min-w-0">
                                                         <span class="block text-sm font-black text-slate-950">{{ $family[1] }}</span>
-                                                        <span class="mt-1 block text-[11px] font-bold text-slate-500">{{ $family[2] }}</span>
+                                                        {{-- <span class="mt-1 block text-[11px] font-bold text-slate-500">{{ $family[2] }}</span> --}}
                                                     </span>
                                                 </div>
                                             @endforeach
@@ -109,9 +108,8 @@
                                     </section>
           
                                     <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                                        <div class="border-b border-slate-100 px-4 py-3">
-                                            <p class="text-xs font-black uppercase text-[#0069FF]">Step 2</p>
-                                            <h2 class="mt-1 text-base font-black text-slate-950">نسخه و پلن VPS</h2>
+                                        <div class="border-b border-slate-100 px-4 py-1">
+                                            <h2 class="mt-1 text-sm font-black text-slate-950">۲- نسخه و پلن VPS</h2>
                                         </div>
                                         <div class="grid gap-3 p-4 md:grid-cols-[1fr_1.15fr]">
                                             <div class="flex items-center gap-3 rounded-lg bg-[#F2F8FF] p-3">
@@ -119,7 +117,7 @@
                                                 <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-orange-100 text-xs font-black text-orange-700">U</span>
                                                 <span class="min-w-0">
                                                     <span class="block text-sm font-black text-slate-950">Ubuntu 22.04 LTS</span>
-                                                    <span class="mt-1 block text-[11px] font-bold text-slate-500">Cloud-init ready</span>
+                                                    {{-- <span class="mt-1 block text-[11px] font-bold text-slate-500">Cloud-init ready</span> --}}
                                                 </span>
                                             </div>
                                             <div class="relative rounded-xl border border-[#0069FF] bg-[#F2F8FF] p-3 text-right ring-4 ring-[#0069FF]/10">
@@ -136,9 +134,8 @@
                                     </section>
 
                                     <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                                        <div class="border-b border-slate-100 px-4 py-3">
-                                            <p class="text-xs font-black uppercase text-[#0069FF]">Step 3</p>
-                                            <h2 class="mt-1 text-base font-black text-slate-950">دسترسی اولیه</h2>
+                                        <div class="border-b border-slate-100 px-4 py-1">
+                                            <h2 class="mt-1 text-sm font-black text-slate-950">۳- دسترسی اولیه</h2>
                                         </div>
                                         <div class="grid gap-3 p-4 md:grid-cols-2">
                                             <div>
