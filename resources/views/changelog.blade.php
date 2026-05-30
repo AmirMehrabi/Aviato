@@ -69,8 +69,16 @@
         </div>
     </section>
 
+
+
+
     <section class="px-4 pb-20 md:px-8 lg:px-10">
+        
         <div class="mx-auto max-w-5xl space-y-5">
+
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-5 text-sm leading-7 text-slate-600">
+                نسخه‌های بعدی همین‌جا اضافه می‌شوند تا تغییرات آینده برای کاربران قابل پیگیری باشد.
+            </div>
             @foreach ($releases as $release)
                 <article class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
                     <div class="flex flex-col gap-4 border-b border-slate-200 bg-[#F7FBFF] px-6 py-6 md:flex-row md:items-start md:justify-between md:px-8">
@@ -103,9 +111,7 @@
                 </article>
             @endforeach
 
-            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-5 text-sm leading-7 text-slate-600">
-                نسخه‌های بعدی همین‌جا اضافه می‌شوند تا تغییرات آینده برای کاربران، شفاف و ساده قابل پیگیری باشد.
-            </div>
+
         </div>
     </section>
 @endsection
