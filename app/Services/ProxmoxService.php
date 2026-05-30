@@ -567,8 +567,8 @@ class ProxmoxService
 
         try {
             $response = $this->request($server)
-                ->asForm()
-                ->send('DELETE', $path, ['form_params' => $payload]);
+                ->withQueryParameters($payload)
+                ->delete($path);
 
             $this->logInfo('Proxmox API response received', $server, [
                 'method' => 'DELETE',
@@ -611,8 +611,8 @@ class ProxmoxService
             ]);
 
             $response = $this->request($server)
-                ->asForm()
-                ->send('DELETE', $path, ['form_params' => $payload]);
+                ->withQueryParameters($payload)
+                ->delete($path);
 
             $this->logInfo('Proxmox API response received', $server, [
                 'method' => 'DELETE',
