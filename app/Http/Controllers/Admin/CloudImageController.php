@@ -87,6 +87,7 @@ class CloudImageController extends Controller
 
     private function validated(Request $request, ?CloudImage $image = null): array
     {
+        
         $data = $request->validate([
             'proxmox_server_id' => ['required', 'integer', 'exists:proxmox_servers,id'],
             'name' => ['required', 'string', 'max:255'],
