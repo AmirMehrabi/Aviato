@@ -74,7 +74,9 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid)
+        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid, [
+            'delete_confirmation' => $vm->name,
+        ])
             ->assertRedirect($this->adminBaseUrl.'/virtual-machines')
             ->assertSessionHas('status');
 
@@ -93,7 +95,9 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid)
+        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid, [
+            'delete_confirmation' => $vm->name,
+        ])
             ->assertRedirect($this->adminBaseUrl.'/virtual-machines')
             ->assertSessionHas('status');
 
@@ -121,7 +125,9 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid)
+        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid, [
+            'delete_confirmation' => $vm->name,
+        ])
             ->assertRedirect($this->adminBaseUrl.'/virtual-machines')
             ->assertSessionHas('status');
 

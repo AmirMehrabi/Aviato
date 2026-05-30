@@ -320,6 +320,11 @@ class ServerController extends Controller
     {
         $server = $this->resolveCustomerServer($request, $virtualMachine);
         $server->loadMissing(['reservedIpAddress', 'proxmoxServer', 'customer', 'bundle']);
+        $request->validate([
+            'delete_confirmation' => ['required', 'string', Rule::in([$server->name])],
+        ], [
+            'delete_confirmation.in' => 'برای حذف، نام سرور را دقیقا وارد کنید.',
+        ]);
 
         try {
             $result = $this->deletions->requestDelete($server, 'customer');

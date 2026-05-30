@@ -382,8 +382,30 @@
                 </div>
             </section>
         @else
-            <section class="rounded-[1.75rem] border border-red-200 bg-red-50 p-5">
-                <form action="{{ route('customer.servers.destroy', $server, false) }}" method="POST" x-data="{ submitting: false }" x-on:submit="submitting = true">
+            <section
+                class="rounded-[1.75rem] border border-red-200 bg-red-50 p-5"
+                x-data="{
+                    deleteDialogOpen: @js($errors->has('delete_confirmation')),
+                    deleteConfirmation: @js(old('delete_confirmation', '')),
+                    deleteConfirmationExpected: @js($server->name),
+                    submitting: false,
+                    openDeleteDialog() {
+                        this.deleteConfirmation = '';
+                        this.deleteDialogOpen = true;
+                        this.$nextTick(() => this.$refs.deleteConfirmation?.focus());
+                    },
+                    closeDeleteDialog() {
+                        if (this.submitting) return;
+                        this.deleteDialogOpen = false;
+                        this.deleteConfirmation = '';
+                    },
+                    canDelete() {
+                        return this.deleteConfirmation.trim() === this.deleteConfirmationExpected;
+                    },
+                }"
+                @keydown.window.escape="closeDeleteDialog()"
+            >
+                <form action="{{ route('customer.servers.destroy', $server, false) }}" method="POST" x-on:submit="submitting = true">
                     @csrf
                     @method('DELETE')
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -395,10 +417,74 @@
                                 <p class="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700">آخرین خطا: {{ $server->delete_error }}</p>
                             @endif
                         </div>
-                        <button type="submit" x-bind:disabled="submitting" class="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-wait disabled:opacity-70 lg:w-auto">
-                            <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-                            <span x-text="submitting ? 'در حال ثبت...' : @js(($server->delete_failed_at || $deleteAttemptIsStale) ? 'تلاش دوباره' : 'حذف سرور')">{{ ($server->delete_failed_at || $deleteAttemptIsStale) ? 'تلاش دوباره' : 'حذف سرور' }}</span>
-                        </button>
+                        <div class="flex w-full shrink-0 flex-col gap-3 lg:w-auto">
+                            <button type="button" @click="openDeleteDialog()" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 lg:w-auto">
+                                <span>{{ ($server->delete_failed_at || $deleteAttemptIsStale) ? 'تلاش دوباره' : 'حذف سرور' }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div
+                        x-cloak
+                        x-show="deleteDialogOpen"
+                        x-transition.opacity
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="customer-delete-dialog-title"
+                    >
+                        <div class="w-full max-w-lg rounded-[1.5rem] border border-red-200 bg-white p-5 shadow-2xl shadow-slate-950/30" @click.outside="closeDeleteDialog()">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-xs font-black text-red-600">تأیید حذف</p>
+                                    <h3 id="customer-delete-dialog-title" class="mt-1 text-xl font-black text-slate-950">نام سرور را وارد کنید</h3>
+                                </div>
+                                <button type="button" @click="closeDeleteDialog()" class="grid size-9 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50" aria-label="بستن">
+                                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <p class="mt-3 text-sm font-bold leading-7 text-slate-600">
+                                برای حذف این سرور، دقیقاً نام
+                                <span class="rounded-lg bg-slate-100 px-2 py-1 font-black text-slate-950" dir="ltr">{{ $server->name }}</span>
+                                را وارد کنید. این کار قابل بازگشت نیست.
+                            </p>
+
+                            <div class="mt-4">
+                                <label for="delete_confirmation" class="block text-xs font-black text-slate-500">تأیید حذف</label>
+                                <input
+                                    id="delete_confirmation"
+                                    name="delete_confirmation"
+                                    type="text"
+                                    x-ref="deleteConfirmation"
+                                    x-model="deleteConfirmation"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    placeholder="{{ $server->name }}"
+                                    class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-900 focus:border-[#0069FF] focus:outline-none"
+                                    dir="ltr"
+                                >
+                                @error('delete_confirmation')
+                                    <p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                <button type="button" @click="closeDeleteDialog()" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 sm:w-auto">
+                                    انصراف
+                                </button>
+                                <button
+                                    type="submit"
+                                    x-bind:disabled="submitting || !canDelete()"
+                                    class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                                >
+                                    <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                                    <span x-text="submitting ? 'در حال ثبت...' : 'حذف سرور'">حذف سرور</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </section>

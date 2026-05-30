@@ -30,7 +30,9 @@ class CustomerServerDeletionTest extends TestCase
         $vm = $this->vm($customer);
 
         $this->actingAs($customer, 'customer');
-        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid)
+        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid, [
+            'delete_confirmation' => $vm->name,
+        ])
             ->assertRedirect($this->customerBaseUrl.'/servers')
             ->assertSessionHas('status');
 
@@ -51,7 +53,9 @@ class CustomerServerDeletionTest extends TestCase
         $vm = $this->vm($customer, ['status' => VirtualMachine::STATUS_DELETING, 'delete_requested_at' => now()]);
 
         $this->actingAs($customer, 'customer');
-        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid)
+        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid, [
+            'delete_confirmation' => $vm->name,
+        ])
             ->assertRedirect($this->customerBaseUrl.'/servers')
             ->assertSessionHas('status');
 
@@ -71,7 +75,9 @@ class CustomerServerDeletionTest extends TestCase
         ]);
 
         $this->actingAs($customer, 'customer');
-        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid)
+        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid, [
+            'delete_confirmation' => $vm->name,
+        ])
             ->assertRedirect($this->customerBaseUrl.'/servers')
             ->assertSessionHas('status');
 
@@ -91,7 +97,9 @@ class CustomerServerDeletionTest extends TestCase
         ]);
 
         $this->actingAs($customer, 'customer');
-        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid)
+        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid, [
+            'delete_confirmation' => $vm->name,
+        ])
             ->assertRedirect($this->customerBaseUrl.'/servers')
             ->assertSessionHas('status');
 
@@ -113,6 +121,22 @@ class CustomerServerDeletionTest extends TestCase
             ->assertJsonPath('servers.0.status_label', 'در حال حذف')
             ->assertJsonPath('servers.0.action_pending', true)
             ->assertJsonPath('servers.0.is_deleting', true);
+    }
+
+    public function test_customer_delete_requires_typed_confirmation(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer);
+
+        $this->actingAs($customer, 'customer');
+        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid, [
+            'delete_confirmation' => 'wrong-name',
+        ])->assertSessionHasErrors('delete_confirmation');
+
+        Bus::assertNotDispatched(DeleteVirtualMachineJob::class);
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->fresh()->status);
     }
 
     public function test_failed_delete_status_does_not_keep_customer_polling_locked(): void
