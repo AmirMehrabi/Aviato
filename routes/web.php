@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\VmBundleController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\CustomerEmailVerificationController;
+use App\Http\Controllers\Auth\CustomerPasswordResetController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Customer\BackupController;
@@ -127,6 +128,19 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::post($customerLogin, [AuthenticatedSessionController::class, 'store'])
             ->defaults('portal', 'customer')
             ->name('customer.login.store');
+
+        Route::get('password/forgot', [CustomerPasswordResetController::class, 'requestForm'])
+            ->name('customer.password.request');
+        Route::post('password/forgot', [CustomerPasswordResetController::class, 'sendCode'])
+            ->name('customer.password.send');
+        Route::get('password/otp', [CustomerPasswordResetController::class, 'otpForm'])
+            ->name('customer.password.otp');
+        Route::post('password/otp', [CustomerPasswordResetController::class, 'verifyCode'])
+            ->name('customer.password.verify');
+        Route::get('password/reset', [CustomerPasswordResetController::class, 'resetForm'])
+            ->name('customer.password.reset');
+        Route::post('password/reset', [CustomerPasswordResetController::class, 'resetPassword'])
+            ->name('customer.password.update');
 
         Route::get($customerRegister, [RegisteredUserController::class, 'create'])
             ->defaults('portal', 'customer')

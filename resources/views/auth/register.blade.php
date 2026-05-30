@@ -51,7 +51,7 @@
                     <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] px-6 py-7 md:px-8">
                         <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">پنل مشتریان</span>
                         <h2 class="mt-4 text-3xl font-black leading-tight text-slate-950">ثبت نام با ایمیل یا موبایل</h2>
-                        <p class="mt-2 text-sm leading-7 text-slate-600">{{ $isCustomerSmsMode ? 'برای پنل مشتری، تایید شماره موبایل قبل از ورود الزامی است.' : ($verificationModeValue === 'disabled' ? 'تایید حساب مشتری غیرفعال است و پس از ثبت نام می‌توانید وارد شوید.' : 'برای پنل مشتری، تایید ایمیل قبل از ورود الزامی است.') }}</p>
+                        <p class="mt-2 text-sm leading-7 text-slate-600">{{ $isCustomerSmsMode ? 'بعد از ثبت نام، کد OTP با پیامک برای موبایل شما ارسال می شود.' : ($verificationModeValue === 'disabled' ? 'تایید حساب مشتری غیرفعال است و پس از ثبت نام می‌توانید وارد شوید.' : 'بعد از ثبت نام، کد OTP به ایمیل شما ارسال می شود.') }}</p>
                     </div>
 
                     <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 px-6 py-7 md:px-8" data-submit-loading>
@@ -96,7 +96,7 @@
                         </label>
 
                         <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0069FF] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" type="submit">
-                            <span>ایجاد حساب</span>
+                            <span>{{ $verificationModeValue === 'disabled' ? 'ایجاد حساب' : 'ایجاد حساب و ارسال OTP' }}</span>
                         </button>
 
                         <p class="text-center text-sm font-bold text-slate-500">
@@ -109,17 +109,5 @@
         </div>
     </main>
 </body>
-<script>
-    (function () {
-        document.querySelectorAll('form[data-submit-loading]').forEach((form) => {
-            form.addEventListener('submit', () => {
-                const button = form.querySelector('button[type="submit"]');
-                if (!button || button.disabled) return;
-                button.disabled = true;
-                button.dataset.originalHtml = button.innerHTML;
-                button.innerHTML = '<svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity=".3" stroke-width="3"></circle><path d="M22 12A10 10 0 0 0 12 2" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path></svg><span>در حال ارسال...</span>';
-            });
-        });
-    })();
-</script>
+@include('auth.partials.submit-loading', ['loadingText' => 'در حال ارسال...'])
 </html>

@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Mail\CustomerPasswordResetCodeMail;
 use App\Mail\CustomerVerificationCodeMail;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -182,5 +184,70 @@ class PortalAuthenticationTest extends TestCase
         ]);
 
         $response->assertRedirect('https://cp.aviato.ir/email/verify?phone=09123456789');
+    }
+
+    public function test_customer_login_page_links_to_customer_password_reset(): void
+    {
+        $this->get('https://cp.localhost/login')
+            ->assertOk()
+            ->assertSee('فراموشی رمز عبور؟')
+            ->assertSee('/password/forgot');
+
+        $this->get('https://admin.localhost/login')
+            ->assertOk()
+            ->assertDontSee('فراموشی رمز عبور؟');
+    }
+
+    public function test_customer_can_reset_password_with_email_otp(): void
+    {
+        Mail::fake();
+
+        $customer = Customer::factory()->create([
+            'email' => 'customer@example.com',
+            'phone' => null,
+            'password' => 'old-password',
+        ]);
+
+        $response = $this->post('https://cp.localhost/password/forgot', [
+            'login' => 'customer@example.com',
+        ]);
+
+        $response->assertRedirect('https://cp.localhost/password/otp?login=customer%40example.com&channel=email');
+        Mail::assertSent(CustomerPasswordResetCodeMail::class);
+
+        $record = DB::table('customer_password_reset_tokens')->where('email', 'customer@example.com')->first();
+        $this->assertNotNull($record);
+
+        DB::table('customer_password_reset_tokens')->where('email', 'customer@example.com')->update([
+            'token' => Hash::make('123456'),
+            'created_at' => now(),
+        ]);
+
+        $this->post('https://cp.localhost/password/otp', [
+            'login' => 'customer@example.com',
+            'channel' => 'email',
+            'code' => '123456',
+        ])->assertRedirect('https://cp.localhost/password/reset');
+
+        $this->post('https://cp.localhost/password/reset', [
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ])->assertRedirect('https://cp.localhost/login');
+
+        $this->assertTrue(Hash::check('new-password', $customer->refresh()->password));
+        $this->assertDatabaseMissing('customer_password_reset_tokens', [
+            'email' => 'customer@example.com',
+        ]);
+    }
+
+    public function test_customer_verification_page_makes_otp_channel_clear(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'sms');
+
+        $this->get('https://cp.localhost/email/verify?phone=09123456789')
+            ->assertOk()
+            ->assertSee('کد OTP پیامک شده را وارد کنید')
+            ->assertSee('موبایل مقصد OTP')
+            ->assertSee('کد OTP شش رقمی');
     }
 }

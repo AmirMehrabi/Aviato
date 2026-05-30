@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>تایید ایمیل مشتری | آویاتو</title>
+    <title>تایید OTP مشتری | آویاتو</title>
     <link rel="stylesheet" href="{{ asset('assets/fonts.css') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -15,9 +15,9 @@
         <div class="mx-auto flex min-h-[calc(100vh-3rem)] max-w-2xl items-center">
             <section class="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/10">
                 <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] px-6 py-7 md:px-8">
-                    <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">تایید حساب مشتری</span>
-                    <h1 class="mt-4 text-3xl font-black leading-tight text-slate-950">{{ $isSmsMode ? 'کد تایید پیامک را وارد کنید' : 'کد تایید ایمیل را وارد کنید' }}</h1>
-                    <p class="mt-2 text-sm leading-7 text-slate-600">{{ $isSmsMode ? 'یک کد ۶ رقمی به موبایل شما ارسال شده است. این مرحله برای فعال شدن پنل مشتری اجباری است.' : 'یک کد ۶ رقمی به ایمیل شما ارسال شده است. این مرحله برای فعال شدن پنل مشتری اجباری است.' }}</p>
+                    <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">تایید OTP حساب مشتری</span>
+                    <h1 class="mt-4 text-3xl font-black leading-tight text-slate-950">{{ $isSmsMode ? 'کد OTP پیامک شده را وارد کنید' : 'کد OTP ایمیل شده را وارد کنید' }}</h1>
+                    <p class="mt-2 text-sm leading-7 text-slate-600">{{ $isSmsMode ? 'کد ۶ رقمی OTP به موبایل شما ارسال شده است. این مرحله برای فعال شدن پنل مشتری اجباری است.' : 'کد ۶ رقمی OTP به ایمیل شما ارسال شده است. این مرحله برای فعال شدن پنل مشتری اجباری است.' }}</p>
                 </div>
 
                 <form method="POST" action="{{ route('customer.verification.verify', [], false) }}" class="space-y-5 px-6 py-7 md:px-8" data-submit-loading>
@@ -32,26 +32,26 @@
 
                     @if ($isSmsMode)
                         <label class="block">
-                            <span class="text-sm font-black text-slate-700">موبایل</span>
+                            <span class="text-sm font-black text-slate-700">موبایل مقصد OTP</span>
                             <input name="phone" value="{{ old('phone', $phone) }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                             @error('phone') <span class="mt-2 block text-sm font-bold text-red-600">{{ $message }}</span> @enderror
                         </label>
                     @else
                         <label class="block">
-                            <span class="text-sm font-black text-slate-700">ایمیل</span>
+                            <span class="text-sm font-black text-slate-700">ایمیل مقصد OTP</span>
                             <input name="email" value="{{ old('email', $email) }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                             @error('email') <span class="mt-2 block text-sm font-bold text-red-600">{{ $message }}</span> @enderror
                         </label>
                     @endif
 
                     <label class="block">
-                        <span class="text-sm font-black text-slate-700">کد تایید ۶ رقمی</span>
-                        <input name="code" inputmode="numeric" maxlength="6" value="{{ old('code') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold tracking-[0.3em] outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                        <span class="text-sm font-black text-slate-700">کد OTP شش رقمی</span>
+                        <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="{{ old('code') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-4 text-center text-2xl font-black tracking-[0.35em] text-slate-950 outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                         @error('code') <span class="mt-2 block text-sm font-bold text-red-600">{{ $message }}</span> @enderror
                     </label>
 
                     <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0069FF] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" type="submit">
-                        <span>تایید و ورود</span>
+                        <span>تایید OTP و ورود</span>
                     </button>
                 </form>
 
@@ -63,7 +63,7 @@
                         @else
                             <input type="hidden" name="email" value="{{ old('email', $email) }}">
                         @endif
-                        <p class="text-sm font-bold text-slate-500">کد را دریافت نکردید؟</p>
+                        <p class="text-sm font-bold text-slate-500">کد OTP را دریافت نکردید؟</p>
                         <button class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]" type="submit">
                             ارسال دوباره کد
                         </button>
@@ -73,17 +73,5 @@
         </div>
     </main>
 </body>
-<script>
-    (function () {
-        document.querySelectorAll('form[data-submit-loading]').forEach((form) => {
-            form.addEventListener('submit', () => {
-                const button = form.querySelector('button[type="submit"]');
-                if (!button || button.disabled) return;
-                button.disabled = true;
-                button.dataset.originalHtml = button.innerHTML;
-                button.innerHTML = '<svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity=".3" stroke-width="3"></circle><path d="M22 12A10 10 0 0 0 12 2" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path></svg><span>در حال ارسال...</span>';
-            });
-        });
-    })();
-</script>
+@include('auth.partials.submit-loading', ['loadingText' => 'در حال ارسال...'])
 </html>
