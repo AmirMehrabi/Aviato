@@ -12,7 +12,7 @@
         $isSmsMode = ($mode ?? 'email') === 'sms';
     @endphp
     <main class="min-h-screen px-4 py-6 md:px-8 lg:px-10">
-        <div class="mx-auto flex min-h-[calc(100vh-3rem)] max-w-2xl items-center">
+        <div class="mx-auto flex min-h-[calc(100vh-3rem)] max-w-xl items-center">
             <section class="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/10">
                 <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] px-6 py-7 md:px-8">
                     <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">تایید OTP حساب مشتری</span>
