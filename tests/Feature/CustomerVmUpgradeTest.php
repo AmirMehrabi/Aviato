@@ -32,9 +32,9 @@ class CustomerVmUpgradeTest extends TestCase
         $customer->wallet()->update(['balance' => 50000]);
 
         $this->actingAs($customer, 'customer');
-        $this->from($this->customerBaseUrl.'/servers/'.$vm->id)->post($this->customerBaseUrl.'/servers/'.$vm->id.'/upgrades/bundle', [
+        $this->from($this->customerBaseUrl.'/servers/'.$vm->uuid)->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrades/bundle', [
             'vm_bundle_id' => $targetBundle->id,
-        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->id);
+        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid);
 
         $this->assertDatabaseHas('vm_upgrade_orders', [
             'customer_id' => $customer->id,
@@ -70,9 +70,9 @@ class CustomerVmUpgradeTest extends TestCase
         ]);
 
         $this->actingAs($customer, 'customer');
-        $this->from($this->customerBaseUrl.'/servers/'.$vm->id)->post($this->customerBaseUrl.'/servers/'.$vm->id.'/upgrades/bundle', [
+        $this->from($this->customerBaseUrl.'/servers/'.$vm->uuid)->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrades/bundle', [
             'vm_bundle_id' => $smallBundle->id,
-        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->id)
+        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid)
             ->assertSessionHasErrors('bundle');
 
         $this->assertDatabaseCount('vm_upgrade_orders', 0);

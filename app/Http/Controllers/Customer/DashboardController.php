@@ -36,7 +36,7 @@ class DashboardController extends Controller
                 : $this->billing->estimateStoppedMonthly($vm);
 
             return [
-                'id' => $vm->id,
+                'id' => $vm->uuid,
                 'name' => $vm->name,
                 'ip' => $vm->ip_address ?: 'بدون IP',
                 'region' => $vm->node ?: 'نامشخص',

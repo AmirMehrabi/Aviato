@@ -35,7 +35,7 @@ class MonitoringController extends Controller
             ->latest()
             ->get();
 
-        $selected = $servers->firstWhere('id', (int) $request->query('server'))
+        $selected = $servers->firstWhere('uuid', (string) $request->query('server'))
             ?? $servers->firstWhere('status', VirtualMachine::STATUS_RUNNING)
             ?? $servers->first();
 
@@ -46,7 +46,7 @@ class MonitoringController extends Controller
             'servers' => $servers,
             'selected' => $selected,
             'serverOptions' => $servers->map(fn (VirtualMachine $vm): array => [
-                'id' => $vm->id,
+                'id' => $vm->uuid,
                 'name' => $vm->name,
                 'hostname' => $vm->hostname,
                 'ip_address' => $vm->ip_address,
@@ -92,7 +92,7 @@ class MonitoringController extends Controller
             return response()->json([
                 'data' => array_merge($metrics, [
                     'server' => [
-                        'id' => $virtualMachine->id,
+                        'id' => $virtualMachine->uuid,
                         'name' => $virtualMachine->name,
                         'hostname' => $virtualMachine->hostname,
                         'ip_address' => $virtualMachine->ip_address,

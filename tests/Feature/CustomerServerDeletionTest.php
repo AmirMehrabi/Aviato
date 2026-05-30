@@ -30,7 +30,7 @@ class CustomerServerDeletionTest extends TestCase
         $vm = $this->vm($customer);
 
         $this->actingAs($customer, 'customer');
-        $this->delete($this->customerBaseUrl.'/servers/'.$vm->id)
+        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid)
             ->assertRedirect($this->customerBaseUrl.'/servers')
             ->assertSessionHas('status');
 
@@ -51,7 +51,7 @@ class CustomerServerDeletionTest extends TestCase
         $vm = $this->vm($customer, ['status' => VirtualMachine::STATUS_DELETING, 'delete_requested_at' => now()]);
 
         $this->actingAs($customer, 'customer');
-        $this->delete($this->customerBaseUrl.'/servers/'.$vm->id)
+        $this->delete($this->customerBaseUrl.'/servers/'.$vm->uuid)
             ->assertRedirect($this->customerBaseUrl.'/servers')
             ->assertSessionHas('status');
 
@@ -64,7 +64,7 @@ class CustomerServerDeletionTest extends TestCase
         $vm = $this->vm($customer, ['status' => VirtualMachine::STATUS_DELETING]);
 
         $this->actingAs($customer, 'customer');
-        $this->getJson($this->customerBaseUrl.'/servers/statuses?ids[]='.$vm->id)
+        $this->getJson($this->customerBaseUrl.'/servers/statuses?ids[]='.$vm->uuid)
             ->assertOk()
             ->assertJsonPath('servers.0.status_label', 'در حال حذف')
             ->assertJsonPath('servers.0.action_pending', true)

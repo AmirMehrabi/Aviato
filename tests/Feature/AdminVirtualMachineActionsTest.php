@@ -36,7 +36,7 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->get($this->adminBaseUrl.'/virtual-machines/'.$vm->id.'/console')
+        $this->get($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/console')
             ->assertOk()
             ->assertSee('Admin VM Console')
             ->assertSee($vm->name);
@@ -58,7 +58,7 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $response = $this->postJson($this->adminBaseUrl.'/virtual-machines/'.$vm->id.'/console/session')
+        $response = $this->postJson($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/console/session')
             ->assertOk()
             ->assertJsonPath('password', 'PVEVNC:admin-ticket');
 
@@ -74,7 +74,7 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->id)
+        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid)
             ->assertRedirect($this->adminBaseUrl.'/virtual-machines')
             ->assertSessionHas('status');
 
@@ -93,7 +93,7 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->id)
+        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid)
             ->assertRedirect($this->adminBaseUrl.'/virtual-machines')
             ->assertSessionHas('status');
 
@@ -120,7 +120,7 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->id)
+        $this->delete($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid)
             ->assertRedirect($this->adminBaseUrl.'/virtual-machines')
             ->assertSessionHas('status');
 

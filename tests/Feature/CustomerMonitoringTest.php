@@ -22,7 +22,7 @@ class CustomerMonitoringTest extends TestCase
         $vm = $this->readyVm($customer);
 
         $this->actingAs($customer, 'customer');
-        $response = $this->get($this->customerBaseUrl.'/monitoring?server='.$vm->id);
+        $response = $this->get($this->customerBaseUrl.'/monitoring?server='.$vm->uuid);
 
         $response->assertOk();
         $response->assertSee('مانیتورینگ');
@@ -53,11 +53,11 @@ class CustomerMonitoringTest extends TestCase
         });
 
         $this->actingAs($customer, 'customer');
-        $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->id.'/metrics?timeframe=hour')
+        $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->uuid.'/metrics?timeframe=hour')
             ->assertOk()
             ->assertJsonPath('data.vmid', 101)
             ->assertJsonPath('data.latest.cpu_percent', 12)
-            ->assertJsonPath('data.server.id', $vm->id);
+            ->assertJsonPath('data.server.id', $vm->uuid);
     }
 
     public function test_customer_cannot_fetch_another_customer_vm_metrics(): void
@@ -67,7 +67,7 @@ class CustomerMonitoringTest extends TestCase
         $vm = $this->readyVm($owner);
 
         $this->actingAs($other, 'customer');
-        $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->id.'/metrics')->assertNotFound();
+        $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->uuid.'/metrics')->assertNotFound();
     }
 
     public function test_monitoring_metrics_validates_timeframe(): void
@@ -76,7 +76,7 @@ class CustomerMonitoringTest extends TestCase
         $vm = $this->readyVm($customer);
 
         $this->actingAs($customer, 'customer');
-        $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->id.'/metrics?timeframe=minute')
+        $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->uuid.'/metrics?timeframe=minute')
             ->assertUnprocessable()
             ->assertJsonValidationErrors('timeframe');
     }

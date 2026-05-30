@@ -166,13 +166,13 @@
                                     <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr">{{ $server['hostname'] }} · {{ $server['node'] }}</p>
                                 </div>
                                 <div class="flex shrink-0 flex-col items-end gap-2">
-                                    <span class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black" :class="server({{ $server['id'] }}).status_class">
-                                        <span x-show="server({{ $server['id'] }}).is_deleting" class="size-3 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-600"></span>
-                                        <span x-text="server({{ $server['id'] }}).status_label">{{ $server['status_label'] }}</span>
+                                    <span class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black" :class="server(@js($server['id'])).status_class">
+                                        <span x-show="server(@js($server['id'])).is_deleting" class="size-3 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-600"></span>
+                                        <span x-text="server(@js($server['id'])).status_label">{{ $server['status_label'] }}</span>
                                     </span>
-                                    <span class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black" :class="server({{ $server['id'] }}).provisioning_class">
-                                        <span x-show="server({{ $server['id'] }}).provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
-                                        <span x-text="server({{ $server['id'] }}).provisioning_label">{{ $server['provisioning_label'] }}</span>
+                                    <span class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black" :class="server(@js($server['id'])).provisioning_class">
+                                        <span x-show="server(@js($server['id'])).provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
+                                        <span x-text="server(@js($server['id'])).provisioning_label">{{ $server['provisioning_label'] }}</span>
                                     </span>
                                 </div>
                             </div>
@@ -235,7 +235,7 @@
     function customerServerStatus(config) {
         return {
             url: config.url,
-            servers: Object.fromEntries((config.servers || []).map((server) => [Number(server.id), server])),
+            servers: Object.fromEntries((config.servers || []).map((server) => [server.id, server])),
             interval: null,
             init() {
                 if (!Object.keys(this.servers).length) return;
@@ -243,7 +243,7 @@
                 this.interval = window.setInterval(() => this.refresh(), 5000);
             },
             server(id) {
-                return this.servers[Number(id)] || {
+                return this.servers[id] || {
                     status_label: '-',
                     status_class: 'bg-slate-100 text-slate-600',
                     provisioning_label: '-',
@@ -270,7 +270,7 @@
                     .then((response) => response.ok ? response.json() : Promise.reject(response))
                     .then((data) => {
                         (data.servers || []).forEach((server) => {
-                            this.servers[Number(server.id)] = server;
+                            this.servers[server.id] = server;
                         });
 
                         const hasPending = Object.values(this.servers).some((server) => server.action_pending);

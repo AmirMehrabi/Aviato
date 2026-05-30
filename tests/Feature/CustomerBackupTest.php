@@ -26,7 +26,7 @@ class CustomerBackupTest extends TestCase
         $vm = $this->readyVm($customer);
 
         $this->actingAs($customer, 'customer');
-        $this->from($this->customerBaseUrl.'/backups')->patch($this->customerBaseUrl.'/backups/servers/'.$vm->id.'/policy', [
+        $this->from($this->customerBaseUrl.'/backups')->patch($this->customerBaseUrl.'/backups/servers/'.$vm->uuid.'/policy', [
             'is_enabled' => '1',
             'frequency' => VmBackupPolicy::FREQUENCY_DAILY,
             'preferred_time' => '03:30',
@@ -52,7 +52,7 @@ class CustomerBackupTest extends TestCase
         $vm = $this->readyVm($customer);
 
         $this->actingAs($customer, 'customer');
-        $this->from($this->customerBaseUrl.'/backups')->post($this->customerBaseUrl.'/backups/servers/'.$vm->id)
+        $this->from($this->customerBaseUrl.'/backups')->post($this->customerBaseUrl.'/backups/servers/'.$vm->uuid)
             ->assertRedirect($this->customerBaseUrl.'/backups')
             ->assertSessionHas('status');
 
@@ -74,7 +74,7 @@ class CustomerBackupTest extends TestCase
         $vm = $this->readyVm($owner);
 
         $this->actingAs($other, 'customer');
-        $this->post($this->customerBaseUrl.'/backups/servers/'.$vm->id)->assertNotFound();
+        $this->post($this->customerBaseUrl.'/backups/servers/'.$vm->uuid)->assertNotFound();
 
         $this->assertDatabaseCount('vm_backups', 0);
         Bus::assertNotDispatched(RunVmBackupJob::class);

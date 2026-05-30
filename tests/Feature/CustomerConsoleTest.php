@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
+use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,7 +31,7 @@ class CustomerConsoleTest extends TestCase
 
         $this->actingAs($customer, 'customer');
 
-        $this->get($this->customerBaseUrl.'/servers/'.$vm->id.'/console')
+        $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid.'/console')
             ->assertOk()
             ->assertSee('VM Console')
             ->assertSee($vm->name);
@@ -44,7 +45,7 @@ class CustomerConsoleTest extends TestCase
 
         $this->actingAs($other, 'customer');
 
-        $this->get($this->customerBaseUrl.'/servers/'.$vm->id.'/console')->assertNotFound();
+        $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid.'/console')->assertNotFound();
     }
 
     public function test_customer_can_create_one_time_console_proxy_session(): void
@@ -65,7 +66,7 @@ class CustomerConsoleTest extends TestCase
 
         $this->actingAs($customer, 'customer');
 
-        $response = $this->postJson($this->customerBaseUrl.'/servers/'.$vm->id.'/console/session')
+        $response = $this->postJson($this->customerBaseUrl.'/servers/'.$vm->uuid.'/console/session')
             ->assertOk()
             ->assertJsonPath('password', 'PVEVNC:secret-ticket')
             ->assertJsonMissing(['vncticket' => 'PVEVNC:secret-ticket']);
@@ -81,7 +82,7 @@ class CustomerConsoleTest extends TestCase
 
         $this->actingAs($customer, 'customer');
 
-        $this->postJson($this->customerBaseUrl.'/servers/'.$vm->id.'/console/session')
+        $this->postJson($this->customerBaseUrl.'/servers/'.$vm->uuid.'/console/session')
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Console session could not be started.');
     }

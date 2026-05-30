@@ -17,7 +17,7 @@
     $hasPassword = filled($server->login_password);
     $hasSshKey = filled($server->ssh_public_key);
     $isLocked = $server->isActionLocked();
-    $monitoringUrl = route('customer.monitoring.index', ['server' => $server->id], false);
+    $monitoringUrl = route('customer.monitoring.index', ['server' => $server->uuid], false);
     $backupUrl = route('customer.backups.index', [], false);
     $consoleReady = $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $isLocked;
     $consoleUrl = route('customer.servers.console.show', $server, false);

@@ -12,7 +12,7 @@
 [
     {"title":"مانیتورینگ","description":"نمودار مصرف و سلامت VPSها","type":"صفحه","url":@json(route('customer.monitoring.index', [], false)),"keywords":"monitoring metrics cpu ram network مانیتورینگ"}
     @foreach ($servers as $server)
-        ,{"title":@json('مانیتورینگ '.$server->name),"description":@json(($server->ip_address ?: 'بدون IP').' - '.($server->node ?: 'نامشخص')),"type":"VM","url":@json(route('customer.monitoring.index', ['server' => $server->id], false)),"keywords":@json($server->name.' '.$server->hostname.' '.$server->ip_address.' '.$server->node.' monitoring')}
+        ,{"title":@json('مانیتورینگ '.$server->name),"description":@json(($server->ip_address ?: 'بدون IP').' - '.($server->node ?: 'نامشخص')),"type":"VM","url":@json(route('customer.monitoring.index', ['server' => $server->uuid], false)),"keywords":@json($server->name.' '.$server->hostname.' '.$server->ip_address.' '.$server->node.' monitoring')}
     @endforeach
 ]
 @endsection
@@ -21,7 +21,7 @@
     <div
         x-data="customerMonitoring({
             servers: @js($serverOptions),
-            selectedId: @js($selected?->id),
+            selectedId: @js($selected?->uuid),
         })"
         x-init="init()"
         class="space-y-5"
@@ -199,7 +199,7 @@
                     if (this.selectedId) this.load();
                 },
                 get selected() {
-                    return this.servers.find((server) => Number(server.id) === Number(this.selectedId)) || null;
+                    return this.servers.find((server) => server.id === this.selectedId) || null;
                 },
                 get cards() {
                     return [

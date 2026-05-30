@@ -81,7 +81,7 @@ class ServerController extends Controller
             'wallets' => $this->wallets,
             'servers' => $servers,
             'serverRows' => $servers->getCollection()->map(fn (VirtualMachine $server): array => [
-                'id' => $server->id,
+                'id' => $server->uuid,
                 'name' => $server->name,
                 'hostname' => $server->hostname ?: '-',
                 'ip' => $server->ip_address ?: 'بدون IP',
@@ -110,7 +110,7 @@ class ServerController extends Controller
                 'console_ready' => $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === VirtualMachine::PROVISION_READY && ! $server->isActionLocked(),
                 'show_url' => route('customer.servers.show', $server, false),
                 'console_url' => route('customer.servers.console.show', $server, false),
-                'monitoring_url' => route('customer.monitoring.index', ['server' => $server->id], false),
+                'monitoring_url' => route('customer.monitoring.index', ['server' => $server->uuid], false),
                 'backup_url' => route('customer.backups.index', [], false),
             ])->values(),
             'filters' => $filters,
@@ -133,18 +133,19 @@ class ServerController extends Controller
     {
         $customer = $request->user('customer');
         $ids = collect((array) $request->query('ids', []))
-            ->map(fn ($id): int => (int) $id)
+            ->map(fn ($id): string => (string) $id)
+            ->filter(fn (string $id): bool => $id !== '')
             ->filter()
             ->unique()
             ->values();
 
         $servers = $customer->virtualMachines()
-            ->when($ids->isNotEmpty(), fn ($query) => $query->whereIn('id', $ids))
-            ->get(['id', 'status', 'provisioning_status']);
+            ->when($ids->isNotEmpty(), fn ($query) => $query->whereIn('uuid', $ids))
+            ->get(['id', 'uuid', 'status', 'provisioning_status', 'deleted_at']);
 
         return response()->json([
             'servers' => $servers->map(fn (VirtualMachine $server): array => [
-                'id' => $server->id,
+                'id' => $server->uuid,
                 'status' => $server->status,
                 'status_label' => $this->statusLabel($server->status),
                 'status_class' => $this->statusClass($server->status),
