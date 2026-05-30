@@ -109,6 +109,20 @@
                     <p class="mt-5 max-w-xl text-sm leading-8 text-sky-100/80">
                         VPS ابری ساده، سریع و شفاف برای تیم هایی که می خواهند سرور را بدون پیچیدگی اضافه بخرند و سرویس را اجرا کنند.
                     </p>
+                    <a
+                        referrerpolicy="origin"
+                        target="_blank"
+                        href="https://trustseal.enamad.ir/?id=735839&Code=snJRm7BjxZCBHBky7kVt7wGA6uiszgTC"
+                        class="mt-6 inline-flex"
+                    >
+                        <img
+                            referrerpolicy="origin"
+                            src="https://trustseal.enamad.ir/logo.aspx?id=735839&Code=snJRm7BjxZCBHBky7kVt7wGA6uiszgTC"
+                            alt="اینماد"
+                            style="cursor:pointer"
+                            code="snJRm7BjxZCBHBky7kVt7wGA6uiszgTC"
+                        >
+                    </a>
                 </div>
 
                 <div>
