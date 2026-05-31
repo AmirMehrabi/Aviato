@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResourceRateController;
@@ -57,9 +58,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         ->name('admin.logout');
 
     Route::middleware('auth:admin')->group(function () use ($adminHome) {
-        Route::get($adminHome, function () {
-            return view('admin.dashboard');
-        })->name('admin.dashboard');
+        Route::get($adminHome, AdminDashboardController::class)->name('admin.dashboard');
 
         Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
         Route::patch('settings', [SettingController::class, 'update'])->name('admin.settings.update');
