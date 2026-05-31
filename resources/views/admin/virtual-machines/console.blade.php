@@ -5,7 +5,7 @@
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
     @if (session('status'))
-        <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
+        <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
     @endif
     @if (session('error'))
         <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>
@@ -41,7 +41,7 @@
         <div class="overflow-hidden rounded-[1.75rem] border border-slate-900 bg-slate-950 shadow-2xl shadow-slate-950/20">
             <div class="flex items-center justify-between border-b border-white/10 px-4 py-3 text-white">
                 <div class="flex items-center gap-2">
-                    <span class="size-3 rounded-full" :class="connected ? 'bg-emerald-400' : (loading ? 'animate-pulse bg-amber-400' : 'bg-slate-500')"></span>
+                    <span class="size-3 rounded-full" :class="connected ? 'bg-[#B8D6FF]' : (loading ? 'animate-pulse bg-amber-400' : 'bg-slate-500')"></span>
                     <span class="text-sm font-black" x-text="statusText">در حال اتصال...</span>
                 </div>
                 <span class="text-xs font-bold text-slate-400" dir="ltr">noVNC</span>

@@ -2,13 +2,13 @@
 @section('title', 'Cloud Images')
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
-    @if (session('status'))<div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
+    @if (session('status'))<div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>@endif
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
             <h1 class="text-2xl font-black">Cloud Images</h1>
             <p class="mt-2 text-sm text-slate-500">Published Proxmox template VMIDs available for cloud-init VPS creation.</p>
         </div>
-        <a href="{{ route('admin.cloud-images.create') }}" class="rounded-lg bg-[#105D52] px-5 py-3 text-sm font-black text-white">Image جدید</a>
+        <a href="{{ route('admin.cloud-images.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Image جدید</a>
     </div>
     <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         @forelse($images as $image)
@@ -18,7 +18,7 @@
                         <h2 class="text-lg font-black">{{ $image->name }}</h2>
                         <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ ucfirst((string) $image->os_family) }} {{ $image->os_version }} · {{ $image->slug }}</p>
                     </div>
-                    <span class="rounded-md px-2 py-1 text-xs font-black {{ $image->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">{{ $image->is_active ? 'فعال' : 'غیرفعال' }}</span>
+                    <span class="rounded-md px-2 py-1 text-xs font-black {{ $image->is_active ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-500' }}">{{ $image->is_active ? 'فعال' : 'غیرفعال' }}</span>
                 </div>
                 <div class="mt-5 space-y-2 text-sm text-slate-600">
                     <p><span class="font-black text-slate-800">Proxmox:</span> {{ $image->proxmoxServer?->name }}</p>

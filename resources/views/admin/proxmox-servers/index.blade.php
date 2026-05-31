@@ -26,25 +26,25 @@
     }"
 >
     @if (session('status'))
-        <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
+        <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
     @endif
 
-    <div class="relative overflow-hidden rounded-2xl bg-[#0A3D37] p-6 text-white shadow-xl shadow-[#0A3D37]/15">
+    <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
         <div class="absolute -left-16 -top-16 size-48 rounded-full bg-white/10 blur-2xl"></div>
-        <div class="absolute -bottom-20 right-1/3 size-56 rounded-full bg-emerald-300/10 blur-3xl"></div>
+        <div class="absolute -bottom-20 right-1/3 size-56 rounded-full bg-[#B8D6FF]/10 blur-3xl"></div>
         <div class="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
-                <p class="text-sm font-bold text-emerald-50/60">Datacenter Control Plane</p>
+                <p class="text-sm font-bold text-white/60">Datacenter Control Plane</p>
                 <h1 class="mt-2 text-2xl font-black md:text-4xl">سرورها و کلاسترهای Proxmox</h1>
-                <p class="mt-3 max-w-3xl leading-8 text-emerald-50/75">نمای کارتی برای مدیریت endpointها، وضعیت اتصال، syncهای معوق و ظرفیت دیتاسنتر.</p>
+                <p class="mt-3 max-w-3xl leading-8 text-white/75">نمای کارتی برای مدیریت endpointها، وضعیت اتصال، syncهای معوق و ظرفیت دیتاسنتر.</p>
             </div>
-            <a href="{{ route('admin.proxmox-servers.create') }}" class="inline-flex items-center justify-center rounded-lg bg-white px-5 py-3 text-sm font-black text-[#0A3D37] transition hover:bg-slate-100">افزودن سرور</a>
+            <a href="{{ route('admin.proxmox-servers.create') }}" class="inline-flex items-center justify-center rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] transition hover:bg-slate-100">افزودن سرور</a>
         </div>
 
         <div class="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             @foreach ([['کل endpointها', $stats['total']], ['آنلاین', $stats['online']], ['آفلاین', $stats['offline']], ['در انتظار Sync', $stats['pending']]] as [$label, $value])
                 <div class="rounded-xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-                    <p class="text-xs font-bold text-emerald-50/60">{{ $label }}</p>
+                    <p class="text-xs font-bold text-white/60">{{ $label }}</p>
                     <p class="mt-2 text-3xl font-black">{{ $value }}</p>
                 </div>
             @endforeach
@@ -55,33 +55,33 @@
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div class="relative flex-1">
                 <svg class="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke-linecap="round"/></svg>
-                <input x-model.debounce.150ms="search" placeholder="جستجوی زنده: نام، کلاستر، IP، دیتاسنتر، تگ..." class="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-12 text-sm focus:border-[#105D52] focus:bg-white focus:outline-none">
+                <input x-model.debounce.150ms="search" placeholder="جستجوی زنده: نام، کلاستر، IP، دیتاسنتر، تگ..." class="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-12 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
             </div>
-            <select x-model="datacenter" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#105D52] focus:bg-white focus:outline-none">
+            <select x-model="datacenter" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
                 <option value="">همه دیتاسنترها</option>
                 @foreach ($datacenters as $datacenter)
                     <option value="{{ $datacenter }}">{{ $datacenter }}</option>
                 @endforeach
             </select>
-            <select x-model="environment" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#105D52] focus:bg-white focus:outline-none">
+            <select x-model="environment" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
                 <option value="">همه محیط‌ها</option>
                 @foreach ($environments as $environment)
                     <option value="{{ $environment }}">{{ $environment }}</option>
                 @endforeach
             </select>
-            <select x-model="connection" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#105D52] focus:bg-white focus:outline-none">
+            <select x-model="connection" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
                 <option value="">همه اتصال‌ها</option>
                 <option value="online">Online</option>
                 <option value="offline">Offline</option>
                 <option value="unknown">Unknown</option>
             </select>
-            <select x-model="sync" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#105D52] focus:bg-white focus:outline-none">
+            <select x-model="sync" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
                 <option value="">همه Sync</option>
                 <option value="synced">Synced</option>
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
             </select>
-            <select x-model="active" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#105D52] focus:bg-white focus:outline-none">
+            <select x-model="active" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
                 <option value="">همه</option>
                 <option value="1">فعال</option>
                 <option value="0">غیرفعال</option>
@@ -94,8 +94,8 @@
         @forelse ($servers as $server)
             @php
                 $counts = $server->last_status['counts'] ?? [];
-                $connectionColor = ['online' => 'bg-emerald-50 text-emerald-700 ring-emerald-200', 'offline' => 'bg-red-50 text-red-700 ring-red-200', 'unknown' => 'bg-slate-100 text-slate-600 ring-slate-200'][$server->connection_status] ?? 'bg-slate-100 text-slate-600 ring-slate-200';
-                $syncColor = ['synced' => 'bg-emerald-50 text-emerald-700', 'pending' => 'bg-amber-50 text-amber-700', 'failed' => 'bg-red-50 text-red-700'][$server->sync_status] ?? 'bg-slate-100 text-slate-600';
+                $connectionColor = ['online' => 'bg-[#EBF3FF] text-[#0069FF] ring-[#B8D6FF]', 'offline' => 'bg-red-50 text-red-700 ring-red-200', 'unknown' => 'bg-slate-100 text-slate-600 ring-slate-200'][$server->connection_status] ?? 'bg-slate-100 text-slate-600 ring-slate-200';
+                $syncColor = ['synced' => 'bg-[#EBF3FF] text-[#0069FF]', 'pending' => 'bg-amber-50 text-amber-700', 'failed' => 'bg-red-50 text-red-700'][$server->sync_status] ?? 'bg-slate-100 text-slate-600';
                 $serverPayload = [
                     'name' => $server->name,
                     'cluster' => $server->cluster_name ?: '',
@@ -127,7 +127,7 @@
                             <h2 class="mt-4 truncate text-xl font-black text-slate-950">{{ $server->name }}</h2>
                             <p class="mt-1 truncate text-sm text-slate-500">{{ $server->cluster_name ?: 'Standalone node' }} · {{ $server->environment }}</p>
                         </div>
-                        <div class="grid size-12 shrink-0 place-items-center rounded-xl bg-[#0A3D37] text-lg font-black text-white shadow-lg shadow-[#0A3D37]/20">P</div>
+                        <div class="grid size-12 shrink-0 place-items-center rounded-xl bg-[#031B4E] text-lg font-black text-white shadow-lg shadow-[#031B4E]/20">P</div>
                     </div>
                 </div>
 
@@ -161,13 +161,13 @@
                     @if(! empty($server->tags))
                         <div class="flex flex-wrap gap-2">
                             @foreach ($server->tags as $tag)
-                                <span class="rounded-full bg-[#F1F7F5] px-3 py-1 text-xs font-black text-[#105D52]">{{ $tag }}</span>
+                                <span class="rounded-full bg-[#EBF3FF] px-3 py-1 text-xs font-black text-[#0069FF]">{{ $tag }}</span>
                             @endforeach
                         </div>
                     @endif
 
                     <div class="flex flex-wrap gap-2 pt-1">
-                        <a href="{{ route('admin.proxmox-servers.show', $server) }}" class="flex-1 rounded-lg bg-[#105D52] px-4 py-3 text-center text-sm font-black text-white transition hover:bg-[#0D4C44]">نمایش</a>
+                        <a href="{{ route('admin.proxmox-servers.show', $server) }}" class="flex-1 rounded-lg bg-[#0069FF] px-4 py-3 text-center text-sm font-black text-white transition hover:bg-[#0050D0]">نمایش</a>
                         <a href="{{ route('admin.proxmox-servers.edit', $server) }}" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">ویرایش</a>
                         <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 transition hover:bg-amber-100">Sync</button></form>
                     </div>
@@ -177,7 +177,7 @@
             <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center lg:col-span-2 2xl:col-span-3">
                 <h2 class="text-xl font-black text-slate-900">هنوز endpoint ثبت نشده است</h2>
                 <p class="mt-2 text-slate-500">اولین سرور یا کلاستر Proxmox را اضافه کنید.</p>
-                <a href="{{ route('admin.proxmox-servers.create') }}" class="mt-5 inline-flex rounded-lg bg-[#105D52] px-5 py-3 text-sm font-black text-white">افزودن سرور</a>
+                <a href="{{ route('admin.proxmox-servers.create') }}" class="mt-5 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن سرور</a>
             </div>
         @endforelse
     </section>

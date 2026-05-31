@@ -33,14 +33,14 @@
     @if (session('error'))<div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>@endif
     @if ($errors->any())<div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ $errors->first() }}</div>@endif
 
-    <div class="relative overflow-hidden rounded-2xl bg-[#0A3D37] p-6 text-white shadow-xl shadow-[#0A3D37]/15">
+    <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
         <div class="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-                <p class="text-sm font-bold text-emerald-50/60">Cloud-init Provisioning</p>
+                <p class="text-sm font-bold text-white/60">Cloud-init Provisioning</p>
                 <h1 class="mt-2 text-3xl font-black">ساخت VPS از Cloud Image</h1>
-                <p class="mt-3 max-w-3xl leading-8 text-emerald-50/75">Template VMID از کاتالوگ Cloud Images انتخاب می‌شود؛ IP از Pool رزرو و Provisioning در Queue انجام می‌شود.</p>
+                <p class="mt-3 max-w-3xl leading-8 text-white/75">Template VMID از کاتالوگ Cloud Images انتخاب می‌شود؛ IP از Pool رزرو و Provisioning در Queue انجام می‌شود.</p>
             </div>
-            <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#0A3D37]">بازگشت</a>
+            <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E]">بازگشت</a>
         </div>
     </div>
 
@@ -50,7 +50,7 @@
             <x-form.select name="customer_id" label="مشتری" :selected="$selectedCustomerId" :options="$customers->prepend('انتخاب مشتری', '')" />
             <label>
                 <span class="text-sm font-black text-slate-700">Cloud Image</span>
-                <select name="cloud_image_id" x-model="form.cloud_image_id" @change="applyImage()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#105D52] focus:outline-none">
+                <select name="cloud_image_id" x-model="form.cloud_image_id" @change="applyImage()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
                     <option value="">انتخاب Image</option>
                     <template x-for="image in images" :key="image.id">
                         <option :value="image.id" x-text="`${image.name} / ${image.server} / ${image.node} / template ${image.template_vmid}`"></option>
@@ -66,7 +66,7 @@
 
             <label class="md:col-span-2">
                 <span class="text-sm font-black text-slate-700">باندل سخت‌افزاری</span>
-                <select name="vm_bundle_id" x-model="form.vm_bundle_id" @change="applyBundle()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#105D52] focus:outline-none">
+                <select name="vm_bundle_id" x-model="form.vm_bundle_id" @change="applyBundle()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
                     <option value="">Custom منابع دستی</option>
                     <template x-for="bundle in visibleBundles" :key="bundle.id">
                         <option :value="bundle.id" x-text="`${bundle.name} - ${bundle.cpu_cores} CPU / ${bundle.ram_gb}GB RAM / ${bundle.disk_gb}GB - ${bundle.price}`"></option>
@@ -88,15 +88,15 @@
             </div>
             <label x-show="cloudInitEnabled">
                 <span class="text-sm font-black text-slate-700">SSH Public Key</span>
-                <textarea name="ssh_public_key" rows="4" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#105D52] focus:outline-none">{{ old('ssh_public_key') }}</textarea>
+                <textarea name="ssh_public_key" rows="4" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">{{ old('ssh_public_key') }}</textarea>
                 @error('ssh_public_key') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
             </label>
             <div x-show="!cloudInitEnabled" class="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
                 این template بدون CloudInit است؛ hostname، username، password و SSH key تنظیم نمی‌شوند.
             </div>
 
-            <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="start_after_create" value="1" checked class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">بعد از Provisioning روشن شود</span></label>
-            <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="onboot" value="1" class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">Start on boot</span></label>
+            <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="start_after_create" value="1" checked class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">بعد از Provisioning روشن شود</span></label>
+            <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="onboot" value="1" class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">Start on boot</span></label>
         </div>
 
         <div class="mt-6 rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-600" x-show="selectedImage">
@@ -105,7 +105,7 @@
         </div>
 
         <div class="mt-6 flex gap-3">
-            <button class="rounded-lg bg-[#105D52] px-5 py-3 text-sm font-black text-white">Queue Provisioning</button>
+            <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Queue Provisioning</button>
             <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a>
         </div>
     </form>

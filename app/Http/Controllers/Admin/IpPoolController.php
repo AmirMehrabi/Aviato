@@ -14,7 +14,15 @@ class IpPoolController extends Controller
     public function index(): View
     {
         return view('admin.ip-pools.index', [
-            'pools' => IpPool::query()->with(['proxmoxServer', 'addresses'])->orderBy('name')->get(),
+            'pools' => IpPool::query()
+                ->with([
+                    'proxmoxServer',
+                    'addresses' => fn ($query) => $query
+                        ->with(['virtualMachine.customer', 'virtualMachine.bundle'])
+                        ->orderBy('address'),
+                ])
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 

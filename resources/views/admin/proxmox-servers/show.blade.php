@@ -24,29 +24,29 @@
     })"
 >
     @if (session('status'))
-        <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
+        <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
     @endif
     @if (session('error'))
         <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{{ session('error') }}</div>
     @endif
 
-    <div class="relative overflow-hidden rounded-2xl bg-[#0A3D37] p-6 text-white shadow-xl shadow-[#0A3D37]/15">
+    <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
         <div class="absolute -left-20 top-0 size-56 rounded-full bg-white/10 blur-3xl"></div>
         <div class="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded-md bg-white/10 px-2.5 py-1 text-xs font-black text-emerald-50">{{ $server->environment }}</span>
-                    <span class="rounded-md bg-white/10 px-2.5 py-1 text-xs font-black text-emerald-50">{{ $server->datacenter ?: 'No DC' }}</span>
-                    <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $server->connection_status === 'online' ? 'bg-emerald-300 text-emerald-950' : 'bg-amber-300 text-amber-950' }}">{{ strtoupper($server->connection_status) }}</span>
+                    <span class="rounded-md bg-white/10 px-2.5 py-1 text-xs font-black text-white">{{ $server->environment }}</span>
+                    <span class="rounded-md bg-white/10 px-2.5 py-1 text-xs font-black text-white">{{ $server->datacenter ?: 'No DC' }}</span>
+                    <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $server->connection_status === 'online' ? 'bg-[#B8D6FF] text-[#031B4E]' : 'bg-amber-300 text-amber-950' }}">{{ strtoupper($server->connection_status) }}</span>
                     @if($fallback)
                         <span class="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-900">Fallback cache</span>
                     @endif
                 </div>
                 <h1 class="mt-3 text-3xl font-black md:text-4xl">{{ $server->name }}</h1>
-                <p class="mt-2 font-mono text-sm text-emerald-50/70" dir="ltr">{{ $server->baseUrl() }} · {{ $server->proxmoxUser() }}</p>
+                <p class="mt-2 font-mono text-sm text-white/70" dir="ltr">{{ $server->baseUrl() }} · {{ $server->proxmoxUser() }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#0A3D37] hover:bg-slate-100">Sync now</button></form>
+                <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] hover:bg-slate-100">Sync now</button></form>
                 <a href="{{ route('admin.proxmox-servers.edit', $server) }}" class="rounded-lg border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white hover:bg-white/15">ویرایش</a>
                 <form method="POST" action="{{ route('admin.proxmox-servers.destroy', $server) }}" onsubmit="return confirm('حذف شود؟')">@csrf @method('DELETE') <button class="rounded-lg bg-red-400/15 px-5 py-3 text-sm font-black text-red-50 hover:bg-red-400/25">حذف</button></form>
             </div>
@@ -54,24 +54,24 @@
 
         <div class="relative mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
             <div class="rounded-xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p class="text-sm font-black text-emerald-50/65">Nodes</p>
+                <p class="text-sm font-black text-white/65">Nodes</p>
                 <p class="mt-3 text-3xl font-black">{{ $counts['nodes'] ?? count($nodes) }}</p>
-                <div class="mt-3 flex gap-2 text-xs font-black"><span class="rounded bg-emerald-300 px-2 py-1 text-emerald-950">Online {{ $counts['online_nodes'] ?? 0 }}</span><span class="rounded bg-red-200 px-2 py-1 text-red-900">Offline {{ $counts['offline_nodes'] ?? 0 }}</span></div>
+                <div class="mt-3 flex gap-2 text-xs font-black"><span class="rounded bg-[#B8D6FF] px-2 py-1 text-[#031B4E]">Online {{ $counts['online_nodes'] ?? 0 }}</span><span class="rounded bg-red-200 px-2 py-1 text-red-900">Offline {{ $counts['offline_nodes'] ?? 0 }}</span></div>
             </div>
             <div class="rounded-xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p class="text-sm font-black text-emerald-50/65">Virtual Machines</p>
+                <p class="text-sm font-black text-white/65">Virtual Machines</p>
                 <p class="mt-3 text-3xl font-black">{{ $counts['virtual_machines'] ?? count($vms) }}</p>
-                <div class="mt-3 flex gap-2 text-xs font-black"><span class="rounded bg-emerald-300 px-2 py-1 text-emerald-950">Online {{ $counts['running_virtual_machines'] ?? 0 }}</span><span class="rounded bg-red-200 px-2 py-1 text-red-900">Offline {{ $counts['offline_virtual_machines'] ?? 0 }}</span></div>
+                <div class="mt-3 flex gap-2 text-xs font-black"><span class="rounded bg-[#B8D6FF] px-2 py-1 text-[#031B4E]">Online {{ $counts['running_virtual_machines'] ?? 0 }}</span><span class="rounded bg-red-200 px-2 py-1 text-red-900">Offline {{ $counts['offline_virtual_machines'] ?? 0 }}</span></div>
             </div>
             <div class="rounded-xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p class="text-sm font-black text-emerald-50/65">Storage Pools</p>
+                <p class="text-sm font-black text-white/65">Storage Pools</p>
                 <p class="mt-3 text-3xl font-black">{{ $counts['storage'] ?? count($storages) }}</p>
-                <p class="mt-3 text-xs font-bold text-emerald-50/60">local, directory, LVM, ZFS, NFS...</p>
+                <p class="mt-3 text-xs font-bold text-white/60">local, directory, LVM, ZFS, NFS...</p>
             </div>
             <div class="rounded-xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p class="text-sm font-black text-emerald-50/65">Backups</p>
+                <p class="text-sm font-black text-white/65">Backups</p>
                 <p class="mt-3 text-3xl font-black">{{ $counts['backups'] ?? count($backups) }}</p>
-                <p class="mt-3 text-xs font-bold text-emerald-50/60">Detected from backup-capable storages</p>
+                <p class="mt-3 text-xs font-bold text-white/60">Detected from backup-capable storages</p>
             </div>
         </div>
     </div>
@@ -84,9 +84,9 @@
     @endif
 
     <div class="mt-6 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-        <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'overview' ? 'bg-[#105D52] text-white shadow-lg shadow-[#105D52]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'overview'">Overview</button>
-        <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'performance' ? 'bg-[#105D52] text-white shadow-lg shadow-[#105D52]/20' : 'text-slate-600 hover:bg-slate-50'" @click="openPerformance()">Performance graphs</button>
-        <button type="button" class="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'anomalies' ? 'bg-[#105D52] text-white shadow-lg shadow-[#105D52]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'anomalies'">
+        <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'overview' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'overview'">Overview</button>
+        <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'performance' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="openPerformance()">Performance graphs</button>
+        <button type="button" class="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'anomalies' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'anomalies'">
             Anomalies
             <span class="rounded-md px-2 py-0.5 text-xs" :class="activeTab === 'anomalies' ? 'bg-white/20 text-white' : '{{ $staleAnomalies->isNotEmpty() ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-500' }}'">{{ $staleAnomalies->count() }}</span>
         </button>
@@ -109,7 +109,7 @@
                             @forelse ($nodes as $node)
                                 <tr>
                                     <td class="py-3 font-black">{{ $node['node'] ?? $node['name'] ?? '—' }}</td>
-                                    <td class="py-3"><span class="rounded-md px-2.5 py-1 text-xs font-black {{ ($node['status'] ?? null) === 'online' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}">{{ strtoupper($node['status'] ?? 'unknown') }}</span></td>
+                                    <td class="py-3"><span class="rounded-md px-2.5 py-1 text-xs font-black {{ ($node['status'] ?? null) === 'online' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-red-50 text-red-700' }}">{{ strtoupper($node['status'] ?? 'unknown') }}</span></td>
                                     <td class="py-3">{{ isset($node['cpu']) ? round($node['cpu'] * 100, 1).'%' : '—' }}</td>
                                     <td class="py-3">{{ isset($node['mem'], $node['maxmem']) && $node['maxmem'] > 0 ? round($node['mem'] / $node['maxmem'] * 100, 1).'%' : '—' }}</td>
                                     <td class="py-3">{{ isset($node['uptime']) ? floor($node['uptime'] / 86400).'d' : '—' }}</td>
@@ -128,7 +128,7 @@
                         <h2 class="text-lg font-black">Virtual Machines</h2>
                         <p class="mt-1 text-sm text-slate-500">Running and stopped guests across the cluster.</p>
                     </div>
-                    <div class="flex gap-2"><button class="rounded-lg bg-[#105D52] px-4 py-2 text-sm font-black text-white" disabled>Start</button><button class="rounded-lg bg-red-50 px-4 py-2 text-sm font-black text-red-700" disabled>Stop</button></div>
+                    <div class="flex gap-2"><button class="rounded-lg bg-[#0069FF] px-4 py-2 text-sm font-black text-white" disabled>Start</button><button class="rounded-lg bg-red-50 px-4 py-2 text-sm font-black text-red-700" disabled>Stop</button></div>
                 </div>
                 <div class="overflow-x-auto p-5">
                     <table class="min-w-full text-right text-sm">
@@ -138,7 +138,7 @@
                                 <tr>
                                     <td class="py-3 font-black">{{ $vm['name'] ?? $vm['vmid'] ?? '—' }}</td>
                                     <td class="py-3">{{ $vm['node'] ?? '—' }}</td>
-                                    <td class="py-3"><span class="rounded-md px-2.5 py-1 text-xs font-black {{ ($vm['status'] ?? null) === 'running' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ strtoupper($vm['status'] ?? 'unknown') }}</span></td>
+                                    <td class="py-3"><span class="rounded-md px-2.5 py-1 text-xs font-black {{ ($vm['status'] ?? null) === 'running' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-600' }}">{{ strtoupper($vm['status'] ?? 'unknown') }}</span></td>
                                     <td class="py-3">{{ isset($vm['cpu']) ? round($vm['cpu'] * 100, 1).'%' : '—' }}</td>
                                     <td class="py-3">{{ isset($vm['mem'], $vm['maxmem']) && $vm['maxmem'] > 0 ? round($vm['mem'] / $vm['maxmem'] * 100, 1).'%' : '—' }}</td>
                                 </tr>
@@ -162,7 +162,7 @@
                         @php($usedPercent = isset($storage['used'], $storage['total']) && $storage['total'] > 0 ? round($storage['used'] / $storage['total'] * 100) : null)
                         <div class="rounded-xl border border-slate-200 p-4">
                             <div class="flex items-start justify-between gap-3"><div><p class="font-black">{{ $storage['storage'] ?? '—' }}</p><p class="mt-1 text-xs text-slate-500">{{ $storage['node'] ?? '—' }} · {{ $storage['type'] ?? 'unknown' }}</p></div><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">{{ $storage['content'] ?? '—' }}</span></div>
-                            <div class="mt-3 h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-[#105D52]" style="width: {{ $usedPercent ?? 0 }}%"></div></div>
+                            <div class="mt-3 h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-[#0069FF]" style="width: {{ $usedPercent ?? 0 }}%"></div></div>
                             <div class="mt-2 flex justify-between text-xs font-bold text-slate-500"><span>{{ $usedPercent !== null ? $usedPercent.'% used' : 'usage unknown' }}</span><span>{{ ($storage['active'] ?? 0) ? 'active' : 'inactive' }}</span></div>
                             <div class="mt-3 flex gap-2"><button class="rounded-md bg-slate-100 px-3 py-2 text-xs font-black text-slate-700" disabled>Edit</button><button class="rounded-md bg-amber-50 px-3 py-2 text-xs font-black text-amber-700" disabled>Prune</button></div>
                         </div>
@@ -175,7 +175,7 @@
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="flex items-center justify-between gap-3">
                     <div><h2 class="font-black">Backups</h2><p class="mt-1 text-sm text-slate-500">Backup files found on backup-capable storage.</p></div>
-                    <button class="rounded-lg bg-[#105D52] px-3 py-2 text-xs font-black text-white" disabled>Run backup</button>
+                    <button class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white" disabled>Run backup</button>
                 </div>
                 <div class="mt-5 space-y-3">
                     @forelse (array_slice($backups, 0, 10) as $backup)
@@ -192,7 +192,7 @@
 
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="font-black">Pending Desired State</h2>
-                <pre class="mt-4 max-h-80 overflow-auto rounded-lg bg-slate-950 p-4 text-left text-xs leading-6 text-emerald-100" dir="ltr">{{ json_encode($server->desired_state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                <pre class="mt-4 max-h-80 overflow-auto rounded-lg bg-slate-950 p-4 text-left text-xs leading-6 text-white" dir="ltr">{{ json_encode($server->desired_state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
             </section>
 
             @if($server->sync_error)
@@ -209,14 +209,14 @@
                     <p class="mt-1 text-sm leading-7 text-slate-500">Local VM records whose VMID was not found on this Proxmox server. Cleanup re-checks Proxmox live before changing billing or IP state.</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded-lg px-3 py-2 text-xs font-black {{ $staleAnomalySource === 'live' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }}">{{ $staleAnomalySource === 'live' ? 'Live scan' : 'Cached inventory' }}</span>
+                    <span class="rounded-lg px-3 py-2 text-xs font-black {{ $staleAnomalySource === 'live' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-amber-50 text-amber-700' }}">{{ $staleAnomalySource === 'live' ? 'Live scan' : 'Cached inventory' }}</span>
                     <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">Refresh inventory</button></form>
                 </div>
             </div>
 
             @if($staleAnomalies->isEmpty())
                 <div class="grid gap-4 p-8 md:grid-cols-[80px_minmax(0,1fr)] md:items-center">
-                    <div class="grid size-16 place-items-center rounded-2xl bg-emerald-50 text-2xl font-black text-emerald-700">0</div>
+                    <div class="grid size-16 place-items-center rounded-2xl bg-[#EBF3FF] text-2xl font-black text-[#0069FF]">0</div>
                     <div>
                         <h3 class="text-xl font-black text-slate-950">No stale VM records found</h3>
                         <p class="mt-2 text-sm leading-7 text-slate-500">The local VMIDs on this server match the latest inventory available to the panel.</p>
@@ -246,7 +246,7 @@
                 <div class="flex flex-col gap-3 border-b border-slate-200 p-5 lg:flex-row lg:items-center lg:justify-between">
                     <div class="flex flex-wrap items-center gap-3">
                         <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700">
-                            <input type="checkbox" class="size-4 rounded border-slate-300 text-[#105D52]" :checked="allStaleSelected()" @change="toggleAllStale($event.target.checked)">
+                            <input type="checkbox" class="size-4 rounded border-slate-300 text-[#0069FF]" :checked="allStaleSelected()" @change="toggleAllStale($event.target.checked)">
                             Select all stale records
                         </label>
                         <span class="text-sm font-bold text-slate-500" x-text="`${selectedStale.length} selected`"></span>
@@ -275,7 +275,7 @@
                             @foreach($staleAnomalies as $vm)
                                 <tr class="align-top">
                                     <td class="py-4">
-                                        <input type="checkbox" value="{{ $vm->id }}" class="size-4 rounded border-slate-300 text-[#105D52]" :checked="selectedStale.includes({{ $vm->id }})" @change="toggleStale({{ $vm->id }}, $event.target.checked)">
+                                        <input type="checkbox" value="{{ $vm->id }}" class="size-4 rounded border-slate-300 text-[#0069FF]" :checked="selectedStale.includes({{ $vm->id }})" @change="toggleStale({{ $vm->id }}, $event.target.checked)">
                                     </td>
                                     <td class="py-4">
                                         <p class="font-black text-slate-950">{{ $vm->name }}</p>
@@ -315,39 +315,39 @@
                     <p class="mt-1 text-sm leading-7 text-slate-500">CPU Usage, Server Load, Memory Usage, and Network Traffic from Proxmox RRD data.</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <select x-model="node" @change="load()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold focus:border-[#105D52] focus:bg-white focus:outline-none">
+                    <select x-model="node" @change="load()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold focus:border-[#0069FF] focus:bg-white focus:outline-none">
                         <template x-for="item in nodes" :key="item">
                             <option :value="item" x-text="item"></option>
                         </template>
                     </select>
-                    <select x-model="timeframe" @change="load()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold focus:border-[#105D52] focus:bg-white focus:outline-none">
+                    <select x-model="timeframe" @change="load()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold focus:border-[#0069FF] focus:bg-white focus:outline-none">
                         <option value="hour">Last hour</option>
                         <option value="day">Last day</option>
                         <option value="week">Last week</option>
                         <option value="month">Last month</option>
                         <option value="year">Last year</option>
                     </select>
-                    <button type="button" class="rounded-xl bg-[#105D52] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0D4C44]" @click="load()">Refresh</button>
+                    <button type="button" class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]" @click="load()">Refresh</button>
                 </div>
             </div>
 
             <div class="grid gap-4 border-b border-slate-200 bg-slate-50 p-5 md:grid-cols-2 xl:grid-cols-4">
                 <div class="rounded-xl bg-white p-4 shadow-sm">
                     <p class="text-xs font-black uppercase tracking-wide text-slate-400">CPU</p>
-                    <p class="mt-2 text-2xl font-black text-[#105D52]" x-text="formatPercent(latest.cpu_percent)"></p>
+                    <p class="mt-2 text-2xl font-black text-[#0069FF]" x-text="formatPercent(latest.cpu_percent)"></p>
                 </div>
                 <div class="rounded-xl bg-white p-4 shadow-sm">
                     <p class="text-xs font-black uppercase tracking-wide text-slate-400">Server Load</p>
-                    <p class="mt-2 text-2xl font-black text-[#105D52]" x-text="latest.load ?? '—'"></p>
+                    <p class="mt-2 text-2xl font-black text-[#0069FF]" x-text="latest.load ?? '—'"></p>
                 </div>
                 <div class="rounded-xl bg-white p-4 shadow-sm">
                     <p class="text-xs font-black uppercase tracking-wide text-slate-400">Memory</p>
-                    <p class="mt-2 text-2xl font-black text-[#105D52]" x-text="formatPercent(latest.memory_percent)"></p>
+                    <p class="mt-2 text-2xl font-black text-[#0069FF]" x-text="formatPercent(latest.memory_percent)"></p>
                     <p class="mt-1 text-xs font-bold text-slate-400" x-text="latest.memory_used && latest.memory_total ? `${latest.memory_used} / ${latest.memory_total}` : ''"></p>
                 </div>
                 <div class="rounded-xl bg-white p-4 shadow-sm">
                     <p class="text-xs font-black uppercase tracking-wide text-slate-400">Network</p>
-                    <p class="mt-2 text-sm font-black text-[#105D52]">In <span x-text="formatRate(latest.netin_bytes_per_second)"></span></p>
+                    <p class="mt-2 text-sm font-black text-[#0069FF]">In <span x-text="formatRate(latest.netin_bytes_per_second)"></span></p>
                     <p class="mt-1 text-sm font-black text-amber-600">Out <span x-text="formatRate(latest.netout_bytes_per_second)"></span></p>
                 </div>
             </div>

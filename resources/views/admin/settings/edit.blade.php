@@ -5,7 +5,7 @@
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
     @if (session('status'))
-        <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
+        <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
     @endif
 
     <div class="max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -39,7 +39,7 @@
                 </div>
             </div>
 
-            <button class="rounded-lg bg-[#105D52] px-5 py-3 text-sm font-black text-white">ذخیره تنظیمات</button>
+            <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره تنظیمات</button>
         </form>
     </div>
 </div>

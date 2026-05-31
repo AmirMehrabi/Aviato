@@ -98,12 +98,12 @@
                     label="بعد از ذخیره sync کن"
                     :checked="false"
                     :include-hidden="false"
-                    wrapper-class="flex items-center justify-between gap-3 rounded-lg bg-[#F1F7F5] p-3 text-sm font-bold text-[#105D52]"
+                    wrapper-class="flex items-center justify-between gap-3 rounded-lg bg-[#EBF3FF] p-3 text-sm font-bold text-[#0069FF]"
                 />
             </div>
         </div>
 
-        <button class="w-full rounded-lg bg-[#105D52] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0D4C44]">ذخیره سرور</button>
+        <button class="w-full rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">ذخیره سرور</button>
         <a href="{{ route('admin.proxmox-servers.index') }}" class="block rounded-lg border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">بازگشت</a>
     </aside>
 </div>

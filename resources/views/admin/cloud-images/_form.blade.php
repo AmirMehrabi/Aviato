@@ -23,10 +23,10 @@
     <x-form.input name="min_ram_gb" type="number" label="Minimum RAM (GB)" :value="$image->min_ram_gb ?: 1" />
     <x-form.input name="min_disk_gb" type="number" label="Minimum Disk (GB)" :value="$image->min_disk_gb ?: 10" />
     <x-form.input name="sort_order" type="number" label="ترتیب نمایش" :value="$image->sort_order ?? 0" />
-    <label class="md:col-span-2"><span class="text-sm font-black text-slate-700">توضیحات</span><textarea name="description" rows="4" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#105D52] focus:outline-none">{{ old('description', $image->description) }}</textarea>@error('description') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror</label>
+    <label class="md:col-span-2"><span class="text-sm font-black text-slate-700">توضیحات</span><textarea name="description" rows="4" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">{{ old('description', $image->description) }}</textarea>@error('description') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror</label>
     <input type="hidden" name="cloud_init_enabled" value="0">
-    <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="cloud_init_enabled" value="1" @checked(old('cloud_init_enabled', $image->cloud_init_enabled ?? true)) class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">CloudInit فعال است</span></label>
-    <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $image->is_active ?? true)) class="size-4 rounded border-slate-300 text-[#105D52]"><span class="text-sm font-black text-slate-700">فعال</span></label>
+    <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="cloud_init_enabled" value="1" @checked(old('cloud_init_enabled', $image->cloud_init_enabled ?? true)) class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">CloudInit فعال است</span></label>
+    <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $image->is_active ?? true)) class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">فعال</span></label>
 </div>
 
 <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
@@ -40,13 +40,13 @@
 
     <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         @foreach ($bundles as $bundle)
-            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 transition hover:border-[#105D52]/40 hover:bg-[#F8FBFA]">
+            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 transition hover:border-[#0069FF]/40 hover:bg-[#F8FBFF]">
                 <input
                     type="checkbox"
                     name="bundle_ids[]"
                     value="{{ $bundle->id }}"
                     @checked(in_array((string) $bundle->id, $selectedBundleIds, true))
-                    class="mt-1 size-4 rounded border-slate-300 text-[#105D52] focus:ring-[#105D52]"
+                    class="mt-1 size-4 rounded border-slate-300 text-[#0069FF] focus:ring-[#0069FF]"
                 >
                 <span class="min-w-0">
                     <span class="block font-black text-slate-950">{{ $bundle->name }}</span>
@@ -58,6 +58,6 @@
 </div>
 
 <div class="mt-6 flex gap-3">
-    <button class="rounded-lg bg-[#105D52] px-5 py-3 text-sm font-black text-white">ذخیره</button>
+    <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره</button>
     <a href="{{ route('admin.cloud-images.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a>
 </div>
