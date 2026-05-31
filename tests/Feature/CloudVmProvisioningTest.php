@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ProvisionCloudVirtualMachine;
+use App\Jobs\RebuildCloudVirtualMachine;
 use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\IpAddress;
@@ -336,6 +337,136 @@ class CloudVmProvisioningTest extends TestCase
             ->assertJsonPath('servers.0.id', $owned->uuid)
             ->assertJsonPath('servers.0.status_label', 'خاموش')
             ->assertJsonPath('servers.0.provisioning_pending', true);
+    }
+
+    public function test_customer_can_queue_vm_rebuild_with_strong_confirmation(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        [$image, $bundle] = $this->catalog();
+
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'vmid' => 108,
+            'template_vmid' => $image->template_vmid,
+            'name' => 'rebuild-me',
+            'hostname' => 'old-host',
+            'node' => $image->node,
+            'storage' => $image->storage,
+            'os_template' => $image->name,
+            'network_bridge' => $image->network_bridge,
+            'login_username' => 'ubuntu',
+            'login_password' => 'old-password',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/rebuild', [
+            'rebuild_confirmation' => 'rebuild-me',
+            'hostname' => 'new-host',
+            'login_username' => 'admin',
+            'login_password' => 'new-password',
+        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid);
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::PROVISION_PENDING, $vm->provisioning_status);
+        $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
+        $this->assertSame('new-host', $vm->hostname);
+        $this->assertSame('admin', $vm->login_username);
+        $this->assertSame('new-password', $vm->login_password);
+        $this->assertNotNull(data_get($vm->remote_state, 'rebuild_started_at'));
+
+        Bus::assertDispatched(RebuildCloudVirtualMachine::class);
+    }
+
+    public function test_customer_rebuild_requires_exact_server_name_confirmation(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        [$image, $bundle] = $this->catalog();
+
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'vmid' => 108,
+            'template_vmid' => $image->template_vmid,
+            'name' => 'needs-confirmation',
+            'hostname' => 'needs-confirmation',
+            'node' => $image->node,
+            'storage' => $image->storage,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/'.$vm->uuid)
+            ->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/rebuild', [
+                'rebuild_confirmation' => 'wrong-name',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid)
+            ->assertSessionHasErrors('rebuild_confirmation');
+
+        $this->assertSame(VirtualMachine::PROVISION_READY, $vm->refresh()->provisioning_status);
+        Bus::assertNotDispatched(RebuildCloudVirtualMachine::class);
+    }
+
+    public function test_rebuild_job_refuses_to_delete_reused_remote_vmid(): void
+    {
+        [$image, $bundle] = $this->catalog();
+        $customer = Customer::factory()->create();
+
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'vmid' => 108,
+            'template_vmid' => $image->template_vmid,
+            'name' => 'panel-owned-vm',
+            'hostname' => 'panel-owned-vm',
+            'node' => $image->node,
+            'storage' => $image->storage,
+            'login_username' => 'ubuntu',
+            'login_password' => 'secret-password',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+            'remote_state' => ['rebuild_started_at' => now()->toISOString()],
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfigOrNull')->once()->andReturn(['name' => 'someone-elses-vm']);
+            $mock->shouldReceive('deleteVm')->never();
+            $mock->shouldReceive('cloneCloudTemplate')->never();
+        });
+
+        (new RebuildCloudVirtualMachine($vm->id))->handle(
+            app(ProxmoxService::class),
+            app(IpPoolService::class),
+        );
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::PROVISION_FAILED, $vm->provisioning_status);
+        $this->assertStringContainsString('does not belong', data_get($vm->remote_state, 'rebuild_error'));
     }
 
     /**

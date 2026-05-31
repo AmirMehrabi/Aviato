@@ -175,6 +175,7 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::get('servers/{virtualMachine}/console', [ServerConsoleController::class, 'show'])->name('customer.servers.console.show');
         Route::get('servers/{virtualMachine}/console/session', [ServerConsoleController::class, 'redirectSession'])->name('customer.servers.console.session.redirect');
         Route::post('servers/{virtualMachine}/console/session', [ServerConsoleController::class, 'session'])->name('customer.servers.console.session');
+        Route::post('servers/{virtualMachine}/rebuild', [ServerController::class, 'rebuild'])->name('customer.servers.rebuild');
         Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->name('customer.servers.show');
         Route::post('servers/{virtualMachine}/upgrades/bundle', [VmUpgradeController::class, 'storeBundle'])->name('customer.servers.upgrades.bundle.store');
         Route::post('servers/{virtualMachine}/upgrades/extra-disk', [VmUpgradeController::class, 'storeExtraDisk'])->name('customer.servers.upgrades.extra-disk.store');

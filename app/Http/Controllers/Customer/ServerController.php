@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\RebuildCloudVirtualMachine;
 use App\Models\CloudImage;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
@@ -18,6 +19,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -101,7 +104,7 @@ class ServerController extends Controller
                 'status_label' => $this->statusLabel($server->status),
                 'status_class' => $this->statusClass($server->status),
                 'provisioning_status' => $server->provisioning_status,
-                'provisioning_label' => $this->provisioningLabel($server->provisioning_status),
+                'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
                 'is_deleting' => $server->isDeleting(),
@@ -151,8 +154,29 @@ class ServerController extends Controller
             ->values();
 
         $servers = $customer->virtualMachines()
+            ->with(['proxmoxServer', 'cloudImage'])
             ->when($ids->isNotEmpty(), fn ($query) => $query->whereIn('uuid', $ids))
-            ->get(['id', 'uuid', 'status', 'provisioning_status', 'delete_requested_at', 'delete_started_at', 'delete_failed_at', 'deleted_at', 'updated_at']);
+            ->get([
+                'id',
+                'uuid',
+                'proxmox_server_id',
+                'cloud_image_id',
+                'vmid',
+                'name',
+                'hostname',
+                'node',
+                'ip_address',
+                'login_username',
+                'login_password',
+                'status',
+                'provisioning_status',
+                'remote_state',
+                'delete_requested_at',
+                'delete_started_at',
+                'delete_failed_at',
+                'deleted_at',
+                'updated_at',
+            ]);
 
         return response()->json([
             'servers' => $servers->map(fn (VirtualMachine $server): array => [
@@ -161,7 +185,7 @@ class ServerController extends Controller
                 'status_label' => $this->statusLabel($server->status),
                 'status_class' => $this->statusClass($server->status),
                 'provisioning_status' => $server->provisioning_status,
-                'provisioning_label' => $this->provisioningLabel($server->provisioning_status),
+                'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
                 'action_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null && ! $server->deleteAttemptIsStale()),
@@ -169,6 +193,17 @@ class ServerController extends Controller
                 'delete_failed' => $server->isDeleting() && $server->delete_failed_at !== null,
                 'delete_stale' => $server->deleteAttemptIsStale(),
                 'is_deleted' => $server->isDeleted(),
+                'is_rebuilding' => $this->isRebuilding($server),
+                'rebuild_error' => data_get($server->remote_state, 'rebuild_error'),
+                'ip' => $server->ip_address ?: 'بدون IP',
+                'hostname' => $server->hostname ?: 'hostname-not-set',
+                'node' => $server->node ?: 'node-not-set',
+                'vmid' => $server->vmid,
+                'login_username' => $server->login_username ?: '-',
+                'has_password' => filled($server->login_password),
+                'console_ready' => $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === VirtualMachine::PROVISION_READY && ! $server->isActionLocked(),
+                'ssh_command' => $server->ip_address ? 'ssh '.($server->login_username ?: 'root').'@'.$server->ip_address : null,
+                'updated_at' => $server->updated_at?->toISOString(),
             ])->values(),
         ]);
     }
@@ -310,7 +345,7 @@ class ServerController extends Controller
             'sshCommand' => $sshCommand,
             'statusLabel' => $this->statusLabel($server->status),
             'statusClass' => $this->statusClass($server->status),
-            'provisioningLabel' => $this->provisioningLabel($server->provisioning_status),
+            'provisioningLabel' => $this->provisioningLabelForVm($server),
             'provisioningClass' => $this->provisioningClass($server->provisioning_status),
             'backupSummary' => [
                 'enabled' => (bool) $server->backupPolicy?->is_enabled,
@@ -330,6 +365,83 @@ class ServerController extends Controller
             'hasPendingUpgrade' => $hasPendingUpgrade,
             'invoiceCount' => $customer->invoices()->count(),
         ]);
+    }
+
+    public function rebuild(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $server = $this->resolveCustomerServer($request, $virtualMachine);
+        $server->loadMissing(['cloudImage', 'proxmoxServer', 'upgradeOrders']);
+
+        if ($server->isActionLocked() || $server->provisioning_status === VirtualMachine::PROVISION_PENDING) {
+            return back()->with('error', 'این سرور در حال انجام عملیات دیگری است و فعلا قابل بازسازی نیست.');
+        }
+
+        if ($server->upgradeOrders->contains(fn ($order): bool => $order->isPending())) {
+            return back()->with('error', 'تا پایان ارتقای در حال انجام، بازسازی سرور ممکن نیست.');
+        }
+
+        if (! $server->proxmoxServer || ! $server->cloudImage || ! $server->node || ! $server->vmid || ! $server->template_vmid) {
+            return back()->with('error', 'اطلاعات Proxmox، Image، Node، VMID یا Template برای بازسازی کامل نیست.');
+        }
+
+        if (! $server->cloudImage->is_active) {
+            return back()->with('error', 'Image فعلی این سرور غیرفعال است و برای بازسازی قابل استفاده نیست.');
+        }
+
+        $data = $request->validate([
+            'rebuild_confirmation' => ['required', 'string', Rule::in([$server->name])],
+            'hostname' => ['nullable', 'string', 'max:255'],
+            'login_username' => ['nullable', 'string', 'max:64'],
+            'login_password' => ['nullable', 'string', 'min:8', 'max:255'],
+            'ssh_public_key' => ['nullable', 'string', 'max:5000'],
+        ], [
+            'rebuild_confirmation.in' => 'برای بازسازی، نام سرور را دقیقا وارد کنید.',
+        ]);
+
+        $cloudInitEnabled = (bool) $server->cloudImage->cloud_init_enabled;
+        $password = null;
+
+        if ($cloudInitEnabled) {
+            $password = $this->rebuildPassword($server, $data);
+            $username = trim((string) ($data['login_username'] ?? '')) ?: ($server->login_username ?: $server->cloudImage->default_username);
+            $hostname = trim((string) ($data['hostname'] ?? '')) ?: ($server->hostname ?: $server->name);
+            $sshPublicKey = trim((string) ($data['ssh_public_key'] ?? ''));
+
+            $server->forceFill([
+                'hostname' => $hostname,
+                'login_username' => $username,
+                'login_password' => $password,
+                'ssh_public_key' => $sshPublicKey !== '' ? $sshPublicKey : null,
+            ]);
+        }
+
+        $this->usageBilling->chargeVm($server);
+
+        $server->forceFill([
+            'status' => VirtualMachine::STATUS_STOPPED,
+            'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+            'provisioning_task_id' => null,
+            'remote_state' => array_merge($server->remote_state ?? [], [
+                'rebuild_requested_at' => now()->toISOString(),
+                'rebuild_started_at' => now()->toISOString(),
+                'rebuild_finished_at' => null,
+                'rebuild_failed_at' => null,
+                'rebuild_error' => null,
+                'rebuild_steps' => [],
+            ]),
+        ])->save();
+
+        RebuildCloudVirtualMachine::dispatch($server->id)->onQueue(RebuildCloudVirtualMachine::QUEUE);
+
+        $redirect = redirect()
+            ->route('customer.servers.show', $server)
+            ->with('status', 'درخواست بازسازی ثبت شد. وضعیت همین صفحه به‌روزرسانی می‌شود.');
+
+        if ($cloudInitEnabled && $password !== null) {
+            $redirect->with('provisioning_password', $password);
+        }
+
+        return $redirect;
     }
 
     public function destroy(Request $request, VirtualMachine $virtualMachine): RedirectResponse
@@ -438,5 +550,46 @@ class ServerController extends Controller
             VirtualMachine::PROVISION_PENDING => 'در حال آماده سازی',
             default => $status ?: '-',
         };
+    }
+
+    private function provisioningLabelForVm(VirtualMachine $server): string
+    {
+        if ($this->isRebuilding($server)) {
+            return 'در حال بازسازی';
+        }
+
+        if ($server->provisioning_status === VirtualMachine::PROVISION_FAILED && data_get($server->remote_state, 'rebuild_error')) {
+            return 'بازسازی ناموفق';
+        }
+
+        return $this->provisioningLabel($server->provisioning_status);
+    }
+
+    private function isRebuilding(VirtualMachine $server): bool
+    {
+        return $server->provisioning_status === VirtualMachine::PROVISION_PENDING
+            && filled(data_get($server->remote_state, 'rebuild_started_at'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function rebuildPassword(VirtualMachine $server, array $data): ?string
+    {
+        $requestedPassword = trim((string) Arr::get($data, 'login_password', ''));
+
+        if ($requestedPassword !== '') {
+            return $requestedPassword;
+        }
+
+        if (filled($server->login_password)) {
+            return $server->login_password;
+        }
+
+        if (filled((string) Arr::get($data, 'ssh_public_key', ''))) {
+            return null;
+        }
+
+        return Str::password(18);
     }
 }

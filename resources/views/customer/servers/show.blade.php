@@ -22,6 +22,18 @@
     $backupUrl = route('customer.backups.index', [], false);
     $consoleReady = $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $isLocked;
     $consoleUrl = route('customer.servers.console.show', $server, false);
+    $statusUrl = route('customer.servers.statuses', [], false);
+    $isRebuilding = $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING && filled(data_get($server->remote_state, 'rebuild_started_at'));
+    $rebuildError = data_get($server->remote_state, 'rebuild_error');
+    $canRebuild = ! $isLocked
+        && $server->provisioning_status !== \App\Models\VirtualMachine::PROVISION_PENDING
+        && ! $hasPendingUpgrade
+        && $server->proxmoxServer
+        && $server->cloudImage
+        && $server->cloudImage->is_active
+        && $server->node
+        && $server->vmid
+        && $server->template_vmid;
     $formattedMonthlyCost = $server->isDeleting() ? 'متوقف شده' : $wallets->format($monthlyCost);
     $backupFrequency = match ($backupSummary['frequency']) {
         'daily' => 'روزانه',
@@ -62,13 +74,52 @@
         x-data="{
             copied: null,
             revealPassword: false,
+            statusUrl: @js($statusUrl),
+            serverId: @js($server->uuid),
+            serverState: {
+                status_label: @js($statusLabel),
+                status_class: @js($statusClass),
+                provisioning_label: @js($provisioningLabel),
+                provisioning_class: @js($provisioningClass),
+                provisioning_pending: @js($server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING),
+                action_pending: @js($server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null && ! $deleteAttemptIsStale)),
+                is_rebuilding: @js($isRebuilding),
+                hostname: @js($server->hostname ?: 'hostname-not-set'),
+                vmid: @js($server->vmid ?: '-'),
+                node: @js($server->node ?: 'node-not-set'),
+                ip: @js($server->ip_address ?: 'Pending'),
+            },
             copy(value, key) {
                 if (!value) return;
                 navigator.clipboard?.writeText(value);
                 this.copied = key;
                 window.setTimeout(() => this.copied = null, 1800);
             },
+            pollStatus() {
+                if (!this.serverState.action_pending && !this.serverState.provisioning_pending) return;
+                window.setTimeout(() => this.fetchStatus(), 3000);
+            },
+            async fetchStatus() {
+                try {
+                    const response = await fetch(`${this.statusUrl}?ids[]=${encodeURIComponent(this.serverId)}`, {
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    if (!response.ok) return this.pollStatus();
+                    const payload = await response.json();
+                    const next = payload.servers?.[0];
+                    if (!next) return;
+                    const wasPending = this.serverState.provisioning_pending;
+                    this.serverState = { ...this.serverState, ...next };
+                    if (wasPending && !next.provisioning_pending) {
+                        window.setTimeout(() => window.location.reload(), 600);
+                        return;
+                    }
+                } finally {
+                    this.pollStatus();
+                }
+            },
         }"
+        x-init="pollStatus()"
         class="space-y-5"
     >
         <section class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
@@ -77,18 +128,21 @@
                 <div class="relative grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-end">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-black {{ $statusClass }}">
+                            <span class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-black" :class="serverState.status_class">
                                 @if ($server->isDeleting())<span class="size-3 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-600"></span>@endif
-                                {{ $statusLabel }}
+                                <span x-text="serverState.status_label">{{ $statusLabel }}</span>
                             </span>
-                            <span class="rounded-xl px-3 py-1.5 text-xs font-black {{ $provisioningClass }}">{{ $provisioningLabel }}</span>
+                            <span class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-black" :class="serverState.provisioning_class">
+                                <span x-show="serverState.provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
+                                <span x-text="serverState.provisioning_label">{{ $provisioningLabel }}</span>
+                            </span>
                         </div>
                         <h2 class="mt-5 truncate text-4xl font-black leading-tight" dir="ltr">{{ $server->name }}</h2>
-                        <p class="mt-2 truncate text-sm font-bold text-[#9DB4DC]" dir="ltr">{{ $server->hostname ?: 'hostname-not-set' }} · VMID {{ $server->vmid ?: '-' }} · {{ $server->node ?: 'node-not-set' }}</p>
+                        <p class="mt-2 truncate text-sm font-bold text-[#9DB4DC]" dir="ltr" x-text="`${serverState.hostname} · VMID ${serverState.vmid || '-'} · ${serverState.node}`">{{ $server->hostname ?: 'hostname-not-set' }} · VMID {{ $server->vmid ?: '-' }} · {{ $server->node ?: 'node-not-set' }}</p>
                         <div class="mt-6 grid gap-3 sm:grid-cols-3">
                             <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                                 <p class="text-xs font-black text-[#9DB4DC]">IP Address</p>
-                                <p class="mt-2 truncate text-xl font-black" dir="ltr">{{ $server->ip_address ?: 'Pending' }}</p>
+                                <p class="mt-2 truncate text-xl font-black" dir="ltr" x-text="serverState.ip">{{ $server->ip_address ?: 'Pending' }}</p>
                             </div>
                             <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                                 <p class="text-xs font-black text-[#9DB4DC]">Resources</p>
@@ -313,8 +367,8 @@
             <aside class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <h2 class="font-black text-slate-950">چرخه حیات</h2>
                 <div class="mt-4 space-y-3 text-sm">
-                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">وضعیت VM</span><span class="rounded-xl px-3 py-1 text-xs font-black {{ $statusClass }}">{{ $statusLabel }}</span></div>
-                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">Provisioning</span><span class="rounded-xl px-3 py-1 text-xs font-black {{ $provisioningClass }}">{{ $provisioningLabel }}</span></div>
+                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">وضعیت VM</span><span class="rounded-xl px-3 py-1 text-xs font-black" :class="serverState.status_class" x-text="serverState.status_label">{{ $statusLabel }}</span></div>
+                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">Provisioning</span><span class="inline-flex items-center gap-2 rounded-xl px-3 py-1 text-xs font-black" :class="serverState.provisioning_class"><span x-show="serverState.provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span><span x-text="serverState.provisioning_label">{{ $provisioningLabel }}</span></span></div>
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین مشاهده</span><span class="font-black text-slate-950" dir="ltr">{{ $server->last_seen_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین شروع</span><span class="font-black text-slate-950" dir="ltr">{{ $server->last_started_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین توقف</span><span class="font-black text-slate-950" dir="ltr">{{ $server->last_stopped_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
@@ -366,6 +420,148 @@
                     @endforelse
                 </div>
             </div>
+        </section>
+
+        <section
+            class="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-5"
+            x-data="{
+                rebuildDialogOpen: @js($errors->has('rebuild_confirmation') || $errors->has('login_password') || $errors->has('login_username') || $errors->has('hostname') || $errors->has('ssh_public_key')),
+                rebuildConfirmation: @js(old('rebuild_confirmation', '')),
+                rebuildConfirmationExpected: @js($server->name),
+                rebuildAcknowledged: false,
+                submitting: false,
+                openRebuildDialog() {
+                    this.rebuildConfirmation = '';
+                    this.rebuildAcknowledged = false;
+                    this.rebuildDialogOpen = true;
+                    this.$nextTick(() => this.$refs.rebuildConfirmation?.focus());
+                },
+                closeRebuildDialog() {
+                    if (this.submitting) return;
+                    this.rebuildDialogOpen = false;
+                    this.rebuildConfirmation = '';
+                    this.rebuildAcknowledged = false;
+                },
+                canRebuild() {
+                    return this.rebuildAcknowledged && this.rebuildConfirmation.trim() === this.rebuildConfirmationExpected;
+                },
+            }"
+            @keydown.window.escape="closeRebuildDialog()"
+        >
+            <form action="{{ route('customer.servers.rebuild', $server, false) }}" method="POST" x-on:submit="submitting = true">
+                @csrf
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-xs font-black text-amber-700">Rebuild</p>
+                        <h2 class="mt-1 font-black text-amber-950">بازسازی سیستم عامل</h2>
+                        <p class="mt-2 text-sm font-bold leading-7 text-amber-800">دیسک اصلی پاک می شود و VM با همان VMID، IP، منابع و Image فعلی دوباره ساخته می شود. بکاپ ها و دیسک های اضافه جداگانه نگهداری می شوند.</p>
+                        @if ($isRebuilding)
+                            <p class="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-[#0069FF]">
+                                <span class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
+                                بازسازی در حال انجام است
+                            </p>
+                        @elseif ($rebuildError)
+                            <p class="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700">آخرین خطای بازسازی: {{ $rebuildError }}</p>
+                        @endif
+                        @unless ($canRebuild)
+                            <p class="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-bold text-amber-800">بازسازی فقط وقتی ممکن است که سرور آماده باشد، Image فعال باشد و عملیات حذف، provisioning یا ارتقا در جریان نباشد.</p>
+                        @endunless
+                    </div>
+                    <button type="button" @click="openRebuildDialog()" @disabled(! $canRebuild) class="inline-flex w-full shrink-0 items-center justify-center rounded-xl bg-amber-600 px-5 py-3 text-sm font-black text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto">
+                        بازسازی سرور
+                    </button>
+                </div>
+
+                <div
+                    x-cloak
+                    x-show="rebuildDialogOpen"
+                    x-transition.opacity
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="customer-rebuild-dialog-title"
+                >
+                    <div class="w-full max-w-2xl rounded-[1.5rem] border border-amber-200 bg-white p-5 shadow-2xl shadow-slate-950/30" @click.outside="closeRebuildDialog()">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-black text-amber-700">تأیید بازسازی</p>
+                                <h3 id="customer-rebuild-dialog-title" class="mt-1 text-xl font-black text-slate-950">اطلاعات ورود جدید را بررسی کنید</h3>
+                            </div>
+                            <button type="button" @click="closeRebuildDialog()" class="grid size-9 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50" aria-label="بستن">
+                                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-7 text-amber-900">
+                            بازسازی، سیستم عامل و داده های داخل دیسک اصلی را حذف می کند. قبل از ثبت، از بکاپ های لازم مطمئن شوید.
+                        </div>
+
+                        <div class="mt-5 grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label for="hostname" class="block text-xs font-black text-slate-500">Hostname</label>
+                                <input id="hostname" name="hostname" type="text" value="{{ old('hostname', $server->hostname ?: $server->name) }}" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-900 focus:border-[#0069FF] focus:outline-none" dir="ltr">
+                                @error('hostname')<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                            <div>
+                                <label for="login_username" class="block text-xs font-black text-slate-500">Username</label>
+                                <input id="login_username" name="login_username" type="text" value="{{ old('login_username', $server->login_username ?: $server->cloudImage?->default_username) }}" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-900 focus:border-[#0069FF] focus:outline-none" dir="ltr">
+                                @error('login_username')<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="login_password" class="block text-xs font-black text-slate-500">Password</label>
+                                <input id="login_password" name="login_password" type="password" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-900 focus:border-[#0069FF] focus:outline-none" dir="ltr" autocomplete="new-password">
+                                <p class="mt-2 text-xs font-bold leading-6 text-slate-500">اگر خالی بماند رمز فعلی نگه داشته می شود؛ اگر رمز فعلی وجود نداشته باشد و SSH Key هم خالی باشد، رمز امن جدید ساخته می شود.</p>
+                                @error('login_password')<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="ssh_public_key" class="block text-xs font-black text-slate-500">SSH Public Key</label>
+                                <textarea id="ssh_public_key" name="ssh_public_key" rows="3" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-900 focus:border-[#0069FF] focus:outline-none" dir="ltr">{{ old('ssh_public_key', $server->ssh_public_key) }}</textarea>
+                                @error('ssh_public_key')<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+
+                        <label class="mt-5 flex items-start gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-bold leading-7 text-slate-700">
+                            <input type="checkbox" x-model="rebuildAcknowledged" class="mt-1 size-4 rounded border-slate-300 text-[#0069FF] focus:ring-[#0069FF]">
+                            <span>می دانم که دیسک اصلی این سرور پاک می شود و بازگشت فقط از بکاپ ممکن است.</span>
+                        </label>
+
+                        <div class="mt-4">
+                            <label for="rebuild_confirmation" class="block text-xs font-black text-slate-500">نام سرور برای تأیید</label>
+                            <input
+                                id="rebuild_confirmation"
+                                name="rebuild_confirmation"
+                                type="text"
+                                x-ref="rebuildConfirmation"
+                                x-model="rebuildConfirmation"
+                                autocomplete="off"
+                                spellcheck="false"
+                                placeholder="{{ $server->name }}"
+                                class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-900 focus:border-[#0069FF] focus:outline-none"
+                                dir="ltr"
+                            >
+                            @error('rebuild_confirmation')
+                                <p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                            <button type="button" @click="closeRebuildDialog()" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 sm:w-auto">
+                                انصراف
+                            </button>
+                            <button
+                                type="submit"
+                                x-bind:disabled="submitting || !canRebuild()"
+                                class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 py-3 text-sm font-black text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                            >
+                                <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                                <span x-text="submitting ? 'در حال ثبت...' : 'شروع بازسازی'">شروع بازسازی</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
         </section>
 
         @if ($server->isDeleting() && ! $server->delete_failed_at && ! $deleteAttemptIsStale)
