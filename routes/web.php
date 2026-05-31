@@ -98,7 +98,6 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->names('admin.cloud-images');
         Route::resource('ip-pools', IpPoolController::class)
             ->parameters(['ip-pools' => 'ipPool'])
-            ->except(['show'])
             ->names('admin.ip-pools');
 
         Route::prefix('billing')->name('admin.billing.')->group(function (): void {
