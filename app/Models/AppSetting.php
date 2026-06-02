@@ -25,6 +25,18 @@ class AppSetting extends Model
 
     public const KAVENEGAR_TEMPLATE = 'kavenegar.template';
 
+    public const VM_CREATION_CHARGE_ENABLED = 'vm.creation_charge.enabled';
+
+    public const VM_CREATION_CHARGE_PERCENTAGE = 'vm.creation_charge.percentage';
+
+    public const CUSTOMER_UNVERIFIED_VM_LIMIT = 'customer.level.unverified_vm_limit';
+
+    public const CUSTOMER_VERIFIED_VM_LIMIT = 'customer.level.verified_vm_limit';
+
+    public const CUSTOMER_DELETED_VM_COOLDOWN_DAYS = 'customer.level.deleted_vm_cooldown_days';
+
+    public const VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE = 'vm.rebuild_fee.multiplier_percentage';
+
     public static function getValue(string $key, mixed $default = null): mixed
     {
         return Cache::rememberForever("settings.{$key}", function () use ($key, $default): mixed {
@@ -97,5 +109,59 @@ class AppSetting extends Model
             'sms0098' => 'SMS0098',
             'kavenegar' => 'Kavenegar Lookup',
         ];
+    }
+
+    public static function vmCreationChargeEnabled(): bool
+    {
+        return filter_var(static::getValue(self::VM_CREATION_CHARGE_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function vmCreationChargePercentage(): float
+    {
+        $percentage = (float) static::getValue(self::VM_CREATION_CHARGE_PERCENTAGE, 0);
+
+        return max(0, min(100, $percentage));
+    }
+
+    public static function vmCreationChargeAmount(int $monthlyPrice): int
+    {
+        if (! static::vmCreationChargeEnabled()) {
+            return 0;
+        }
+
+        return (int) round($monthlyPrice * static::vmCreationChargePercentage() / 100);
+    }
+
+    public static function unverifiedCustomerVmLimit(): int
+    {
+        return max(0, (int) static::getValue(self::CUSTOMER_UNVERIFIED_VM_LIMIT, 2));
+    }
+
+    public static function verifiedCustomerVmLimit(): int
+    {
+        return max(0, (int) static::getValue(self::CUSTOMER_VERIFIED_VM_LIMIT, 0));
+    }
+
+    public static function deletedVmCooldownDays(): int
+    {
+        return max(0, (int) static::getValue(self::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 30));
+    }
+
+    public static function vmRebuildFeeMultiplierPercentage(): float
+    {
+        $percentage = (float) static::getValue(self::VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE, 50);
+
+        return max(0, min(100, $percentage));
+    }
+
+    public static function vmRebuildFeeAmount(int $monthlyPrice): int
+    {
+        $creationCharge = static::vmCreationChargeAmount($monthlyPrice);
+
+        if ($creationCharge <= 0) {
+            return 0;
+        }
+
+        return (int) round($creationCharge * static::vmRebuildFeeMultiplierPercentage() / 100);
     }
 }

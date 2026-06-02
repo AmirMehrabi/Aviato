@@ -95,7 +95,7 @@ class ApplyVmUpgradeJob implements ShouldQueue
     private function applyExtraDisk(VmUpgradeOrder $order, VirtualMachine $vm, ProxmoxService $proxmox): array
     {
         $config = $proxmox->vmConfig($vm->proxmoxServer, $vm->node, (int) $vm->vmid);
-        $device = $proxmox->nextScsiDiskDevice($config);
+        $device = $this->nextScsiDiskDevice($config);
         $result = $proxmox->attachDisk($vm->proxmoxServer, $vm->node, (int) $vm->vmid, [
             'device' => $device,
             'storage' => (string) ($order->after_snapshot['storage'] ?? $vm->storage),
@@ -169,6 +169,22 @@ class ApplyVmUpgradeJob implements ShouldQueue
                 'failure_reason' => $exception->getMessage(),
             ])->save();
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    private function nextScsiDiskDevice(array $config): string
+    {
+        for ($slot = 1; $slot <= 30; $slot++) {
+            $device = 'scsi'.$slot;
+
+            if (! array_key_exists($device, $config)) {
+                return $device;
+            }
+        }
+
+        throw new \RuntimeException('No free SCSI disk slot is available for this VM.');
     }
 
     /**

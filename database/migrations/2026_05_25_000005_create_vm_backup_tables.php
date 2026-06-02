@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -51,20 +50,6 @@ return new class extends Migration
             $table->index(['status', 'created_at']);
             $table->unique('volid');
         });
-
-        if (Schema::hasTable('resource_rates') && ! DB::table('resource_rates')->where('resource', 'backup_gb')->exists()) {
-            DB::table('resource_rates')->insert([
-                'resource' => 'backup_gb',
-                'label' => 'Backup Storage',
-                'unit' => 'GB',
-                'hourly_price' => 6000 / 730,
-                'monthly_price' => 6000,
-                'billing_policy' => 'always',
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
     }
 
     public function down(): void

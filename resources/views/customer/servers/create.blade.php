@@ -23,11 +23,13 @@
 @section('content')
     <section
         x-data="customerVmCreate({
-            canCreate: @js($canCreateVps),
             walletBalance: @js($wallet->balance),
             walletBalanceLabel: @js($wallets->format($wallet->balance)),
-            minimumBalanceLabel: @js($wallets->format($minimumCreateBalance)),
+            vmCreationChargeEnabled: @js($vmCreationChargeEnabled),
+            vmCreationChargePercentage: @js($vmCreationChargePercentage),
             walletUrl: @js(route('customer.wallet.show', [], false)),
+            profileUrl: @js(route('customer.profile.show', [], false)),
+            quota: @js($quota),
             osFamilies: @js($osFamilies),
             bundles: @js($bundles->map(fn ($bundle) => [
                 'id' => $bundle->id,
@@ -37,6 +39,10 @@
                 'disk_gb' => $bundle->disk_gb,
                 'price' => $wallets->format($bundle->monthly_price),
                 'monthly_price' => $bundle->monthly_price,
+                'minimum_create_balance' => max((int) ceil($bundle->monthly_price / 2), \App\Models\AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price)),
+                'minimum_create_balance_label' => $wallets->format(max((int) ceil($bundle->monthly_price / 2), \App\Models\AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price))),
+                'creation_charge_amount' => \App\Models\AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price),
+                'creation_charge_label' => $wallets->format(\App\Models\AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price)),
                 'description' => $bundle->description ?: 'منابع پایدار برای VPS ابری',
             ])->values()),
             images: @js($cloudImages->map(fn ($image) => [
@@ -195,8 +201,21 @@
                     <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class="font-black text-slate-950" dir="ltr" x-text="`${form.cpu_cores} CPU / ${form.ram_gb}GB / ${form.disk_gb}GB`"></span></div>
                     <div class="rounded-lg bg-slate-50 p-4">
                         <p class="text-xs font-black text-slate-500">کیف پول</p>
-                        <p class="mt-2 text-xl font-black" :class="canCreate ? 'text-emerald-700' : 'text-red-700'" x-text="walletBalanceLabel"></p>
+                        <p class="mt-2 text-xl font-black" :class="walletCanCreate ? 'text-emerald-700' : 'text-red-700'" x-text="walletBalanceLabel"></p>
                         <p class="mt-1 text-xs leading-6 text-slate-500">حداقل موجودی برای ساخت VPS: <span x-text="minimumBalanceLabel"></span></p>
+                    </div>
+                    <div class="rounded-lg bg-slate-50 p-4">
+                        <p class="text-xs font-black text-slate-500">سهمیه ساخت</p>
+                        <p class="mt-2 text-xl font-black" :class="quota.can_create ? 'text-emerald-700' : 'text-red-700'">
+                            <span x-text="quota.limit > 0 ? `${quota.used} / ${quota.limit}` : `${quota.used} / بدون سقف`"></span>
+                        </p>
+                        <p class="mt-1 text-xs leading-6 text-slate-500" x-text="quota.verified ? 'حساب با کد ملی تایید شده است.' : 'حساب هنوز با کد ملی تایید نشده است.'"></p>
+                        <p x-show="quota.cooldown_count > 0" class="mt-1 text-xs leading-6 text-amber-700" x-text="`${quota.cooldown_count} ماشین حذف شده هنوز در cooldown سهمیه است.`"></p>
+                    </div>
+                    <div x-show="vmCreationChargeEnabled" class="rounded-lg bg-slate-50 p-4">
+                        <p class="text-xs font-black text-slate-500">هزینه اولیه ساخت</p>
+                        <p class="mt-2 text-2xl font-black text-slate-950" x-text="creationChargeLabel"></p>
+                        <p class="mt-1 text-xs leading-6 text-slate-500"><span x-text="vmCreationChargePercentage"></span>٪ از قیمت ماهانه پلن انتخابی</p>
                     </div>
                     <div class="rounded-lg bg-slate-50 p-4">
                         <p class="text-xs font-black text-slate-500">هزینه ماهانه تقریبی</p>
@@ -208,8 +227,10 @@
                     <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
                     <span x-text="submitting ? 'در حال ثبت درخواست...' : 'ساخت VPS'"></span>
                 </button>
-                <a x-show="!canCreate" :href="walletUrl" class="mt-3 inline-flex w-full justify-center rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] px-4 py-3 text-sm font-black text-[#0069FF]">افزایش موجودی کیف پول</a>
-                <p x-show="!canCreate" class="mt-3 text-xs leading-6 text-red-600">برای ساخت VPS موجودی کیف پول باید حداقل <span x-text="minimumBalanceLabel"></span> باشد.</p>
+                <a x-show="!walletCanCreate" :href="walletUrl" class="mt-3 inline-flex w-full justify-center rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] px-4 py-3 text-sm font-black text-[#0069FF]">افزایش موجودی کیف پول</a>
+                <p x-show="!walletCanCreate" class="mt-3 text-xs leading-6 text-red-600">برای ساخت VPS موجودی کیف پول باید حداقل <span x-text="minimumBalanceLabel"></span> باشد.</p>
+                <a x-show="!quota.can_create && !quota.verified" :href="profileUrl" class="mt-3 inline-flex w-full justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">تایید کد ملی در پروفایل</a>
+                <p x-show="!quota.can_create" class="mt-3 text-xs leading-6 text-red-600" x-text="quota.message"></p>
             </div>
         </aside>
     </section>
@@ -217,11 +238,14 @@
     <script>
     function customerVmCreate(config) {
         return {
-            canCreate: config.canCreate,
             submitting: false,
+            walletBalance: Number(config.walletBalance || 0),
             walletBalanceLabel: config.walletBalanceLabel,
-            minimumBalanceLabel: config.minimumBalanceLabel,
+            vmCreationChargeEnabled: config.vmCreationChargeEnabled,
+            vmCreationChargePercentage: config.vmCreationChargePercentage,
             walletUrl: config.walletUrl,
+            profileUrl: config.profileUrl,
+            quota: config.quota,
             osFamilies: config.osFamilies,
             bundles: config.bundles,
             images: config.images,
@@ -259,6 +283,18 @@
             get cloudInitEnabled() { return this.selectedImage ? Boolean(this.selectedImage.cloud_init_enabled) : true; },
             get selectedOsLabel() {
                 return this.osFamilies.find((family) => family.key === this.form.os_family)?.label || '';
+            },
+            get minimumBalanceLabel() {
+                return this.selectedBundle?.minimum_create_balance_label || '—';
+            },
+            get creationChargeLabel() {
+                return this.selectedBundle?.creation_charge_label || '—';
+            },
+            get walletCanCreate() {
+                return this.selectedBundle && this.walletBalance >= Number(this.selectedBundle.minimum_create_balance || 0);
+            },
+            get canCreate() {
+                return this.walletCanCreate && Boolean(this.quota.can_create);
             },
             get canSubmit() {
                 return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && this.form.name.trim().length > 0;

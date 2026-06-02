@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'email_verified_at', 'email_verification_code', 'email_verification_expires_at', 'status', 'suspended_at', 'suspension_reason'])]
+#[Fillable(['name', 'email', 'phone', 'national_code', 'national_code_hash', 'national_code_verified_at', 'password', 'email_verified_at', 'email_verification_code', 'email_verification_expires_at', 'status', 'suspended_at', 'suspension_reason'])]
 #[Hidden(['password', 'remember_token'])]
 class Customer extends Authenticatable
 {
@@ -26,6 +27,7 @@ class Customer extends Authenticatable
     {
         static::created(function (Customer $customer): void {
             $customer->wallet()->firstOrCreate([], ['balance' => 0]);
+            $customer->ensureDefaultProject();
         });
     }
 
@@ -52,6 +54,36 @@ class Customer extends Authenticatable
     public function virtualMachines(): HasMany
     {
         return $this->hasMany(VirtualMachine::class);
+    }
+
+    public function ownedProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'owner_customer_id');
+    }
+
+    public function projectMemberships(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    public function ensureDefaultProject(): Project
+    {
+        $project = $this->ownedProjects()->where('is_default', true)->first();
+
+        if (! $project) {
+            $project = $this->ownedProjects()->create([
+                'name' => 'Default Project',
+                'slug' => $this->uniqueProjectSlug('default-project'),
+                'is_default' => true,
+            ]);
+        }
+
+        $project->members()->firstOrCreate(
+            ['customer_id' => $this->id],
+            ['role' => ProjectMember::ROLE_OWNER],
+        );
+
+        return $project;
     }
 
     public function vmUpgradeOrders(): HasMany
@@ -82,6 +114,11 @@ class Customer extends Authenticatable
         return $this->status === self::STATUS_SUSPENDED;
     }
 
+    public function hasVerifiedNationalCode(): bool
+    {
+        return $this->national_code_verified_at !== null;
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -92,8 +129,23 @@ class Customer extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'email_verification_expires_at' => 'datetime',
+            'national_code_verified_at' => 'datetime',
+            'national_code' => 'encrypted',
             'suspended_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    private function uniqueProjectSlug(string $base): string
+    {
+        $slug = Str::slug($base) ?: 'project';
+        $candidate = $slug;
+        $suffix = 2;
+
+        while ($this->ownedProjects()->where('slug', $candidate)->exists()) {
+            $candidate = $slug.'-'.$suffix++;
+        }
+
+        return $candidate;
     }
 }

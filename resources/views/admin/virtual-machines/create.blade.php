@@ -49,6 +49,19 @@
         <div class="grid gap-5 md:grid-cols-2">
             <x-form.select name="customer_id" label="مشتری" :selected="$selectedCustomerId" :options="$customers->prepend('انتخاب مشتری', '')" />
             <label>
+                <span class="text-sm font-black text-slate-700">Project</span>
+                <select name="project_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                    <option value="">Default Project مشتری</option>
+                    @foreach($projects as $project)
+                        <option value="{{ $project->id }}" @selected((string) old('project_id') === (string) $project->id)>
+                            {{ $project->name }} - {{ $project->owner?->name }}
+                        </option>
+                    @endforeach
+                </select>
+                <p class="mt-1 text-xs text-slate-500">اگر خالی باشد VM داخل Default Project مشتری انتخاب شده ساخته می‌شود.</p>
+                @error('project_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+            </label>
+            <label>
                 <span class="text-sm font-black text-slate-700">Cloud Image</span>
                 <select name="cloud_image_id" x-model="form.cloud_image_id" @change="applyImage()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
                     <option value="">انتخاب Image</option>

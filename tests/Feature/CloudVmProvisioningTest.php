@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Jobs\RebuildCloudVirtualMachine;
+use App\Models\AppSetting;
 use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\IpAddress;
@@ -225,8 +226,9 @@ class CloudVmProvisioningTest extends TestCase
         Bus::fake();
 
         $customer = Customer::factory()->create();
-        $customer->wallet()->update(['balance' => 999999]);
+        $customer->wallet()->update(['balance' => 4799999]);
         [$image, $bundle] = $this->catalog();
+        $bundle->update(['monthly_price' => 9600000]);
 
         $this->actingAs($customer, 'customer');
         $this->from($this->customerBaseUrl.'/servers/create')->post($this->customerBaseUrl.'/servers', [
@@ -241,6 +243,215 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertDatabaseCount('virtual_machines', 0);
         $this->assertDatabaseCount('ip_addresses', 0);
         Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_enabled_vm_creation_charge_is_collected_from_wallet(): void
+    {
+        Bus::fake();
+
+        AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_ENABLED, true, 'boolean', 'billing');
+        AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_PERCENTAGE, 10, 'float', 'billing');
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
+        });
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 4800000]);
+        [$image, $bundle] = $this->catalog();
+        $bundle->update(['monthly_price' => 9600000]);
+
+        $this->actingAs($customer, 'customer');
+        $this->post($this->customerBaseUrl.'/servers', [
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'charged-vps',
+            'hostname' => 'ubuntu-charged-vps',
+            'login_username' => 'ubuntu',
+        ])->assertRedirect($this->customerBaseUrl.'/servers');
+
+        $vm = VirtualMachine::query()->firstOrFail();
+
+        $this->assertSame(3840000, $customer->wallet()->firstOrFail()->balance);
+        $this->assertDatabaseHas('wallet_transactions', [
+            'customer_id' => $customer->id,
+            'type' => 'charge',
+            'amount' => -960000,
+            'reference_type' => $vm->getMorphClass(),
+            'reference_id' => $vm->id,
+        ]);
+
+        $transaction = $customer->walletTransactions()->firstOrFail();
+        $this->assertSame('vm_creation_fee', $transaction->metadata['category']);
+        $this->assertSame(10, $transaction->metadata['percentage']);
+
+        Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_unverified_customer_cannot_create_more_than_configured_vm_slots(): void
+    {
+        Bus::fake();
+
+        AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 2, 'integer', 'customer');
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestIpAddresses')->twice()->andReturn([]);
+        });
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 10000000]);
+        [$image, $bundle] = $this->catalog('192.168.10.52');
+
+        $this->actingAs($customer, 'customer');
+
+        foreach (['first-vps', 'second-vps'] as $name) {
+            $this->post($this->customerBaseUrl.'/servers', [
+                'cloud_image_id' => $image->id,
+                'vm_bundle_id' => $bundle->id,
+                'name' => $name,
+                'login_username' => 'ubuntu',
+            ])->assertRedirect($this->customerBaseUrl.'/servers');
+        }
+
+        $this->from($this->customerBaseUrl.'/servers/create')
+            ->post($this->customerBaseUrl.'/servers', [
+                'cloud_image_id' => $image->id,
+                'vm_bundle_id' => $bundle->id,
+                'name' => 'third-vps',
+                'login_username' => 'ubuntu',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('virtual_machines', 2);
+    }
+
+    public function test_deleted_vm_keeps_unverified_quota_slot_during_cooldown(): void
+    {
+        Bus::fake();
+
+        AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 2, 'integer', 'customer');
+        AppSetting::setValue(AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 30, 'integer', 'customer');
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 10000000]);
+        [$image, $bundle] = $this->catalog();
+
+        foreach (['deleted-a', 'deleted-b'] as $name) {
+            VirtualMachine::create([
+                'customer_id' => $customer->id,
+                'proxmox_server_id' => $image->proxmox_server_id,
+                'vm_bundle_id' => $bundle->id,
+                'cloud_image_id' => $image->id,
+                'name' => $name,
+                'node' => $image->node,
+                'cpu_cores' => 2,
+                'ram_gb' => 4,
+                'disk_gb' => 40,
+                'ip_count' => 1,
+                'status' => VirtualMachine::STATUS_DELETED,
+                'provisioning_status' => VirtualMachine::PROVISION_READY,
+                'deleted_at' => now()->subDays(3),
+            ]);
+        }
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/create')
+            ->post($this->customerBaseUrl.'/servers', [
+                'cloud_image_id' => $image->id,
+                'vm_bundle_id' => $bundle->id,
+                'name' => 'blocked-by-cooldown',
+                'login_username' => 'ubuntu',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('virtual_machines', 2);
+    }
+
+    public function test_deleted_vm_no_longer_counts_after_cooldown(): void
+    {
+        Bus::fake();
+
+        AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 2, 'integer', 'customer');
+        AppSetting::setValue(AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 30, 'integer', 'customer');
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
+        });
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 10000000]);
+        [$image, $bundle] = $this->catalog();
+
+        VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'name' => 'old-deleted',
+            'node' => $image->node,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_DELETED,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'deleted_at' => now()->subDays(31),
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->post($this->customerBaseUrl.'/servers', [
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'allowed-after-cooldown',
+            'login_username' => 'ubuntu',
+        ])->assertRedirect($this->customerBaseUrl.'/servers');
+
+        $this->assertDatabaseCount('virtual_machines', 2);
+    }
+
+    public function test_verified_customer_uses_configured_verified_vm_limit(): void
+    {
+        Bus::fake();
+
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFIED_VM_LIMIT, 1, 'integer', 'customer');
+
+        $customer = Customer::factory()->create([
+            'national_code' => '0100000002',
+            'national_code_hash' => hash('sha256', '0100000002'),
+            'national_code_verified_at' => now(),
+        ]);
+        $customer->wallet()->update(['balance' => 10000000]);
+        [$image, $bundle] = $this->catalog();
+
+        VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'name' => 'existing-vps',
+            'node' => $image->node,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/create')
+            ->post($this->customerBaseUrl.'/servers', [
+                'cloud_image_id' => $image->id,
+                'vm_bundle_id' => $bundle->id,
+                'name' => 'blocked-verified-vps',
+                'login_username' => 'ubuntu',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('virtual_machines', 1);
     }
 
     public function test_customer_create_rejects_bundle_not_whitelisted_for_image(): void
@@ -385,6 +596,56 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertSame('new-password', $vm->login_password);
         $this->assertNotNull(data_get($vm->remote_state, 'rebuild_started_at'));
 
+        Bus::assertDispatched(RebuildCloudVirtualMachine::class);
+    }
+
+    public function test_customer_rebuild_charges_configured_rebuild_fee(): void
+    {
+        Bus::fake();
+
+        AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_ENABLED, true, 'boolean', 'billing');
+        AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_PERCENTAGE, 10, 'float', 'billing');
+        AppSetting::setValue(AppSetting::VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE, 50, 'float', 'billing');
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 500000]);
+        [$image, $bundle] = $this->catalog();
+        $bundle->update(['monthly_price' => 1000000]);
+
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'vmid' => 108,
+            'template_vmid' => $image->template_vmid,
+            'name' => 'rebuild-fee',
+            'hostname' => 'rebuild-fee',
+            'node' => $image->node,
+            'storage' => $image->storage,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'last_billed_at' => now(),
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/rebuild', [
+            'rebuild_confirmation' => 'rebuild-fee',
+        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid);
+
+        $this->assertSame(450000, $customer->wallet()->firstOrFail()->balance);
+        $this->assertDatabaseHas('wallet_transactions', [
+            'customer_id' => $customer->id,
+            'type' => 'charge',
+            'amount' => -50000,
+            'reference_type' => $vm->getMorphClass(),
+            'reference_id' => $vm->id,
+        ]);
+        $this->assertSame('vm_rebuild_fee', $customer->walletTransactions()->firstOrFail()->metadata['category']);
         Bus::assertDispatched(RebuildCloudVirtualMachine::class);
     }
 

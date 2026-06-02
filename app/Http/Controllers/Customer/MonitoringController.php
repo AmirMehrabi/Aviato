@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
+use App\Services\ProjectAccessService;
 use App\Services\ProxmoxService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -18,14 +19,17 @@ class MonitoringController extends Controller
 {
     public function __construct(
         private readonly WalletService $wallets,
+        private readonly ProjectAccessService $projects,
         private readonly ProxmoxService $proxmox,
     ) {}
 
     public function index(Request $request): View
     {
         $customer = $request->user('customer');
+        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_unless($this->projects->canViewVms($activeProject, $customer), 404);
         $wallet = $this->wallets->walletFor($customer);
-        $servers = $customer->virtualMachines()
+        $servers = $activeProject->virtualMachines()
             ->notDeleted()
             ->with([
                 'proxmoxServer',
@@ -41,6 +45,9 @@ class MonitoringController extends Controller
 
         return view('customer.monitoring.index', [
             'customer' => $customer,
+            'activeProject' => $activeProject,
+            'activeMembership' => $this->projects->membership($activeProject, $customer),
+            'projects' => $this->projects->projectsFor($customer),
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'servers' => $servers,
@@ -66,7 +73,7 @@ class MonitoringController extends Controller
 
     public function metrics(Request $request, VirtualMachine $virtualMachine): JsonResponse
     {
-        $this->authorizeCustomerVm($request, $virtualMachine);
+        $this->projects->resolveCustomerVm($request, $virtualMachine);
 
         $data = $request->validate([
             'timeframe' => ['nullable', Rule::in(['hour', 'day', 'week', 'month', 'year'])],
@@ -115,12 +122,6 @@ class MonitoringController extends Controller
                 'error' => $exception->getMessage(),
             ], 422);
         }
-    }
-
-    private function authorizeCustomerVm(Request $request, VirtualMachine $vm): void
-    {
-        abort_unless($vm->customer_id === $request->user('customer')->id, 404);
-        abort_if($vm->isDeleted(), 404);
     }
 
     /**

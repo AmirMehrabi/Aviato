@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Services\PaymentService;
+use App\Services\ProjectAccessService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -14,12 +15,15 @@ class PaymentController extends Controller
 {
     public function __construct(
         private readonly PaymentService $payments,
+        private readonly ProjectAccessService $projects,
         private readonly WalletService $wallets,
     ) {}
 
     public function storeTopUp(Request $request): RedirectResponse
     {
         $customer = $request->user('customer');
+        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_unless((int) $activeProject->owner_customer_id === (int) $customer->id, 404);
         $data = $request->validate([
             'amount' => ['nullable', 'required_without:custom_amount', 'integer', 'min:10000', 'max:500000000'],
             'custom_amount' => ['nullable', 'required_without:amount', 'integer', 'min:10000', 'max:500000000'],

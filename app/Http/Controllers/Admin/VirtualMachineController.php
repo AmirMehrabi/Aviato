@@ -7,6 +7,7 @@ use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\IpAddress;
+use App\Models\Project;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
@@ -37,6 +38,7 @@ class VirtualMachineController extends Controller
     {
         $filters = $request->validate([
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'status' => ['nullable', Rule::in([
                 VirtualMachine::STATUS_RUNNING,
                 VirtualMachine::STATUS_STOPPED,
@@ -48,8 +50,9 @@ class VirtualMachineController extends Controller
         ]);
 
         $vms = VirtualMachine::query()
-            ->with(['customer', 'proxmoxServer', 'bundle', 'cloudImage'])
+            ->with(['customer', 'project.owner', 'creator', 'proxmoxServer', 'bundle', 'cloudImage'])
             ->when($filters['customer_id'] ?? null, fn ($query, int $customerId) => $query->where('customer_id', $customerId))
+            ->when($filters['project_id'] ?? null, fn ($query, int $projectId) => $query->where('project_id', $projectId))
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
@@ -66,6 +69,7 @@ class VirtualMachineController extends Controller
             'vms' => $vms,
             'filters' => $filters,
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id'),
+            'projects' => Project::query()->orderBy('name')->pluck('name', 'id'),
             'billing' => $this->billing,
         ]);
     }
@@ -74,6 +78,7 @@ class VirtualMachineController extends Controller
     {
         return view('admin.virtual-machines.create', [
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id'),
+            'projects' => Project::query()->with('owner')->orderBy('name')->get(),
             'servers' => ProxmoxServer::query()
                 ->where('is_active', true)
                 ->where('maintenance_mode', false)
@@ -107,6 +112,7 @@ class VirtualMachineController extends Controller
     {
         $data = $this->validatedForCloud($request);
         $customer = Customer::findOrFail($data['customer_id']);
+        $project = $this->resolveProjectForCustomer($customer, $data['project_id'] ?? null);
         $image = CloudImage::query()
             ->where('is_active', true)
             ->with('allowedBundles')
@@ -121,7 +127,7 @@ class VirtualMachineController extends Controller
         }
 
         try {
-            $result = $this->cloudProvisioning->create($customer, $data);
+            $result = $this->cloudProvisioning->create($customer, $data, project: $project);
             $vm = $result['vm'];
             $message = 'Cloud VM provisioning queued. IP: '.$vm->ip_address.'.';
 
@@ -143,6 +149,8 @@ class VirtualMachineController extends Controller
     {
         $virtualMachine->load([
             'customer',
+            'project.owner',
+            'creator',
             'proxmoxServer',
             'bundle',
             'cloudImage',
@@ -235,6 +243,10 @@ class VirtualMachineController extends Controller
         }
 
         $virtualMachine->fill($this->validated($request, $virtualMachine));
+        if ($virtualMachine->project_id) {
+            $virtualMachine->loadMissing('project');
+            $virtualMachine->customer_id = $virtualMachine->project?->owner_customer_id ?? $virtualMachine->customer_id;
+        }
         $this->applyBundleHardware($virtualMachine);
         $virtualMachine->desired_state = $virtualMachine->desiredStateSnapshot();
         $virtualMachine->save();
@@ -328,6 +340,7 @@ class VirtualMachineController extends Controller
         return [
             'vm' => $vm,
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id'),
+            'projects' => Project::query()->with('owner')->orderBy('name')->get(),
             'servers' => ProxmoxServer::query()->orderBy('name')->pluck('name', 'id'),
             'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
         ];
@@ -337,6 +350,7 @@ class VirtualMachineController extends Controller
     {
         $data = $request->validate([
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'cloud_image_id' => ['required', 'integer', 'exists:cloud_images,id'],
             'vm_bundle_id' => ['nullable', 'integer', 'exists:vm_bundles,id'],
             'name' => ['required', 'string', 'max:255'],
@@ -361,6 +375,7 @@ class VirtualMachineController extends Controller
     {
         return $request->validate([
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'proxmox_server_id' => ['required', 'integer', 'exists:proxmox_servers,id'],
             'vm_bundle_id' => ['nullable', 'integer', 'exists:vm_bundles,id'],
             'vmid' => ['nullable', 'integer', 'min:1'],
@@ -402,5 +417,16 @@ class VirtualMachineController extends Controller
         $vm->ram_gb = $bundle->ram_gb;
         $vm->disk_gb = $bundle->disk_gb;
         $vm->ip_count = $bundle->ip_count;
+    }
+
+    private function resolveProjectForCustomer(Customer $customer, ?int $projectId): Project
+    {
+        if ($projectId) {
+            return Project::query()
+                ->where('owner_customer_id', $customer->id)
+                ->findOrFail($projectId);
+        }
+
+        return $customer->ensureDefaultProject();
     }
 }

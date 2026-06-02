@@ -21,6 +21,8 @@ use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\MonitoringController;
 use App\Http\Controllers\Customer\PaymentController;
+use App\Http\Controllers\Customer\ProfileController;
+use App\Http\Controllers\Customer\ProjectController;
 use App\Http\Controllers\Customer\ServerConsoleController;
 use App\Http\Controllers\Customer\ServerController;
 use App\Http\Controllers\Customer\VmUpgradeController;
@@ -168,6 +170,15 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
 
     Route::middleware('auth:customer')->group(function () use ($customerHome) {
         Route::get($customerHome, DashboardController::class)->name('dashboard');
+        Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
+        Route::patch('profile/national-code', [ProfileController::class, 'updateNationalCode'])->name('customer.profile.national-code.update');
+        Route::post('projects/switch', [ProjectController::class, 'switch'])->name('customer.projects.switch');
+        Route::get('projects', [ProjectController::class, 'index'])->name('customer.projects.index');
+        Route::post('projects', [ProjectController::class, 'store'])->name('customer.projects.store');
+        Route::get('projects/{project}', [ProjectController::class, 'show'])->name('customer.projects.show');
+        Route::post('projects/{project}/members', [ProjectController::class, 'storeMember'])->name('customer.projects.members.store');
+        Route::patch('projects/{project}/members/{member}', [ProjectController::class, 'updateMember'])->name('customer.projects.members.update');
+        Route::delete('projects/{project}/members/{member}', [ProjectController::class, 'destroyMember'])->name('customer.projects.members.destroy');
         Route::get('servers', [ServerController::class, 'index'])->name('customer.servers.index');
         Route::get('servers/create', [ServerController::class, 'create'])->name('customer.servers.create');
         Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');

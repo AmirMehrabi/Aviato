@@ -3,6 +3,18 @@
     <x-form.input name="name" label="نام VM" :value="$vm->name" dir-ltr />
     <x-form.input name="hostname" label="Hostname" :value="$vm->hostname" dir-ltr />
     <x-form.select name="customer_id" label="مشتری" :selected="$vm->customer_id" :options="$customers->prepend('انتخاب مشتری', '')" />
+    <label>
+        <span class="text-sm font-black text-slate-700">Project</span>
+        <select name="project_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+            <option value="">Default Project مشتری</option>
+            @foreach($projects as $project)
+                <option value="{{ $project->id }}" @selected((string) old('project_id', $vm->project_id) === (string) $project->id)>
+                    {{ $project->name }} - {{ $project->owner?->name }}
+                </option>
+            @endforeach
+        </select>
+        @error('project_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+    </label>
     <x-form.select name="proxmox_server_id" label="Proxmox Server" :selected="$vm->proxmox_server_id" :options="$servers->prepend('بدون اتصال فعلا', '')" />
     <label class="block md:col-span-2"><span class="text-sm font-black text-slate-700">باندل سخت‌افزاری</span><select name="vm_bundle_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none"><option value="">Custom منابع دستی</option>@foreach($bundles as $bundle)<option value="{{ $bundle->id }}" @selected((string) old('vm_bundle_id', $vm->vm_bundle_id) === (string) $bundle->id)>{{ $bundle->name }} - {{ $bundle->cpu_cores }} CPU / {{ $bundle->ram_gb }}GB RAM / {{ $bundle->disk_gb }}GB - {{ app(App\Services\WalletService::class)->format($bundle->monthly_price) }}</option>@endforeach</select>@error('vm_bundle_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror<p class="mt-1 text-xs text-slate-500">اگر باندل انتخاب شود CPU/RAM/Disk/IP از باندل برداشته می‌شود.</p></label>
     <x-form.input name="cpu_cores" type="number" label="CPU Core" :value="$vm->cpu_cores" />

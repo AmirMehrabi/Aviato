@@ -101,6 +101,27 @@ class BillingService
         ];
     }
 
+    public function projectSummary(int $projectId): array
+    {
+        $vms = VirtualMachine::query()
+            ->notDeleted()
+            ->with(['bundle', 'disks'])
+            ->where('project_id', $projectId)
+            ->get();
+
+        return [
+            'running' => $vms->where('status', VirtualMachine::STATUS_RUNNING)->count(),
+            'stopped' => $vms->where('status', VirtualMachine::STATUS_STOPPED)->count(),
+            'monthly_spend' => $vms
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->sum(fn (VirtualMachine $vm): int => ($vm->isRunning() ? $this->estimateMonthly($vm) : $this->estimateStoppedMonthly($vm))
+                    + $vm->disks->where('status', VmDisk::STATUS_READY)->sum(fn (VmDisk $disk): int => (int) round($this->extraDiskHourly($disk) * ResourceRate::hoursPerMonth()))),
+            'unbilled_accrued' => $vms
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->sum(fn (VirtualMachine $vm): int => $this->currentAccrued($vm)),
+        ];
+    }
+
     /** @return Collection<string, ResourceRate> */
     private function rates(): Collection
     {
