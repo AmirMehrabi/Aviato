@@ -47,16 +47,18 @@ class AdminNationalCodeVerificationSettingsTest extends TestCase
             'vm_rebuild_fee_multiplier_percentage' => 50,
         ];
 
-        $this->patch($this->adminBaseUrl.'/settings', $basePayload)
+        $this->from($this->adminBaseUrl.'/settings')
+            ->patch($this->adminBaseUrl.'/settings', $basePayload)
             ->assertRedirect($this->adminBaseUrl.'/settings')
             ->assertSessionHas('status');
 
         $this->assertFalse(AppSetting::nationalCodeVerificationEnabled());
 
-        $this->patch($this->adminBaseUrl.'/settings', array_merge($basePayload, [
-            'national_code_verification_enabled' => 1,
-            'national_code_verification_token' => 'shahkar-secret',
-        ]))
+        $this->from($this->adminBaseUrl.'/settings')
+            ->patch($this->adminBaseUrl.'/settings', array_merge($basePayload, [
+                'national_code_verification_enabled' => 1,
+                'national_code_verification_token' => 'shahkar-secret',
+            ]))
             ->assertRedirect($this->adminBaseUrl.'/settings')
             ->assertSessionHas('status');
 
