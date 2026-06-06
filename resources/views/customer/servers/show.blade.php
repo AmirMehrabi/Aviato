@@ -238,12 +238,12 @@
                         </div>
                     </div>
 
-                    <div class="rounded-2xl border border-slate-200 p-4">
-                        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                            <div class="min-w-0">
+                    <div class="overflow-hidden rounded-2xl border border-slate-200 p-4">
+                        <div class="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-xs font-black text-slate-500">SSH Public Key</p>
                                 @if ($hasSshKey)
-                                    <p class="mt-2 truncate text-sm font-bold text-slate-700" dir="ltr">{{ $server->ssh_public_key }}</p>
+                                    <code class="mt-2 block max-w-full whitespace-pre-wrap break-all rounded-xl bg-slate-50 p-3 text-left text-xs font-bold leading-6 text-slate-700" dir="ltr">{{ $server->ssh_public_key }}</code>
                                 @else
                                     <p class="mt-2 text-sm font-bold text-slate-500">کلید SSH برای این ماشین ثبت نشده است.</p>
                                 @endif

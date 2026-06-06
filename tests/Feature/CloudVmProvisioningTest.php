@@ -26,6 +26,8 @@ class CloudVmProvisioningTest extends TestCase
 
     private string $customerBaseUrl = 'https://cp.localhost';
 
+    private const VALID_SSH_PUBLIC_KEY = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEaZGz5J0yLGlSd0oJ2vI4+HMH8YMft24+XUeUd/K5Xy customer@example.com';
+
     public function test_customer_can_queue_cloud_vps_and_reserve_ip(): void
     {
         Bus::fake();
@@ -43,7 +45,7 @@ class CloudVmProvisioningTest extends TestCase
             'name' => 'customer-vps-101',
             'hostname' => 'customer-vps-101',
             'login_username' => 'ubuntu',
-            'ssh_public_key' => 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey customer@example.com',
+            'ssh_public_key' => self::VALID_SSH_PUBLIC_KEY,
         ])->assertRedirect($this->customerBaseUrl.'/servers');
 
         $vm = VirtualMachine::query()->firstOrFail();
@@ -130,6 +132,30 @@ class CloudVmProvisioningTest extends TestCase
                 'vm_bundle_id' => $bundle->id,
                 'login_username' => 'ubuntu',
                 'ssh_public_key' => 'not-a-public-key',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHasErrors('ssh_public_key');
+
+        $this->assertDatabaseCount('virtual_machines', 0);
+        Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_customer_create_rejects_ssh_key_with_invalid_decoded_blob(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
+        [$image, $bundle] = $this->catalog();
+        $mismatchedBlob = base64_encode(pack('N', strlen('ssh-rsa')).'ssh-rsa');
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/create')
+            ->post($this->customerBaseUrl.'/servers', [
+                'cloud_image_id' => $image->id,
+                'vm_bundle_id' => $bundle->id,
+                'login_username' => 'ubuntu',
+                'ssh_public_key' => 'ssh-ed25519 '.$mismatchedBlob.' customer@example.com',
             ])
             ->assertRedirect($this->customerBaseUrl.'/servers/create')
             ->assertSessionHasErrors('ssh_public_key');
@@ -239,11 +265,11 @@ class CloudVmProvisioningTest extends TestCase
             'ram_gb' => 4,
             'login_username' => 'ubuntu',
             'login_password' => 'secret-password',
-            'ssh_public_key' => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey customer@example.com\n",
+            'ssh_public_key' => self::VALID_SSH_PUBLIC_KEY."\n",
             'network_bridge' => '',
         ]);
 
-        $this->assertSame('ssh-ed25519%20AAAAC3NzaC1lZDI1NTE5AAAAITestKey%20customer%40example.com', $capturedPayload['sshkeys'] ?? null);
+        $this->assertSame('ssh-ed25519%20AAAAC3NzaC1lZDI1NTE5AAAAIEaZGz5J0yLGlSd0oJ2vI4%2BHMH8YMft24%2BXUeUd%2FK5Xy%20customer%40example.com', $capturedPayload['sshkeys'] ?? null);
         $this->assertArrayNotHasKey('sshkeys', $result['payload']);
         $this->assertArrayNotHasKey('cipassword', $result['payload']);
     }
@@ -265,7 +291,7 @@ class CloudVmProvisioningTest extends TestCase
             'hostname' => 'should-not-apply',
             'login_username' => 'should-not-apply',
             'login_password' => 'should-not-apply',
-            'ssh_public_key' => 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey customer@example.com',
+            'ssh_public_key' => self::VALID_SSH_PUBLIC_KEY,
         ])->assertRedirect($this->customerBaseUrl.'/servers');
 
         $vm = VirtualMachine::query()->firstOrFail();

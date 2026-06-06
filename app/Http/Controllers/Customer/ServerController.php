@@ -696,12 +696,49 @@ class ServerController extends Controller
                 ->values();
 
             foreach ($lines as $line) {
-                if (! preg_match('/^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)\s+[A-Za-z0-9+\/=]+(?:\s+.+)?$/', $line)) {
+                if (! $this->isValidOpenSshPublicKey($line)) {
                     $fail('کلید SSH باید با فرمت OpenSSH public key وارد شود.');
 
                     return;
                 }
             }
         };
+    }
+
+    private function isValidOpenSshPublicKey(string $line): bool
+    {
+        $parts = preg_split('/\s+/', trim($line), 3);
+        $type = $parts[0] ?? '';
+        $encoded = $parts[1] ?? '';
+
+        if (! in_array($type, [
+            'ssh-ed25519',
+            'ssh-rsa',
+            'ecdsa-sha2-nistp256',
+            'ecdsa-sha2-nistp384',
+            'ecdsa-sha2-nistp521',
+            'sk-ssh-ed25519@openssh.com',
+            'sk-ecdsa-sha2-nistp256@openssh.com',
+        ], true)) {
+            return false;
+        }
+
+        if ($encoded === '' || ! preg_match('/^[A-Za-z0-9+\/]+={0,2}$/', $encoded)) {
+            return false;
+        }
+
+        $blob = base64_decode($encoded, true);
+
+        if ($blob === false || strlen($blob) < 8) {
+            return false;
+        }
+
+        $length = unpack('N', substr($blob, 0, 4))[1] ?? 0;
+
+        if ($length <= 0 || strlen($blob) < 4 + $length) {
+            return false;
+        }
+
+        return substr($blob, 4, $length) === $type;
     }
 }

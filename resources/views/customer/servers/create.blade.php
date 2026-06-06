@@ -40,7 +40,7 @@
                 'monthly_price' => $bundle->monthly_price,
                 'minimum_create_balance' => max((int) ceil($bundle->monthly_price / 2), \App\Models\AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price)),
                 'minimum_create_balance_label' => $wallets->format(max((int) ceil($bundle->monthly_price / 2), \App\Models\AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price))),
-                'description' => $bundle->description ?: 'منابع پایدار برای VPS ابری',
+                'description' => $bundle->description ?: '',
             ])->values()),
             images: @js($cloudImages->map(fn ($image) => [
                 'id' => $image->id,
@@ -162,6 +162,7 @@
                                     <span x-show="sshKeyAdded" class="text-xs font-black text-emerald-700">Key added</span>
                                 </span>
                                 <textarea name="ssh_public_key" x-model="form.ssh_public_key" rows="3" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm focus:border-[#0069FF] focus:outline-none" placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."></textarea>
+                                <span x-show="sshKeyInvalid" x-cloak class="mt-1 block text-xs font-bold text-red-600">فرمت کلید SSH معتبر نیست.</span>
                                 @error('ssh_public_key') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                             </label>
                         </div>
@@ -294,13 +295,16 @@
                 return this.walletCanCreate && Boolean(this.quota.can_create);
             },
             get canSubmit() {
-                return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle;
+                return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && !this.sshKeyInvalid;
             },
             get generatedNamePreview() {
                 return `VPS-${this.namePeriod || 'YYMM'}-${this.bundleSpecsToken()}-XXXXXX`;
             },
             get sshKeyAdded() {
                 return this.form.ssh_public_key.trim().length > 0;
+            },
+            get sshKeyInvalid() {
+                return this.cloudInitEnabled && !this.validSshPublicKeyInput(this.form.ssh_public_key);
             },
             imagesForFamily(family) {
                 return this.images.filter((image) => image.os_family === family);
@@ -362,6 +366,28 @@
                 const ram = Number(bundle.ram_gb || this.form.ram_gb || 0);
                 const disk = Number(bundle.disk_gb || this.form.disk_gb || 0);
                 return `${cpu}C${ram}G${disk}G`;
+            },
+            validSshPublicKeyInput(value) {
+                const lines = String(value || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+                if (!lines.length) return true;
+
+                return lines.every((line) => {
+                    const parts = line.split(/\s+/);
+                    const type = parts[0] || '';
+                    const encoded = parts[1] || '';
+                    if (!['ssh-ed25519', 'ssh-rsa', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'sk-ssh-ed25519@openssh.com', 'sk-ecdsa-sha2-nistp256@openssh.com'].includes(type)) return false;
+                    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return false;
+
+                    try {
+                        const decoded = atob(encoded);
+                        if (decoded.length < 8) return false;
+                        const length = (decoded.charCodeAt(0) << 24) | (decoded.charCodeAt(1) << 16) | (decoded.charCodeAt(2) << 8) | decoded.charCodeAt(3);
+                        if (length <= 0 || decoded.length < 4 + length) return false;
+                        return decoded.slice(4, 4 + length) === type;
+                    } catch (error) {
+                        return false;
+                    }
+                });
             },
             logoText(key) {
                 return { ubuntu: 'U', debian: 'D', rocky: 'R', windows: 'W' }[key] || 'OS';
