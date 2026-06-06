@@ -57,7 +57,42 @@ after('deploy:vendors', 'npm:build');
 // Laravel recipe already runs php artisan migrate --force.
 // Do not add another migration hook, or migrations may run twice.
 
-after('deploy:success', 'artisan:queue:restart');
+task('supervisor:deploy', function () {
+    $supervisorDir = '/etc/supervisor/conf.d';
+    $programs = [
+        'aviato-horizon.conf',
+        'aviato-scheduler.conf',
+    ];
+    $legacyPrograms = [
+        'aviato-queue-default.conf',
+        'aviato-queue-deletions.conf',
+        'aviato-queue-provisioning.conf',
+        'aviato-queue-backups.conf',
+        'aviato-queue-upgrades.conf',
+    ];
+
+    run('cd {{release_path}} && php artisan horizon:terminate');
+
+    foreach ($legacyPrograms as $program) {
+        run('sudo -n rm -f '.$supervisorDir.'/'.$program);
+    }
+
+    foreach ($programs as $program) {
+        $localPath = __DIR__.'/ops/supervisor/'.$program;
+        $remotePath = '/tmp/'.$program;
+
+        upload($localPath, $remotePath);
+        run('sudo -n install -m 644 '.$remotePath.' '.$supervisorDir.'/'.$program);
+        run('rm -f '.$remotePath);
+    }
+
+    run('sudo -n supervisorctl reread');
+    run('sudo -n supervisorctl update');
+    run('sudo -n supervisorctl restart aviato-horizon:*');
+    run('sudo -n supervisorctl restart aviato-scheduler:*');
+});
+
+after('deploy:success', 'supervisor:deploy');
 
 task('php-fpm:reload', function () {
     run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
