@@ -321,9 +321,13 @@ class ServerController extends Controller
                 ]);
             }
 
+            $status = $result['vm']->ip_address
+                ? 'درخواست ساخت VPS ثبت شد. IP: '.$result['vm']->ip_address
+                : 'درخواست ساخت VPS ثبت شد. آماده سازی در پس زمینه شروع شد.';
+
             return redirect()
                 ->route('customer.servers.index')
-                ->with('status', 'درخواست ساخت VPS ثبت شد. IP: '.$result['vm']->ip_address)
+                ->with('status', $status)
                 ->with('provisioning_password', $result['password']);
         } catch (ValidationException $exception) {
             return back()

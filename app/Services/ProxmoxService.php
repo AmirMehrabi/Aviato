@@ -341,11 +341,13 @@ class ProxmoxService
     {
         $node = $options['node'];
         $vmid = (int) $options['vmid'];
+        $networkBridge = trim((string) ($options['network_bridge'] ?? ''));
+        $currentConfig = $networkBridge !== '' ? $this->vmConfig($server, $node, $vmid) : [];
 
         $payload = array_filter([
             'cores' => (int) $options['cpu_cores'],
             'memory' => (int) $options['ram_gb'] * 1024,
-            'net0' => filled($options['network_bridge'] ?? null) ? 'virtio,bridge='.$options['network_bridge'] : null,
+            'net0' => $networkBridge !== '' ? $this->qemuNetworkDeviceWithBridge((string) ($currentConfig['net0'] ?? ''), $networkBridge) : null,
             'ciuser' => $options['login_username'] ?? null,
             'cipassword' => $options['login_password'] ?? null,
             'sshkeys' => $options['ssh_public_key'] ?? null,
@@ -367,6 +369,35 @@ class ProxmoxService
             'task_id' => $taskId,
             'payload' => array_diff_key($payload, ['cipassword' => true, 'sshkeys' => true]),
         ];
+    }
+
+    private function qemuNetworkDeviceWithBridge(string $currentConfig, string $bridge): string
+    {
+        $currentConfig = trim($currentConfig);
+
+        if ($currentConfig === '') {
+            return "virtio,bridge={$bridge}";
+        }
+
+        $parts = array_values(array_filter(
+            array_map('trim', explode(',', $currentConfig)),
+            static fn (string $part): bool => $part !== '',
+        ));
+
+        $hasBridge = false;
+
+        foreach ($parts as $index => $part) {
+            if (str_starts_with($part, 'bridge=')) {
+                $parts[$index] = "bridge={$bridge}";
+                $hasBridge = true;
+            }
+        }
+
+        if (! $hasBridge) {
+            $parts[] = "bridge={$bridge}";
+        }
+
+        return implode(',', $parts);
     }
 
     /**

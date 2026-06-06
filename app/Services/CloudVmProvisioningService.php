@@ -6,22 +6,15 @@ use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\Project;
-use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
-use Throwable;
 
 class CloudVmProvisioningService
 {
-    public function __construct(
-        private readonly IpPoolService $ipPools,
-        private readonly ProxmoxService $proxmox,
-    ) {}
-
     /**
      * @param  array<string, mixed>  $data
      * @return array{vm: VirtualMachine, password: ?string}
@@ -92,9 +85,6 @@ class CloudVmProvisioningService
             return $vm;
         });
 
-        $this->reserveIpIfAvailable($vm, $server);
-        $vm->forceFill(['network_bridge' => $networkBridge])->save();
-
         if ($dispatch) {
             ProvisionCloudVirtualMachine::dispatch($vm->id, [
                 'start_after_create' => (bool) ($data['start_after_create'] ?? true),
@@ -103,31 +93,6 @@ class CloudVmProvisioningService
         }
 
         return ['vm' => $vm->refresh(), 'password' => $password];
-    }
-
-    private function reserveIpIfAvailable(VirtualMachine $vm, ProxmoxServer $server): void
-    {
-        try {
-            $remoteAddresses = $this->proxmox->assignedGuestIpAddresses($server, $vm->node);
-        } catch (Throwable $exception) {
-            $vm->delete();
-
-            throw $exception;
-        }
-
-        try {
-            $this->ipPools->reserveForVm($vm, $remoteAddresses);
-        } catch (RuntimeException) {
-            $vm->forceFill([
-                'ip_count' => 0,
-                'ip_address_id' => null,
-                'ip_address' => null,
-            ])->save();
-        } catch (Throwable $exception) {
-            $vm->delete();
-
-            throw $exception;
-        }
     }
 
     /**

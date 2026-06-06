@@ -2,12 +2,15 @@
 
 namespace App\Jobs;
 
+use App\Models\IpAddress;
+use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 class ProvisionCloudVirtualMachine implements ShouldQueue
@@ -41,10 +44,16 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
         $server = $vm->proxmoxServer;
         $image = $vm->cloudImage;
-        $address = $vm->reservedIpAddress;
 
         if (! $server || ! $image) {
-            throw new \RuntimeException('Provisioning cannot continue without Proxmox server and cloud image.');
+            throw new RuntimeException('Provisioning cannot continue without Proxmox server and cloud image.');
+        }
+
+        $networkBridge = $vm->network_bridge ?: 'vmbr1';
+        $address = $vm->reservedIpAddress;
+
+        if (! $address && (int) $vm->ip_count > 0) {
+            $address = $this->reserveIpIfAvailable($vm, $server, $proxmox, $ipPools, $networkBridge);
         }
 
         $history = data_get($vm->remote_state, 'steps', []);
@@ -93,7 +102,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'ipconfig0' => ($cloudInitEnabled && $address) ? $ipPools->ipConfig($address) : null,
                 'nameserver' => ($cloudInitEnabled && $address) ? $ipPools->nameservers($address) : null,
                 'cicustom' => $cloudInitEnabled ? 'vendor=local:snippets/ubuntu-password-login.yml' : null,
-                'network_bridge' => $vm->network_bridge ?: 'vmbr1',
+                'network_bridge' => $networkBridge,
                 'onboot' => $this->options['onboot'] ?? false,
                 'description' => $cloudInitEnabled ? 'Cloud-init configured by Aviato panel' : 'Configured by Aviato panel',
             ]);
@@ -168,12 +177,38 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
     }
 
+    private function reserveIpIfAvailable(
+        VirtualMachine $vm,
+        ProxmoxServer $server,
+        ProxmoxService $proxmox,
+        IpPoolService $ipPools,
+        string $networkBridge,
+    ): ?IpAddress {
+        $remoteAddresses = $proxmox->assignedGuestIpAddresses($server, $vm->node);
+
+        try {
+            $address = $ipPools->reserveForVm($vm, $remoteAddresses);
+            $vm->forceFill(['network_bridge' => $networkBridge])->save();
+
+            return $address->loadMissing('pool');
+        } catch (RuntimeException) {
+            $vm->forceFill([
+                'ip_count' => 0,
+                'ip_address_id' => null,
+                'ip_address' => null,
+                'network_bridge' => $networkBridge,
+            ])->save();
+
+            return null;
+        }
+    }
+
     private function nextAvailableVmid(ProxmoxService $proxmox, VirtualMachine $vm): int
     {
         $server = $vm->proxmoxServer;
 
         if (! $server) {
-            throw new \RuntimeException('Provisioning cannot continue without a Proxmox server.');
+            throw new RuntimeException('Provisioning cannot continue without a Proxmox server.');
         }
 
         $candidate = (int) ($proxmox->nextVmid($server)['vmid'] ?? 0);

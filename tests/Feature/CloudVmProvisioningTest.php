@@ -28,10 +28,6 @@ class CloudVmProvisioningTest extends TestCase
     {
         Bus::fake();
 
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
-        });
-
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog();
@@ -51,30 +47,24 @@ class CloudVmProvisioningTest extends TestCase
         $vm = VirtualMachine::query()->firstOrFail();
         $this->assertSame($customer->id, $vm->customer_id);
         $this->assertSame($image->id, $vm->cloud_image_id);
-        $this->assertSame('192.168.10.50', $vm->ip_address);
+        $this->assertNull($vm->ip_address);
         $this->assertSame('vmbr1', $vm->network_bridge);
         $this->assertSame(VirtualMachine::PROVISION_PENDING, $vm->provisioning_status);
 
-        $this->assertDatabaseHas('ip_addresses', [
-            'address' => '192.168.10.50',
+        $this->assertDatabaseMissing('ip_addresses', [
             'virtual_machine_id' => $vm->id,
-            'status' => IpAddress::STATUS_RESERVED,
         ]);
 
         Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
     }
 
-    public function test_remote_assigned_pool_ip_is_skipped_when_reserving(): void
+    public function test_provisioning_job_reserves_ip_and_skips_remote_assigned_pool_ip(): void
     {
         Bus::fake();
 
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog('192.168.10.51');
-
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn(['192.168.10.50']);
-        });
 
         $this->actingAs($customer, 'customer');
         $this->post($this->customerBaseUrl.'/servers', [
@@ -86,25 +76,46 @@ class CloudVmProvisioningTest extends TestCase
         ])->assertRedirect($this->customerBaseUrl.'/servers');
 
         $vm = VirtualMachine::query()->firstOrFail();
+        $this->assertNull($vm->ip_address);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn(['192.168.10.50']);
+            $mock->shouldReceive('nextVmid')->once()->andReturn(['vmid' => 101]);
+            $mock->shouldReceive('assignedGuestVmids')->once()->andReturn([]);
+            $mock->shouldReceive('cloneCloudTemplate')->once()->andReturn(['task_id' => null]);
+            $mock->shouldReceive('configureCloudInit')->once()->withArgs(function ($server, array $options): bool {
+                return $options['ipconfig0'] === 'ip=192.168.10.51/24,gw=192.168.10.1'
+                    && $options['nameserver'] === '1.1.1.1'
+                    && $options['network_bridge'] === 'vmbr1';
+            })->andReturn(['task_id' => null, 'payload' => []]);
+            $mock->shouldReceive('resizeDisk')->once()->andReturn(['task_id' => null]);
+            $mock->shouldReceive('regenerateCloudInit')->once()->andReturn(['task_id' => null]);
+            $mock->shouldReceive('startVm')->never();
+            $mock->shouldReceive('vmConfig')->once()->andReturn([]);
+        });
+
+        (new ProvisionCloudVirtualMachine($vm->id, ['start_after_create' => false]))->handle(
+            app(ProxmoxService::class),
+            app(IpPoolService::class),
+        );
+
+        $vm->refresh();
         $this->assertSame('192.168.10.51', $vm->ip_address);
+        $this->assertSame(VirtualMachine::PROVISION_READY, $vm->provisioning_status);
         $this->assertDatabaseHas('ip_addresses', [
             'address' => '192.168.10.51',
             'virtual_machine_id' => $vm->id,
-            'status' => IpAddress::STATUS_RESERVED,
+            'status' => IpAddress::STATUS_ASSIGNED,
         ]);
     }
 
-    public function test_customer_can_queue_cloud_vps_without_available_ip(): void
+    public function test_customer_can_queue_cloud_vps_without_waiting_for_available_ip(): void
     {
         Bus::fake();
 
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog();
-
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn(['192.168.10.50']);
-        });
 
         $this->actingAs($customer, 'customer');
         $this->post($this->customerBaseUrl.'/servers', [
@@ -116,17 +127,13 @@ class CloudVmProvisioningTest extends TestCase
         $vm = VirtualMachine::query()->firstOrFail();
         $this->assertNull($vm->ip_address_id);
         $this->assertNull($vm->ip_address);
-        $this->assertSame(0, $vm->ip_count);
+        $this->assertSame(1, $vm->ip_count);
         Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
     }
 
     public function test_disabled_cloud_init_image_ignores_guest_access_fields(): void
     {
         Bus::fake();
-
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
-        });
 
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 1000000]);
@@ -256,10 +263,6 @@ class CloudVmProvisioningTest extends TestCase
         AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_ENABLED, true, 'boolean', 'billing');
         AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_PERCENTAGE, 10, 'float', 'billing');
 
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
-        });
-
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 4800000]);
         [$image, $bundle] = $this->catalog();
@@ -297,10 +300,6 @@ class CloudVmProvisioningTest extends TestCase
         Bus::fake();
 
         AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 2, 'integer', 'customer');
-
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->twice()->andReturn([]);
-        });
 
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 10000000]);
@@ -415,10 +414,6 @@ class CloudVmProvisioningTest extends TestCase
 
         AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 2, 'integer', 'customer');
         AppSetting::setValue(AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 30, 'integer', 'customer');
-
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
-        });
 
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 10000000]);
