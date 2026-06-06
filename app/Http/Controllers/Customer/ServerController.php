@@ -273,6 +273,7 @@ class ServerController extends Controller
 
         $data['start_after_create'] = true;
         $data['onboot'] = false;
+        $data['network_bridge'] = 'vmbr1';
 
         $image = CloudImage::query()
             ->where('is_active', true)

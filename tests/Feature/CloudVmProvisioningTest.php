@@ -35,6 +35,8 @@ class CloudVmProvisioningTest extends TestCase
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog();
+        $image->update(['network_bridge' => 'vmbr0']);
+        IpPool::query()->update(['network_bridge' => 'vmbr0']);
 
         $this->actingAs($customer, 'customer');
         $this->post($this->customerBaseUrl.'/servers', [
@@ -50,6 +52,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertSame($customer->id, $vm->customer_id);
         $this->assertSame($image->id, $vm->cloud_image_id);
         $this->assertSame('192.168.10.50', $vm->ip_address);
+        $this->assertSame('vmbr1', $vm->network_bridge);
         $this->assertSame(VirtualMachine::PROVISION_PENDING, $vm->provisioning_status);
 
         $this->assertDatabaseHas('ip_addresses', [
@@ -181,7 +184,8 @@ class CloudVmProvisioningTest extends TestCase
                     && $options['ssh_public_key'] === null
                     && $options['ipconfig0'] === null
                     && $options['nameserver'] === null
-                    && $options['cicustom'] === null;
+                    && $options['cicustom'] === null
+                    && $options['network_bridge'] === 'vmbr1';
             })->andReturn(['task_id' => null, 'payload' => []]);
             $mock->shouldReceive('resizeDisk')->once()->andReturn(['task_id' => null]);
             $mock->shouldReceive('regenerateCloudInit')->never();

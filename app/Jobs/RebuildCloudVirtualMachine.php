@@ -137,6 +137,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                 'ipconfig0' => ($cloudInitEnabled && $address) ? $ipPools->ipConfig($address) : null,
                 'nameserver' => ($cloudInitEnabled && $address) ? $ipPools->nameservers($address) : null,
                 'cicustom' => $cloudInitEnabled ? 'vendor=local:snippets/ubuntu-password-login.yml' : null,
+                'network_bridge' => $vm->network_bridge ?: 'vmbr1',
                 'onboot' => false,
                 'description' => $this->identityDescription($vm),
             ]);

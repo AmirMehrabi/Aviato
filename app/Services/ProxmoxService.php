@@ -345,6 +345,7 @@ class ProxmoxService
         $payload = array_filter([
             'cores' => (int) $options['cpu_cores'],
             'memory' => (int) $options['ram_gb'] * 1024,
+            'net0' => filled($options['network_bridge'] ?? null) ? 'virtio,bridge='.$options['network_bridge'] : null,
             'ciuser' => $options['login_username'] ?? null,
             'cipassword' => $options['login_password'] ?? null,
             'sshkeys' => $options['ssh_public_key'] ?? null,

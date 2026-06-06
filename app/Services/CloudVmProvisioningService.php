@@ -52,8 +52,9 @@ class CloudVmProvisioningService
         $node = trim((string) ($data['node'] ?? '')) ?: $image->node;
         $storage = trim((string) ($data['storage'] ?? '')) ?: $image->storage;
         $osTemplate = trim((string) ($data['os_template'] ?? '')) ?: $image->name;
+        $networkBridge = trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge;
 
-        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $resources, $password, $username, $hostname, $sshPublicKey, $node, $storage, $osTemplate): VirtualMachine {
+        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $resources, $password, $username, $hostname, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge): VirtualMachine {
             $name = trim((string) ($data['name'] ?? '')) ?: 'customer-vps-'.Str::lower(Str::random(6));
             $vm = VirtualMachine::create([
                 'customer_id' => $project->owner_customer_id,
@@ -68,7 +69,7 @@ class CloudVmProvisioningService
                 'node' => $node,
                 'storage' => $storage,
                 'os_template' => $osTemplate,
-                'network_bridge' => $image->network_bridge,
+                'network_bridge' => $networkBridge,
                 'login_username' => $username,
                 'login_password' => $password,
                 'ssh_public_key' => $sshPublicKey,
@@ -92,6 +93,7 @@ class CloudVmProvisioningService
         });
 
         $this->reserveIpIfAvailable($vm, $server);
+        $vm->forceFill(['network_bridge' => $networkBridge])->save();
 
         if ($dispatch) {
             ProvisionCloudVirtualMachine::dispatch($vm->id, [

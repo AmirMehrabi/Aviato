@@ -93,6 +93,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'ipconfig0' => ($cloudInitEnabled && $address) ? $ipPools->ipConfig($address) : null,
                 'nameserver' => ($cloudInitEnabled && $address) ? $ipPools->nameservers($address) : null,
                 'cicustom' => $cloudInitEnabled ? 'vendor=local:snippets/ubuntu-password-login.yml' : null,
+                'network_bridge' => $vm->network_bridge ?: 'vmbr1',
                 'onboot' => $this->options['onboot'] ?? false,
                 'description' => $cloudInitEnabled ? 'Cloud-init configured by Aviato panel' : 'Configured by Aviato panel',
             ]);
