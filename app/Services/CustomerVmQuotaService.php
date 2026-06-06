@@ -20,8 +20,10 @@ class CustomerVmQuotaService
         $activeCount = $customer->virtualMachines()->notDeleted()->count();
         $cooldownCount = $verified ? 0 : $this->cooldownDeletedCount($customer, $cooldownDays);
         $used = $activeCount + $cooldownCount;
-        $remaining = $limit <= 0 ? null : max(0, $limit - $used);
-        $canCreate = $limit <= 0 || $used < $limit;
+        $remaining = $limit <= 0 ? ($verified ? null : 0) : max(0, $limit - $used);
+        $canCreate = $verified
+            ? ($limit <= 0 || $used < $limit)
+            : ($limit > 0 && $used < $limit);
 
         return [
             'verified' => $verified,

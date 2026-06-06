@@ -39,7 +39,7 @@
                 <h2 class="text-sm font-black text-slate-900">سطح حساب و کنترل سوء استفاده</h2>
                 <p class="mt-1 text-xs leading-6 text-slate-500">حساب تایید نشده با کد ملی محدود می‌شود. VM حذف شده تا پایان دوره cooldown همچنان سهمیه حساب تایید نشده را مصرف می‌کند.</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
-                    <x-form.input name="unverified_customer_vm_limit" type="number" label="سقف VM حساب تایید نشده" :value="$unverifiedCustomerVmLimit" min="0" max="1000000" dir-ltr help="پیشنهاد فعلی: 2" />
+                    <x-form.input name="unverified_customer_vm_limit" type="number" label="سقف VM حساب تایید نشده" :value="$unverifiedCustomerVmLimit" min="0" max="1000000" dir-ltr help="0 یعنی مشتری قبل از ساخت اولین VM باید کد ملی را تایید کند. پیشنهاد فعلی: 2" />
                     <x-form.input name="verified_customer_vm_limit" type="number" label="سقف VM حساب تایید شده" :value="$verifiedCustomerVmLimit" min="0" max="1000000" dir-ltr help="0 یعنی بدون سقف." />
                     <x-form.input name="deleted_vm_cooldown_days" type="number" label="روزهای نگهداری سهمیه VM حذف شده" :value="$deletedVmCooldownDays" min="0" max="3650" dir-ltr help="برای جلوگیری از ساخت، حذف و ساخت دوباره." />
                     <x-form.input name="vm_rebuild_fee_multiplier_percentage" type="number" label="درصد هزینه بازسازی نسبت به هزینه ساخت" :value="$vmRebuildFeeMultiplierPercentage" min="0" max="100" step="0.01" dir-ltr help="50 یعنی نصف هزینه ساخت تنظیم شده." />

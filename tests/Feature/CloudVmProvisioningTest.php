@@ -326,6 +326,42 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertDatabaseCount('virtual_machines', 2);
     }
 
+    public function test_unverified_customer_limit_zero_requires_national_code_before_first_vm(): void
+    {
+        Bus::fake();
+
+        AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 0, 'integer', 'customer');
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 10000000]);
+        [$image, $bundle] = $this->catalog();
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/create')
+            ->post($this->customerBaseUrl.'/servers', [
+                'cloud_image_id' => $image->id,
+                'vm_bundle_id' => $bundle->id,
+                'name' => 'blocked-before-verification',
+                'login_username' => 'ubuntu',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHas('error', 'برای ساخت VPS بیشتر، کد ملی‌تان را در پروفایل تایید کنید.');
+
+        $this->get($this->customerBaseUrl.'/servers/create')
+            ->assertOk()
+            ->assertSee('برای ساخت VPS بیشتر، کد ملی‌تان را در پروفایل تایید کنید.', false)
+            ->assertSee('تایید کد ملی در پروفایل', false);
+
+        $this->get($this->customerBaseUrl.'/profile')
+            ->assertOk()
+            ->assertSee('نیازمند تایید کد ملی', false)
+            ->assertSee('نیازمند تایید', false)
+            ->assertDontSee('0 / بدون سقف');
+
+        $this->assertDatabaseCount('virtual_machines', 0);
+        Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
     public function test_deleted_vm_keeps_unverified_quota_slot_during_cooldown(): void
     {
         Bus::fake();

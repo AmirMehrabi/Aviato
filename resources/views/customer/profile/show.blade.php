@@ -64,12 +64,12 @@
                     </div>
                     <div class="flex items-center justify-between gap-3">
                         <dt class="font-bold text-slate-500">سقف حساب</dt>
-                        <dd class="font-black text-slate-950">{{ $quota['limit'] > 0 ? $quota['limit'] : 'بدون سقف' }}</dd>
+                        <dd class="font-black text-slate-950">{{ $quota['limit'] > 0 ? $quota['limit'] : ($quota['verified'] ? 'بدون سقف' : 'نیازمند تایید کد ملی') }}</dd>
                     </div>
                     <div class="rounded-xl bg-slate-50 p-4">
                         <p class="text-xs font-black text-slate-500">مصرف سهمیه</p>
                         <p class="mt-2 text-2xl font-black {{ $quota['can_create'] ? 'text-emerald-700' : 'text-red-700' }}">
-                            {{ $quota['limit'] > 0 ? $quota['used'].' / '.$quota['limit'] : $quota['used'].' / بدون سقف' }}
+                            {{ $quota['limit'] > 0 ? $quota['used'].' / '.$quota['limit'] : ($quota['verified'] ? $quota['used'].' / بدون سقف' : 'نیازمند تایید') }}
                         </p>
                         @if ($quota['message'])
                             <p class="mt-2 text-xs font-bold leading-6 text-red-600">{{ $quota['message'] }}</p>
