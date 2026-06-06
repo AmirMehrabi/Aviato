@@ -234,6 +234,7 @@ return [
     | Horizon Dashboard Access
     |--------------------------------------------------------------------------
     */
+    
 
     'allowed_emails' => array_values(array_filter(array_map(
         static fn (string $email): string => Str::lower(trim($email)),
