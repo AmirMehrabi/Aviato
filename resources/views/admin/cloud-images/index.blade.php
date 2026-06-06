@@ -6,7 +6,7 @@
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
             <h1 class="text-2xl font-black">Cloud Images</h1>
-            <p class="mt-2 text-sm text-slate-500">Published Proxmox template VMIDs available for cloud-init VPS creation.</p>
+            <p class="mt-2 text-sm text-slate-500">Published Proxmox template VMIDs available for cloud-init virtual machine creation.</p>
         </div>
         <a href="{{ route('admin.cloud-images.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Image جدید</a>
     </div>

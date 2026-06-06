@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @inject('money', 'App\Services\WalletService')
 
-@section('title', 'Create Cloud VPS')
+@section('title', 'Create Cloud Virtual Machine')
 
 @section('content')
 <div

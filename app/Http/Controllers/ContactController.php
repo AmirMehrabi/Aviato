@@ -48,7 +48,7 @@ class ContactController extends Controller
     private function needTypes(): array
     {
         return [
-            'cloud-vps' => 'خرید VPS ابری',
+            'cloud-vps' => 'خرید ماشین مجازی ابری',
             'migration' => 'مهاجرت به زیرساخت آویاتو',
             'backup-database' => 'دیتابیس، بکاپ و پایداری',
             'technical-consulting' => 'مشاوره فنی و ظرفیت سنجی',

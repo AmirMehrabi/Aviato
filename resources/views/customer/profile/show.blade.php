@@ -52,7 +52,7 @@
 
         <aside class="space-y-5">
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                <h2 class="text-lg font-black text-slate-950">سهمیه VPS</h2>
+                <h2 class="text-lg font-black text-slate-950">سهمیه ماشین مجازی</h2>
                 <dl class="mt-5 space-y-4 text-sm">
                     <div class="flex items-center justify-between gap-3">
                         <dt class="font-bold text-slate-500">ماشین های فعال</dt>

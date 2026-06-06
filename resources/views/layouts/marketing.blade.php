@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'آویاتو | خرید VPS ابری سریع')</title>
-    <meta name="description" content="@yield('description', 'خرید VPS ابری با دیسک NVMe، IP اختصاصی، منابع شفاف، قیمت قابل پیش بینی و پشتیبانی فارسی.')">
+    <title>@yield('title', 'آویاتو | خرید ماشین مجازی ابری سریع')</title>
+    <meta name="description" content="@yield('description', 'خرید ماشین مجازی ابری با دیسک NVMe، IP اختصاصی، منابع شفاف، قیمت قابل پیش بینی و پشتیبانی فارسی.')">
     <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicons/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicons/favicon-16x16.png') }}">
@@ -107,7 +107,7 @@
                 <div>
                     <img src="{{ asset('assets/images/aviato_logo_full_white.png') }}" alt="آویاتو" class="h-14 w-44 object-contain object-right">
                     <p class="mt-5 max-w-xl text-sm leading-8 text-sky-100/80">
-                        VPS ابری ساده، سریع و شفاف برای تیم هایی که می خواهند سرور را بدون پیچیدگی اضافه بخرند و سرویس را اجرا کنند.
+                        ماشین مجازی ابری ساده، سریع و شفاف برای تیم هایی که می خواهند سرور را بدون پیچیدگی اضافه بخرند و سرویس را اجرا کنند.
                     </p>
                     <a
                         referrerpolicy="origin"
@@ -147,7 +147,7 @@
 
             <div class="mx-auto mt-10 flex max-w-7xl flex-col gap-3 border-t border-white/10 pt-6 text-xs font-bold text-sky-100/50 sm:flex-row sm:items-center sm:justify-between">
                 <p>© {{ now()->year }} آویاتو. همه حقوق محفوظ است.</p>
-                <p>VPS شفاف برای خرید سریع، اجرای ساده و رشد قابل پیش بینی.</p>
+                <p>ماشین مجازی شفاف برای خرید سریع، اجرای ساده و رشد قابل پیش بینی.</p>
             </div>
         </footer>
     </div>

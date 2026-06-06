@@ -160,7 +160,7 @@ class VmUpgradeService
         }
 
         if (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid) {
-            throw ValidationException::withMessages(['server' => 'اتصال Proxmox این سرور کامل نیست.']);
+            throw ValidationException::withMessages(['server' => 'اطلاعات لازم برای ارتقای این ماشین مجازی کامل نیست.']);
         }
 
         $hasPending = $vm->pendingUpgradeOrders()->exists();

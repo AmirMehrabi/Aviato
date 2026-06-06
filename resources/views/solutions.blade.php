@@ -1,7 +1,7 @@
 @extends('layouts.marketing')
 
 @section('title', 'آویاتو: راهکارهای ما')
-@section('description', 'راهنمای ساده آویاتو برای انتخاب VPS مناسب سایت، فروشگاه، اپلیکیشن، دیتابیس و محیط تست.')
+@section('description', 'راهنمای ساده آویاتو برای انتخاب ماشین مجازی مناسب سایت، فروشگاه، اپلیکیشن، دیتابیس و محیط تست.')
 
 @php
     $activePage = 'solutions';
@@ -51,7 +51,7 @@
         <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-full bg-[radial-gradient(circle_at_top_right,rgba(0,128,255,0.28),transparent_34%),linear-gradient(180deg,#071B3A_0%,#06162E_72%)]"></div>
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
-                <p class="text-sm font-black text-[#8FC7FF]">کاربردهای VPS</p>
+                <p class="text-sm font-black text-[#8FC7FF]">کاربردهای ماشین مجازی</p>
                 <h1 class="mt-4 max-w-4xl text-4xl font-black leading-tight md:text-6xl">سرور مجازی را بر اساس نیاز خود انتخاب کنید.</h1>
                 <p class="mt-6 max-w-3xl text-lg leading-9 text-slate-300">اگر نمی دانید از کدام پلن شروع کنید، این صفحه چند کاربرد رایج را نشان می دهد: سایت، فروشگاه، اپلیکیشن، دیتابیس یا محیط تست.</p>
                 <div class="mt-9 flex flex-col gap-3 sm:flex-row">

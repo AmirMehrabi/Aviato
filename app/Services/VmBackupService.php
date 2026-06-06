@@ -177,7 +177,7 @@ class VmBackupService
     private function assertBackupable(VirtualMachine $vm): void
     {
         if (! $vm->proxmox_server_id || ! $vm->vmid || ! $vm->node) {
-            throw new RuntimeException('This VM is not connected to Proxmox yet.');
+            throw new RuntimeException('این ماشین مجازی هنوز برای بکاپ آماده نیست.');
         }
 
         if ($vm->provisioning_status !== VirtualMachine::PROVISION_READY) {
@@ -192,7 +192,7 @@ class VmBackupService
             ->exists();
 
         if ($running) {
-            throw new RuntimeException('A backup is already queued or running for this VM.');
+            throw new RuntimeException('یک بکاپ برای این ماشین مجازی در صف یا در حال اجراست.');
         }
     }
 }

@@ -82,11 +82,11 @@ class MonitoringController extends Controller
 
         try {
             if ($virtualMachine->isActionLocked()) {
-                throw new RuntimeException('This VM is being deleted and monitoring is unavailable.');
+                throw new RuntimeException('این ماشین مجازی در حال حذف است و مانیتورینگ در دسترس نیست.');
             }
 
             if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
-                throw new RuntimeException('This VM is not connected to Proxmox monitoring yet.');
+                throw new RuntimeException('مانیتورینگ این ماشین مجازی هنوز آماده نیست.');
             }
 
             $metrics = $this->proxmox->qemuPerformance(
@@ -118,7 +118,7 @@ class MonitoringController extends Controller
             report($exception);
 
             return response()->json([
-                'message' => 'Unable to load VPS monitoring data.',
+                'message' => 'دریافت داده های مانیتورینگ ماشین مجازی ممکن نیست.',
                 'error' => $exception->getMessage(),
             ], 422);
         }

@@ -324,7 +324,7 @@ class ServerController extends Controller
         if ($this->ipPools->availableCountFor((int) $image->proxmox_server_id, $image->node) < 1) {
             return back()
                 ->withErrors([
-                    'cloud_image_id' => 'در حال حاضر IP آزاد برای Proxmox این Cloud Image وجود ندارد.',
+                    'cloud_image_id' => 'در حال حاضر IP آزاد برای این نسخه وجود ندارد.',
                 ])
                 ->withInput($this->safeCreateInput($request))
                 ->with('error', 'ظرفیت IP برای این دیتاسنتر محدود است. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت ماشین مجازی وجود ندارد.');
@@ -453,7 +453,7 @@ class ServerController extends Controller
         }
 
         if (! $server->proxmoxServer || ! $server->cloudImage || ! $server->node || ! $server->vmid || ! $server->template_vmid) {
-            return back()->with('error', 'اطلاعات Proxmox، Image، Node، VMID یا Template برای بازسازی کامل نیست.');
+            return back()->with('error', 'اطلاعات لازم برای بازسازی این ماشین مجازی کامل نیست.');
         }
 
         if (! $server->cloudImage->is_active) {
@@ -467,11 +467,11 @@ class ServerController extends Controller
             $wallet = $this->wallets->walletFor($billingCustomer);
 
             if ($wallet->is_locked) {
-                return back()->with('error', $wallet->lock_reason ?: 'کیف پول برای ثبت درخواست بازسازی VPS قفل است.');
+                return back()->with('error', $wallet->lock_reason ?: 'کیف پول برای ثبت درخواست بازسازی ماشین مجازی قفل است.');
             }
 
             if ($wallet->balance < $rebuildFee) {
-                return back()->with('error', 'برای بازسازی VPS موجودی کیف پول باید حداقل '.$this->wallets->format($rebuildFee).' باشد.');
+                return back()->with('error', 'برای بازسازی ماشین مجازی موجودی کیف پول باید حداقل '.$this->wallets->format($rebuildFee).' باشد.');
             }
         }
 
@@ -505,7 +505,7 @@ class ServerController extends Controller
         $this->usageBilling->chargeVm($server);
 
         if ($billingCustomer && $rebuildFee > 0) {
-            $this->wallets->charge($billingCustomer, $rebuildFee, 'هزینه بازسازی VPS '.$server->name, $server, [
+            $this->wallets->charge($billingCustomer, $rebuildFee, 'هزینه بازسازی ماشین مجازی '.$server->name, $server, [
                 'category' => 'vm_rebuild_fee',
                 'creation_charge_percentage' => AppSetting::vmCreationChargePercentage(),
                 'rebuild_multiplier_percentage' => AppSetting::vmRebuildFeeMultiplierPercentage(),
@@ -565,7 +565,7 @@ class ServerController extends Controller
         if ($result['finalized']) {
             return redirect()
                 ->route('customer.servers.index')
-                ->with('status', 'سرور در Proxmox پیدا نشد یا اتصال آن کامل نبود؛ رکورد پنل پاک شد، IP آزاد شد و Billing متوقف شد.');
+                ->with('status', 'این ماشین مجازی در زیرساخت فعال پیدا نشد یا اطلاعات اتصال آن کامل نبود؛ رکورد پنل پاک شد، IP آزاد شد و Billing متوقف شد.');
         }
 
         return redirect()

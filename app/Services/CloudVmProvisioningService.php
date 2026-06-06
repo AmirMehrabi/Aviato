@@ -168,7 +168,7 @@ class CloudVmProvisioningService
      */
     private function generateUniqueVmName(?VmBundle $bundle, array $resources): string
     {
-        $base = 'VPS-'.now()->format('ym').'-'.$this->bundleSpecsToken($bundle, $resources);
+        $base = 'MACHINE-'.now()->format('ym').'-'.$this->bundleSpecsToken($bundle, $resources);
 
         for ($attempt = 0; $attempt < 20; $attempt++) {
             $candidate = $base.'-'.$this->uniqueKey();

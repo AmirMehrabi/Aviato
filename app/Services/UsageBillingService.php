@@ -68,7 +68,7 @@ class UsageBillingService
         $transaction = $this->wallets->charge(
             $billingCustomer,
             $usage['amount'],
-            'کسر کارکرد PAYG برای VM '.$vm->name,
+            'کسر کارکرد PAYG برای ماشین مجازی '.$vm->name,
             metadata: [
                 'category' => 'payg_usage',
                 'vm_id' => $vm->id,
@@ -172,7 +172,7 @@ class UsageBillingService
         $transaction = $this->wallets->charge(
             $billingCustomer,
             $amount,
-            'کسر فضای بکاپ برای VM '.$vm->name,
+            'کسر فضای بکاپ برای ماشین مجازی '.$vm->name,
             metadata: [
                 'category' => 'backup_storage',
                 'vm_id' => $backup->virtual_machine_id,
@@ -218,7 +218,7 @@ class UsageBillingService
         $transaction = $this->wallets->charge(
             $billingCustomer,
             $amount,
-            'کسر فضای دیسک اضافه برای VM '.$vm->name,
+            'کسر فضای دیسک اضافه برای ماشین مجازی '.$vm->name,
             metadata: [
                 'category' => 'extra_disk_storage',
                 'vm_id' => $disk->virtual_machine_id,

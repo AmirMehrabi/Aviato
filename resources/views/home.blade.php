@@ -1,7 +1,7 @@
 @extends('layouts.marketing')
 
 @section('title', 'آویاتو: ارائه‌دهنده‌ی سرویس‌های ابری')
-@section('description', 'خرید VPS آویاتو با دیسک NVMe، IP اختصاصی، قیمت مشخص و پشتیبانی فارسی برای راه اندازی سایت، فروشگاه و اپلیکیشن.')
+@section('description', 'خرید ماشین مجازی آویاتو با دیسک NVMe، IP اختصاصی، قیمت مشخص و پشتیبانی فارسی برای راه اندازی سایت، فروشگاه و اپلیکیشن.')
 
 @php
     $activePage = 'home';
@@ -31,7 +31,7 @@
     ];
 
     $steps = [
-        ['number' => '01', 'title' => 'پلن را انتخاب کنید', 'body' => 'منابع و قیمت هر VPS را ببینید و پلنی را انتخاب کنید که به کار شما می آید.'],
+        ['number' => '01', 'title' => 'پلن را انتخاب کنید', 'body' => 'منابع و قیمت هر ماشین مجازی را ببینید و پلنی را انتخاب کنید که به کار شما می آید.'],
         ['number' => '02', 'title' => 'ثبت نام و پرداخت کنید', 'body' => 'حساب کاربری بسازید، کیف پول را شارژ کنید و سفارش را در پنل مشتری ثبت کنید.'],
         ['number' => '03', 'title' => 'وارد سرور شوید', 'body' => 'بعد از آماده شدن سرور، IP و اطلاعات اتصال در پنل نمایش داده می شود.'],
     ];
@@ -111,7 +111,7 @@
           
                                     <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                                         <div class="border-b border-slate-100 px-4 py-1">
-                                            <h2 class="mt-1 text-sm font-black text-slate-950">۲- نسخه و پلن VPS</h2>
+                                            <h2 class="mt-1 text-sm font-black text-slate-950">۲- نسخه و پلن ماشین مجازی</h2>
                                         </div>
                                         <div class="grid gap-3 p-4 md:grid-cols-[1fr_1.15fr]">
                                             <div class="flex items-center gap-3 rounded-lg bg-[#F2F8FF] p-3">
@@ -142,7 +142,7 @@
                                         </div>
                                         <div class="grid gap-3 px-4 pt-2 pb-4 md:grid-cols-2">
                                             <div>
-                                                <span class="text-xs font-black text-slate-700">نام VPS</span>
+                                                <span class="text-xs font-black text-slate-700">نام ماشین مجازی</span>
                                                 <div class="mt-2 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-xs font-bold text-slate-500" dir="ltr">web-01</div>
                                             </div>
                                             <div>
@@ -179,7 +179,7 @@
                     <span class="block text-[#8FC7FF]">با قیمت مشخص</span>
                 </h1>
                 <p class="mt-6 max-w-2xl text-base leading-9 text-slate-300 md:text-lg">
-                    VPS آویاتو برای راه اندازی سایت، فروشگاه و اپلیکیشن است. پلن ها روشن هستند، قیمت را قبل از خرید می بینید و برای شروع کار پشتیبانی فارسی دارید.
+                    ماشین مجازی آویاتو برای راه اندازی سایت، فروشگاه و اپلیکیشن است. پلن ها روشن هستند، قیمت را قبل از خرید می بینید و برای شروع کار پشتیبانی فارسی دارید.
                 </p>
 
                 <div class="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -207,7 +207,7 @@
         <div class="mx-auto max-w-7xl">
             <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                 <div class="max-w-2xl">
-                    <p class="text-sm font-black text-[#0069FF]">پلن های VPS</p>
+                    <p class="text-sm font-black text-[#0069FF]">پلن های ماشین مجازی</p>
                     <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">پلن مناسب خود را راحت انتخاب کنید.</h2>
                 </div>
                 <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-lg border border-sky-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:border-[#0069FF] hover:text-[#0069FF]">همه پلن ها</a>
@@ -233,7 +233,7 @@
                             <p class="mt-1 text-sm font-bold text-slate-500">ماهانه</p>
                         </div>
 
-                        <p class="mt-5 min-h-16 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'VPS آماده برای سایت، فروشگاه، اپلیکیشن و سرویس های آنلاین.' }}</p>
+                        <p class="mt-5 min-h-16 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'ماشین مجازی آماده برای سایت، فروشگاه، اپلیکیشن و سرویس های آنلاین.' }}</p>
 
                         <div class="mt-7 grid grid-cols-2 gap-2 text-sm font-black text-slate-700">
                             <span class="rounded-lg bg-white p-3 ring-1 ring-sky-100" dir="ltr">{{ $bundle->cpu_cores }} vCPU</span>
@@ -260,7 +260,7 @@
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
             <div>
                 <p class="text-sm font-black text-[#0069FF]">چرا آویاتو؟</p>
-                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">خرید VPS بدون پیچیدگی اضافه.</h2>
+                <h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">خرید ماشین مجازی بدون پیچیدگی اضافه.</h2>
                 <p class="mt-5 leading-8 text-slate-600">
                     برای خرید سرور مجازی باید بدانید چه منابعی می گیرید، چقدر پرداخت می کنید و چطور سرور را تحویل می گیرید. ما همین مسیر را ساده کرده ایم.
                 </p>

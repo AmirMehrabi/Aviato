@@ -139,7 +139,7 @@
                             </span>
                         </div>
                         <h2 class="mt-5 truncate text-4xl font-black leading-tight" dir="ltr">{{ $server->name }}</h2>
-                        <p class="mt-2 truncate text-sm font-bold text-[#9DB4DC]" dir="ltr" x-text="`${serverState.hostname} · VMID ${serverState.vmid || '-'} · ${serverState.node}`">{{ $server->hostname ?: 'hostname-not-set' }} · VMID {{ $server->vmid ?: '-' }} · {{ $server->node ?: 'node-not-set' }}</p>
+                        <p class="mt-2 truncate text-sm font-bold text-[#9DB4DC]" dir="ltr" x-text="serverState.hostname">{{ $server->hostname ?: 'hostname-not-set' }}</p>
                         <div class="mt-6 grid gap-3 sm:grid-cols-3">
                             <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                                 <p class="text-xs font-black text-[#9DB4DC]">IP Address</p>
