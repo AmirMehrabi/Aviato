@@ -118,10 +118,6 @@ class CloudVmProvisioningTest extends TestCase
     {
         Bus::fake();
 
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
-        });
-
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog();
@@ -250,10 +246,6 @@ class CloudVmProvisioningTest extends TestCase
         AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_ENABLED, true, 'boolean', 'billing');
         AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_PERCENTAGE, 10, 'float', 'billing');
 
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
-        });
-
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 4800000]);
         [$image, $bundle] = $this->catalog();
@@ -291,10 +283,6 @@ class CloudVmProvisioningTest extends TestCase
         Bus::fake();
 
         AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 2, 'integer', 'customer');
-
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->twice()->andReturn([]);
-        });
 
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 10000000]);
@@ -366,10 +354,6 @@ class CloudVmProvisioningTest extends TestCase
 
         AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 2, 'integer', 'customer');
         AppSetting::setValue(AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 30, 'integer', 'customer');
-
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn([]);
-        });
 
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 10000000]);
