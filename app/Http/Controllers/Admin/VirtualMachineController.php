@@ -7,6 +7,7 @@ use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\IpAddress;
+use App\Models\IpPool;
 use App\Models\Project;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
@@ -242,7 +243,13 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'این VM در وضعیت حذف است و قابل ویرایش نیست.');
         }
 
-        $virtualMachine->fill($this->validated($request, $virtualMachine));
+        $data = $this->validated($request, $virtualMachine);
+        $selectedIpAddressId = $data['ip_address_id'] ?? null;
+        unset($data['ip_pool_id'], $data['ip_address_id']);
+
+        $previousIpAddressId = $virtualMachine->ip_address_id;
+
+        $virtualMachine->fill($data);
         if ($virtualMachine->project_id) {
             $virtualMachine->loadMissing('project');
             $virtualMachine->customer_id = $virtualMachine->project?->owner_customer_id ?? $virtualMachine->customer_id;
@@ -250,6 +257,22 @@ class VirtualMachineController extends Controller
         $this->applyBundleHardware($virtualMachine);
         $virtualMachine->desired_state = $virtualMachine->desiredStateSnapshot();
         $virtualMachine->save();
+
+        if ($selectedIpAddressId && (int) $selectedIpAddressId !== (int) $previousIpAddressId) {
+            $address = IpAddress::query()->with('pool')->findOrFail($selectedIpAddressId);
+            $this->ipPools->reserveSpecificForVm($address, $virtualMachine);
+            $virtualMachine->refresh();
+        }
+
+        if ((int) $virtualMachine->ip_address_id !== (int) $previousIpAddressId) {
+            try {
+                $this->syncCloudInitNetwork($virtualMachine);
+            } catch (Throwable $exception) {
+                return redirect()
+                    ->route('admin.virtual-machines.show', $virtualMachine)
+                    ->with('error', 'IP در پنل تغییر کرد اما اعمال Cloud-init روی Proxmox ناموفق بود: '.$exception->getMessage());
+            }
+        }
 
         return redirect()->route('admin.virtual-machines.show', $virtualMachine)->with('status', 'VM به‌روزرسانی شد.');
     }
@@ -285,7 +308,21 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'این VM در وضعیت حذف است و امکان روشن کردن ندارد.');
         }
 
+        if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
+            return back()->with('error', 'اطلاعات Proxmox، Node یا VMID برای روشن کردن کامل نیست.');
+        }
+
         $accrued = $this->billing->currentAccrued($virtualMachine);
+
+        try {
+            $start = $this->proxmox->startVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+
+            if (! empty($start['task_id'])) {
+                $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $start['task_id'], 180);
+            }
+        } catch (Throwable $exception) {
+            return back()->with('error', 'روشن کردن VM در Proxmox ناموفق بود: '.$exception->getMessage());
+        }
 
         $virtualMachine->forceFill([
             'status' => VirtualMachine::STATUS_RUNNING,
@@ -305,7 +342,23 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'این VM در وضعیت حذف است و امکان خاموش کردن ندارد.');
         }
 
+        if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
+            return back()->with('error', 'اطلاعات Proxmox، Node یا VMID برای خاموش کردن کامل نیست.');
+        }
+
         $accrued = $this->billing->currentAccrued($virtualMachine);
+
+        try {
+            $shutdown = $this->proxmox->shutdownVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+
+            if (! empty($shutdown['task_id'])) {
+                $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $shutdown['task_id'], 180);
+            }
+
+            $this->proxmox->waitForVmStopped($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid, 60);
+        } catch (Throwable $exception) {
+            return back()->with('error', 'خاموش کردن VM در Proxmox ناموفق بود: '.$exception->getMessage());
+        }
 
         $virtualMachine->forceFill([
             'status' => VirtualMachine::STATUS_STOPPED,
@@ -343,6 +396,19 @@ class VirtualMachineController extends Controller
             'projects' => Project::query()->with('owner')->orderBy('name')->get(),
             'servers' => ProxmoxServer::query()->orderBy('name')->pluck('name', 'id'),
             'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
+            'ipPools' => IpPool::query()
+                ->with('proxmoxServer')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(),
+            'ipAddresses' => IpAddress::query()
+                ->with(['pool.proxmoxServer'])
+                ->where(function ($query) use ($vm): void {
+                    $query->whereIn('status', [IpAddress::STATUS_AVAILABLE, IpAddress::STATUS_RELEASED])
+                        ->orWhere('virtual_machine_id', $vm->id);
+                })
+                ->orderBy('address')
+                ->get(),
         ];
     }
 
@@ -378,6 +444,18 @@ class VirtualMachineController extends Controller
             'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'proxmox_server_id' => ['required', 'integer', 'exists:proxmox_servers,id'],
             'vm_bundle_id' => ['nullable', 'integer', 'exists:vm_bundles,id'],
+            'ip_pool_id' => ['nullable', 'integer', 'exists:ip_pools,id'],
+            'ip_address_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('ip_addresses', 'id')->where(function ($query) use ($request, $vm): void {
+                    $query->when($request->filled('ip_pool_id'), fn ($query) => $query->where('ip_pool_id', $request->integer('ip_pool_id')))
+                        ->where(function ($query) use ($vm): void {
+                            $query->whereIn('status', [IpAddress::STATUS_AVAILABLE, IpAddress::STATUS_RELEASED])
+                                ->orWhere('virtual_machine_id', $vm?->id);
+                        });
+                }),
+            ],
             'vmid' => ['nullable', 'integer', 'min:1'],
             'name' => ['required', 'string', 'max:255'],
             'hostname' => ['nullable', 'string', 'max:255'],
@@ -386,18 +464,6 @@ class VirtualMachineController extends Controller
             'os_template' => ['nullable', 'string', 'max:255'],
             'iso_volume' => ['nullable', 'string', 'max:500'],
             'network_bridge' => ['nullable', 'string', 'max:255'],
-            'ip_address' => ['nullable', 'string', 'max:255'],
-            'cpu_cores' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:512'],
-            'ram_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
-            'disk_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
-            'ip_count' => ['nullable', 'integer', 'min:0', 'max:128'],
-            'status' => ['nullable', Rule::in([
-                VirtualMachine::STATUS_RUNNING,
-                VirtualMachine::STATUS_STOPPED,
-                VirtualMachine::STATUS_SUSPENDED,
-                VirtualMachine::STATUS_DELETING,
-                VirtualMachine::STATUS_DELETED,
-            ])],
             'ostype' => ['nullable', Rule::in(['l26', 'win11', 'win10', 'win8', 'win7', 'w2k22', 'w2k19', 'w2k16', 'other'])],
             'start_after_create' => ['nullable', 'boolean'],
             'onboot' => ['nullable', 'boolean'],
@@ -417,6 +483,55 @@ class VirtualMachineController extends Controller
         $vm->ram_gb = $bundle->ram_gb;
         $vm->disk_gb = $bundle->disk_gb;
         $vm->ip_count = $bundle->ip_count;
+    }
+
+    private function syncCloudInitNetwork(VirtualMachine $virtualMachine): void
+    {
+        $virtualMachine->loadMissing(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool']);
+
+        if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
+            throw new \RuntimeException('VM is missing Proxmox server, node, or VMID.');
+        }
+
+        if (! $virtualMachine->cloudImage || ! $virtualMachine->cloudImage->cloud_init_enabled) {
+            throw new \RuntimeException('Cloud-init is not enabled for this VM image.');
+        }
+
+        if (! $virtualMachine->reservedIpAddress) {
+            throw new \RuntimeException('No reserved IP address is attached to this VM.');
+        }
+
+        $config = $this->proxmox->configureCloudInit($virtualMachine->proxmoxServer, [
+            'node' => $virtualMachine->node,
+            'vmid' => (int) $virtualMachine->vmid,
+            'cpu_cores' => $virtualMachine->cpu_cores,
+            'ram_gb' => $virtualMachine->ram_gb,
+            'login_username' => $virtualMachine->login_username,
+            'login_password' => $virtualMachine->login_password,
+            'ssh_public_key' => $virtualMachine->ssh_public_key,
+            'ipconfig0' => $this->ipPools->ipConfig($virtualMachine->reservedIpAddress),
+            'nameserver' => $this->ipPools->nameservers($virtualMachine->reservedIpAddress),
+            'cicustom' => 'vendor=local:snippets/ubuntu-password-login.yml',
+            'description' => 'Cloud-init network updated by Aviato admin panel',
+        ]);
+
+        if (! empty($config['task_id'])) {
+            $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $config['task_id'], 180);
+        }
+
+        $cloudInit = $this->proxmox->regenerateCloudInit($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+
+        if (! empty($cloudInit['task_id'])) {
+            $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $cloudInit['task_id'], 180);
+        }
+
+        $virtualMachine->forceFill([
+            'desired_state' => $virtualMachine->desiredStateSnapshot(),
+            'remote_state' => array_merge($virtualMachine->remote_state ?? [], [
+                'cloudinit_network_updated_at' => now()->toISOString(),
+                'cloudinit_network_ip' => $virtualMachine->ip_address,
+            ]),
+        ])->save();
     }
 
     private function resolveProjectForCustomer(Customer $customer, ?int $projectId): Project

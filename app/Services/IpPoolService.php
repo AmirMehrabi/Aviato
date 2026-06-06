@@ -155,6 +155,62 @@ class IpPoolService
         ])->save();
     }
 
+    public function reserveSpecificForVm(IpAddress $address, VirtualMachine $vm): IpAddress
+    {
+        return DB::transaction(function () use ($address, $vm): IpAddress {
+            $address = IpAddress::query()
+                ->with('pool')
+                ->lockForUpdate()
+                ->findOrFail($address->id);
+
+            $pool = $address->pool;
+
+            if (! $pool->is_active) {
+                throw new RuntimeException('The selected IP pool is not active.');
+            }
+
+            if ((int) $pool->proxmox_server_id !== (int) $vm->proxmox_server_id) {
+                throw new RuntimeException('The selected IP pool belongs to a different Proxmox server.');
+            }
+
+            if (filled($pool->node) && filled($vm->node) && $pool->node !== $vm->node) {
+                throw new RuntimeException('The selected IP pool belongs to a different Proxmox node.');
+            }
+
+            if ($address->virtual_machine_id && (int) $address->virtual_machine_id !== (int) $vm->id) {
+                throw new RuntimeException("IP {$address->address} is already assigned to another VM.");
+            }
+
+            if (! in_array($address->status, [IpAddress::STATUS_AVAILABLE, IpAddress::STATUS_RELEASED, IpAddress::STATUS_RESERVED, IpAddress::STATUS_ASSIGNED], true)) {
+                throw new RuntimeException("IP {$address->address} cannot be assigned in its current status.");
+            }
+
+            $previousAddress = $vm->reservedIpAddress()
+                ->lockForUpdate()
+                ->first();
+
+            if ($previousAddress && (int) $previousAddress->id !== (int) $address->id) {
+                $this->release($previousAddress);
+            }
+
+            $address->forceFill([
+                'virtual_machine_id' => $vm->id,
+                'status' => IpAddress::STATUS_ASSIGNED,
+                'reserved_at' => $address->reserved_at ?: now(),
+                'assigned_at' => now(),
+                'released_at' => null,
+            ])->save();
+
+            $vm->forceFill([
+                'ip_address_id' => $address->id,
+                'ip_address' => $address->address,
+                'network_bridge' => $pool->network_bridge,
+            ])->save();
+
+            return $address;
+        });
+    }
+
     public function release(IpAddress $address): void
     {
         $address->forceFill([

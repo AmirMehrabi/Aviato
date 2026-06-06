@@ -1,4 +1,8 @@
 @csrf
+@php
+    $selectedIpPoolId = old('ip_pool_id', $vm->reservedIpAddress?->ip_pool_id);
+    $selectedIpAddressId = old('ip_address_id', $vm->ip_address_id);
+@endphp
 <div class="grid gap-5 md:grid-cols-2">
     <x-form.input name="name" label="نام VM" :value="$vm->name" dir-ltr />
     <x-form.input name="hostname" label="Hostname" :value="$vm->hostname" dir-ltr />
@@ -17,15 +21,43 @@
     </label>
     <x-form.select name="proxmox_server_id" label="Proxmox Server" :selected="$vm->proxmox_server_id" :options="$servers->prepend('بدون اتصال فعلا', '')" />
     <label class="block md:col-span-2"><span class="text-sm font-black text-slate-700">باندل سخت‌افزاری</span><select name="vm_bundle_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none"><option value="">Custom منابع دستی</option>@foreach($bundles as $bundle)<option value="{{ $bundle->id }}" @selected((string) old('vm_bundle_id', $vm->vm_bundle_id) === (string) $bundle->id)>{{ $bundle->name }} - {{ $bundle->cpu_cores }} CPU / {{ $bundle->ram_gb }}GB RAM / {{ $bundle->disk_gb }}GB - {{ app(App\Services\WalletService::class)->format($bundle->monthly_price) }}</option>@endforeach</select>@error('vm_bundle_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror<p class="mt-1 text-xs text-slate-500">اگر باندل انتخاب شود CPU/RAM/Disk/IP از باندل برداشته می‌شود.</p></label>
-    <x-form.input name="cpu_cores" type="number" label="CPU Core" :value="$vm->cpu_cores" />
-    <x-form.input name="ram_gb" type="number" label="RAM (GB)" :value="$vm->ram_gb" />
-    <x-form.input name="disk_gb" type="number" label="Disk (GB)" :value="$vm->disk_gb" />
-    <x-form.input name="ip_count" type="number" label="تعداد IP" :value="$vm->ip_count ?? 1" />
-    <x-form.input name="ip_address" label="IP Address" :value="$vm->ip_address" dir-ltr />
+    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 md:col-span-2">
+        <p class="text-sm font-black text-slate-700">منابع فعلی از باندل خوانده می‌شود</p>
+        <div class="mt-3 grid gap-3 text-sm md:grid-cols-4">
+            <div class="rounded-lg bg-white p-3"><span class="block text-xs font-bold text-slate-500">CPU</span><span class="font-black" dir="ltr">{{ $vm->cpu_cores }} Core</span></div>
+            <div class="rounded-lg bg-white p-3"><span class="block text-xs font-bold text-slate-500">RAM</span><span class="font-black" dir="ltr">{{ $vm->ram_gb }}GB</span></div>
+            <div class="rounded-lg bg-white p-3"><span class="block text-xs font-bold text-slate-500">Disk</span><span class="font-black" dir="ltr">{{ $vm->disk_gb }}GB</span></div>
+            <div class="rounded-lg bg-white p-3"><span class="block text-xs font-bold text-slate-500">IP Count</span><span class="font-black" dir="ltr">{{ $vm->ip_count ?? 1 }}</span></div>
+        </div>
+    </div>
+    <label>
+        <span class="text-sm font-black text-slate-700">IP Pool</span>
+        <select name="ip_pool_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+            <option value="">بدون تغییر IP Pool</option>
+            @foreach($ipPools as $pool)
+                <option value="{{ $pool->id }}" @selected((string) $selectedIpPoolId === (string) $pool->id)>
+                    {{ $pool->name }} - {{ $pool->proxmoxServer?->name ?: 'Proxmox' }} - {{ $pool->node ?: 'all nodes' }} - {{ $pool->network_bridge }}
+                </option>
+            @endforeach
+        </select>
+        @error('ip_pool_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+    </label>
+    <label>
+        <span class="text-sm font-black text-slate-700">IP Address</span>
+        <select name="ip_address_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+            <option value="">بدون تغییر IP Address</option>
+            @foreach($ipAddresses as $address)
+                <option value="{{ $address->id }}" @selected((string) $selectedIpAddressId === (string) $address->id)>
+                    {{ $address->address }} - {{ $address->pool?->name ?: 'pool' }} - {{ $address->status }}
+                </option>
+            @endforeach
+        </select>
+        @error('ip_address_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+        <p class="mt-1 text-xs text-slate-500">بعد از تغییر IP، ipconfig0 و nameserver در Cloud-init روی Proxmox بازسازی می‌شود.</p>
+    </label>
     <x-form.input name="vmid" type="number" label="Proxmox VMID" :value="$vm->vmid" />
     <x-form.input name="node" label="Node" :value="$vm->node" dir-ltr />
     <x-form.input name="storage" label="Storage" :value="$vm->storage" dir-ltr />
     <x-form.input name="os_template" label="OS Template" :value="$vm->os_template" dir-ltr />
-    <x-form.select name="status" label="وضعیت" :selected="$vm->status ?? 'stopped'" :options="['stopped' => 'خاموش', 'running' => 'روشن', 'suspended' => 'تعلیق شده']" />
 </div>
 <div class="mt-6 flex gap-3"><button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره VM</button><a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a></div>
