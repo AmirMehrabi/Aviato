@@ -499,6 +499,94 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertTrue($response->viewData('cloudImages')->contains($image));
         $viewImage = $response->viewData('cloudImages')->firstWhere('id', $image->id);
         $this->assertSame([$bundle->id], $viewImage->allowedBundles->pluck('id')->all());
+        $response->assertDontSee('سهمیه ساخت');
+        $response->assertDontSee('هزینه اولیه ساخت');
+        $response->assertDontSee('creation_charge_label');
+        $response->assertDontSee('vmCreationChargeEnabled');
+    }
+
+    public function test_create_page_shows_profile_verification_message_when_unverified_customer_is_quota_blocked(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 1, 'integer', 'customer');
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 10000000]);
+        [$image, $bundle] = $this->catalog();
+
+        VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'name' => 'existing-unverified-vps',
+            'node' => $image->node,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->get($this->customerBaseUrl.'/servers/create')
+            ->assertOk()
+            ->assertSee('برای ساخت VPS بیشتر، کد ملی‌تان را در پروفایل تایید کنید.', false)
+            ->assertSee('تایید کد ملی در پروفایل', false)
+            ->assertDontSee('سهمیه ساخت')
+            ->assertDontSee('هزینه اولیه ساخت');
+    }
+
+    public function test_create_page_shows_limited_availability_message_when_verified_customer_is_quota_blocked(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFIED_VM_LIMIT, 1, 'integer', 'customer');
+
+        $customer = Customer::factory()->create([
+            'national_code' => '0100000002',
+            'national_code_hash' => hash('sha256', '0100000002'),
+            'national_code_verified_at' => now(),
+        ]);
+        $customer->wallet()->update(['balance' => 10000000]);
+        [$image, $bundle] = $this->catalog();
+
+        VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'name' => 'existing-verified-vps',
+            'node' => $image->node,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->get($this->customerBaseUrl.'/servers/create')
+            ->assertOk()
+            ->assertSee('در حال حاضر ظرفیت ساخت VPS برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.', false)
+            ->assertDontSee('تایید کد ملی در پروفایل')
+            ->assertDontSee('سهمیه ساخت')
+            ->assertDontSee('هزینه اولیه ساخت');
+    }
+
+    public function test_create_page_shows_wallet_top_up_message_only_as_a_blocker(): void
+    {
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000]);
+        [, $bundle] = $this->catalog();
+        $bundle->update(['monthly_price' => 9600000]);
+
+        $this->actingAs($customer, 'customer');
+        $this->get($this->customerBaseUrl.'/servers/create')
+            ->assertOk()
+            ->assertSee('کیف پول کافی نیست', false)
+            ->assertSee('برای ساخت این VPS موجودی کیف پول باید حداقل', false)
+            ->assertSee('افزایش موجودی کیف پول', false)
+            ->assertDontSee('هزینه اولیه ساخت');
     }
 
     public function test_customer_can_poll_owned_server_statuses(): void
