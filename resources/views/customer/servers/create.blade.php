@@ -194,48 +194,67 @@
         </form>
 
         <aside class="space-y-5">
-            <div class="sticky top-24 rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                <h2 class="text-lg font-black text-slate-950">حساب و کتاب</h2>
-                <div class="mt-5 space-y-4 text-sm">
-                    <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="font-black text-slate-950" x-text="selectedOsLabel || '—'"></span></div>
-                    <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">نسخه</span><span class="font-black text-slate-950" x-text="selectedImage?.os_version || '—'"></span></div>
-                    <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">CloudInit</span><span class="font-black text-slate-950" x-text="cloudInitEnabled ? 'فعال' : 'غیرفعال'"></span></div>
-                    <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">پلن</span><span class="font-black text-slate-950" x-text="selectedBundle?.name || '—'"></span></div>
-                    <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class="font-black text-slate-950" dir="ltr" x-text="`${form.cpu_cores} CPU / ${form.ram_gb}GB / ${form.disk_gb}GB`"></span></div>
-                    <div class="rounded-lg bg-slate-50 p-4">
-                        <p class="text-xs font-black text-slate-500">هزینه ماهانه تقریبی</p>
-                        <p class="mt-2 text-2xl font-black text-slate-950" x-text="selectedBundle?.price || '—'"></p>
-                    </div>
-                    <div x-show="walletNeedsTopUp" x-cloak class="rounded-lg border border-red-100 bg-red-50 p-4">
-                        <p class="text-xs font-black text-red-700">کیف پول کافی نیست</p>
-                        <p class="mt-2 text-xs leading-6 text-red-600">برای ساخت این ماشین مجازی موجودی کیف پول باید حداقل <span x-text="minimumBalanceLabel"></span> باشد.</p>
-                    </div>
-                    <div x-show="selectedImage && !selectedImage.has_available_ip" x-cloak class="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                        <p class="text-xs font-black text-amber-800">ظرفیت IP محدود است</p>
-                        <p class="mt-2 text-xs leading-6 text-amber-800">در حال حاضر IP آزاد برای Proxmox این نسخه وجود ندارد. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت ماشین مجازی وجود ندارد.</p>
-                    </div>
-                    @if (! $quota['can_create'])
-                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                            <p class="text-xs font-black text-amber-800">امکان ساخت ماشین مجازی جدید وجود ندارد</p>
-                            <p class="mt-2 text-xs leading-6 text-amber-800">
-                                @if (! $quota['verified'])
-                                    برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.
-                                @else
-                                    در حال حاضر ظرفیت ساخت ماشین مجازی برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.
-                                @endif
-                            </p>
+            <div class="sticky top-24 overflow-hidden rounded-2xl border border-[#B8D6FF] bg-[#F4F8FF] shadow-xl shadow-[#0069FF]/10 ring-1 ring-white">
+                <div class="border-b border-[#D7E8FF] bg-white/70 px-5 py-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase text-[#0069FF]">Summary</p>
+                            <h2 class="mt-1 text-lg font-black text-slate-950">حساب و کتاب</h2>
                         </div>
-                    @endif
-                    <div class="rounded-lg border border-dashed border-slate-300 p-4 text-xs leading-6 text-slate-500">برای ساخت ماشین مجازی باید حداقل یک IP آزاد در Pool مربوط به Proxmox انتخابی وجود داشته باشد.</div>
+                        <span class="rounded-lg bg-[#EBF3FF] px-2.5 py-1 text-[11px] font-black text-[#0069FF]">آماده بررسی</span>
+                    </div>
                 </div>
-                <button type="button" @click="submit()" :disabled="!canSubmit" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-black transition" :class="canSubmit ? 'bg-[#0069FF] text-white hover:bg-[#0050D0]' : 'cursor-not-allowed bg-slate-200 text-slate-500'">
-                    <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-                    <span x-text="submitting ? 'در حال ثبت درخواست...' : 'ساخت ماشین مجازی'"></span>
-                </button>
-                <a x-show="walletNeedsTopUp" x-cloak :href="walletUrl" class="mt-3 inline-flex w-full justify-center rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] px-4 py-3 text-sm font-black text-[#0069FF]">افزایش موجودی کیف پول</a>
-                @if (! $quota['can_create'] && ! $quota['verified'])
-                    <a href="{{ route('customer.profile.show', [], false) }}" class="mt-3 inline-flex w-full justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">تایید کد ملی در پروفایل</a>
-                @endif
+
+                <div class="p-5">
+                    <div class="space-y-3 rounded-xl bg-white/75 p-4 text-sm ring-1 ring-[#D7E8FF]">
+                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="font-black text-slate-950" x-text="selectedOsLabel || '—'"></span></div>
+                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">نسخه</span><span class="font-black text-slate-950" x-text="selectedImage?.os_version || '—'"></span></div>
+                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">CloudInit</span><span class="font-black text-slate-950" x-text="cloudInitEnabled ? 'فعال' : 'غیرفعال'"></span></div>
+                        <div class="flex justify-between gap-3 border-t border-slate-100 pt-3"><span class="font-bold text-slate-500">پلن</span><span class="font-black text-slate-950" x-text="selectedBundle?.name || '—'"></span></div>
+                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class="font-black text-slate-950" dir="ltr" x-text="`${form.cpu_cores} CPU / ${form.ram_gb}GB / ${form.disk_gb}GB`"></span></div>
+                    </div>
+
+                    <div class="mt-4 rounded-2xl border border-white bg-white p-4 shadow-sm shadow-[#0069FF]/10">
+                        <p class="text-xs font-black text-[#0069FF]">هزینه ماهانه تقریبی</p>
+                        <p class="mt-2 text-3xl font-black leading-tight text-slate-950" x-text="selectedBundle?.price || '—'"></p>
+                        <p class="mt-2 text-xs font-bold leading-6 text-slate-500">پس از ساخت، مصرف PAYG از کیف پول پروژه محاسبه می شود.</p>
+                    </div>
+
+                    <div class="mt-4 space-y-3 text-sm">
+                        <div x-show="walletNeedsTopUp" x-cloak class="rounded-xl border border-red-100 bg-red-50 p-4">
+                            <p class="text-xs font-black text-red-700">کیف پول کافی نیست</p>
+                            <p class="mt-2 text-xs leading-6 text-red-600">برای ساخت این ماشین مجازی موجودی کیف پول باید حداقل <span x-text="minimumBalanceLabel"></span> باشد.</p>
+                        </div>
+                        <div x-show="selectedImage && !selectedImage.has_available_ip" x-cloak class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                            <p class="text-xs font-black text-amber-800">ظرفیت IP محدود است</p>
+                            <p class="mt-2 text-xs leading-6 text-amber-800">در حال حاضر IP آزاد برای Proxmox این نسخه وجود ندارد. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت ماشین مجازی وجود ندارد.</p>
+                        </div>
+                        @if (! $quota['can_create'])
+                            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                                <p class="text-xs font-black text-amber-800">امکان ساخت ماشین مجازی جدید وجود ندارد</p>
+                                <p class="mt-2 text-xs leading-6 text-amber-800">
+                                    @if (! $quota['verified'])
+                                        برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.
+                                    @else
+                                        در حال حاضر ظرفیت ساخت ماشین مجازی برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.
+                                    @endif
+                                </p>
+                            </div>
+                        @endif
+                        <div class="rounded-xl border border-dashed border-[#B8D6FF] bg-white/50 p-4 text-xs leading-6 text-slate-500">برای ساخت ماشین مجازی باید حداقل یک IP آزاد در Pool مربوط به Proxmox انتخابی وجود داشته باشد.</div>
+                    </div>
+                </div>
+
+                <div class="border-t border-[#D7E8FF] bg-white/80 p-5">
+                    <button type="button" @click="submit()" :disabled="!canSubmit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-black transition" :class="canSubmit ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/25 hover:bg-[#0050D0]' : 'cursor-not-allowed bg-slate-200 text-slate-500 shadow-none'">
+                        <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                        <span x-text="submitting ? 'در حال ثبت درخواست...' : 'ساخت ماشین مجازی'"></span>
+                    </button>
+                    <a x-show="walletNeedsTopUp" x-cloak :href="walletUrl" class="mt-3 inline-flex w-full justify-center rounded-xl border border-[#B8D6FF] bg-[#F2F8FF] px-4 py-3 text-sm font-black text-[#0069FF]">افزایش موجودی کیف پول</a>
+                    @if (! $quota['can_create'] && ! $quota['verified'])
+                        <a href="{{ route('customer.profile.show', [], false) }}" class="mt-3 inline-flex w-full justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">تایید کد ملی در پروفایل</a>
+                    @endif
+                </div>
             </div>
         </aside>
     </section>
