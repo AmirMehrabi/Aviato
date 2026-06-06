@@ -312,13 +312,13 @@ class ServerController extends Controller
         if ($wallet->is_locked) {
             return back()
                 ->withInput($this->safeCreateInput($request))
-                ->with('error', $wallet->lock_reason ?: 'کیف پول برای ثبت درخواست ساخت VPS قفل است.');
+                ->with('error', $wallet->lock_reason ?: 'کیف پول برای ثبت درخواست ساخت ماشین مجازی قفل است.');
         }
 
         if ($bundle && $wallet->balance < $minimumCreateBalance) {
             return back()
                 ->withInput($this->safeCreateInput($request))
-                ->with('error', 'برای ساخت VPS موجودی کیف پول باید حداقل '.$this->wallets->format($minimumCreateBalance).' باشد.');
+                ->with('error', 'برای ساخت ماشین مجازی موجودی کیف پول باید حداقل '.$this->wallets->format($minimumCreateBalance).' باشد.');
         }
 
         if ($this->ipPools->availableCountFor((int) $image->proxmox_server_id, $image->node) < 1) {
@@ -327,7 +327,7 @@ class ServerController extends Controller
                     'cloud_image_id' => 'در حال حاضر IP آزاد برای Proxmox این Cloud Image وجود ندارد.',
                 ])
                 ->withInput($this->safeCreateInput($request))
-                ->with('error', 'ظرفیت IP برای این دیتاسنتر محدود است. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت VPS وجود ندارد.');
+                ->with('error', 'ظرفیت IP برای این دیتاسنتر محدود است. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت ماشین مجازی وجود ندارد.');
         }
 
         try {
@@ -335,7 +335,7 @@ class ServerController extends Controller
             $creationCharge = $bundle ? AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price) : 0;
 
             if ($creationCharge > 0) {
-                $this->wallets->charge($activeProject->owner, $creationCharge, 'هزینه اولیه ساخت VPS '.$result['vm']->name, $result['vm'], [
+                $this->wallets->charge($activeProject->owner, $creationCharge, 'هزینه اولیه ساخت ماشین مجازی '.$result['vm']->name, $result['vm'], [
                     'category' => 'vm_creation_fee',
                     'percentage' => AppSetting::vmCreationChargePercentage(),
                     'monthly_price' => (int) $bundle->monthly_price,
@@ -343,8 +343,8 @@ class ServerController extends Controller
             }
 
             $status = $result['vm']->ip_address
-                ? 'درخواست ساخت VPS ثبت شد. IP: '.$result['vm']->ip_address
-                : 'درخواست ساخت VPS ثبت شد. آماده سازی در پس زمینه شروع شد.';
+                ? 'درخواست ساخت ماشین مجازی ثبت شد. IP: '.$result['vm']->ip_address
+                : 'درخواست ساخت ماشین مجازی ثبت شد. آماده سازی در پس زمینه شروع شد.';
 
             return redirect()
                 ->route('customer.servers.index')
@@ -357,7 +357,7 @@ class ServerController extends Controller
         } catch (Throwable $exception) {
             return back()
                 ->withInput($this->safeCreateInput($request))
-                ->with('error', 'ساخت VPS ممکن نیست: '.$exception->getMessage());
+                ->with('error', 'ساخت ماشین مجازی ممکن نیست: '.$exception->getMessage());
         }
     }
 

@@ -44,7 +44,7 @@
     ];
 
     $faqs = [
-        ['q' => 'بعد از خرید، سرور چه زمانی آماده می شود؟', 'a' => 'بعد از ثبت سفارش و پرداخت، ساخت VPS به صورت خودکار شروع می شود. وقتی سرور آماده شد، IP و اطلاعات اتصال را در پنل مشتری می بینید.'],
+        ['q' => 'بعد از خرید، سرور چه زمانی آماده می شود؟', 'a' => 'بعد از ثبت سفارش و پرداخت، ساخت ماشین مجازی به صورت خودکار شروع می شود. وقتی سرور آماده شد، IP و اطلاعات اتصال را در پنل مشتری می بینید.'],
         ['q' => 'برای سایت یا اپلیکیشنم کدام پلن بهتر است؟', 'a' => 'اگر تازه شروع کرده اید، معمولا یک پلن کوچک تر کافی است. برای فروشگاه، سایت پربازدید یا اپلیکیشنی که کاربر زیادی دارد، بهتر است پلنی انتخاب کنید که کمی فضای رشد هم داشته باشد.'],
         ['q' => 'آیا دسترسی کامل به سرور دارم؟', 'a' => 'بله. سرور با دسترسی مدیریتی تحویل داده می شود و می توانید وب سرور، دیتابیس، Docker و ابزارهای مورد نیاز خودتان را نصب کنید.'],
         ['q' => 'هزینه ها چطور پرداخت می شوند؟', 'a' => 'قیمت هر پلن قبل از سفارش مشخص است و پرداخت از کیف پول مشتری انجام می شود. قبل از خرید، منابع و هزینه ماهانه را می بینید.'],
@@ -82,7 +82,7 @@
                         <div class="p-4">
                             <div class="mb-4 flex items-center justify-between gap-4">
                                 <div>
-                                    <p class="text-xs font-black uppercase text-[#0069FF]">ساخت VPS جدید</p>
+                                    <p class="text-xs font-black uppercase text-[#0069FF]">ساخت ماشین مجازی جدید</p>
                                     <p class="mt-1 text-sm font-black text-slate-950">سیستم عامل، پلن و دسترسی اولیه را انتخاب کنید</p>
                                 </div>
                                 <span class="rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] px-3 py-2 text-xs font-black text-[#0069FF]">کیف پول آماده</span>
@@ -165,7 +165,7 @@
                                         </div>
                                         <div class="rounded-lg border border-dashed border-slate-300 p-3 text-[11px] leading-5 text-slate-500">IP به صورت خودکار تخصیص داده می شود.</div>
                                     </div>
-                                    <a href="{{ route('customer.register') }}" class="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#0069FF] px-4 py-3 text-xs font-black text-white transition hover:bg-[#0050D0]">ساخت VPS</a>
+                                    <a href="{{ route('customer.register') }}" class="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#0069FF] px-4 py-3 text-xs font-black text-white transition hover:bg-[#0050D0]">ساخت ماشین مجازی</a>
                                 </aside>
                             </div>
                         </div>

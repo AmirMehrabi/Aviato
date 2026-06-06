@@ -27,7 +27,7 @@
             <x-form.select name="sms_gateway" label="درگاه ارسال پیامک" :selected="$smsGateway" :options="$smsGateways" />
 
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <h2 class="text-sm font-black text-slate-900">هزینه اولیه ساخت VPS</h2>
+                <h2 class="text-sm font-black text-slate-900">هزینه اولیه ساخت ماشین مجازی</h2>
                 <p class="mt-1 text-xs leading-6 text-slate-500">در صورت فعال بودن، هنگام ثبت اولین درخواست ساخت VM درصدی از قیمت ماهانه پلن از کیف پول مالک پروژه کسر می‌شود.</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <x-form.checkbox name="vm_creation_charge_enabled" label="کسر هزینه ساخت فعال باشد" :checked="$vmCreationChargeEnabled" />

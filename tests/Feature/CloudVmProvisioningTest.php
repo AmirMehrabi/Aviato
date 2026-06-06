@@ -507,11 +507,11 @@ class CloudVmProvisioningTest extends TestCase
                 'login_username' => 'ubuntu',
             ])
             ->assertRedirect($this->customerBaseUrl.'/servers/create')
-            ->assertSessionHas('error', 'برای ساخت VPS بیشتر، کد ملی‌تان را در پروفایل تایید کنید.');
+            ->assertSessionHas('error', 'برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.');
 
         $this->get($this->customerBaseUrl.'/servers/create')
             ->assertOk()
-            ->assertSee('برای ساخت VPS بیشتر، کد ملی‌تان را در پروفایل تایید کنید.', false)
+            ->assertSee('برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.', false)
             ->assertSee('تایید کد ملی در پروفایل', false);
 
         $this->get($this->customerBaseUrl.'/profile')
@@ -727,7 +727,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->actingAs($customer, 'customer');
         $this->get($this->customerBaseUrl.'/servers/create')
             ->assertOk()
-            ->assertSee('برای ساخت VPS بیشتر، کد ملی‌تان را در پروفایل تایید کنید.', false)
+            ->assertSee('برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.', false)
             ->assertSee('تایید کد ملی در پروفایل', false)
             ->assertDontSee('quota.limit > 0', false)
             ->assertDontSee('حساب هنوز با کد ملی تایید نشده است.')
@@ -764,7 +764,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->actingAs($customer, 'customer');
         $this->get($this->customerBaseUrl.'/servers/create')
             ->assertOk()
-            ->assertSee('در حال حاضر ظرفیت ساخت VPS برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.', false)
+            ->assertSee('در حال حاضر ظرفیت ساخت ماشین مجازی برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.', false)
             ->assertDontSee('تایید کد ملی در پروفایل')
             ->assertDontSee('quota.limit > 0', false)
             ->assertDontSee('حساب با کد ملی تایید شده است.')

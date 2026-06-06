@@ -127,7 +127,7 @@
         @empty
             <div class="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
                 <p class="font-black text-slate-950">برای استفاده از بکاپ ابتدا VPS بسازید.</p>
-                <a href="{{ route('customer.servers.create', [], false) }}" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">ساخت VPS</a>
+                <a href="{{ route('customer.servers.create', [], false) }}" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">ساخت ماشین مجازی</a>
             </div>
         @endforelse
     </section>

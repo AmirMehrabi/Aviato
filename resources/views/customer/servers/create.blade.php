@@ -1,7 +1,7 @@
 @extends('customer.layout')
 
-@section('title', 'ساخت VPS جدید')
-@section('header_title', 'ساخت VPS جدید')
+@section('title', 'ساخت ماشین مجازی جدید')
+@section('header_title', 'ساخت ماشین مجازی جدید')
 @section('header_subtitle', 'سیستم عامل، نسخه، پلن و دسترسی اولیه را انتخاب کنید')
 
 @php
@@ -212,25 +212,25 @@
                     </div>
                     <div x-show="selectedImage && !selectedImage.has_available_ip" x-cloak class="rounded-lg border border-amber-200 bg-amber-50 p-4">
                         <p class="text-xs font-black text-amber-800">ظرفیت IP محدود است</p>
-                        <p class="mt-2 text-xs leading-6 text-amber-800">در حال حاضر IP آزاد برای Proxmox این نسخه وجود ندارد. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت VPS وجود ندارد.</p>
+                        <p class="mt-2 text-xs leading-6 text-amber-800">در حال حاضر IP آزاد برای Proxmox این نسخه وجود ندارد. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت ماشین مجازی وجود ندارد.</p>
                     </div>
                     @if (! $quota['can_create'])
                         <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                            <p class="text-xs font-black text-amber-800">امکان ساخت VPS جدید وجود ندارد</p>
+                            <p class="text-xs font-black text-amber-800">امکان ساخت ماشین مجازی جدید وجود ندارد</p>
                             <p class="mt-2 text-xs leading-6 text-amber-800">
                                 @if (! $quota['verified'])
-                                    برای ساخت VPS بیشتر، کد ملی‌تان را در پروفایل تایید کنید.
+                                    برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.
                                 @else
-                                    در حال حاضر ظرفیت ساخت VPS برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.
+                                    در حال حاضر ظرفیت ساخت ماشین مجازی برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.
                                 @endif
                             </p>
                         </div>
                     @endif
-                    <div class="rounded-lg border border-dashed border-slate-300 p-4 text-xs leading-6 text-slate-500">برای ساخت VPS باید حداقل یک IP آزاد در Pool مربوط به Proxmox انتخابی وجود داشته باشد.</div>
+                    <div class="rounded-lg border border-dashed border-slate-300 p-4 text-xs leading-6 text-slate-500">برای ساخت ماشین مجازی باید حداقل یک IP آزاد در Pool مربوط به Proxmox انتخابی وجود داشته باشد.</div>
                 </div>
                 <button type="button" @click="submit()" :disabled="!canSubmit" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-black transition" :class="canSubmit ? 'bg-[#0069FF] text-white hover:bg-[#0050D0]' : 'cursor-not-allowed bg-slate-200 text-slate-500'">
                     <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-                    <span x-text="submitting ? 'در حال ثبت درخواست...' : 'ساخت VPS'"></span>
+                    <span x-text="submitting ? 'در حال ثبت درخواست...' : 'ساخت ماشین مجازی'"></span>
                 </button>
                 <a x-show="walletNeedsTopUp" x-cloak :href="walletUrl" class="mt-3 inline-flex w-full justify-center rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] px-4 py-3 text-sm font-black text-[#0069FF]">افزایش موجودی کیف پول</a>
                 @if (! $quota['can_create'] && ! $quota['verified'])

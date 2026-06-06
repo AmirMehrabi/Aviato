@@ -46,7 +46,7 @@
         <div class="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
                 <p class="text-sm font-bold text-white/60">Cloud-init Provisioning</p>
-                <h1 class="mt-2 text-3xl font-black">ساخت VPS از Cloud Image</h1>
+                <h1 class="mt-2 text-3xl font-black">ساخت ماشین مجازی از Cloud Image</h1>
                 <p class="mt-3 max-w-3xl leading-8 text-white/75">Template VMID از کاتالوگ Cloud Images انتخاب می‌شود؛ IP از Pool رزرو و Provisioning در Queue انجام می‌شود.</p>
             </div>
             <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E]">بازگشت</a>

@@ -30,7 +30,7 @@
             <section class="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
                 <p class="font-black text-slate-950">برای مشاهده مانیتورینگ ابتدا VPS بسازید.</p>
                 <p class="mt-2 text-sm text-slate-500">بعد از آماده شدن ماشین، نمودارهای CPU، RAM، شبکه و وضعیت بکاپ از این صفحه نمایش داده می‌شود.</p>
-                <a href="{{ route('customer.servers.create', [], false) }}" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">ساخت VPS</a>
+                <a href="{{ route('customer.servers.create', [], false) }}" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">ساخت ماشین مجازی</a>
             </section>
         @else
             <section class="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">

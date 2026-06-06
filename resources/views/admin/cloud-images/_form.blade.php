@@ -33,7 +33,7 @@
     <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
             <h2 class="text-base font-black text-slate-950">Whitelist پلن‌ها</h2>
-            <p class="mt-1 text-sm leading-6 text-slate-500">فقط پلن‌های انتخاب‌شده در صفحه ساخت VPS نمایش داده می‌شوند. اگر این Cloud Image فعال باشد، باید حداقل یک پلن انتخاب شود.</p>
+            <p class="mt-1 text-sm leading-6 text-slate-500">فقط پلن‌های انتخاب‌شده در صفحه ساخت ماشین مجازی نمایش داده می‌شوند. اگر این Cloud Image فعال باشد، باید حداقل یک پلن انتخاب شود.</p>
         </div>
         @error('bundle_ids') <span class="text-xs font-bold text-red-600">{{ $message }}</span> @enderror
     </div>

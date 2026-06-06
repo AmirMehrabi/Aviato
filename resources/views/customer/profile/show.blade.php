@@ -2,7 +2,7 @@
 
 @section('title', 'پروفایل')
 @section('header_title', 'پروفایل حساب')
-@section('header_subtitle', 'اطلاعات هویتی، سطح حساب و سهمیه ساخت VPS')
+@section('header_subtitle', 'اطلاعات هویتی، سطح حساب و سهمیه ساخت ماشین مجازی')
 
 @php
     $activeNav = 'profile';
@@ -16,7 +16,7 @@
                     <p class="text-xs font-black text-[#0069FF]">Account Level</p>
                     <h2 class="mt-2 text-2xl font-black text-slate-950">{{ $customer->hasVerifiedNationalCode() ? 'حساب تایید شده' : 'حساب تایید نشده' }}</h2>
                     <p class="mt-2 text-sm font-bold leading-7 text-slate-500">
-                        {{ $customer->hasVerifiedNationalCode() ? 'کد ملی این حساب ثبت و تایید شده است.' : ($nationalCodeVerificationEnabled ? 'برای افزایش سقف ساخت VPS، کد ملی معتبر خود را ثبت کنید تا از طریق سرویس شاهکار بررسی شود.' : 'برای افزایش سقف ساخت VPS، کد ملی معتبر خود را ثبت کنید. تایید برخط در حال حاضر غیرفعال است.') }}
+                        {{ $customer->hasVerifiedNationalCode() ? 'کد ملی این حساب ثبت و تایید شده است.' : ($nationalCodeVerificationEnabled ? 'برای افزایش سقف ساخت ماشین مجازی، کد ملی معتبر خود را ثبت کنید تا از طریق سرویس شاهکار بررسی شود.' : 'برای افزایش سقف ساخت ماشین مجازی، کد ملی معتبر خود را ثبت کنید. تایید برخط در حال حاضر غیرفعال است.') }}
                     </p>
                 </div>
                 <span class="inline-flex rounded-xl px-4 py-2 text-sm font-black {{ $customer->hasVerifiedNationalCode() ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' }}">
