@@ -93,10 +93,12 @@ class CloudVmProvisioningTest extends TestCase
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog();
-
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn(['192.168.10.50']);
-        });
+        $pool = IpPool::query()->firstOrFail();
+        IpAddress::create([
+            'ip_pool_id' => $pool->id,
+            'address' => '192.168.10.50',
+            'status' => IpAddress::STATUS_RESERVED,
+        ]);
 
         $this->actingAs($customer, 'customer');
         $this->post($this->customerBaseUrl.'/servers', [
