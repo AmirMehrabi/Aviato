@@ -2,8 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\IpAddress;
-use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
@@ -51,10 +49,6 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
         $networkBridge = $vm->network_bridge ?: 'vmbr1';
         $address = $vm->reservedIpAddress;
-
-        if (! $address && (int) $vm->ip_count > 0) {
-            $address = $this->reserveIpIfAvailable($vm, $server, $proxmox, $ipPools, $networkBridge);
-        }
 
         $history = data_get($vm->remote_state, 'steps', []);
         $remoteCreated = false;
@@ -175,32 +169,6 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             throw $exception;
         }
 
-    }
-
-    private function reserveIpIfAvailable(
-        VirtualMachine $vm,
-        ProxmoxServer $server,
-        ProxmoxService $proxmox,
-        IpPoolService $ipPools,
-        string $networkBridge,
-    ): ?IpAddress {
-        $remoteAddresses = $proxmox->assignedGuestIpAddresses($server, $vm->node);
-
-        try {
-            $address = $ipPools->reserveForVm($vm, $remoteAddresses);
-            $vm->forceFill(['network_bridge' => $networkBridge])->save();
-
-            return $address->loadMissing('pool');
-        } catch (RuntimeException) {
-            $vm->forceFill([
-                'ip_count' => 0,
-                'ip_address_id' => null,
-                'ip_address' => null,
-                'network_bridge' => $networkBridge,
-            ])->save();
-
-            return null;
-        }
     }
 
     private function nextAvailableVmid(ProxmoxService $proxmox, VirtualMachine $vm): int
