@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\VirtualMachine;
 use App\Services\BillingService;
+use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -15,16 +16,19 @@ class DashboardController extends Controller
     public function __construct(
         private readonly WalletService $wallets,
         private readonly BillingService $billing,
+        private readonly ProjectAccessService $projects,
         private readonly UsageBillingService $usageBilling,
     ) {}
 
     public function __invoke(Request $request): View
     {
         $customer = $request->user('customer');
+        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_unless($this->projects->canViewVms($activeProject, $customer), 404);
         $wallet = $this->wallets->walletFor($customer);
-        $virtualMachines = $customer->virtualMachines()->notDeleted()->with('bundle')->latest()->get();
+        $virtualMachines = $activeProject->virtualMachines()->notDeleted()->with('bundle')->latest()->get();
         $transactions = $wallet->transactions()->with('createdBy')->limit(5)->get();
-        $summary = $this->billing->customerSummary($customer->id);
+        $summary = $this->billing->projectSummary($activeProject->id);
         $pendingUsage = $virtualMachines
             ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
             ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
@@ -68,6 +72,9 @@ class DashboardController extends Controller
 
         return view('customer.dashboard', [
             'customer' => $customer,
+            'activeProject' => $activeProject,
+            'activeMembership' => $this->projects->membership($activeProject, $customer),
+            'projects' => $this->projects->projectsFor($customer),
             'wallet' => $wallet,
             'transactions' => $transactions,
             'wallets' => $this->wallets,

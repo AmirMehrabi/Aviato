@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Models\CloudImage;
 use App\Models\Customer;
+use App\Models\Project;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
@@ -25,8 +26,11 @@ class CloudVmProvisioningService
      * @param  array<string, mixed>  $data
      * @return array{vm: VirtualMachine, password: ?string}
      */
-    public function create(Customer $customer, array $data, bool $dispatch = true): array
+    public function create(Customer $customer, array $data, bool $dispatch = true, ?Project $project = null): array
     {
+        $project ??= $customer->ensureDefaultProject();
+        $project->loadMissing('owner');
+
         $image = CloudImage::query()
             ->where('is_active', true)
             ->with(['proxmoxServer', 'allowedBundles'])
@@ -45,20 +49,25 @@ class CloudVmProvisioningService
         $username = $cloudInitEnabled ? (trim((string) ($data['login_username'] ?? '')) ?: $image->default_username) : null;
         $hostname = $cloudInitEnabled ? (trim((string) ($data['hostname'] ?? '')) ?: null) : null;
         $sshPublicKey = $cloudInitEnabled ? (trim((string) ($data['ssh_public_key'] ?? '')) ?: null) : null;
+        $node = trim((string) ($data['node'] ?? '')) ?: $image->node;
+        $storage = trim((string) ($data['storage'] ?? '')) ?: $image->storage;
+        $osTemplate = trim((string) ($data['os_template'] ?? '')) ?: $image->name;
 
-        $vm = DB::transaction(function () use ($customer, $data, $image, $server, $resources, $password, $username, $hostname, $sshPublicKey): VirtualMachine {
+        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $resources, $password, $username, $hostname, $sshPublicKey, $node, $storage, $osTemplate): VirtualMachine {
             $name = trim((string) ($data['name'] ?? '')) ?: 'customer-vps-'.Str::lower(Str::random(6));
             $vm = VirtualMachine::create([
-                'customer_id' => $customer->id,
+                'customer_id' => $project->owner_customer_id,
+                'project_id' => $project->id,
+                'created_by_customer_id' => $customer->id,
                 'proxmox_server_id' => $server->id,
                 'vm_bundle_id' => $data['vm_bundle_id'] ?? null,
                 'cloud_image_id' => $image->id,
                 'template_vmid' => $image->template_vmid,
                 'name' => $name,
                 'hostname' => $hostname ?: ($image->cloud_init_enabled ? $name : null),
-                'node' => $image->node,
-                'storage' => $image->storage,
-                'os_template' => $image->name,
+                'node' => $node,
+                'storage' => $storage,
+                'os_template' => $osTemplate,
                 'network_bridge' => $image->network_bridge,
                 'login_username' => $username,
                 'login_password' => $password,
@@ -82,7 +91,7 @@ class CloudVmProvisioningService
             return $vm;
         });
 
-        $this->reserveIpIfAvailable($vm, $server, $image);
+        $this->reserveIpIfAvailable($vm, $server);
 
         if ($dispatch) {
             ProvisionCloudVirtualMachine::dispatch($vm->id, [
@@ -94,10 +103,10 @@ class CloudVmProvisioningService
         return ['vm' => $vm->refresh(), 'password' => $password];
     }
 
-    private function reserveIpIfAvailable(VirtualMachine $vm, ProxmoxServer $server, CloudImage $image): void
+    private function reserveIpIfAvailable(VirtualMachine $vm, ProxmoxServer $server): void
     {
         try {
-            $remoteAddresses = $this->proxmox->assignedGuestIpAddresses($server, $image->node);
+            $remoteAddresses = $this->proxmox->assignedGuestIpAddresses($server, $vm->node);
         } catch (Throwable $exception) {
             $vm->delete();
 

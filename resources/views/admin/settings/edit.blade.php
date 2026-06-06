@@ -19,6 +19,26 @@
             <x-form.select name="sms_gateway" label="درگاه ارسال پیامک" :selected="$smsGateway" :options="$smsGateways" />
 
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h2 class="text-sm font-black text-slate-900">هزینه اولیه ساخت VPS</h2>
+                <p class="mt-1 text-xs leading-6 text-slate-500">در صورت فعال بودن، هنگام ثبت اولین درخواست ساخت VM درصدی از قیمت ماهانه پلن از کیف پول مالک پروژه کسر می‌شود.</p>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <x-form.checkbox name="vm_creation_charge_enabled" label="کسر هزینه ساخت فعال باشد" :checked="$vmCreationChargeEnabled" />
+                    <x-form.input name="vm_creation_charge_percentage" type="number" label="درصد هزینه ساخت" :value="$vmCreationChargePercentage" min="0" max="100" step="0.01" dir-ltr help="مثلا 10 یعنی ۱۰٪ قیمت ماهانه پلن." />
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h2 class="text-sm font-black text-slate-900">سطح حساب و کنترل سوء استفاده</h2>
+                <p class="mt-1 text-xs leading-6 text-slate-500">حساب تایید نشده با کد ملی محدود می‌شود. VM حذف شده تا پایان دوره cooldown همچنان سهمیه حساب تایید نشده را مصرف می‌کند.</p>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <x-form.input name="unverified_customer_vm_limit" type="number" label="سقف VM حساب تایید نشده" :value="$unverifiedCustomerVmLimit" min="0" max="1000000" dir-ltr help="پیشنهاد فعلی: 2" />
+                    <x-form.input name="verified_customer_vm_limit" type="number" label="سقف VM حساب تایید شده" :value="$verifiedCustomerVmLimit" min="0" max="1000000" dir-ltr help="0 یعنی بدون سقف." />
+                    <x-form.input name="deleted_vm_cooldown_days" type="number" label="روزهای نگهداری سهمیه VM حذف شده" :value="$deletedVmCooldownDays" min="0" max="3650" dir-ltr help="برای جلوگیری از ساخت، حذف و ساخت دوباره." />
+                    <x-form.input name="vm_rebuild_fee_multiplier_percentage" type="number" label="درصد هزینه بازسازی نسبت به هزینه ساخت" :value="$vmRebuildFeeMultiplierPercentage" min="0" max="100" step="0.01" dir-ltr help="50 یعنی نصف هزینه ساخت تنظیم شده." />
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h2 class="text-sm font-black text-slate-900">تنظیمات درگاه پیامک SMS0098</h2>
                 <p class="mt-1 text-xs leading-6 text-slate-500">زمانی استفاده می‌شود که روش تایید روی پیامک و درگاه انتخابی SMS0098 باشد.</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">

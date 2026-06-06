@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
 
 #[Fillable([
     'customer_id',
+    'project_id',
+    'created_by_customer_id',
     'uuid',
     'proxmox_server_id',
     'vm_bundle_id',
@@ -74,6 +76,15 @@ class VirtualMachine extends Model
     {
         static::creating(function (VirtualMachine $virtualMachine): void {
             $virtualMachine->uuid ??= (string) Str::uuid();
+
+            if (! $virtualMachine->project_id && $virtualMachine->customer_id) {
+                $project = Customer::query()->find($virtualMachine->customer_id)?->ensureDefaultProject();
+                $virtualMachine->project_id = $project?->id;
+            }
+
+            if (! $virtualMachine->created_by_customer_id && $virtualMachine->customer_id) {
+                $virtualMachine->created_by_customer_id = $virtualMachine->customer_id;
+            }
         });
     }
 
@@ -85,6 +96,16 @@ class VirtualMachine extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'created_by_customer_id');
     }
 
     public function proxmoxServer(): BelongsTo
@@ -193,6 +214,9 @@ class VirtualMachine extends Model
             'ram_gb' => $this->ram_gb,
             'disk_gb' => $this->disk_gb,
             'ip_count' => $this->ip_count,
+            'project_id' => $this->project_id,
+            'customer_id' => $this->customer_id,
+            'created_by_customer_id' => $this->created_by_customer_id,
             'ip_address' => $this->ip_address,
             'login_username' => $this->login_username,
             'ssh_public_key' => filled($this->ssh_public_key),

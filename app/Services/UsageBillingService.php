@@ -57,21 +57,26 @@ class UsageBillingService
 
     public function chargeVm(VirtualMachine $vm, ?CarbonInterface $until = null): ?WalletTransaction
     {
-        $vm->loadMissing(['customer', 'bundle']);
+        $vm->loadMissing(['customer', 'bundle', 'project.owner', 'creator']);
+        $billingCustomer = $vm->project?->owner ?? $vm->customer;
         $usage = $this->estimateVmUsage($vm, $until);
 
-        if ($usage['amount'] <= 0) {
+        if ($usage['amount'] <= 0 || ! $billingCustomer) {
             return null;
         }
 
         $transaction = $this->wallets->charge(
-            $vm->customer,
+            $billingCustomer,
             $usage['amount'],
             'کسر کارکرد PAYG برای VM '.$vm->name,
             metadata: [
                 'category' => 'payg_usage',
                 'vm_id' => $vm->id,
                 'vm_name' => $vm->name,
+                'project_id' => $vm->project_id,
+                'project_name' => $vm->project?->name,
+                'project_owner_id' => $billingCustomer->id,
+                'created_by_customer_id' => $vm->created_by_customer_id,
                 'bundle_id' => $vm->vm_bundle_id,
                 'period_start' => $usage['from']->toIso8601String(),
                 'period_end' => $usage['until']->toIso8601String(),
@@ -106,10 +111,9 @@ class UsageBillingService
 
         VirtualMachine::query()
             ->notDeleted()
-            ->with(['customer', 'bundle'])
-            ->whereNotNull('customer_id')
+            ->with(['customer', 'bundle', 'project.owner', 'creator'])
             ->whereNotIn('status', [VirtualMachine::STATUS_DELETING, VirtualMachine::STATUS_DELETED])
-            ->orderBy('customer_id')
+            ->orderBy('project_id')
             ->chunk(100, function ($vms) use (&$transactions, $until): void {
                 foreach ($vms as $vm) {
                     $transaction = $this->chargeVm($vm, $until);
@@ -121,7 +125,7 @@ class UsageBillingService
             });
 
         VmBackup::query()
-            ->with('virtualMachine.customer')
+            ->with('virtualMachine.project.owner', 'virtualMachine.customer')
             ->where('status', VmBackup::STATUS_READY)
             ->where('size_bytes', '>', 0)
             ->chunk(100, function ($backups) use (&$transactions, $until): void {
@@ -135,7 +139,7 @@ class UsageBillingService
             });
 
         VmDisk::query()
-            ->with('virtualMachine.customer')
+            ->with('virtualMachine.project.owner', 'virtualMachine.customer')
             ->where('status', VmDisk::STATUS_READY)
             ->chunk(100, function ($disks) use (&$transactions, $until): void {
                 foreach ($disks as $disk) {
@@ -152,25 +156,31 @@ class UsageBillingService
 
     public function chargeBackup(VmBackup $backup, ?CarbonInterface $until = null): ?WalletTransaction
     {
-        $backup->loadMissing('virtualMachine.customer');
+        $backup->loadMissing('virtualMachine.project.owner', 'virtualMachine.customer');
         $until ??= now();
+        $vm = $backup->virtualMachine;
+        $billingCustomer = $vm?->project?->owner ?? $vm?->customer;
         $from = $backup->last_billed_at ?? $backup->finished_at ?? $backup->created_at ?? $until;
         $hours = max(0, $from->floatDiffInHours($until));
         $hourly = $this->billing->backupHourly($backup);
         $amount = (int) round($hours * $hourly);
 
-        if ($amount <= 0 || ! $backup->virtualMachine?->customer) {
+        if ($amount <= 0 || ! $billingCustomer || ! $vm) {
             return null;
         }
 
         $transaction = $this->wallets->charge(
-            $backup->virtualMachine->customer,
+            $billingCustomer,
             $amount,
-            'کسر فضای بکاپ برای VM '.$backup->virtualMachine->name,
+            'کسر فضای بکاپ برای VM '.$vm->name,
             metadata: [
                 'category' => 'backup_storage',
                 'vm_id' => $backup->virtual_machine_id,
-                'vm_name' => $backup->virtualMachine->name,
+                'vm_name' => $vm->name,
+                'project_id' => $vm->project_id,
+                'project_name' => $vm->project?->name,
+                'project_owner_id' => $billingCustomer->id,
+                'created_by_customer_id' => $vm->created_by_customer_id,
                 'backup_id' => $backup->id,
                 'period_start' => $from->toIso8601String(),
                 'period_end' => $until->toIso8601String(),
@@ -192,25 +202,31 @@ class UsageBillingService
 
     public function chargeExtraDisk(VmDisk $disk, ?CarbonInterface $until = null): ?WalletTransaction
     {
-        $disk->loadMissing('virtualMachine.customer');
+        $disk->loadMissing('virtualMachine.project.owner', 'virtualMachine.customer');
         $until ??= now();
+        $vm = $disk->virtualMachine;
+        $billingCustomer = $vm?->project?->owner ?? $vm?->customer;
         $from = $disk->last_billed_at ?? $disk->created_at ?? $until;
         $hours = max(0, $from->floatDiffInHours($until));
         $hourly = $this->billing->extraDiskHourly($disk);
         $amount = (int) round($hours * $hourly);
 
-        if ($amount <= 0 || ! $disk->virtualMachine?->customer) {
+        if ($amount <= 0 || ! $billingCustomer || ! $vm) {
             return null;
         }
 
         $transaction = $this->wallets->charge(
-            $disk->virtualMachine->customer,
+            $billingCustomer,
             $amount,
-            'کسر فضای دیسک اضافه برای VM '.$disk->virtualMachine->name,
+            'کسر فضای دیسک اضافه برای VM '.$vm->name,
             metadata: [
                 'category' => 'extra_disk_storage',
                 'vm_id' => $disk->virtual_machine_id,
-                'vm_name' => $disk->virtualMachine->name,
+                'vm_name' => $vm->name,
+                'project_id' => $vm->project_id,
+                'project_name' => $vm->project?->name,
+                'project_owner_id' => $billingCustomer->id,
+                'created_by_customer_id' => $vm->created_by_customer_id,
                 'disk_id' => $disk->id,
                 'period_start' => $from->toIso8601String(),
                 'period_end' => $until->toIso8601String(),
@@ -232,6 +248,16 @@ class UsageBillingService
     public function customerPendingUsage(Customer $customer): int
     {
         return $customer->virtualMachines()
+            ->notDeleted()
+            ->with('bundle')
+            ->get()
+            ->sum(fn (VirtualMachine $vm): int => $this->estimateVmUsage($vm)['amount']);
+    }
+
+    public function projectPendingUsage(int $projectId): int
+    {
+        return VirtualMachine::query()
+            ->where('project_id', $projectId)
             ->notDeleted()
             ->with('bundle')
             ->get()

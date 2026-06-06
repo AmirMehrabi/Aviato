@@ -7,6 +7,12 @@
 <div
     class="px-4 py-6 md:px-8 lg:px-10"
     x-data="cloudVmCreate({
+        optionsUrlTemplate: @js(route('admin.virtual-machines.options', ['proxmoxServer' => '__SERVER__'], false)),
+        servers: @js($servers->map(fn ($server) => [
+            'id' => $server->id,
+            'name' => $server->name,
+            'datacenter' => $server->datacenter,
+        ])->values()),
         bundles: @js($bundles->map(fn ($bundle) => [
             'id' => $bundle->id,
             'name' => $bundle->name,
@@ -18,8 +24,10 @@
         images: @js($cloudImages->map(fn ($image) => [
             'id' => $image->id,
             'name' => $image->name,
+            'proxmox_server_id' => $image->proxmox_server_id,
             'server' => $image->proxmoxServer?->name,
             'node' => $image->node,
+            'storage' => $image->storage,
             'template_vmid' => $image->template_vmid,
             'default_username' => $image->default_username,
             'cloud_init_enabled' => $image->cloud_init_enabled,
@@ -29,6 +37,7 @@
             'allowed_bundle_ids' => $image->allowedBundles->pluck('id')->values()->all(),
         ])->values()),
     })"
+    x-init="init()"
 >
     @if (session('error'))<div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>@endif
     @if ($errors->any())<div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ $errors->first() }}</div>@endif
@@ -49,14 +58,59 @@
         <div class="grid gap-5 md:grid-cols-2">
             <x-form.select name="customer_id" label="مشتری" :selected="$selectedCustomerId" :options="$customers->prepend('انتخاب مشتری', '')" />
             <label>
-                <span class="text-sm font-black text-slate-700">Cloud Image</span>
+                <span class="text-sm font-black text-slate-700">Project</span>
+                <select name="project_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                    <option value="">Default Project مشتری</option>
+                    @foreach($projects as $project)
+                        <option value="{{ $project->id }}" @selected((string) old('project_id') === (string) $project->id)>
+                            {{ $project->name }} - {{ $project->owner?->name }}
+                        </option>
+                    @endforeach
+                </select>
+                <p class="mt-1 text-xs text-slate-500">اگر خالی باشد VM داخل Default Project مشتری انتخاب شده ساخته می‌شود.</p>
+                @error('project_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+            </label>
+            <label>
+                <span class="text-sm font-black text-slate-700">Proxmox Server</span>
+                <select name="proxmox_server_id" x-model="form.proxmox_server_id" @change="loadOptions(); syncImageSelection();" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                    <option value="">انتخاب Proxmox</option>
+                    <template x-for="server in servers" :key="server.id">
+                        <option :value="server.id" x-text="`${server.name}${server.datacenter ? ' / ' + server.datacenter : ''}`"></option>
+                    </template>
+                </select>
+                @error('proxmox_server_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+            </label>
+            <label>
+                <span class="text-sm font-black text-slate-700">OS Template</span>
                 <select name="cloud_image_id" x-model="form.cloud_image_id" @change="applyImage()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
-                    <option value="">انتخاب Image</option>
-                    <template x-for="image in images" :key="image.id">
+                    <option value="">انتخاب Template</option>
+                    <template x-for="image in visibleImages" :key="image.id">
                         <option :value="image.id" x-text="`${image.name} / ${image.server} / ${image.node} / template ${image.template_vmid}`"></option>
                     </template>
                 </select>
                 @error('cloud_image_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+            </label>
+            <input type="hidden" name="os_template" :value="selectedImage ? selectedImage.name : ''">
+
+            <label>
+                <span class="text-sm font-black text-slate-700">Node</span>
+                <select name="node" x-model="form.node" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                    <option value="">انتخاب Node</option>
+                    <template x-for="node in options.nodes" :key="node.name">
+                        <option :value="node.name" x-text="node.display || node.name"></option>
+                    </template>
+                </select>
+                @error('node') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+            </label>
+            <label>
+                <span class="text-sm font-black text-slate-700">Storage</span>
+                <select name="storage" x-model="form.storage" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                    <option value="">انتخاب Storage</option>
+                    <template x-for="storage in visibleStorages" :key="`${storage.node}-${storage.storage}`">
+                        <option :value="storage.storage" x-text="storage.display || storage.storage"></option>
+                    </template>
+                </select>
+                @error('storage') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
             </label>
 
             <x-form.input name="name" label="نام VM در Proxmox" value="" dir-ltr />
@@ -114,18 +168,50 @@
 <script>
 function cloudVmCreate(config) {
     return {
+        optionsUrlTemplate: config.optionsUrlTemplate,
+        servers: config.servers,
         bundles: config.bundles,
         images: config.images,
+        options: {
+            nodes: [],
+            disk_storages: [],
+            os_templates: [],
+        },
         form: {
+            proxmox_server_id: @js((string) old('proxmox_server_id', '')),
             cloud_image_id: @js((string) old('cloud_image_id', '')),
+            node: @js(old('node', '')),
+            storage: @js(old('storage', '')),
             vm_bundle_id: @js((string) old('vm_bundle_id', '')),
             cpu_cores: @js((int) old('cpu_cores', 2)),
             ram_gb: @js((int) old('ram_gb', 4)),
             disk_gb: @js((int) old('disk_gb', 50)),
             login_username: @js(old('login_username', 'ubuntu')),
         },
+        init() {
+            if (!this.form.proxmox_server_id && this.selectedImage) {
+                this.form.proxmox_server_id = String(this.selectedImage.proxmox_server_id);
+            }
+
+            if (!this.form.proxmox_server_id && this.servers.length === 1) {
+                this.form.proxmox_server_id = String(this.servers[0].id);
+            }
+
+            this.loadOptions();
+            this.applyImage(false);
+        },
         get selectedImage() {
             return this.images.find((image) => String(image.id) === String(this.form.cloud_image_id));
+        },
+        get visibleImages() {
+            if (!this.form.proxmox_server_id) return this.images;
+
+            return this.images.filter((image) => String(image.proxmox_server_id) === String(this.form.proxmox_server_id));
+        },
+        get visibleStorages() {
+            if (!this.form.node) return this.options.disk_storages;
+
+            return this.options.disk_storages.filter((storage) => String(storage.node) === String(this.form.node));
         },
         get visibleBundles() {
             if (!this.selectedImage) return [];
@@ -135,13 +221,57 @@ function cloudVmCreate(config) {
         get cloudInitEnabled() {
             return this.selectedImage ? Boolean(this.selectedImage.cloud_init_enabled) : true;
         },
-        applyImage() {
+        async loadOptions() {
+            if (!this.form.proxmox_server_id) {
+                this.options = { nodes: [], disk_storages: [], os_templates: [] };
+                return;
+            }
+
+            try {
+                const response = await fetch(this.optionsUrlTemplate.replace('__SERVER__', encodeURIComponent(this.form.proxmox_server_id)), {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!response.ok) throw new Error('options failed');
+                const payload = await response.json();
+                this.options = {
+                    nodes: payload.nodes || [],
+                    disk_storages: payload.disk_storages || [],
+                    os_templates: payload.os_templates || [],
+                };
+
+                if (!this.form.node && this.options.nodes.length) {
+                    this.form.node = this.options.nodes[0].name;
+                }
+
+                if (!this.form.storage && this.visibleStorages.length) {
+                    this.form.storage = this.visibleStorages[0].storage;
+                }
+            } catch (error) {
+                this.options = { nodes: [], disk_storages: [], os_templates: [] };
+            }
+        },
+        applyImage(syncServer = true) {
             if (!this.selectedImage) return;
+            if (syncServer) {
+                this.form.proxmox_server_id = String(this.selectedImage.proxmox_server_id);
+                this.loadOptions();
+            }
+            if (!this.form.node) this.form.node = this.selectedImage.node || '';
+            if (!this.form.storage) this.form.storage = this.selectedImage.storage || '';
             this.form.login_username = this.cloudInitEnabled ? (this.selectedImage.default_username || 'ubuntu') : '';
             this.form.cpu_cores = Math.max(Number(this.form.cpu_cores || 0), Number(this.selectedImage.min_cpu_cores));
             this.form.ram_gb = Math.max(Number(this.form.ram_gb || 0), Number(this.selectedImage.min_ram_gb));
             this.form.disk_gb = Math.max(Number(this.form.disk_gb || 0), Number(this.selectedImage.min_disk_gb));
             this.syncBundleSelection();
+        },
+        syncImageSelection() {
+            const current = this.visibleImages.find((image) => String(image.id) === String(this.form.cloud_image_id));
+            if (current) return;
+
+            this.form.cloud_image_id = this.visibleImages[0] ? String(this.visibleImages[0].id) : '';
+            this.form.node = '';
+            this.form.storage = '';
+            this.applyImage(false);
         },
         applyBundle() {
             const bundle = this.bundles.find((item) => String(item.id) === String(this.form.vm_bundle_id));

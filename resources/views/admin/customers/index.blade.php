@@ -22,7 +22,6 @@
             <div>
                 <p class="text-sm font-bold text-white/60">Customer Operations</p>
                 <h1 class="mt-2 text-2xl font-black md:text-4xl">مشتریان و وضعیت سرویس‌ها</h1>
-                <p class="mt-3 max-w-3xl leading-8 text-white/75">جستجوی سمت سرور با debounce، فیلترهای زنده و جدول reusable برای استفاده در ماژول‌های بعدی.</p>
             </div>
             <a href="{{ route('admin.customers.create') }}" class="inline-flex items-center justify-center rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] transition hover:bg-slate-100">افزودن مشتری</a>
         </div>

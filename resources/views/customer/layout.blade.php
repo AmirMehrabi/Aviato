@@ -18,11 +18,16 @@
 </head>
 <body class="min-h-screen bg-[#FFF] text-slate-950">
     @php
+        $projectAccess = app(\App\Services\ProjectAccessService::class);
+        $projects = $projects ?? $projectAccess->projectsFor($customer);
+        $activeProject = $activeProject ?? $projectAccess->activeProject(request(), $customer);
+        $activeMembership = $activeMembership ?? $projectAccess->membership($activeProject, $customer);
         $customerInitial = mb_substr($customer->name ?? 'م', 0, 1);
         $balanceIsNegative = ($wallet->balance ?? 0) < 0;
         $activeNav = $activeNav ?? 'dashboard';
         $navGroups = [
             'پروژه ها' => [
+                // ['key' => 'projects', 'label' => 'پروژه ها', 'route' => route('customer.projects.index', [], false), 'icon' => 'M4 5h7v7H4V5Zm9 0h7v7h-7V5ZM4 14h7v5H4v-5Zm9 0h7v5h-7v-5Z'],
                 ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
             ],
             'مدیریت' => [
@@ -32,6 +37,7 @@
                 ['key' => 'monitoring', 'label' => 'مانیتورینگ', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M4 19V5m4 14v-7m4 7V8m4 11v-4m4 4V9'],
             ],
             'حساب' => [
+                ['key' => 'profile', 'label' => 'پروفایل', 'route' => route('customer.profile.show', [], false), 'icon' => 'M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm-8 9a8 8 0 0 1 16 0'],
                 ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm12 3h4v5h-4a2.5 2.5 0 0 1 0-5Zm1 2.5h.01'],
                 ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm8 0v5h5M8 13h8M8 17h6'],
             ],
@@ -49,10 +55,12 @@
             init() {
                 const baseItems = [
                     { title: 'داشبورد', description: 'نمای کلی ماشین ها، کیف پول و مصرف', url: '{{ route('dashboard', [], false) }}', type: 'صفحه' },
+                    { title: 'پروژه ها', description: 'انتخاب پروژه فعال و مدیریت اعضا', url: '{{ route('customer.projects.index', [], false) }}', type: 'صفحه' },
                     { title: 'سرورها', description: 'فهرست ماشین های ابری و وضعیت آنها', url: '{{ route('customer.servers.index', [], false) }}', type: 'صفحه' },
                     { title: 'ساخت ماشین', description: 'انتخاب پلن، سیستم عامل و دیتاسنتر', url: '{{ route('customer.servers.create', [], false) }}', type: 'عملیات' },
                     { title: 'بکاپ ها', description: 'بکاپ دستی، برنامه بکاپ خودکار و نگهداری نسخه ها', url: '{{ route('customer.backups.index', [], false) }}', type: 'صفحه' },
                     { title: 'مانیتورینگ', description: 'نمودار مصرف CPU، RAM، شبکه و وضعیت بکاپ', url: '{{ route('customer.monitoring.index', [], false) }}', type: 'صفحه' },
+                    { title: 'پروفایل', description: 'کد ملی، سطح حساب و سهمیه ساخت', url: '{{ route('customer.profile.show', [], false) }}', type: 'صفحه' },
                     { title: 'کیف پول', description: 'موجودی، تراکنش ها و افزایش اعتبار', url: '{{ route('customer.wallet.show', [], false) }}', type: 'صفحه' },
                     { title: 'افزایش اعتبار', description: 'شارژ سریع کیف پول', url: '{{ route('customer.wallet.show', ['topup' => 1], false) }}', type: 'عملیات' },
                     { title: 'صورتحساب ها', description: 'بایگانی و جزئیات فاکتورهای ماهانه', url: '{{ route('customer.invoices.index', [], false) }}', type: 'صفحه' }
@@ -148,6 +156,22 @@
             </div>
 
             <nav class="mt-7 space-y-6 text-sm font-bold">
+
+            <div class=" border-white/10 pt-4 lg:px-3">
+                <p class="px-3 text-[10px] font-black text-[#5F79AA]">پروژه فعال</p>
+                <form method="POST" action="{{ route('customer.projects.switch', [], false) }}" class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
+                    @csrf
+                    <select name="project_id" onchange="this.form.submit()" class="w-full rounded-md border border-white/10 bg-[#08245A] px-3 py-2 text-xs font-black text-white outline-none">
+                        @foreach($projects as $project)
+                            <option value="{{ $project->id }}" @selected((int) $activeProject->id === (int) $project->id)>{{ $project->name }}</option>
+                        @endforeach
+                    </select>
+                    <div class="mt-2 flex items-center justify-between gap-2 text-[11px] font-bold text-[#9DB4DC]">
+                        <span>{{ $activeMembership?->role ?? 'member' }}</span>
+                        <a href="{{ route('customer.projects.show', $activeProject, false) }}" class="text-[#B8D6FF]">مدیریت</a>
+                    </div>
+                </form>
+            </div>
                 @foreach ($navGroups as $group => $items)
                     <div>
                         <p class="px-4 text-[10px] font-black text-[#5F79AA]">{{ $group }}</p>
@@ -176,7 +200,9 @@
                 @endforeach
             </nav>
 
-            <div class="mt-7 border-t border-white/10 pt-4 lg:px-3">
+
+
+            <div class="mt-5 border-t border-white/10 pt-4 lg:px-3">
                 <p class="px-3 text-[10px] font-black text-[#5F79AA]">مصرف</p>
                 <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
                     <div class="flex items-center justify-between gap-3">
@@ -312,6 +338,7 @@
                                 </div>
                                 <div class="mt-3 space-y-1">
                                     <a href="{{ route('dashboard', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">داشبورد</a>
+                                    <a href="{{ route('customer.profile.show', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">پروفایل</a>
                                     <a href="{{ route('customer.wallet.show', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">کیف پول</a>
                                     <a href="{{ route('customer.invoices.index', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">صورتحساب ها</a>
                                     <form method="POST" action="{{ route('customer.logout', [], false) }}" class="pt-2">

@@ -249,6 +249,7 @@ class ProxmoxService
                 'display' => ($node['node'] ?? $node['name'] ?? 'node').' (CPU '.round((float) ($node['cpu'] ?? 0) * 100).'%, RAM '.$this->humanBytes((int) ($node['mem'] ?? 0)).' / '.$this->humanBytes((int) ($node['maxmem'] ?? 0)).')',
                 'raw' => $node,
             ])->filter(fn (array $node): bool => filled($node['name']))->values()->all(),
+            'os_templates' => $this->osTemplates($server, $nodes->all(), $errors),
             'iso_files' => $this->isoFiles($server, $nodes->all(), $errors),
             'disk_storages' => $this->diskStorages($server, $nodes->all(), $errors),
             'bridges' => $this->networkBridges($server, $nodes->all(), $errors),
@@ -1301,6 +1302,27 @@ class ProxmoxService
         }
 
         return collect($items)->unique(fn (array $item): string => $item['node'].'|'.$item['volume'])->values()->all();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $nodes
+     * @param  array<string, string>  $errors
+     * @return array<int, array<string, mixed>>
+     */
+    private function osTemplates(ProxmoxServer $server, array $nodes, array &$errors): array
+    {
+        return collect($this->nodeVmInventory($server, $nodes, $errors))
+            ->filter(fn (array $vm): bool => (bool) ($vm['template'] ?? false))
+            ->map(fn (array $vm): array => [
+                'node' => $vm['node'] ?? null,
+                'vmid' => $vm['vmid'] ?? null,
+                'name' => $vm['name'] ?? null,
+                'display' => ($vm['node'] ?? 'node').' / '.($vm['name'] ?? 'template').' / VMID '.($vm['vmid'] ?? '-'),
+            ])
+            ->filter(fn (array $template): bool => filled($template['node']) && filled($template['vmid']))
+            ->unique(fn (array $template): string => $template['node'].'|'.$template['vmid'])
+            ->values()
+            ->all();
     }
 
     /**

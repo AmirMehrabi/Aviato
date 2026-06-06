@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\VirtualMachine;
+use App\Services\ProjectAccessService;
 use App\Services\ProxmoxService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -17,18 +18,22 @@ class ServerConsoleController extends Controller
 {
     public function __construct(
         private readonly ProxmoxService $proxmox,
+        private readonly ProjectAccessService $projects,
         private readonly WalletService $wallets,
     ) {}
 
     public function show(Request $request, VirtualMachine $virtualMachine): View
     {
-        $server = $this->resolveCustomerServer($request, $virtualMachine);
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine);
         $customer = $request->user('customer');
 
         return view('customer.servers.console', [
             'customer' => $customer,
             'wallet' => $this->wallets->walletFor($customer),
             'wallets' => $this->wallets,
+            'activeProject' => $server->project,
+            'activeMembership' => $this->projects->membership($server->project, $customer),
+            'projects' => $this->projects->projectsFor($customer),
             'server' => $server->loadMissing('proxmoxServer'),
             'consoleSessionUrl' => route('customer.servers.console.session', $server, false),
             'invoiceCount' => $customer->invoices()->count(),
@@ -37,7 +42,7 @@ class ServerConsoleController extends Controller
 
     public function session(Request $request, VirtualMachine $virtualMachine): JsonResponse
     {
-        $server = $this->resolveCustomerServer($request, $virtualMachine);
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine);
 
         try {
             $this->assertConsoleReady($server);
@@ -69,21 +74,11 @@ class ServerConsoleController extends Controller
 
     public function redirectSession(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
-        $server = $this->resolveCustomerServer($request, $virtualMachine);
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine);
 
         return redirect()
             ->route('customer.servers.console.show', $server)
             ->with('error', 'برای ساخت نشست Console باید از صفحه Console استفاده کنید.');
-    }
-
-    private function resolveCustomerServer(Request $request, VirtualMachine $virtualMachine): VirtualMachine
-    {
-        $customer = $request->user('customer');
-
-        abort_if((int) $virtualMachine->customer_id !== (int) $customer->id, 404);
-        abort_if($virtualMachine->isDeleted(), 404);
-
-        return $virtualMachine->loadMissing('proxmoxServer');
     }
 
     private function assertConsoleReady(VirtualMachine $server): void

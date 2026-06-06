@@ -59,19 +59,20 @@ class VmUpgradeService
 
     public function requestBundleUpgrade(Customer $customer, VirtualMachine $vm, VmBundle $bundle): VmUpgradeOrder
     {
-        $order = DB::transaction(function () use ($customer, $vm, $bundle): VmUpgradeOrder {
-            $locked = $this->lockedCustomerVm($customer, $vm->id);
-            $locked->loadMissing('bundle');
+        $order = DB::transaction(function () use ($vm, $bundle): VmUpgradeOrder {
+            $locked = $this->lockedVm($vm->id);
+            $locked->loadMissing(['bundle', 'project.owner']);
+            $billingCustomer = $locked->project?->owner ?? $locked->customer;
 
             $this->assertVmCanUpgrade($locked);
             $this->assertBundleUpgrade($locked, $bundle);
             $this->usageBilling->chargeVm($locked);
 
             $preview = $this->previewBundleUpgrade($locked->refresh(), $bundle);
-            $this->assertWalletCanStart($customer, $preview['minimum_wallet_balance']);
+            $this->assertWalletCanStart($billingCustomer, $preview['minimum_wallet_balance']);
 
             return VmUpgradeOrder::create([
-                'customer_id' => $customer->id,
+                'customer_id' => $billingCustomer->id,
                 'virtual_machine_id' => $locked->id,
                 'from_bundle_id' => $locked->vm_bundle_id,
                 'to_bundle_id' => $bundle->id,
@@ -98,17 +99,19 @@ class VmUpgradeService
 
     public function requestExtraDisk(Customer $customer, VirtualMachine $vm, int $sizeGb): VmUpgradeOrder
     {
-        $order = DB::transaction(function () use ($customer, $vm, $sizeGb): VmUpgradeOrder {
-            $locked = $this->lockedCustomerVm($customer, $vm->id);
+        $order = DB::transaction(function () use ($vm, $sizeGb): VmUpgradeOrder {
+            $locked = $this->lockedVm($vm->id);
+            $locked->loadMissing(['project.owner', 'customer']);
+            $billingCustomer = $locked->project?->owner ?? $locked->customer;
             $this->assertVmCanUpgrade($locked);
             $this->assertExtraDiskSize($sizeGb);
             $this->usageBilling->chargeVm($locked);
 
             $preview = $this->previewExtraDisk($locked->refresh(), $sizeGb);
-            $this->assertWalletCanStart($customer, $preview['minimum_wallet_balance']);
+            $this->assertWalletCanStart($billingCustomer, $preview['minimum_wallet_balance']);
 
             $order = VmUpgradeOrder::create([
-                'customer_id' => $customer->id,
+                'customer_id' => $billingCustomer->id,
                 'virtual_machine_id' => $locked->id,
                 'type' => VmUpgradeOrder::TYPE_EXTRA_DISK,
                 'status' => VmUpgradeOrder::STATUS_PENDING,
@@ -138,11 +141,10 @@ class VmUpgradeService
         return $order;
     }
 
-    private function lockedCustomerVm(Customer $customer, int $vmId): VirtualMachine
+    private function lockedVm(int $vmId): VirtualMachine
     {
         return VirtualMachine::query()
             ->whereKey($vmId)
-            ->where('customer_id', $customer->id)
             ->lockForUpdate()
             ->firstOrFail();
     }

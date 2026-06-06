@@ -24,6 +24,12 @@ class SettingController extends Controller
             'sms0098Username' => (string) AppSetting::getValue(AppSetting::SMS0098_USERNAME, ''),
             'sms0098PanelNo' => (string) AppSetting::getValue(AppSetting::SMS0098_PANEL_NO, ''),
             'kavenegarTemplate' => (string) AppSetting::getValue(AppSetting::KAVENEGAR_TEMPLATE, ''),
+            'vmCreationChargeEnabled' => AppSetting::vmCreationChargeEnabled(),
+            'vmCreationChargePercentage' => AppSetting::vmCreationChargePercentage(),
+            'unverifiedCustomerVmLimit' => AppSetting::unverifiedCustomerVmLimit(),
+            'verifiedCustomerVmLimit' => AppSetting::verifiedCustomerVmLimit(),
+            'deletedVmCooldownDays' => AppSetting::deletedVmCooldownDays(),
+            'vmRebuildFeeMultiplierPercentage' => AppSetting::vmRebuildFeeMultiplierPercentage(),
         ]);
     }
 
@@ -38,6 +44,12 @@ class SettingController extends Controller
             'sms0098_panel_no' => ['nullable', 'string', 'max:50'],
             'kavenegar_api_key' => ['nullable', 'string', 'max:255'],
             'kavenegar_template' => ['nullable', 'string', 'max:100'],
+            'vm_creation_charge_enabled' => ['required', 'boolean'],
+            'vm_creation_charge_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            'unverified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'verified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'deleted_vm_cooldown_days' => ['required', 'integer', 'min:0', 'max:3650'],
+            'vm_rebuild_fee_multiplier_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
 
         if ($data['customer_verification_mode'] === 'sms') {
@@ -66,6 +78,12 @@ class SettingController extends Controller
         AppSetting::setValue(AppSetting::SMS0098_USERNAME, $data['sms0098_username'] ?? '', 'string', 'sms0098');
         AppSetting::setValue(AppSetting::SMS0098_PANEL_NO, $data['sms0098_panel_no'] ?? '', 'string', 'sms0098');
         AppSetting::setValue(AppSetting::KAVENEGAR_TEMPLATE, $data['kavenegar_template'] ?? '', 'string', 'kavenegar');
+        AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_ENABLED, (bool) $data['vm_creation_charge_enabled'], 'boolean', 'billing');
+        AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_PERCENTAGE, (float) $data['vm_creation_charge_percentage'], 'float', 'billing');
+        AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, (int) $data['unverified_customer_vm_limit'], 'integer', 'customer');
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFIED_VM_LIMIT, (int) $data['verified_customer_vm_limit'], 'integer', 'customer');
+        AppSetting::setValue(AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, (int) $data['deleted_vm_cooldown_days'], 'integer', 'customer');
+        AppSetting::setValue(AppSetting::VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE, (float) $data['vm_rebuild_fee_multiplier_percentage'], 'float', 'billing');
 
         if (! empty($data['sms0098_password'])) {
             AppSetting::setValue(AppSetting::SMS0098_PASSWORD, $data['sms0098_password'], 'string', 'sms0098');

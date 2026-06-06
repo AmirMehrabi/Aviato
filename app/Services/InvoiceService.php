@@ -147,6 +147,10 @@ class InvoiceService
                         'unit_price' => (float) ($meta['hourly_rate'] ?? 0),
                         'subtotal' => $subtotal,
                         'meta' => [
+                            'project_id' => $meta['project_id'] ?? null,
+                            'project_name' => $meta['project_name'] ?? null,
+                            'project_owner_id' => $meta['project_owner_id'] ?? null,
+                            'created_by_customer_id' => $meta['created_by_customer_id'] ?? null,
                             'resource_snapshot' => $resource,
                             'backup_snapshot' => $backup,
                             'disk_snapshot' => $disk,

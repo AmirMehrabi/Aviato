@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
+use App\Services\ProjectAccessService;
 use App\Services\VmUpgradeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,12 +14,15 @@ use Throwable;
 
 class VmUpgradeController extends Controller
 {
-    public function __construct(private readonly VmUpgradeService $upgrades) {}
+    public function __construct(
+        private readonly VmUpgradeService $upgrades,
+        private readonly ProjectAccessService $projects,
+    ) {}
 
     public function storeBundle(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
         $customer = $request->user('customer');
-        abort_if((int) $virtualMachine->customer_id !== (int) $customer->id || $virtualMachine->isDeleted(), 404);
+        $virtualMachine = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
 
         $data = $request->validate([
             'vm_bundle_id' => ['required', 'integer', 'exists:vm_bundles,id'],
@@ -39,7 +43,7 @@ class VmUpgradeController extends Controller
     public function storeExtraDisk(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
         $customer = $request->user('customer');
-        abort_if((int) $virtualMachine->customer_id !== (int) $customer->id || $virtualMachine->isDeleted(), 404);
+        $virtualMachine = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
 
         $data = $request->validate([
             'size_gb' => ['required', 'integer', 'in:10,25,50,100,250,500'],

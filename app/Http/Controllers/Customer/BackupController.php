@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
 use App\Models\VmBackupPolicy;
+use App\Services\ProjectAccessService;
 use App\Services\ProxmoxService;
 use App\Services\VmBackupService;
 use App\Services\WalletService;
@@ -18,6 +19,7 @@ class BackupController extends Controller
 {
     public function __construct(
         private readonly WalletService $wallets,
+        private readonly ProjectAccessService $projects,
         private readonly VmBackupService $backups,
         private readonly ProxmoxService $proxmox,
     ) {}
@@ -25,8 +27,10 @@ class BackupController extends Controller
     public function index(Request $request): View
     {
         $customer = $request->user('customer');
+        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_unless($this->projects->canViewVms($activeProject, $customer), 404);
         $wallet = $this->wallets->walletFor($customer);
-        $vms = $customer->virtualMachines()
+        $vms = $activeProject->virtualMachines()
             ->notDeleted()
             ->with(['proxmoxServer', 'backupPolicy', 'backups' => fn ($query) => $query->latest()->limit(10)])
             ->latest()
@@ -48,6 +52,9 @@ class BackupController extends Controller
 
         return view('customer.backups.index', [
             'customer' => $customer,
+            'activeProject' => $activeProject,
+            'activeMembership' => $this->projects->membership($activeProject, $customer),
+            'projects' => $this->projects->projectsFor($customer),
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'vms' => $vms,
@@ -59,7 +66,8 @@ class BackupController extends Controller
 
     public function storeManual(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
-        $this->authorizeCustomerVm($request, $virtualMachine);
+        $virtualMachine = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+        abort_if($virtualMachine->isActionLocked(), 404);
 
         try {
             $this->backups->queueManualBackup($virtualMachine);
@@ -72,7 +80,8 @@ class BackupController extends Controller
 
     public function updatePolicy(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
-        $this->authorizeCustomerVm($request, $virtualMachine);
+        $virtualMachine = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+        abort_if($virtualMachine->isActionLocked(), 404);
 
         $data = $request->validate([
             'is_enabled' => ['nullable', 'boolean'],
@@ -86,11 +95,5 @@ class BackupController extends Controller
         $this->backups->updatePolicy($virtualMachine, $data);
 
         return back()->with('status', 'Backup policy updated.');
-    }
-
-    private function authorizeCustomerVm(Request $request, VirtualMachine $vm): void
-    {
-        abort_unless($vm->customer_id === $request->user('customer')->id, 404);
-        abort_if($vm->isActionLocked(), 404);
     }
 }

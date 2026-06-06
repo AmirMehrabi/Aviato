@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\RebuildCloudVirtualMachine;
+use App\Models\AppSetting;
 use App\Models\CloudImage;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
@@ -11,6 +12,8 @@ use App\Models\VmBackup;
 use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
+use App\Services\CustomerVmQuotaService;
+use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmUpgradeService;
@@ -27,20 +30,22 @@ use Throwable;
 
 class ServerController extends Controller
 {
-    private const MINIMUM_CREATE_BALANCE = 1000000;
-
     public function __construct(
         private readonly WalletService $wallets,
         private readonly BillingService $billing,
+        private readonly ProjectAccessService $projects,
         private readonly UsageBillingService $usageBilling,
         private readonly CloudVmProvisioningService $cloudProvisioning,
         private readonly VirtualMachineDeletionService $deletions,
         private readonly VmUpgradeService $upgrades,
+        private readonly CustomerVmQuotaService $quota,
     ) {}
 
     public function index(Request $request): View
     {
         $customer = $request->user('customer');
+        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_unless($this->projects->canViewVms($activeProject, $customer), 404);
         $wallet = $this->wallets->walletFor($customer);
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
@@ -52,7 +57,7 @@ class ServerController extends Controller
             ])],
         ]);
 
-        $servers = $customer->virtualMachines()
+        $servers = $activeProject->virtualMachines()
             ->notDeleted()
             ->with(['bundle', 'proxmoxServer', 'cloudImage'])
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
@@ -68,7 +73,7 @@ class ServerController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $summarySource = $customer->virtualMachines()->notDeleted()->with(['bundle', 'disks'])->get();
+        $summarySource = $activeProject->virtualMachines()->notDeleted()->with(['bundle', 'disks'])->get();
         $pendingUsage = $summarySource
             ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
             ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
@@ -81,6 +86,9 @@ class ServerController extends Controller
 
         return view('customer.servers.index', [
             'customer' => $customer,
+            'activeProject' => $activeProject,
+            'activeMembership' => $this->projects->membership($activeProject, $customer),
+            'projects' => $this->projects->projectsFor($customer),
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'servers' => $servers,
@@ -146,6 +154,8 @@ class ServerController extends Controller
     public function statuses(Request $request): JsonResponse
     {
         $customer = $request->user('customer');
+        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_unless($this->projects->canViewVms($activeProject, $customer), 404);
         $ids = collect((array) $request->query('ids', []))
             ->map(fn ($id): string => (string) $id)
             ->filter(fn (string $id): bool => $id !== '')
@@ -153,7 +163,7 @@ class ServerController extends Controller
             ->unique()
             ->values();
 
-        $servers = $customer->virtualMachines()
+        $servers = $activeProject->virtualMachines()
             ->with(['proxmoxServer', 'cloudImage'])
             ->when($ids->isNotEmpty(), fn ($query) => $query->whereIn('uuid', $ids))
             ->get([
@@ -211,7 +221,10 @@ class ServerController extends Controller
     public function create(Request $request): View
     {
         $customer = $request->user('customer');
-        $wallet = $this->wallets->walletFor($customer);
+        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_unless($this->projects->canManageVms($activeProject, $customer), 404);
+        $quota = $this->quota->snapshot($activeProject->owner);
+        $wallet = $this->wallets->walletFor($activeProject->owner);
         $cloudImages = CloudImage::query()
             ->with(['proxmoxServer', 'allowedBundles'])
             ->where('is_active', true)
@@ -220,10 +233,14 @@ class ServerController extends Controller
 
         return view('customer.servers.create', [
             'customer' => $customer,
+            'activeProject' => $activeProject,
+            'activeMembership' => $this->projects->membership($activeProject, $customer),
+            'projects' => $this->projects->projectsFor($customer),
             'wallet' => $wallet,
             'wallets' => $this->wallets,
-            'minimumCreateBalance' => self::MINIMUM_CREATE_BALANCE,
-            'canCreateVps' => $wallet->balance >= self::MINIMUM_CREATE_BALANCE,
+            'quota' => $quota,
+            'vmCreationChargeEnabled' => AppSetting::vmCreationChargeEnabled(),
+            'vmCreationChargePercentage' => AppSetting::vmCreationChargePercentage(),
             'bundles' => VmBundle::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')
@@ -238,13 +255,10 @@ class ServerController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $customer = $request->user('customer');
-        $wallet = $this->wallets->walletFor($customer);
-
-        if ($wallet->balance < self::MINIMUM_CREATE_BALANCE) {
-            return back()
-                ->withInput($request->except('login_password'))
-                ->with('error', 'برای ساخت VPS حداقل موجودی کیف پول باید ۱,۰۰۰,۰۰۰ ریال باشد.');
-        }
+        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_unless($this->projects->canManageVms($activeProject, $customer), 404);
+        $quota = $this->quota->snapshot($activeProject->owner);
+        $wallet = $this->wallets->walletFor($activeProject->owner);
 
         $data = $request->validate([
             'cloud_image_id' => ['required', 'integer', 'exists:cloud_images,id,is_active,1'],
@@ -275,8 +289,38 @@ class ServerController extends Controller
                 ->withInput($request->except('login_password'));
         }
 
+        $bundle = $image->allowedBundles->first(fn (VmBundle $bundle): bool => (int) $bundle->id === (int) ($data['vm_bundle_id'] ?? 0));
+        $minimumCreateBalance = $bundle ? $this->minimumCreateBalance($bundle) : 0;
+
+        if (! $quota['can_create']) {
+            return back()
+                ->withInput($request->except('login_password'))
+                ->with('error', $quota['message'] ?? 'ساخت VPS برای این حساب فعلا مجاز نیست.');
+        }
+
+        if ($wallet->is_locked) {
+            return back()
+                ->withInput($request->except('login_password'))
+                ->with('error', $wallet->lock_reason ?: 'کیف پول برای ثبت درخواست ساخت VPS قفل است.');
+        }
+
+        if ($bundle && $wallet->balance < $minimumCreateBalance) {
+            return back()
+                ->withInput($request->except('login_password'))
+                ->with('error', 'برای ساخت VPS موجودی کیف پول باید حداقل '.$this->wallets->format($minimumCreateBalance).' باشد.');
+        }
+
         try {
-            $result = $this->cloudProvisioning->create($customer, $data);
+            $result = $this->cloudProvisioning->create($customer, $data, project: $activeProject);
+            $creationCharge = $bundle ? AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price) : 0;
+
+            if ($creationCharge > 0) {
+                $this->wallets->charge($activeProject->owner, $creationCharge, 'هزینه اولیه ساخت VPS '.$result['vm']->name, $result['vm'], [
+                    'category' => 'vm_creation_fee',
+                    'percentage' => AppSetting::vmCreationChargePercentage(),
+                    'monthly_price' => (int) $bundle->monthly_price,
+                ]);
+            }
 
             return redirect()
                 ->route('customer.servers.index')
@@ -295,7 +339,7 @@ class ServerController extends Controller
 
     public function show(Request $request, VirtualMachine $virtualMachine): View
     {
-        $server = $this->resolveCustomerServer($request, $virtualMachine);
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine);
         $customer = $request->user('customer');
         $wallet = $this->wallets->walletFor($customer);
 
@@ -337,9 +381,13 @@ class ServerController extends Controller
 
         return view('customer.servers.show', [
             'customer' => $customer,
+            'activeProject' => $server->project,
+            'activeMembership' => $this->projects->membership($server->project, $customer),
+            'projects' => $this->projects->projectsFor($customer),
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'server' => $server,
+            'rebuildFee' => $this->rebuildFee($server),
             'billing' => $this->billing,
             'monthlyCost' => $monthlyCost,
             'sshCommand' => $sshCommand,
@@ -369,8 +417,8 @@ class ServerController extends Controller
 
     public function rebuild(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
-        $server = $this->resolveCustomerServer($request, $virtualMachine);
-        $server->loadMissing(['cloudImage', 'proxmoxServer', 'upgradeOrders']);
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+        $server->loadMissing(['cloudImage', 'proxmoxServer', 'upgradeOrders', 'bundle', 'project.owner', 'customer']);
 
         if ($server->isActionLocked() || $server->provisioning_status === VirtualMachine::PROVISION_PENDING) {
             return back()->with('error', 'این سرور در حال انجام عملیات دیگری است و فعلا قابل بازسازی نیست.');
@@ -386,6 +434,21 @@ class ServerController extends Controller
 
         if (! $server->cloudImage->is_active) {
             return back()->with('error', 'Image فعلی این سرور غیرفعال است و برای بازسازی قابل استفاده نیست.');
+        }
+
+        $billingCustomer = $server->project?->owner ?? $server->customer;
+        $rebuildFee = $this->rebuildFee($server);
+
+        if ($billingCustomer && $rebuildFee > 0) {
+            $wallet = $this->wallets->walletFor($billingCustomer);
+
+            if ($wallet->is_locked) {
+                return back()->with('error', $wallet->lock_reason ?: 'کیف پول برای ثبت درخواست بازسازی VPS قفل است.');
+            }
+
+            if ($wallet->balance < $rebuildFee) {
+                return back()->with('error', 'برای بازسازی VPS موجودی کیف پول باید حداقل '.$this->wallets->format($rebuildFee).' باشد.');
+            }
         }
 
         $data = $request->validate([
@@ -417,6 +480,15 @@ class ServerController extends Controller
 
         $this->usageBilling->chargeVm($server);
 
+        if ($billingCustomer && $rebuildFee > 0) {
+            $this->wallets->charge($billingCustomer, $rebuildFee, 'هزینه بازسازی VPS '.$server->name, $server, [
+                'category' => 'vm_rebuild_fee',
+                'creation_charge_percentage' => AppSetting::vmCreationChargePercentage(),
+                'rebuild_multiplier_percentage' => AppSetting::vmRebuildFeeMultiplierPercentage(),
+                'monthly_price' => (int) ($server->bundle?->monthly_price ?? 0),
+            ], allowNegative: false);
+        }
+
         $server->forceFill([
             'status' => VirtualMachine::STATUS_STOPPED,
             'provisioning_status' => VirtualMachine::PROVISION_PENDING,
@@ -446,7 +518,7 @@ class ServerController extends Controller
 
     public function destroy(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
-        $server = $this->resolveCustomerServer($request, $virtualMachine);
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
         $server->loadMissing(['reservedIpAddress', 'proxmoxServer', 'customer', 'bundle']);
         $request->validate([
             'delete_confirmation' => ['required', 'string', Rule::in([$server->name])],
@@ -477,16 +549,6 @@ class ServerController extends Controller
             ->with('status', 'درخواست حذف سرور ثبت شد. Billing متوقف شد و وضعیت حذف از همین صفحه به‌روزرسانی می‌شود.');
     }
 
-    private function resolveCustomerServer(Request $request, VirtualMachine $virtualMachine): VirtualMachine
-    {
-        $customer = $request->user('customer');
-
-        abort_if((int) $virtualMachine->customer_id !== (int) $customer->id, 404);
-        abort_if($virtualMachine->isDeleted(), 404);
-
-        return $virtualMachine;
-    }
-
     private function osFamilies($cloudImages): array
     {
         $labels = [
@@ -507,6 +569,21 @@ class ServerController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    private function minimumCreateBalance(VmBundle $bundle): int
+    {
+        return max(
+            (int) ceil($bundle->monthly_price / 2),
+            AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price),
+        );
+    }
+
+    private function rebuildFee(VirtualMachine $server): int
+    {
+        $monthlyPrice = (int) ($server->bundle?->monthly_price ?? 0);
+
+        return $monthlyPrice > 0 ? AppSetting::vmRebuildFeeAmount($monthlyPrice) : 0;
     }
 
     private function statusLabel(?string $status): string

@@ -25,6 +25,7 @@
     $statusUrl = route('customer.servers.statuses', [], false);
     $isRebuilding = $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING && filled(data_get($server->remote_state, 'rebuild_started_at'));
     $rebuildError = data_get($server->remote_state, 'rebuild_error');
+    $formattedRebuildFee = $rebuildFee > 0 ? $wallets->format($rebuildFee) : 'بدون هزینه';
     $canRebuild = ! $isLocked
         && $server->provisioning_status !== \App\Models\VirtualMachine::PROVISION_PENDING
         && ! $hasPendingUpgrade
@@ -455,6 +456,7 @@
                         <p class="text-xs font-black text-amber-700">Rebuild</p>
                         <h2 class="mt-1 font-black text-amber-950">بازسازی سیستم عامل</h2>
                         <p class="mt-2 text-sm font-bold leading-7 text-amber-800">دیسک اصلی پاک می شود و VM با همان VMID، IP، منابع و Image فعلی دوباره ساخته می شود. بکاپ ها و دیسک های اضافه جداگانه نگهداری می شوند.</p>
+                        <p class="mt-3 inline-flex rounded-xl bg-white px-3 py-2 text-xs font-black text-amber-800">هزینه بازسازی: {{ $formattedRebuildFee }}</p>
                         @if ($isRebuilding)
                             <p class="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-[#0069FF]">
                                 <span class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
@@ -495,7 +497,7 @@
                         </div>
 
                         <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-7 text-amber-900">
-                            بازسازی، سیستم عامل و داده های داخل دیسک اصلی را حذف می کند. قبل از ثبت، از بکاپ های لازم مطمئن شوید.
+                            بازسازی، سیستم عامل و داده های داخل دیسک اصلی را حذف می کند. قبل از ثبت، از بکاپ های لازم مطمئن شوید. هزینه این بازسازی: {{ $formattedRebuildFee }}.
                         </div>
 
                         <div class="mt-5 grid gap-4 md:grid-cols-2">
