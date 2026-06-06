@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\IpAddress;
 use App\Models\IpPool;
 use App\Models\VirtualMachine;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -44,49 +45,82 @@ class IpPoolService
         $excludedAddresses = array_values(array_unique(array_filter($excludedAddresses)));
 
         return DB::transaction(function () use ($vm, $excludedAddresses): IpAddress {
-            $pool = IpPool::query()
-                ->where('proxmox_server_id', $vm->proxmox_server_id)
-                ->where('is_active', true)
-                ->where(function ($query) use ($vm): void {
-                    $query->whereNull('node')->orWhere('node', $vm->node);
-                })
-                ->orderByRaw('node is null')
+            $pools = $this->matchingPools((int) $vm->proxmox_server_id, $vm->node)
                 ->lockForUpdate()
-                ->first();
+                ->get();
 
-            if (! $pool) {
+            if ($pools->isEmpty()) {
                 throw new RuntimeException('No active IP pool is available for this Proxmox server/node.');
             }
 
-            $this->ensurePoolAddresses($pool);
+            foreach ($pools as $pool) {
+                $this->ensurePoolAddresses($pool);
 
-            $address = $pool->addresses()
-                ->whereIn('status', [IpAddress::STATUS_AVAILABLE, IpAddress::STATUS_RELEASED])
-                ->when($excludedAddresses !== [], fn ($query) => $query->whereNotIn('address', $excludedAddresses))
-                ->orderBy('address')
-                ->lockForUpdate()
-                ->first();
+                $address = $pool->addresses()
+                    ->whereIn('status', [IpAddress::STATUS_AVAILABLE, IpAddress::STATUS_RELEASED])
+                    ->when($excludedAddresses !== [], fn ($query) => $query->whereNotIn('address', $excludedAddresses))
+                    ->orderBy('address')
+                    ->lockForUpdate()
+                    ->first();
 
-            if (! $address) {
-                throw new RuntimeException('No available IP address remains in the selected pool.');
+                if (! $address) {
+                    continue;
+                }
+
+                $address->forceFill([
+                    'virtual_machine_id' => $vm->id,
+                    'status' => IpAddress::STATUS_RESERVED,
+                    'reserved_at' => now(),
+                    'assigned_at' => null,
+                    'released_at' => null,
+                ])->save();
+
+                $vm->forceFill([
+                    'ip_address_id' => $address->id,
+                    'ip_address' => $address->address,
+                    'network_bridge' => $pool->network_bridge,
+                ])->save();
+
+                return $address;
             }
 
-            $address->forceFill([
-                'virtual_machine_id' => $vm->id,
-                'status' => IpAddress::STATUS_RESERVED,
-                'reserved_at' => now(),
-                'assigned_at' => null,
-                'released_at' => null,
-            ])->save();
-
-            $vm->forceFill([
-                'ip_address_id' => $address->id,
-                'ip_address' => $address->address,
-                'network_bridge' => $pool->network_bridge,
-            ])->save();
-
-            return $address;
+            throw new RuntimeException('No available IP address remains in the selected pool.');
         });
+    }
+
+    public function availableCountFor(int $proxmoxServerId, ?string $node = null): int
+    {
+        return DB::transaction(function () use ($proxmoxServerId, $node): int {
+            return $this->matchingPools($proxmoxServerId, $node)
+                ->lockForUpdate()
+                ->get()
+                ->sum(function (IpPool $pool): int {
+                    $this->ensurePoolAddresses($pool);
+
+                    return $pool->addresses()
+                        ->whereIn('status', [IpAddress::STATUS_AVAILABLE, IpAddress::STATUS_RELEASED])
+                        ->count();
+                });
+        });
+    }
+
+    /**
+     * @return Builder<IpPool>
+     */
+    private function matchingPools(int $proxmoxServerId, ?string $node = null): Builder
+    {
+        return IpPool::query()
+            ->where('proxmox_server_id', $proxmoxServerId)
+            ->where('is_active', true)
+            ->where(function ($query) use ($node): void {
+                $query->whereNull('node');
+
+                if (filled($node)) {
+                    $query->orWhere('node', $node);
+                }
+            })
+            ->orderByRaw('node is null')
+            ->orderBy('id');
     }
 
     /**

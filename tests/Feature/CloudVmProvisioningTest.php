@@ -68,6 +68,24 @@ class CloudVmProvisioningTest extends TestCase
         Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
     }
 
+    public function test_customer_create_page_marks_images_without_available_ip(): void
+    {
+        $customer = Customer::factory()->create();
+        [$image] = $this->catalog();
+        $pool = IpPool::query()->firstOrFail();
+        IpAddress::create([
+            'ip_pool_id' => $pool->id,
+            'address' => '192.168.10.50',
+            'status' => IpAddress::STATUS_RESERVED,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->get($this->customerBaseUrl.'/servers/create')
+            ->assertOk()
+            ->assertViewHas('ipAvailability', fn ($availability): bool => (int) $availability[$image->id] === 0)
+            ->assertSee('ظرفیت IP محدود است');
+    }
+
     public function test_customer_create_ignores_tampered_name_and_hostname(): void
     {
         Bus::fake();
@@ -190,7 +208,7 @@ class CloudVmProvisioningTest extends TestCase
         ]);
     }
 
-    public function test_customer_can_queue_cloud_vps_without_available_ip(): void
+    public function test_customer_cannot_queue_cloud_vps_without_available_ip(): void
     {
         Bus::fake();
 
@@ -205,17 +223,15 @@ class CloudVmProvisioningTest extends TestCase
         ]);
 
         $this->actingAs($customer, 'customer');
-        $this->post($this->customerBaseUrl.'/servers', [
+        $this->from($this->customerBaseUrl.'/servers/create')->post($this->customerBaseUrl.'/servers', [
             'cloud_image_id' => $image->id,
             'vm_bundle_id' => $bundle->id,
             'name' => 'no-ip-vps',
-        ])->assertRedirect($this->customerBaseUrl.'/servers');
+        ])->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHasErrors('cloud_image_id');
 
-        $vm = VirtualMachine::query()->firstOrFail();
-        $this->assertNull($vm->ip_address_id);
-        $this->assertNull($vm->ip_address);
-        $this->assertSame(0, $vm->ip_count);
-        Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
+        $this->assertDatabaseCount('virtual_machines', 0);
+        Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
     }
 
     public function test_generated_customer_vm_names_are_unique_for_same_customer_and_bundle(): void

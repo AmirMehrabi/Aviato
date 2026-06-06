@@ -92,7 +92,7 @@ class CloudVmProvisioningService
             return $vm;
         });
 
-        $this->reserveIpIfAvailable($vm);
+        $this->reserveRequiredIp($vm);
         $vm->forceFill(['network_bridge' => $networkBridge])->save();
 
         if ($dispatch) {
@@ -105,16 +105,10 @@ class CloudVmProvisioningService
         return ['vm' => $vm->refresh(), 'password' => $password];
     }
 
-    private function reserveIpIfAvailable(VirtualMachine $vm): void
+    private function reserveRequiredIp(VirtualMachine $vm): void
     {
         try {
             $this->ipPools->reserveForVm($vm, []);
-        } catch (RuntimeException) {
-            $vm->forceFill([
-                'ip_count' => 0,
-                'ip_address_id' => null,
-                'ip_address' => null,
-            ])->save();
         } catch (Throwable $exception) {
             $vm->delete();
 

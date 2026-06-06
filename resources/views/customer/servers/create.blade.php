@@ -53,6 +53,8 @@
                 'default_username' => $image->default_username,
                 'cloud_init_enabled' => $image->cloud_init_enabled,
                 'allowed_bundle_ids' => $image->allowedBundles->pluck('id')->values()->all(),
+                'available_ip_count' => (int) ($ipAvailability[$image->id] ?? 0),
+                'has_available_ip' => (int) ($ipAvailability[$image->id] ?? 0) > 0,
             ])->values()),
         })"
         class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"
@@ -193,7 +195,7 @@
 
         <aside class="space-y-5">
             <div class="sticky top-24 rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                <h2 class="text-lg font-black text-slate-950">خلاصه ساخت</h2>
+                <h2 class="text-lg font-black text-slate-950">حساب و کتاب</h2>
                 <div class="mt-5 space-y-4 text-sm">
                     <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="font-black text-slate-950" x-text="selectedOsLabel || '—'"></span></div>
                     <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">نسخه</span><span class="font-black text-slate-950" x-text="selectedImage?.os_version || '—'"></span></div>
@@ -208,6 +210,10 @@
                         <p class="text-xs font-black text-red-700">کیف پول کافی نیست</p>
                         <p class="mt-2 text-xs leading-6 text-red-600">برای ساخت این VPS موجودی کیف پول باید حداقل <span x-text="minimumBalanceLabel"></span> باشد.</p>
                     </div>
+                    <div x-show="selectedImage && !selectedImage.has_available_ip" x-cloak class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                        <p class="text-xs font-black text-amber-800">ظرفیت IP محدود است</p>
+                        <p class="mt-2 text-xs leading-6 text-amber-800">در حال حاضر IP آزاد برای Proxmox این نسخه وجود ندارد. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت VPS وجود ندارد.</p>
+                    </div>
                     @if (! $quota['can_create'])
                         <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
                             <p class="text-xs font-black text-amber-800">امکان ساخت VPS جدید وجود ندارد</p>
@@ -220,7 +226,7 @@
                             </p>
                         </div>
                     @endif
-                    <div class="rounded-lg border border-dashed border-slate-300 p-4 text-xs leading-6 text-slate-500">اگر IP آزاد در Pool وجود داشته باشد، به صورت خودکار رزرو می‌شود.</div>
+                    <div class="rounded-lg border border-dashed border-slate-300 p-4 text-xs leading-6 text-slate-500">برای ساخت VPS باید حداقل یک IP آزاد در Pool مربوط به Proxmox انتخابی وجود داشته باشد.</div>
                 </div>
                 <button type="button" @click="submit()" :disabled="!canSubmit" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-black transition" :class="canSubmit ? 'bg-[#0069FF] text-white hover:bg-[#0050D0]' : 'cursor-not-allowed bg-slate-200 text-slate-500'">
                     <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
@@ -292,7 +298,7 @@
                 return Boolean(this.selectedBundle) && !this.walletCanCreate;
             },
             get canCreate() {
-                return this.walletCanCreate && Boolean(this.quota.can_create);
+                return this.walletCanCreate && Boolean(this.quota.can_create) && Boolean(this.selectedImage?.has_available_ip);
             },
             get canSubmit() {
                 return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && !this.sshKeyInvalid;

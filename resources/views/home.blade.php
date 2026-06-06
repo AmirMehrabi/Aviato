@@ -154,7 +154,7 @@
                                 </div>
 
                                 <aside class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
-                                    <h2 class="text-base font-black text-slate-950">خلاصه ساخت</h2>
+                                    <h2 class="text-base font-black text-slate-950">حساب و کتاب</h2>
                                     <div class="mt-4 space-y-3 text-xs">
                                         <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="font-black text-slate-950">Ubuntu</span></div>
                                         <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">پلن</span><span class="font-black text-slate-950">{{ $heroBundle?->name ?? '—' }}</span></div>

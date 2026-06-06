@@ -13,6 +13,7 @@ use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
 use App\Services\CustomerVmQuotaService;
+use App\Services\IpPoolService;
 use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
@@ -39,6 +40,7 @@ class ServerController extends Controller
         private readonly VirtualMachineDeletionService $deletions,
         private readonly VmUpgradeService $upgrades,
         private readonly CustomerVmQuotaService $quota,
+        private readonly IpPoolService $ipPools,
     ) {}
 
     public function index(Request $request): View
@@ -230,6 +232,9 @@ class ServerController extends Controller
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->get();
+        $ipAvailability = $cloudImages->mapWithKeys(fn (CloudImage $image): array => [
+            $image->id => $this->ipPools->availableCountFor((int) $image->proxmox_server_id, $image->node),
+        ]);
 
         return view('customer.servers.create', [
             'customer' => $customer,
@@ -245,6 +250,7 @@ class ServerController extends Controller
                 ->orderBy('monthly_price')
                 ->get(),
             'cloudImages' => $cloudImages,
+            'ipAvailability' => $ipAvailability,
             'osFamilies' => $this->osFamilies($cloudImages),
             'invoiceCount' => $customer->invoices()->count(),
         ]);
@@ -300,7 +306,7 @@ class ServerController extends Controller
         if (! $quota['can_create']) {
             return back()
                 ->withInput($this->safeCreateInput($request))
-                ->with('error', $quota['message'] ?? 'ساخت VPS برای این حساب فعلا مجاز نیست.');
+                ->with('error', $quota['message'] ?? 'ساخت ماشین مجازی برای این حساب فعلا مجاز نیست.');
         }
 
         if ($wallet->is_locked) {
@@ -313,6 +319,15 @@ class ServerController extends Controller
             return back()
                 ->withInput($this->safeCreateInput($request))
                 ->with('error', 'برای ساخت VPS موجودی کیف پول باید حداقل '.$this->wallets->format($minimumCreateBalance).' باشد.');
+        }
+
+        if ($this->ipPools->availableCountFor((int) $image->proxmox_server_id, $image->node) < 1) {
+            return back()
+                ->withErrors([
+                    'cloud_image_id' => 'در حال حاضر IP آزاد برای Proxmox این Cloud Image وجود ندارد.',
+                ])
+                ->withInput($this->safeCreateInput($request))
+                ->with('error', 'ظرفیت IP برای این دیتاسنتر محدود است. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت VPS وجود ندارد.');
         }
 
         try {
