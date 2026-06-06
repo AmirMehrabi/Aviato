@@ -29,7 +29,7 @@ class CloudImageController extends Controller
             'logo_key' => 'ubuntu',
             'default_username' => 'ubuntu',
             'disk_device' => 'scsi0',
-            'network_bridge' => 'vmbr0',
+            'network_bridge' => 'vmbr1',
             'ostype' => 'l26',
             'cloud_init_enabled' => true,
             'min_cpu_cores' => 1,

@@ -267,7 +267,7 @@ class ProxmoxService
         $vmid = (int) $options['vmid'];
         $storage = $options['storage'];
         $isoVolume = $options['iso_volume'];
-        $bridge = $options['network_bridge'] ?? 'vmbr0';
+        $bridge = $options['network_bridge'] ?? 'vmbr1';
         $diskGb = (int) $options['disk_gb'];
 
         $payload = [

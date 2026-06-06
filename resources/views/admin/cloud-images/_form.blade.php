@@ -17,7 +17,7 @@
     <x-form.input name="default_username" label="Default Username" :value="$image->default_username ?: 'ubuntu'" dir-ltr />
     <x-form.input name="storage" label="Clone Storage" :value="$image->storage" dir-ltr help="اختیاری؛ اگر خالی باشد Proxmox پیش‌فرض template را استفاده می‌کند." />
     <x-form.input name="disk_device" label="Disk Device" :value="$image->disk_device ?: 'scsi0'" dir-ltr />
-    <x-form.input name="network_bridge" label="Network Bridge" :value="$image->network_bridge ?: 'vmbr0'" dir-ltr />
+    <x-form.input name="network_bridge" label="Network Bridge" :value="$image->network_bridge ?: 'vmbr1'" dir-ltr />
     <x-form.input name="ostype" label="OS Type" :value="$image->ostype ?: 'l26'" dir-ltr />
     <x-form.input name="min_cpu_cores" type="number" label="Minimum CPU" :value="$image->min_cpu_cores ?: 1" />
     <x-form.input name="min_ram_gb" type="number" label="Minimum RAM (GB)" :value="$image->min_ram_gb ?: 1" />

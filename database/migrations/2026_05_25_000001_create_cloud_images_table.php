@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('default_username')->default('ubuntu');
             $table->string('storage')->nullable();
             $table->string('disk_device')->default('scsi0');
-            $table->string('network_bridge')->default('vmbr0');
+            $table->string('network_bridge')->default('vmbr1');
             $table->string('ostype')->default('l26');
             $table->unsignedSmallInteger('min_cpu_cores')->default(1);
             $table->unsignedInteger('min_ram_gb')->default(1);

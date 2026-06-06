@@ -3,7 +3,7 @@
     <x-form.select name="proxmox_server_id" label="Proxmox Server" :selected="$pool->proxmox_server_id" :options="$servers->prepend('انتخاب سرور', '')" />
     <x-form.input name="name" label="نام Pool" :value="$pool->name" />
     <x-form.input name="node" label="Node" :value="$pool->node" dir-ltr help="اختیاری؛ خالی یعنی برای همه nodeهای این Proxmox." />
-    <x-form.input name="network_bridge" label="Bridge" :value="$pool->network_bridge ?: 'vmbr0'" dir-ltr />
+    <x-form.input name="network_bridge" label="Bridge" :value="$pool->network_bridge ?: 'vmbr1'" dir-ltr />
     <x-form.input name="gateway" label="Gateway" :value="$pool->gateway" dir-ltr />
     <x-form.input name="prefix_length" type="number" label="Prefix Length" :value="$pool->prefix_length ?: 24" />
     <x-form.input name="nameservers" label="Nameservers" :value="$pool->nameservers ?: '1.1.1.1'" dir-ltr help="با فاصله یا کاما جدا کنید؛ همان مقدار به Proxmox ارسال می‌شود." />

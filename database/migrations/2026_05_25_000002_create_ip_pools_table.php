@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('proxmox_server_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('node')->nullable();
-            $table->string('network_bridge')->default('vmbr0');
+            $table->string('network_bridge')->default('vmbr1');
             $table->string('gateway');
             $table->unsignedTinyInteger('prefix_length')->default(24);
             $table->string('nameservers')->nullable();

@@ -64,7 +64,7 @@ class CloudImageBundleWhitelistTest extends TestCase
             'default_username' => 'ubuntu',
             'storage' => 'local-lvm',
             'disk_device' => 'scsi0',
-            'network_bridge' => 'vmbr0',
+            'network_bridge' => 'vmbr1',
             'ostype' => 'l26',
             'cloud_init_enabled' => 1,
             'min_cpu_cores' => 2,

@@ -141,7 +141,7 @@ class CustomerBackupTest extends TestCase
             'hostname' => 'customer-vps-101',
             'node' => 'pve1',
             'storage' => 'local-lvm',
-            'network_bridge' => 'vmbr0',
+            'network_bridge' => 'vmbr1',
             'ip_address' => '192.168.10.50',
             'login_username' => 'ubuntu',
             'cpu_cores' => 2,

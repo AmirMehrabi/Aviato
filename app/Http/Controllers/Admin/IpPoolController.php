@@ -42,7 +42,7 @@ class IpPoolController extends Controller
     public function create(): View
     {
         return view('admin.ip-pools.create', $this->formData(new IpPool([
-            'network_bridge' => 'vmbr0',
+            'network_bridge' => 'vmbr1',
             'prefix_length' => 24,
             'nameservers' => '1.1.1.1',
             'is_active' => true,
