@@ -5,11 +5,37 @@ namespace App\Services;
 use App\Models\IpAddress;
 use App\Models\IpPool;
 use App\Models\VirtualMachine;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class IpPoolService
 {
+    /**
+     * @return array<int, string>
+     */
+    public function addressRange(string $startIp, ?string $endIp = null): array
+    {
+        $start = ip2long($startIp);
+        $end = ip2long($endIp ?: $startIp);
+
+        if ($start === false || $end === false || $end < $start) {
+            throw new RuntimeException('The selected IP pool has an invalid IP range.');
+        }
+
+        if (($end - $start) > 4096) {
+            throw new RuntimeException('IP pools may generate at most 4096 addresses at a time.');
+        }
+
+        $addresses = [];
+
+        for ($ip = $start; $ip <= $end; $ip++) {
+            $addresses[] = long2ip($ip);
+        }
+
+        return $addresses;
+    }
+
     /**
      * @param  array<int, string>  $excludedAddresses
      */
@@ -63,6 +89,62 @@ class IpPoolService
         });
     }
 
+    /**
+     * @param  array<int, int|string>  $addressIds
+     * @return Collection<int, IpAddress>
+     */
+    public function reserveAddresses(IpPool $pool, array $addressIds): Collection
+    {
+        $addressIds = array_values(array_unique(array_map(
+            static fn (mixed $addressId): int => (int) $addressId,
+            array_filter($addressIds, static fn (mixed $addressId): bool => $addressId !== null && $addressId !== ''),
+        )));
+
+        if ($addressIds === []) {
+            throw new RuntimeException('Select at least one IP address to reserve.');
+        }
+
+        return DB::transaction(function () use ($pool, $addressIds): Collection {
+            $addresses = $pool->addresses()
+                ->whereIn('id', $addressIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            if ($addresses->count() !== count($addressIds)) {
+                throw new RuntimeException('One or more selected IPs do not belong to this pool.');
+            }
+
+            foreach ($addressIds as $addressId) {
+                $address = $addresses->get($addressId);
+
+                if (! in_array($address->status, [IpAddress::STATUS_AVAILABLE, IpAddress::STATUS_RELEASED], true)) {
+                    throw new RuntimeException("IP {$address->address} is already in use and cannot be reserved.");
+                }
+            }
+
+            $now = now();
+
+            foreach ($addressIds as $addressId) {
+                $address = $addresses->get($addressId);
+
+                $address->forceFill([
+                    'virtual_machine_id' => null,
+                    'status' => IpAddress::STATUS_RESERVED,
+                    'reserved_at' => $now,
+                    'assigned_at' => null,
+                    'released_at' => null,
+                ])->save();
+            }
+
+            return $pool->addresses()
+                ->whereIn('id', $addressIds)
+                ->with(['virtualMachine.customer', 'virtualMachine.bundle'])
+                ->orderBy('address')
+                ->get();
+        });
+    }
+
     public function assign(IpAddress $address, VirtualMachine $vm): void
     {
         $address->forceFill([
@@ -96,26 +178,11 @@ class IpPoolService
         return trim((string) $address->pool->nameservers) ?: '1.1.1.1';
     }
 
-    private function ensurePoolAddresses(IpPool $pool): void
+    public function ensurePoolAddresses(IpPool $pool): void
     {
-        if ($pool->addresses()->exists()) {
-            return;
-        }
-
-        $start = ip2long($pool->start_ip);
-        $end = ip2long($pool->end_ip ?: $pool->start_ip);
-
-        if ($start === false || $end === false || $end < $start) {
-            throw new RuntimeException('The selected IP pool has an invalid IP range.');
-        }
-
-        if (($end - $start) > 4096) {
-            throw new RuntimeException('IP pools may generate at most 4096 addresses at a time.');
-        }
-
-        for ($ip = $start; $ip <= $end; $ip++) {
+        foreach ($this->addressRange($pool->start_ip, $pool->end_ip) as $address) {
             $pool->addresses()->firstOrCreate(
-                ['address' => long2ip($ip)],
+                ['address' => $address],
                 ['status' => IpAddress::STATUS_AVAILABLE],
             );
         }

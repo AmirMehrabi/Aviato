@@ -98,6 +98,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->parameters(['cloud-images' => 'cloudImage'])
             ->except(['show'])
             ->names('admin.cloud-images');
+        Route::post('ip-pools/{ipPool}/addresses/reserve', [IpPoolController::class, 'reserveAddresses'])
+            ->name('admin.ip-pools.addresses.reserve');
+        Route::post('ip-pools/{ipPool}/addresses/{ipAddress}/reserve', [IpPoolController::class, 'reserveAddress'])
+            ->name('admin.ip-pools.addresses.reserve-one');
         Route::resource('ip-pools', IpPoolController::class)
             ->parameters(['ip-pools' => 'ipPool'])
             ->names('admin.ip-pools');

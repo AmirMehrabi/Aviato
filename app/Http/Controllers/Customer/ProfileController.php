@@ -33,6 +33,7 @@ class ProfileController extends Controller
             'activeMembership' => $this->projects->membership($activeProject, $customer),
             'projects' => $this->projects->projectsFor($customer),
             'wallet' => $this->wallets->walletFor($customer),
+            'wallets' => $this->wallets,
             'quota' => $this->quota->snapshot($customer),
             'invoiceCount' => $customer->invoices()->count(),
         ]);
