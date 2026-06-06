@@ -239,8 +239,6 @@ class ServerController extends Controller
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'quota' => $quota,
-            'vmCreationChargeEnabled' => AppSetting::vmCreationChargeEnabled(),
-            'vmCreationChargePercentage' => AppSetting::vmCreationChargePercentage(),
             'bundles' => VmBundle::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')

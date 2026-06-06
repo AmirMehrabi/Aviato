@@ -32,7 +32,7 @@ class CustomerVmQuotaService
             'remaining' => $remaining,
             'cooldown_days' => $cooldownDays,
             'can_create' => $canCreate,
-            'message' => $canCreate ? null : $this->blockedMessage($verified, $limit, $cooldownCount, $cooldownDays),
+            'message' => $canCreate ? null : $this->blockedMessage($verified),
         ];
     }
 
@@ -51,16 +51,12 @@ class CustomerVmQuotaService
             ->count();
     }
 
-    private function blockedMessage(bool $verified, int $limit, int $cooldownCount, int $cooldownDays): string
+    private function blockedMessage(bool $verified): string
     {
         if ($verified) {
-            return 'تعداد ماشین های این حساب به سقف مجاز رسیده است.';
+            return 'در حال حاضر ظرفیت ساخت VPS برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.';
         }
 
-        if ($cooldownCount > 0) {
-            return 'سقف ساخت ماشین برای حساب تایید نشده پر شده است. ماشین های حذف شده تا '.$cooldownDays.' روز همچنان در سهمیه حساب محاسبه می شوند.';
-        }
-
-        return 'حساب های تایید نشده حداکثر می توانند '.$limit.' ماشین بسازند. برای افزایش سقف، کد ملی را در پروفایل تایید کنید.';
+        return 'برای ساخت VPS بیشتر، کد ملی‌تان را در پروفایل تایید کنید.';
     }
 }
