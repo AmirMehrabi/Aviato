@@ -16,6 +16,14 @@
             @csrf @method('PATCH')
             <x-form.select name="currency" label="واحد پولی Billing" :selected="$currency" :options="$currencies" />
             <x-form.select name="customer_verification_mode" label="روش تایید ثبت نام مشتری" :selected="$verificationMode" :options="$verificationModes" />
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h2 class="text-sm font-black text-slate-900">استعلام کد ملی با سرویس شاهکار</h2>
+                <p class="mt-1 text-xs leading-6 text-slate-500">وقتی فعال باشد، ثبت کد ملی در پروفایل مشتری از طریق API سرویس Zohal/Shahkar بررسی می‌شود و هر مشتری در هر ساعت 5 بار فرصت استعلام دارد.</p>
+                <div class="mt-4 grid gap-4">
+                    <x-form.checkbox name="national_code_verification_enabled" label="استعلام برخط کد ملی فعال باشد" :checked="$nationalCodeVerificationEnabled" />
+                    <x-form.input name="national_code_verification_token" type="password" label="توکن API استعلام کد ملی" value="" dir-ltr help="برای حفظ توکن فعلی، این فیلد را خالی بگذارید." />
+                </div>
+            </div>
             <x-form.select name="sms_gateway" label="درگاه ارسال پیامک" :selected="$smsGateway" :options="$smsGateways" />
 
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">

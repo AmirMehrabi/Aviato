@@ -4,13 +4,16 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\AppSetting;
 use App\Services\CustomerVmQuotaService;
 use App\Services\NationalCodeService;
+use App\Services\NationalCodeVerificationClient;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
@@ -20,6 +23,7 @@ class ProfileController extends Controller
         private readonly ProjectAccessService $projects,
         private readonly CustomerVmQuotaService $quota,
         private readonly NationalCodeService $nationalCodes,
+        private readonly NationalCodeVerificationClient $nationalCodeVerification,
     ) {}
 
     public function show(Request $request): View
@@ -36,6 +40,7 @@ class ProfileController extends Controller
             'wallets' => $this->wallets,
             'quota' => $this->quota->snapshot($customer),
             'invoiceCount' => $customer->invoices()->count(),
+            'nationalCodeVerificationEnabled' => AppSetting::nationalCodeVerificationEnabled(),
         ]);
     }
 
@@ -69,6 +74,26 @@ class ProfileController extends Controller
             throw ValidationException::withMessages([
                 'national_code' => 'این کد ملی قبلا برای حساب دیگری ثبت شده است.',
             ]);
+        }
+
+        if (AppSetting::nationalCodeVerificationEnabled()) {
+            $rateKey = 'national-code-verification:customer:'.$customer->id;
+
+            if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+                throw ValidationException::withMessages([
+                    'national_code' => 'شما در هر ساعت فقط 5 بار می‌توانید استعلام کد ملی انجام دهید.',
+                ]);
+            }
+
+            RateLimiter::hit($rateKey, 3600);
+
+            try {
+                $this->nationalCodeVerification->verify((string) $customer->phone, $nationalCode);
+            } catch (\RuntimeException $e) {
+                throw ValidationException::withMessages([
+                    'national_code' => $e->getMessage(),
+                ]);
+            }
         }
 
         $customer->forceFill([

@@ -16,11 +16,11 @@
                     <p class="text-xs font-black text-[#0069FF]">Account Level</p>
                     <h2 class="mt-2 text-2xl font-black text-slate-950">{{ $customer->hasVerifiedNationalCode() ? 'حساب تایید شده' : 'حساب تایید نشده' }}</h2>
                     <p class="mt-2 text-sm font-bold leading-7 text-slate-500">
-                        {{ $customer->hasVerifiedNationalCode() ? 'کد ملی این حساب ثبت و تایید شده است.' : 'برای افزایش سقف ساخت VPS، کد ملی معتبر خود را ثبت کنید.' }}
+                        {{ $customer->hasVerifiedNationalCode() ? 'کد ملی این حساب ثبت و تایید شده است.' : ($nationalCodeVerificationEnabled ? 'برای افزایش سقف ساخت VPS، کد ملی معتبر خود را ثبت کنید تا از طریق سرویس شاهکار بررسی شود.' : 'برای افزایش سقف ساخت VPS، کد ملی معتبر خود را ثبت کنید. تایید برخط در حال حاضر غیرفعال است.') }}
                     </p>
                 </div>
                 <span class="inline-flex rounded-xl px-4 py-2 text-sm font-black {{ $customer->hasVerifiedNationalCode() ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' }}">
-                    {{ $customer->hasVerifiedNationalCode() ? 'تایید شده' : 'نیازمند کد ملی' }}
+                    {{ $customer->hasVerifiedNationalCode() ? 'تایید شده' : ($nationalCodeVerificationEnabled ? 'نیازمند استعلام' : 'نیازمند ثبت') }}
                 </span>
             </div>
 
@@ -40,7 +40,7 @@
                         @enderror
                     </div>
                     <button class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">
-                        ثبت و تایید کد ملی
+                        {{ $nationalCodeVerificationEnabled ? 'ثبت و استعلام کد ملی' : 'ثبت کد ملی' }}
                     </button>
                 </form>
             @else

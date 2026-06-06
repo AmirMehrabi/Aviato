@@ -13,6 +13,10 @@ class AppSetting extends Model
 
     public const CUSTOMER_VERIFICATION_MODE = 'customer.verification.mode';
 
+    public const NATIONAL_CODE_VERIFICATION_ENABLED = 'national_code.verification.enabled';
+
+    public const NATIONAL_CODE_VERIFICATION_TOKEN = 'national_code.verification.token';
+
     public const SMS_GATEWAY = 'sms.gateway';
 
     public const SMS0098_USERNAME = 'sms0098.username';
@@ -94,6 +98,16 @@ class AppSetting extends Model
             'email' => 'تایید با ایمیل',
             'sms' => 'تایید با پیامک',
         ];
+    }
+
+    public static function nationalCodeVerificationEnabled(): bool
+    {
+        return filter_var(static::getValue(self::NATIONAL_CODE_VERIFICATION_ENABLED, true), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function nationalCodeVerificationToken(): string
+    {
+        return (string) static::getValue(self::NATIONAL_CODE_VERIFICATION_TOKEN, '');
     }
 
     public static function smsGateway(): string

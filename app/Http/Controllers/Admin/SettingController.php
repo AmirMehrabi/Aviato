@@ -19,6 +19,8 @@ class SettingController extends Controller
             'currencies' => AppSetting::supportedCurrencies(),
             'verificationMode' => AppSetting::customerVerificationMode(),
             'verificationModes' => AppSetting::customerVerificationModes(),
+            'nationalCodeVerificationEnabled' => AppSetting::nationalCodeVerificationEnabled(),
+            'nationalCodeVerificationToken' => AppSetting::nationalCodeVerificationToken(),
             'smsGateway' => AppSetting::smsGateway(),
             'smsGateways' => AppSetting::smsGateways(),
             'sms0098Username' => (string) AppSetting::getValue(AppSetting::SMS0098_USERNAME, ''),
@@ -38,6 +40,8 @@ class SettingController extends Controller
         $data = $request->validate([
             'currency' => ['required', 'string', Rule::in(array_keys(AppSetting::supportedCurrencies()))],
             'customer_verification_mode' => ['required', 'string', Rule::in(array_keys(AppSetting::customerVerificationModes()))],
+            'national_code_verification_enabled' => ['required', 'boolean'],
+            'national_code_verification_token' => ['nullable', 'string', 'max:255'],
             'sms_gateway' => ['required', 'string', Rule::in(array_keys(AppSetting::smsGateways()))],
             'sms0098_username' => ['nullable', 'string', 'max:255'],
             'sms0098_password' => ['nullable', 'string', 'max:255'],
@@ -51,6 +55,14 @@ class SettingController extends Controller
             'deleted_vm_cooldown_days' => ['required', 'integer', 'min:0', 'max:3650'],
             'vm_rebuild_fee_multiplier_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
+
+        $effectiveNationalCodeToken = $data['national_code_verification_token'] ?: (string) AppSetting::getValue(AppSetting::NATIONAL_CODE_VERIFICATION_TOKEN, '');
+
+        if ($data['national_code_verification_enabled'] && $effectiveNationalCodeToken === '') {
+            return back()
+                ->withErrors(['national_code_verification_token' => 'توکن سرویس استعلام کد ملی الزامی است.'])
+                ->withInput();
+        }
 
         if ($data['customer_verification_mode'] === 'sms') {
             $smsValidator = Validator::make($data, $this->activeSmsGatewayRules($data['sms_gateway']));
@@ -74,6 +86,7 @@ class SettingController extends Controller
 
         AppSetting::setValue(AppSetting::BILLING_CURRENCY, $data['currency'], 'string', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, $data['customer_verification_mode'], 'string', 'customer');
+        AppSetting::setValue(AppSetting::NATIONAL_CODE_VERIFICATION_ENABLED, (bool) $data['national_code_verification_enabled'], 'boolean', 'customer');
         AppSetting::setValue(AppSetting::SMS_GATEWAY, $data['sms_gateway'], 'string', 'sms');
         AppSetting::setValue(AppSetting::SMS0098_USERNAME, $data['sms0098_username'] ?? '', 'string', 'sms0098');
         AppSetting::setValue(AppSetting::SMS0098_PANEL_NO, $data['sms0098_panel_no'] ?? '', 'string', 'sms0098');
@@ -91,6 +104,10 @@ class SettingController extends Controller
 
         if (! empty($data['kavenegar_api_key'])) {
             AppSetting::setValue(AppSetting::KAVENEGAR_API_KEY, $data['kavenegar_api_key'], 'string', 'kavenegar');
+        }
+
+        if ($effectiveNationalCodeToken !== '') {
+            AppSetting::setValue(AppSetting::NATIONAL_CODE_VERIFICATION_TOKEN, $effectiveNationalCodeToken, 'string', 'customer');
         }
 
         return back()->with('status', 'تنظیمات ذخیره شد.');
