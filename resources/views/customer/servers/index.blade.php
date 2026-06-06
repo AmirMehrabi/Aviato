@@ -2,7 +2,7 @@
 
 @section('title', 'سرورها')
 @section('header_title', 'ماشین های ابری')
-@section('header_subtitle', 'وضعیت، اتصال، هزینه و عملیات VPSهای شما')
+@section('header_subtitle', 'وضعیت، اتصال، هزینه و عملیات ماشین های مجازی شما')
 @section('breadcrumbs')
     <span class="truncate text-slate-700">سرورها</span>
 @endsection
@@ -39,7 +39,7 @@
 [
     {
         "title": "ساخت ماشین",
-        "description": "انتخاب پلن VPS و شروع مسیر ساخت",
+        "description": "انتخاب پلن ماشین مجازی و شروع مسیر ساخت",
         "type": "عملیات",
         "url": @json(route('customer.servers.create', [], false)),
         "keywords": "ساخت ماشین vps server"
@@ -48,7 +48,7 @@
     {
         "title": @json($server['name']),
         "description": @json($server['ip'].' - '.$server['node'].' - '.$server['resources']),
-        "type": "VM",
+        "type": "ماشین مجازی",
         "url": @json($server['show_url']),
         "keywords": @json($server['name'].' '.$server['hostname'].' '.$server['ip'].' '.$server['node'].' '.$server['status'].' '.$server['provisioning_status'])
     }@if (! $loop->last),@endif
@@ -76,7 +76,7 @@
 
         <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             @foreach ([
-                ['label' => 'کل ماشین ها', 'value' => $summary['total'], 'hint' => 'همه VPSهای حساب', 'tone' => 'text-slate-950'],
+                ['label' => 'کل ماشین ها', 'value' => $summary['total'], 'hint' => 'همه ماشین های مجازی حساب', 'tone' => 'text-slate-950'],
                 ['label' => 'روشن', 'value' => $summary['running'], 'hint' => 'CPU/RAM فعال', 'tone' => 'text-[#0069FF]'],
                 ['label' => 'خاموش', 'value' => $summary['stopped'], 'hint' => 'دیسک و IP همچنان هزینه دارند', 'tone' => 'text-slate-950'],
                 ['label' => 'در حال آماده سازی', 'value' => $summary['pending'], 'hint' => 'تا تکمیل، SSH فعال نیست', 'tone' => $summary['pending'] > 0 ? 'text-[#0069FF]' : 'text-slate-950'],
@@ -143,7 +143,7 @@
                             </svg>
                         </div>
                         <h3 class="mt-5 text-2xl font-black text-slate-950">هنوز ماشینی ندارید</h3>
-                        <p class="mt-2 text-sm font-bold leading-7 text-slate-500">با ساخت اولین VPS، وضعیت، IP، هزینه و دسترسی SSH آن از همین صفحه قابل پیگیری است.</p>
+                        <p class="mt-2 text-sm font-bold leading-7 text-slate-500">با ساخت اولین ماشین مجازی، وضعیت، IP، هزینه و دسترسی SSH آن از همین صفحه قابل پیگیری است.</p>
                         <a href="{{ route('customer.servers.create', [], false) }}" class="mt-5 inline-flex rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ساخت اولین ماشین</a>
                     @else
                         <h3 class="text-xl font-black text-slate-950">نتیجه ای با این فیلتر پیدا نشد</h3>

@@ -1,7 +1,7 @@
 @extends('customer.layout')
 
 @section('title', 'داشبورد مشتری')
-@section('header_title', 'داشبورد VPS')
+@section('header_title', 'داشبورد ماشین های مجازی')
 @section('header_subtitle', 'ساخت سریع ماشین ابری، کنترل هزینه و مدیریت سرورها')
 @section('breadcrumbs')
     <span class="truncate text-slate-700">داشبورد</span>
@@ -15,7 +15,7 @@
 [
     {
         "title": "ساخت ماشین",
-        "description": "انتخاب پلن VPS و شروع مسیر ساخت",
+        "description": "انتخاب پلن ماشین مجازی و شروع مسیر ساخت",
         "type": "عملیات",
         "url": @json(route('customer.servers.create', [], false)),
         "keywords": "ساخت ماشین vps server"
@@ -31,7 +31,7 @@
     {
         "title": @json($vm['name']),
         "description": @json($vm['ip'].' - '.$vm['region'].' - '.$vm['plan']),
-        "type": "VM",
+        "type": "ماشین مجازی",
         "url": @json($vm['url']),
         "keywords": @json($vm['name'].' '.$vm['ip'].' '.$vm['region'].' '.$vm['plan'].' '.$vm['status'])
     }@if (! $loop->last),@endif
@@ -43,7 +43,7 @@
     @php
         $walletIsBlocked = $wallet->is_locked || $wallet->balance < 0;
         $metricCards = [
-            ['label' => 'کل ماشین ها', 'value' => $dashboardStats['total'], 'hint' => 'VPSهای فعال در حساب', 'tone' => 'text-slate-950'],
+            ['label' => 'کل ماشین ها', 'value' => $dashboardStats['total'], 'hint' => 'ماشین های مجازی فعال در حساب', 'tone' => 'text-slate-950'],
             ['label' => 'روشن', 'value' => $summary['running'], 'hint' => 'در حال مصرف کامل منابع', 'tone' => 'text-[#0069FF]'],
             ['label' => 'منابع', 'value' => $dashboardStats['cpu'].' CPU / '.$dashboardStats['ram'].'GB', 'hint' => $dashboardStats['disk'].'GB دیسک رزرو شده', 'tone' => 'text-slate-950'],
             ['label' => 'برآورد ماهانه', 'value' => $wallets->format($dashboardStats['monthly_spend']), 'hint' => 'بر اساس وضعیت فعلی', 'tone' => 'text-emerald-700'],
@@ -61,10 +61,10 @@
                         <path d="M9 16v3m3-3v3m3-3v3M8 21h8" stroke-linecap="round"/>
                     </svg>
                 </div>
-                <span class="mt-7 rounded-full bg-white px-4 py-2 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">شروع سریع VPS Cloud</span>
+                <span class="mt-7 rounded-full bg-white px-4 py-2 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">شروع سریع ماشین مجازی</span>
                 <h2 class="mt-5 text-4xl font-black leading-tight text-slate-950 md:text-5xl">اولین ماشین ابری خود را بسازید</h2>
                 <p class="mt-5 max-w-2xl text-base font-bold leading-9 text-slate-600">
-                    هنوز هیچ VPS برای این حساب ثبت نشده است. پلن، سیستم عامل و دیتاسنتر را انتخاب کنید و بعد از آماده شدن ماشین، هزینه، مانیتورینگ و بکاپ را از همین پنل دنبال کنید.
+                    هنوز هیچ ماشین مجازی برای این حساب ثبت نشده است. پلن، سیستم عامل و دیتاسنتر را انتخاب کنید و بعد از آماده شدن ماشین، هزینه، مانیتورینگ و بکاپ را از همین پنل دنبال کنید.
                 </p>
                 <div class="mt-8 flex flex-wrap justify-center gap-3">
                     <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex items-center justify-center rounded-2xl bg-[#0069FF] px-7 py-4 text-sm font-black text-white shadow-lg shadow-[#0069FF]/25 transition hover:bg-[#0050D0]">
@@ -190,7 +190,7 @@
             <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 class="text-lg font-black text-slate-950">ماشین های اخیر</h2>
-                    <p class="mt-1 text-sm text-slate-500">وضعیت، منابع و هزینه تقریبی VPSهای همین حساب.</p>
+                    <p class="mt-1 text-sm text-slate-500">وضعیت، منابع و هزینه تقریبی ماشین های مجازی همین حساب.</p>
                 </div>
                 <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex w-fit justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">همه سرورها</a>
             </div>

@@ -2,7 +2,7 @@
 
 @section('title', 'جزئیات سرور')
 @section('header_title', $server->name)
-@section('header_subtitle', 'اتصال، وضعیت، منابع و هزینه این VPS')
+@section('header_subtitle', 'اتصال، وضعیت، منابع و هزینه این ماشین مجازی')
 @section('breadcrumbs')
     <a href="{{ route('customer.servers.index', [], false) }}" class="transition hover:text-[#0069FF]">سرورها</a>
     <svg class="size-3.5 rotate-180 text-slate-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -321,7 +321,7 @@
                                 <option value="{{ $option['size_gb'] }}">{{ $option['size_gb'] }}GB - +{{ $wallets->format($option['monthly_delta']) }}/ماه</option>
                             @endforeach
                         </select>
-                        <p class="text-xs font-bold leading-6 text-slate-500">دیسک اضافه در Proxmox attach می شود؛ داخل سیستم عامل باید پارتیشن بندی و mount شود.</p>
+                        <p class="text-xs font-bold leading-6 text-slate-500">دیسک اضافه به ماشین مجازی متصل می شود؛ داخل سیستم عامل باید پارتیشن بندی و mount شود.</p>
                         <button type="submit" x-bind:disabled="submitting || {{ ($isLocked || $hasPendingUpgrade) ? 'true' : 'false' }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] disabled:cursor-not-allowed disabled:opacity-60">
                             <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
                             <span x-text="submitting ? 'در حال ثبت...' : 'افزودن دیسک'">افزودن دیسک</span>
@@ -351,7 +351,6 @@
                 <h2 class="font-black text-slate-950">جزئیات فنی</h2>
                 <div class="mt-4 grid gap-3 md:grid-cols-2">
                     @foreach ([
-                        ['label' => 'Proxmox', 'value' => $server->proxmoxServer?->name ?: '-', 'dir' => 'rtl'],
                         ['label' => 'Node', 'value' => $server->node ?: '-', 'dir' => 'ltr'],
                         ['label' => 'Storage', 'value' => $server->storage ?: '-', 'dir' => 'ltr'],
                         ['label' => 'Network Bridge', 'value' => $server->network_bridge ?: '-', 'dir' => 'ltr'],
@@ -369,7 +368,7 @@
             <aside class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <h2 class="font-black text-slate-950">چرخه حیات</h2>
                 <div class="mt-4 space-y-3 text-sm">
-                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">وضعیت VM</span><span class="rounded-xl px-3 py-1 text-xs font-black" :class="serverState.status_class" x-text="serverState.status_label">{{ $statusLabel }}</span></div>
+                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">وضعیت ماشین</span><span class="rounded-xl px-3 py-1 text-xs font-black" :class="serverState.status_class" x-text="serverState.status_label">{{ $statusLabel }}</span></div>
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">Provisioning</span><span class="inline-flex items-center gap-2 rounded-xl px-3 py-1 text-xs font-black" :class="serverState.provisioning_class"><span x-show="serverState.provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span><span x-text="serverState.provisioning_label">{{ $provisioningLabel }}</span></span></div>
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین مشاهده</span><span class="font-black text-slate-950" dir="ltr">{{ $server->last_seen_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین شروع</span><span class="font-black text-slate-950" dir="ltr">{{ $server->last_started_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
@@ -456,7 +455,7 @@
                     <div>
                         <p class="text-xs font-black text-amber-700">Rebuild</p>
                         <h2 class="mt-1 font-black text-amber-950">بازسازی سیستم عامل</h2>
-                        <p class="mt-2 text-sm font-bold leading-7 text-amber-800">دیسک اصلی پاک می شود و VM با همان VMID، IP، منابع و Image فعلی دوباره ساخته می شود. بکاپ ها و دیسک های اضافه جداگانه نگهداری می شوند.</p>
+                        <p class="mt-2 text-sm font-bold leading-7 text-amber-800">دیسک اصلی پاک می شود و ماشین مجازی با همان IP، منابع و Image فعلی دوباره ساخته می شود. بکاپ ها و دیسک های اضافه جداگانه نگهداری می شوند.</p>
                         <p class="mt-3 inline-flex rounded-xl bg-white px-3 py-2 text-xs font-black text-amber-800">هزینه بازسازی: {{ $formattedRebuildFee }}</p>
                         @if ($isRebuilding)
                             <p class="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-[#0069FF]">
@@ -572,7 +571,7 @@
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="font-black text-amber-950">حذف این سرور در حال انجام است</h2>
-                        <p class="mt-2 text-sm font-bold leading-7 text-amber-800">در حال بررسی Proxmox، خاموش سازی و پاک کردن VM هستیم. Billing این سرور متوقف شده است.</p>
+                        <p class="mt-2 text-sm font-bold leading-7 text-amber-800">در حال بررسی وضعیت، خاموش سازی و پاک کردن ماشین مجازی هستیم. Billing این سرور متوقف شده است.</p>
                     </div>
                     <span class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-100 px-4 py-3 text-sm font-black text-amber-800 sm:w-auto">
                         <span class="size-4 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-700"></span>
@@ -611,7 +610,7 @@
                         <div>
                             <p class="text-xs font-black text-red-600">Danger Zone</p>
                             <h2 class="mt-1 font-black text-red-950">{{ ($server->delete_failed_at || $deleteAttemptIsStale) ? 'تلاش دوباره برای حذف سرور' : 'حذف دائمی سرور' }}</h2>
-                            <p class="mt-2 text-sm font-bold leading-7 text-red-800">VM ابتدا خاموش و سپس از Proxmox حذف می شود. پس از حذف موفق، IP رزرو شده آزاد می شود. بکاپ ها جداگانه نگهداری می شوند.</p>
+                            <p class="mt-2 text-sm font-bold leading-7 text-red-800">ماشین مجازی ابتدا خاموش و سپس حذف می شود. پس از حذف موفق، IP رزرو شده آزاد می شود. بکاپ ها جداگانه نگهداری می شوند.</p>
                             @if ($server->delete_failed_at && $server->delete_error)
                                 <p class="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700">آخرین خطا: {{ $server->delete_error }}</p>
                             @endif

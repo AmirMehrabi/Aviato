@@ -109,7 +109,7 @@
             <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                 <div class="border-b border-slate-100 px-5 py-4">
                     <p class="text-xs font-black uppercase text-[#0069FF]">Step 2</p>
-                    <h2 class="mt-1 text-xl font-black text-slate-950">پلن VPS را انتخاب کنید</h2>
+                    <h2 class="mt-1 text-xl font-black text-slate-950">پلن ماشین مجازی را انتخاب کنید</h2>
                 </div>
                     <div class="grid gap-4 p-5 lg:grid-cols-3">
                     <template x-for="(bundle, index) in visibleBundles" :key="bundle.id">
@@ -146,7 +146,7 @@
                 <div class="grid gap-5 p-5">
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <span class="text-sm font-black text-slate-700">شناسه VPS</span>
+                            <span class="text-sm font-black text-slate-700">شناسه ماشین مجازی</span>
                             <span class="break-all text-left text-lg font-black text-slate-950" dir="ltr" x-text="generatedNamePreview"></span>
                         </div>
                     </div>
@@ -227,7 +227,7 @@
                         </div>
                         <div x-show="selectedImage && !selectedImage.has_available_ip" x-cloak class="rounded-xl border border-amber-200 bg-amber-50 p-4">
                             <p class="text-xs font-black text-amber-800">ظرفیت IP محدود است</p>
-                            <p class="mt-2 text-xs leading-6 text-amber-800">در حال حاضر IP آزاد برای Proxmox این نسخه وجود ندارد. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت ماشین مجازی وجود ندارد.</p>
+                            <p class="mt-2 text-xs leading-6 text-amber-800">در حال حاضر IP آزاد برای این نسخه وجود ندارد. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت ماشین مجازی وجود ندارد.</p>
                         </div>
                         @if (! $quota['can_create'])
                             <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -241,7 +241,7 @@
                                 </p>
                             </div>
                         @endif
-                        <div class="rounded-xl border border-dashed border-[#B8D6FF] bg-white/50 p-4 text-xs leading-6 text-slate-500">برای ساخت ماشین مجازی باید حداقل یک IP آزاد در Pool مربوط به Proxmox انتخابی وجود داشته باشد.</div>
+                        <div class="rounded-xl border border-dashed border-[#B8D6FF] bg-white/50 p-4 text-xs leading-6 text-slate-500">برای ساخت ماشین مجازی باید حداقل یک IP آزاد برای نسخه انتخابی وجود داشته باشد.</div>
                     </div>
                 </div>
 
@@ -323,7 +323,7 @@
                 return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && !this.sshKeyInvalid;
             },
             get generatedNamePreview() {
-                return `VPS-${this.namePeriod || 'YYMM'}-${this.bundleSpecsToken()}-XXXXXX`;
+                return `MACHINE-${this.namePeriod || 'YYMM'}-${this.bundleSpecsToken()}-XXXXXX`;
             },
             get sshKeyAdded() {
                 return this.form.ssh_public_key.trim().length > 0;

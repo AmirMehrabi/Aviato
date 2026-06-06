@@ -2,7 +2,7 @@
 
 @section('title', 'بکاپ ها')
 @section('header_title', 'بکاپ ها')
-@section('header_subtitle', 'بکاپ دستی، زمان‌بندی خودکار و نگهداری نسخه‌های هر VPS')
+@section('header_subtitle', 'بکاپ دستی، زمان‌بندی خودکار و نگهداری نسخه‌های هر ماشین مجازی')
 
 @php
     $activeNav = 'backups';
@@ -10,7 +10,7 @@
 
 @section('search_data')
 [
-    {"title":"بکاپ ها","description":"مدیریت بکاپ VPSها","type":"صفحه","url":@json(route('customer.backups.index', [], false)),"keywords":"backup بکاپ schedule retention"}
+    {"title":"بکاپ ها","description":"مدیریت بکاپ ماشین های مجازی","type":"صفحه","url":@json(route('customer.backups.index', [], false)),"keywords":"backup بکاپ schedule retention"}
 ]
 @endsection
 
@@ -46,7 +46,7 @@
                 <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h2 class="font-black text-slate-950" dir="ltr">{{ $vm->name }}</h2>
-                        <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local' }} · VMID {{ $vm->vmid ?: '—' }}</p>
+                        <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ $vm->ip_address ?: 'no-ip' }}</p>
                     </div>
                     <form method="POST" action="{{ route('customer.backups.manual.store', $vm, false) }}">
                         @csrf
@@ -126,7 +126,7 @@
             </article>
         @empty
             <div class="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-                <p class="font-black text-slate-950">برای استفاده از بکاپ ابتدا VPS بسازید.</p>
+                <p class="font-black text-slate-950">برای استفاده از بکاپ ابتدا ماشین مجازی بسازید.</p>
                 <a href="{{ route('customer.servers.create', [], false) }}" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">ساخت ماشین مجازی</a>
             </div>
         @endforelse
