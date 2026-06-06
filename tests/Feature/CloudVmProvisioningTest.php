@@ -499,7 +499,9 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertTrue($response->viewData('cloudImages')->contains($image));
         $viewImage = $response->viewData('cloudImages')->firstWhere('id', $image->id);
         $this->assertSame([$bundle->id], $viewImage->allowedBundles->pluck('id')->all());
-        $response->assertDontSee('سهمیه ساخت');
+        $response->assertDontSee('quota.limit > 0', false);
+        $response->assertDontSee('حساب هنوز با کد ملی تایید نشده است.');
+        $response->assertDontSee('حساب با کد ملی تایید شده است.');
         $response->assertDontSee('هزینه اولیه ساخت');
         $response->assertDontSee('creation_charge_label');
         $response->assertDontSee('vmCreationChargeEnabled');
@@ -533,7 +535,8 @@ class CloudVmProvisioningTest extends TestCase
             ->assertOk()
             ->assertSee('برای ساخت VPS بیشتر، کد ملی‌تان را در پروفایل تایید کنید.', false)
             ->assertSee('تایید کد ملی در پروفایل', false)
-            ->assertDontSee('سهمیه ساخت')
+            ->assertDontSee('quota.limit > 0', false)
+            ->assertDontSee('حساب هنوز با کد ملی تایید نشده است.')
             ->assertDontSee('هزینه اولیه ساخت');
     }
 
@@ -569,7 +572,8 @@ class CloudVmProvisioningTest extends TestCase
             ->assertOk()
             ->assertSee('در حال حاضر ظرفیت ساخت VPS برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.', false)
             ->assertDontSee('تایید کد ملی در پروفایل')
-            ->assertDontSee('سهمیه ساخت')
+            ->assertDontSee('quota.limit > 0', false)
+            ->assertDontSee('حساب با کد ملی تایید شده است.')
             ->assertDontSee('هزینه اولیه ساخت');
     }
 
