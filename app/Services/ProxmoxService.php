@@ -350,7 +350,7 @@ class ProxmoxService
             'net0' => $networkBridge !== '' ? $this->qemuNetworkDeviceWithBridge((string) ($currentConfig['net0'] ?? ''), $networkBridge) : null,
             'ciuser' => $options['login_username'] ?? null,
             'cipassword' => $options['login_password'] ?? null,
-            'sshkeys' => $options['ssh_public_key'] ?? null,
+            'sshkeys' => $this->cloudInitSshKeys($options['ssh_public_key'] ?? null),
             'ipconfig0' => $options['ipconfig0'] ?? null,
             'nameserver' => $options['nameserver'] ?? null,
             'cicustom' => $options['cicustom'] ?? null,
@@ -398,6 +398,20 @@ class ProxmoxService
         }
 
         return implode(',', $parts);
+    }
+
+    private function cloudInitSshKeys(mixed $sshPublicKey): ?string
+    {
+        $keys = collect(preg_split('/\R/', str_replace("\r\n", "\n", trim((string) $sshPublicKey))) ?: [])
+            ->map(fn (string $line): string => trim($line))
+            ->filter()
+            ->values();
+
+        if ($keys->isEmpty()) {
+            return null;
+        }
+
+        return rawurlencode($keys->implode("\n"));
     }
 
     /**

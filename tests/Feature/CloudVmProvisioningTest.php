@@ -15,7 +15,9 @@ use App\Models\VmBundle;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class CloudVmProvisioningTest extends TestCase
@@ -47,8 +49,12 @@ class CloudVmProvisioningTest extends TestCase
         $vm = VirtualMachine::query()->firstOrFail();
         $this->assertSame($customer->id, $vm->customer_id);
         $this->assertSame($image->id, $vm->cloud_image_id);
+        $this->assertNotSame('customer-vps-101', $vm->name);
+        $this->assertMatchesRegularExpression('/^vps-[a-z0-9-]+-starter-[a-z0-9]{6}$/', $vm->name);
+        $this->assertSame($vm->name, $vm->hostname);
         $this->assertSame('192.168.10.50', $vm->ip_address);
         $this->assertSame('vmbr1', $vm->network_bridge);
+        $this->assertNotNull($vm->login_password);
         $this->assertSame(VirtualMachine::PROVISION_PENDING, $vm->provisioning_status);
 
         $this->assertDatabaseHas('ip_addresses', [
@@ -58,6 +64,78 @@ class CloudVmProvisioningTest extends TestCase
         ]);
 
         Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_customer_create_ignores_tampered_name_and_hostname(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create(['name' => 'Ali Customer']);
+        $customer->wallet()->update(['balance' => 1000000]);
+        [$image, $bundle] = $this->catalog();
+
+        $this->actingAs($customer, 'customer');
+        $this->post($this->customerBaseUrl.'/servers', [
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'user-controlled-name',
+            'hostname' => 'user-controlled-hostname',
+            'login_username' => 'ubuntu',
+        ])->assertRedirect($this->customerBaseUrl.'/servers')
+            ->assertSessionHas('provisioning_password');
+
+        $vm = VirtualMachine::query()->firstOrFail();
+        $this->assertStringStartsWith('vps-ali-customer-starter-', $vm->name);
+        $this->assertSame($vm->name, $vm->hostname);
+        $this->assertNotSame('user-controlled-name', $vm->name);
+        $this->assertNotSame('user-controlled-hostname', $vm->hostname);
+    }
+
+    public function test_customer_create_requires_password_confirmation_when_password_is_entered(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
+        [$image, $bundle] = $this->catalog();
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/create')
+            ->post($this->customerBaseUrl.'/servers', [
+                'cloud_image_id' => $image->id,
+                'vm_bundle_id' => $bundle->id,
+                'login_username' => 'ubuntu',
+                'login_password' => 'secret-password',
+                'login_password_confirmation' => 'different-password',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHasErrors('login_password');
+
+        $this->assertDatabaseCount('virtual_machines', 0);
+        Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_customer_create_rejects_invalid_ssh_public_key(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
+        [$image, $bundle] = $this->catalog();
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/create')
+            ->post($this->customerBaseUrl.'/servers', [
+                'cloud_image_id' => $image->id,
+                'vm_bundle_id' => $bundle->id,
+                'login_username' => 'ubuntu',
+                'ssh_public_key' => 'not-a-public-key',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHasErrors('ssh_public_key');
+
+        $this->assertDatabaseCount('virtual_machines', 0);
+        Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
     }
 
     public function test_create_uses_local_ip_pool_as_source_of_truth_when_reserving(): void
@@ -112,6 +190,62 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertNull($vm->ip_address);
         $this->assertSame(0, $vm->ip_count);
         Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
+    public function test_generated_customer_vm_names_are_unique_for_same_customer_and_bundle(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create(['name' => 'Repeat Customer']);
+        $customer->wallet()->update(['balance' => 1000000]);
+        [$image, $bundle] = $this->catalog('192.168.10.51');
+
+        $this->actingAs($customer, 'customer');
+
+        for ($i = 0; $i < 2; $i++) {
+            $this->post($this->customerBaseUrl.'/servers', [
+                'cloud_image_id' => $image->id,
+                'vm_bundle_id' => $bundle->id,
+                'login_username' => 'ubuntu',
+            ])->assertRedirect($this->customerBaseUrl.'/servers');
+        }
+
+        $names = VirtualMachine::query()->pluck('name')->all();
+        $this->assertCount(2, $names);
+        $this->assertCount(2, array_unique($names));
+        $this->assertSame($names, VirtualMachine::query()->pluck('hostname')->all());
+    }
+
+    public function test_proxmox_cloud_init_encodes_sshkeys_for_api_payload(): void
+    {
+        [$image] = $this->catalog();
+        $server = $image->proxmoxServer;
+        $capturedPayload = null;
+
+        Http::fake(function (HttpRequest $request) use (&$capturedPayload) {
+            if (str_ends_with($request->url(), '/nodes/pve1/qemu/101/config')) {
+                $capturedPayload = $request->data();
+
+                return Http::response(['data' => null]);
+            }
+
+            return Http::response(['data' => null]);
+        });
+
+        $result = app(ProxmoxService::class)->configureCloudInit($server, [
+            'node' => 'pve1',
+            'vmid' => 101,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'login_username' => 'ubuntu',
+            'login_password' => 'secret-password',
+            'ssh_public_key' => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey customer@example.com\n",
+            'network_bridge' => '',
+        ]);
+
+        $this->assertSame('ssh-ed25519%20AAAAC3NzaC1lZDI1NTE5AAAAITestKey%20customer%40example.com', $capturedPayload['sshkeys'] ?? null);
+        $this->assertArrayNotHasKey('sshkeys', $result['payload']);
+        $this->assertArrayNotHasKey('cipassword', $result['payload']);
     }
 
     public function test_disabled_cloud_init_image_ignores_guest_access_fields(): void

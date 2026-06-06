@@ -28,6 +28,7 @@
             walletUrl: @js(route('customer.wallet.show', [], false)),
             profileUrl: @js(route('customer.profile.show', [], false)),
             quota: @js($quota),
+            customerSeed: @js(\Illuminate\Support\Str::slug($customer->name) ?: \Illuminate\Support\Str::slug(\Illuminate\Support\Str::before((string) $customer->email, '@')) ?: preg_replace('/\D+/', '', (string) $customer->phone) ?: 'customer-'.$customer->id),
             osFamilies: @js($osFamilies),
             bundles: @js($bundles->map(fn ($bundle) => [
                 'id' => $bundle->id,
@@ -151,30 +152,71 @@
                     <p class="text-xs font-black uppercase text-[#0069FF]">Step 4</p>
                     <h2 class="mt-1 text-xl font-black text-slate-950">دسترسی اولیه</h2>
                 </div>
-                <div class="grid gap-5 p-5 md:grid-cols-2">
-                    <label class="block">
-                        <span class="text-sm font-black text-slate-700">نام VPS</span>
-                        <input name="name" x-model="form.name" @input="syncHostname()" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none" placeholder="web-01">
-                        @error('name') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-                    </label>
-                    <label x-show="cloudInitEnabled" class="block">
-                        <span class="text-sm font-black text-slate-700">Hostname</span>
-                        <input name="hostname" x-model="form.hostname" :disabled="!cloudInitEnabled" readonly dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left font-bold text-slate-500 focus:outline-none">
-                        <span class="mt-1 block text-xs text-slate-500">به صورت خودکار از نام VPS و سیستم عامل ساخته می‌شود.</span>
-                    </label>
-                    <label x-show="cloudInitEnabled" class="block">
-                        <span class="text-sm font-black text-slate-700">Username</span>
-                        <input name="login_username" x-model="form.login_username" :disabled="!cloudInitEnabled" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
-                        @error('login_username') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-                    </label>
-                    <div x-show="cloudInitEnabled">
-                        <x-form.input name="login_password" type="password" label="Password" help="اختیاری؛ اگر SSH key خالی باشد password امن ساخته می‌شود." x-bind:disabled="!cloudInitEnabled" />
+                <div class="grid gap-5 p-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-black text-slate-500">شناسه VPS</p>
+                                <p class="mt-2 break-all text-left text-lg font-black text-slate-950" dir="ltr" x-text="generatedNamePreview"></p>
+                            </div>
+                            <span class="shrink-0 rounded-md bg-white px-2.5 py-1 text-[11px] font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">Auto</span>
+                        </div>
+                        <div class="mt-4 grid gap-3 text-xs font-bold text-slate-600 sm:grid-cols-2 lg:grid-cols-1">
+                            <div class="rounded-md bg-white p-3 ring-1 ring-slate-200">
+                                <span class="block text-slate-400">Plan</span>
+                                <span class="mt-1 block text-slate-800" x-text="selectedBundle?.name || '—'"></span>
+                            </div>
+                            <div class="rounded-md bg-white p-3 ring-1 ring-slate-200">
+                                <span class="block text-slate-400">Hostname</span>
+                                <span class="mt-1 block break-all text-left text-slate-800" dir="ltr" x-text="cloudInitEnabled ? generatedNamePreview : 'CloudInit disabled'"></span>
+                            </div>
+                        </div>
+                        <p class="mt-4 text-xs font-bold leading-6 text-slate-500">نام نهایی هنگام ثبت با پسوند یکتا ساخته می‌شود و در Proxmox و پنل یکسان خواهد بود.</p>
                     </div>
-                    <label x-show="cloudInitEnabled" class="md:col-span-2">
-                        <span class="text-sm font-black text-slate-700">SSH Public Key</span>
-                        <textarea name="ssh_public_key" rows="4" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">{{ old('ssh_public_key') }}</textarea>
-                        @error('ssh_public_key') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-                    </label>
+
+                    <div x-show="cloudInitEnabled" class="space-y-4">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <label class="block">
+                                <span class="text-sm font-black text-slate-700">Username</span>
+                                <input name="login_username" x-model="form.login_username" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="username" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
+                                @error('login_username') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+                            </label>
+                            <div class="rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] p-4">
+                                <p class="text-xs font-black text-[#0050D0]">Password policy</p>
+                                <p class="mt-2 text-xs font-bold leading-6 text-slate-600">اگر رمز را خالی بگذارید، رمز امن ساخته و فقط یک بار بعد از ساخت نمایش داده می‌شود.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <label class="block">
+                                <span class="text-sm font-black text-slate-700">Password</span>
+                                <input name="login_password" x-model="form.login_password" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
+                                @error('login_password') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+                            </label>
+                            <label class="block">
+                                <span class="text-sm font-black text-slate-700">Confirm Password</span>
+                                <input name="login_password_confirmation" x-model="form.login_password_confirmation" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
+                            </label>
+                        </div>
+
+                        <label class="block">
+                            <span class="flex items-center justify-between gap-3">
+                                <span class="text-sm font-black text-slate-700">SSH Public Key</span>
+                                <span x-show="sshKeyAdded" class="rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700 ring-1 ring-emerald-200">Key added</span>
+                            </span>
+                            <textarea name="ssh_public_key" x-model="form.ssh_public_key" rows="4" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm focus:border-[#0069FF] focus:outline-none" placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."></textarea>
+                            @error('ssh_public_key') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+                        </label>
+
+                        <div class="flex flex-wrap gap-2">
+                            <span class="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">CloudInit</span>
+                            <span class="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">SSH default port</span>
+                            <span class="rounded-md px-2.5 py-1 text-[11px] font-black" :class="form.login_password ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'">
+                                <span x-text="form.login_password ? 'Custom password' : 'Generated password'"></span>
+                            </span>
+                        </div>
+                    </div>
+
                     <div x-show="!cloudInitEnabled" class="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-900">
                         این template با CloudInit ساخته نشده است؛ username، hostname، password و SSH key هنگام ساخت تنظیم نمی‌شوند.
                     </div>
@@ -241,6 +283,7 @@
             osFamilies: config.osFamilies,
             bundles: config.bundles,
             images: config.images,
+            customerSeed: config.customerSeed || 'customer',
             form: {
                 os_family: '',
                 cloud_image_id: @js((string) old('cloud_image_id', '')),
@@ -248,9 +291,10 @@
                 cpu_cores: @js((int) old('cpu_cores', 2)),
                 ram_gb: @js((int) old('ram_gb', 4)),
                 disk_gb: @js((int) old('disk_gb', 50)),
-                name: @js(old('name', '')),
-                hostname: @js(old('hostname', '')),
                 login_username: @js(old('login_username', 'ubuntu')),
+                login_password: '',
+                login_password_confirmation: '',
+                ssh_public_key: @js(old('ssh_public_key', '')),
             },
             init() {
                 if (this.form.cloud_image_id && this.selectedImage) {
@@ -262,7 +306,6 @@
                     this.form.vm_bundle_id = String(this.bundles[0].id);
                     this.applyBundle();
                 }
-                this.syncHostname();
             },
             get filteredImages() { return this.images.filter((image) => image.os_family === this.form.os_family); },
             get selectedImage() { return this.images.find((image) => String(image.id) === String(this.form.cloud_image_id)); },
@@ -289,7 +332,15 @@
                 return this.walletCanCreate && Boolean(this.quota.can_create);
             },
             get canSubmit() {
-                return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && this.form.name.trim().length > 0;
+                return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle;
+            },
+            get generatedNamePreview() {
+                const customer = this.slug(this.customerSeed || 'customer');
+                const bundle = this.slug(this.selectedBundle?.name || 'vps');
+                return `vps-${customer}-${bundle}-xxxxxx`.replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+            },
+            get sshKeyAdded() {
+                return this.form.ssh_public_key.trim().length > 0;
             },
             selectOs(family) {
                 this.form.os_family = family;
@@ -300,7 +351,6 @@
             applyImage() {
                 if (!this.selectedImage) return;
                 this.form.login_username = this.cloudInitEnabled ? (this.selectedImage.default_username || 'ubuntu') : '';
-                this.syncHostname();
                 this.syncBundleSelection();
             },
             applyBundle() {
@@ -332,15 +382,6 @@
                 this.form.cpu_cores = Math.max(Number(this.form.cpu_cores || 0), Number(this.selectedImage.min_cpu_cores || 1));
                 this.form.ram_gb = Math.max(Number(this.form.ram_gb || 0), Number(this.selectedImage.min_ram_gb || 1));
                 this.form.disk_gb = Math.max(Number(this.form.disk_gb || 0), Number(this.selectedImage.min_disk_gb || 10));
-            },
-            syncHostname() {
-                if (!this.cloudInitEnabled) {
-                    this.form.hostname = '';
-                    return;
-                }
-                const name = this.slug(this.form.name || 'vps');
-                const os = this.slug(this.selectedOsLabel || this.form.os_family || 'cloud');
-                this.form.hostname = `${os}-${name}`.replace(/^-+|-+$/g, '');
             },
             submit() {
                 if (!this.canSubmit) return;

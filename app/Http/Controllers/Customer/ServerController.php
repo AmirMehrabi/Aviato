@@ -261,11 +261,9 @@ class ServerController extends Controller
         $data = $request->validate([
             'cloud_image_id' => ['required', 'integer', 'exists:cloud_images,id,is_active,1'],
             'vm_bundle_id' => ['nullable', 'integer', 'exists:vm_bundles,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'hostname' => ['nullable', 'string', 'max:255'],
             'login_username' => ['nullable', 'string', 'max:64'],
             'login_password' => ['nullable', 'string', 'min:8', 'max:255'],
-            'ssh_public_key' => ['nullable', 'string', 'max:5000'],
+            'ssh_public_key' => ['nullable', 'string', 'max:5000', $this->sshPublicKeyRule()],
             'cpu_cores' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:512'],
             'ram_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
             'disk_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
@@ -280,12 +278,20 @@ class ServerController extends Controller
             ->with('allowedBundles')
             ->findOrFail($data['cloud_image_id']);
 
+        if ($image->cloud_init_enabled
+            && filled((string) ($data['login_password'] ?? ''))
+            && (string) $data['login_password'] !== (string) $request->input('login_password_confirmation')) {
+            return back()
+                ->withErrors(['login_password' => 'تکرار رمز عبور با رمز عبور یکسان نیست.'])
+                ->withInput($this->safeCreateInput($request));
+        }
+
         if (! empty($data['vm_bundle_id']) && ! $image->allowedBundles->contains(fn ($bundle): bool => (int) $bundle->id === (int) $data['vm_bundle_id'])) {
             return back()
                 ->withErrors([
                     'vm_bundle_id' => 'این پلن برای این Cloud Image مجاز نیست.',
                 ])
-                ->withInput($request->except('login_password'));
+                ->withInput($this->safeCreateInput($request));
         }
 
         $bundle = $image->allowedBundles->first(fn (VmBundle $bundle): bool => (int) $bundle->id === (int) ($data['vm_bundle_id'] ?? 0));
@@ -293,19 +299,19 @@ class ServerController extends Controller
 
         if (! $quota['can_create']) {
             return back()
-                ->withInput($request->except('login_password'))
+                ->withInput($this->safeCreateInput($request))
                 ->with('error', $quota['message'] ?? 'ساخت VPS برای این حساب فعلا مجاز نیست.');
         }
 
         if ($wallet->is_locked) {
             return back()
-                ->withInput($request->except('login_password'))
+                ->withInput($this->safeCreateInput($request))
                 ->with('error', $wallet->lock_reason ?: 'کیف پول برای ثبت درخواست ساخت VPS قفل است.');
         }
 
         if ($bundle && $wallet->balance < $minimumCreateBalance) {
             return back()
-                ->withInput($request->except('login_password'))
+                ->withInput($this->safeCreateInput($request))
                 ->with('error', 'برای ساخت VPS موجودی کیف پول باید حداقل '.$this->wallets->format($minimumCreateBalance).' باشد.');
         }
 
@@ -332,10 +338,10 @@ class ServerController extends Controller
         } catch (ValidationException $exception) {
             return back()
                 ->withErrors($exception->errors())
-                ->withInput($request->except('login_password'));
+                ->withInput($this->safeCreateInput($request));
         } catch (Throwable $exception) {
             return back()
-                ->withInput($request->except('login_password'))
+                ->withInput($this->safeCreateInput($request))
                 ->with('error', 'ساخت VPS ممکن نیست: '.$exception->getMessage());
         }
     }
@@ -459,7 +465,7 @@ class ServerController extends Controller
             'hostname' => ['nullable', 'string', 'max:255'],
             'login_username' => ['nullable', 'string', 'max:64'],
             'login_password' => ['nullable', 'string', 'min:8', 'max:255'],
-            'ssh_public_key' => ['nullable', 'string', 'max:5000'],
+            'ssh_public_key' => ['nullable', 'string', 'max:5000', $this->sshPublicKeyRule()],
         ], [
             'rebuild_confirmation.in' => 'برای بازسازی، نام سرور را دقیقا وارد کنید.',
         ]);
@@ -671,5 +677,31 @@ class ServerController extends Controller
         }
 
         return Str::password(18);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function safeCreateInput(Request $request): array
+    {
+        return $request->except(['login_password', 'login_password_confirmation', 'name', 'hostname']);
+    }
+
+    private function sshPublicKeyRule(): callable
+    {
+        return function (string $attribute, mixed $value, callable $fail): void {
+            $lines = collect(preg_split('/\R/', str_replace("\r\n", "\n", trim((string) $value))) ?: [])
+                ->map(fn (string $line): string => trim($line))
+                ->filter()
+                ->values();
+
+            foreach ($lines as $line) {
+                if (! preg_match('/^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)\s+[A-Za-z0-9+\/=]+(?:\s+.+)?$/', $line)) {
+                    $fail('کلید SSH باید با فرمت OpenSSH public key وارد شود.');
+
+                    return;
+                }
+            }
+        };
     }
 }

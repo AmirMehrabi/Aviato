@@ -41,19 +41,21 @@ class CloudVmProvisioningService
 
         $resources = $this->resources($data);
         $this->assertMinimums($image, $resources);
+        $bundle = ! empty($data['vm_bundle_id'])
+            ? VmBundle::query()->find((int) $data['vm_bundle_id'])
+            : null;
 
         $cloudInitEnabled = (bool) $image->cloud_init_enabled;
         $password = $cloudInitEnabled ? $this->resolvePassword($data) : null;
         $username = $cloudInitEnabled ? (trim((string) ($data['login_username'] ?? '')) ?: $image->default_username) : null;
-        $hostname = $cloudInitEnabled ? (trim((string) ($data['hostname'] ?? '')) ?: null) : null;
-        $sshPublicKey = $cloudInitEnabled ? (trim((string) ($data['ssh_public_key'] ?? '')) ?: null) : null;
+        $sshPublicKey = $cloudInitEnabled ? $this->normalizeSshPublicKeys((string) ($data['ssh_public_key'] ?? '')) : null;
         $node = trim((string) ($data['node'] ?? '')) ?: $image->node;
         $storage = trim((string) ($data['storage'] ?? '')) ?: $image->storage;
         $osTemplate = trim((string) ($data['os_template'] ?? '')) ?: $image->name;
         $networkBridge = trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge;
 
-        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $resources, $password, $username, $hostname, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge): VirtualMachine {
-            $name = trim((string) ($data['name'] ?? '')) ?: 'customer-vps-'.Str::lower(Str::random(6));
+        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge): VirtualMachine {
+            $name = $this->generateUniqueVmName($project->owner ?? $customer, $bundle);
             $vm = VirtualMachine::create([
                 'customer_id' => $project->owner_customer_id,
                 'project_id' => $project->id,
@@ -63,7 +65,7 @@ class CloudVmProvisioningService
                 'cloud_image_id' => $image->id,
                 'template_vmid' => $image->template_vmid,
                 'name' => $name,
-                'hostname' => $hostname ?: ($image->cloud_init_enabled ? $name : null),
+                'hostname' => $image->cloud_init_enabled ? $name : null,
                 'node' => $node,
                 'storage' => $storage,
                 'os_template' => $osTemplate,
@@ -164,10 +166,63 @@ class CloudVmProvisioningService
             return $password;
         }
 
-        if (filled((string) Arr::get($data, 'ssh_public_key', ''))) {
-            return null;
+        return Str::password(18);
+    }
+
+    private function generateUniqueVmName(Customer $customer, ?VmBundle $bundle): string
+    {
+        $customerSeed = $this->customerNameSeed($customer);
+        $bundleSeed = Str::slug((string) ($bundle?->slug ?: $bundle?->name ?: 'vps')) ?: 'vps';
+        $base = Str::of("vps-{$customerSeed}-{$bundleSeed}")
+            ->lower()
+            ->replaceMatches('/[^a-z0-9-]+/', '-')
+            ->replaceMatches('/-+/', '-')
+            ->trim('-')
+            ->limit(46, '')
+            ->trim('-')
+            ->toString() ?: 'vps-customer';
+
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $candidate = $base.'-'.Str::lower(Str::random(6));
+
+            if (! VirtualMachine::query()->where('name', $candidate)->exists()) {
+                return $candidate;
+            }
         }
 
-        return Str::password(18);
+        do {
+            $candidate = 'vps-'.Str::lower(Str::random(14));
+        } while (VirtualMachine::query()->where('name', $candidate)->exists());
+
+        return $candidate;
+    }
+
+    private function customerNameSeed(Customer $customer): string
+    {
+        foreach ([
+            $customer->name,
+            Str::before((string) $customer->email, '@'),
+            preg_replace('/\D+/', '', (string) $customer->phone),
+            'customer-'.$customer->id,
+        ] as $candidate) {
+            $slug = Str::slug((string) $candidate);
+
+            if ($slug !== '') {
+                return Str::limit($slug, 22, '');
+            }
+        }
+
+        return 'customer-'.$customer->id;
+    }
+
+    private function normalizeSshPublicKeys(string $value): ?string
+    {
+        $keys = collect(preg_split('/\R/', str_replace("\r\n", "\n", trim($value))) ?: [])
+            ->map(fn (string $line): string => trim($line))
+            ->filter()
+            ->values()
+            ->all();
+
+        return $keys === [] ? null : implode("\n", $keys);
     }
 }
