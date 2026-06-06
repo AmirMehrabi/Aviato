@@ -49,8 +49,11 @@ class CloudVmProvisioningService
         $username = $cloudInitEnabled ? (trim((string) ($data['login_username'] ?? '')) ?: $image->default_username) : null;
         $hostname = $cloudInitEnabled ? (trim((string) ($data['hostname'] ?? '')) ?: null) : null;
         $sshPublicKey = $cloudInitEnabled ? (trim((string) ($data['ssh_public_key'] ?? '')) ?: null) : null;
+        $node = trim((string) ($data['node'] ?? '')) ?: $image->node;
+        $storage = trim((string) ($data['storage'] ?? '')) ?: $image->storage;
+        $osTemplate = trim((string) ($data['os_template'] ?? '')) ?: $image->name;
 
-        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $resources, $password, $username, $hostname, $sshPublicKey): VirtualMachine {
+        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $resources, $password, $username, $hostname, $sshPublicKey, $node, $storage, $osTemplate): VirtualMachine {
             $name = trim((string) ($data['name'] ?? '')) ?: 'customer-vps-'.Str::lower(Str::random(6));
             $vm = VirtualMachine::create([
                 'customer_id' => $project->owner_customer_id,
@@ -62,9 +65,9 @@ class CloudVmProvisioningService
                 'template_vmid' => $image->template_vmid,
                 'name' => $name,
                 'hostname' => $hostname ?: ($image->cloud_init_enabled ? $name : null),
-                'node' => $image->node,
-                'storage' => $image->storage,
-                'os_template' => $image->name,
+                'node' => $node,
+                'storage' => $storage,
+                'os_template' => $osTemplate,
                 'network_bridge' => $image->network_bridge,
                 'login_username' => $username,
                 'login_password' => $password,
@@ -88,7 +91,7 @@ class CloudVmProvisioningService
             return $vm;
         });
 
-        $this->reserveIpIfAvailable($vm, $server, $image);
+        $this->reserveIpIfAvailable($vm, $server);
 
         if ($dispatch) {
             ProvisionCloudVirtualMachine::dispatch($vm->id, [
@@ -100,10 +103,10 @@ class CloudVmProvisioningService
         return ['vm' => $vm->refresh(), 'password' => $password];
     }
 
-    private function reserveIpIfAvailable(VirtualMachine $vm, ProxmoxServer $server, CloudImage $image): void
+    private function reserveIpIfAvailable(VirtualMachine $vm, ProxmoxServer $server): void
     {
         try {
-            $remoteAddresses = $this->proxmox->assignedGuestIpAddresses($server, $image->node);
+            $remoteAddresses = $this->proxmox->assignedGuestIpAddresses($server, $vm->node);
         } catch (Throwable $exception) {
             $vm->delete();
 

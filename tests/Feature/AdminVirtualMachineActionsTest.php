@@ -147,6 +147,99 @@ class AdminVirtualMachineActionsTest extends TestCase
         $this->assertNotNull($vm->last_stopped_at);
     }
 
+    public function test_admin_create_persists_selected_proxmox_node_storage_and_os_template(): void
+    {
+        Bus::fake();
+
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $server = ProxmoxServer::create([
+            'name' => 'THR Proxmox',
+            'datacenter' => 'THR-1',
+            'host' => 'pve.local',
+            'port' => 8006,
+            'realm' => 'pam',
+            'username' => 'root',
+            'api_token_id' => 'root@pam!panel',
+            'api_token_secret' => 'secret',
+            'verify_tls' => false,
+            'is_active' => true,
+            'maintenance_mode' => false,
+        ]);
+        $bundle = VmBundle::create([
+            'name' => 'Starter',
+            'slug' => 'starter-create',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'monthly_price' => 100000,
+            'is_active' => true,
+        ]);
+        $image = CloudImage::create([
+            'proxmox_server_id' => $server->id,
+            'name' => 'Ubuntu 24.04',
+            'slug' => 'ubuntu-2404-create-admin-test',
+            'node' => 'pve1',
+            'template_vmid' => 9000,
+            'default_username' => 'ubuntu',
+            'storage' => 'local-lvm',
+            'disk_device' => 'scsi0',
+            'network_bridge' => 'vmbr0',
+            'ostype' => 'l26',
+            'min_cpu_cores' => 2,
+            'min_ram_gb' => 4,
+            'min_disk_gb' => 40,
+            'is_active' => true,
+            'cloud_init_enabled' => true,
+        ]);
+        $image->allowedBundles()->sync([$bundle->id]);
+
+        IpPool::create([
+            'proxmox_server_id' => $server->id,
+            'name' => 'PVE2 public',
+            'node' => 'pve2',
+            'network_bridge' => 'vmbr0',
+            'gateway' => '192.168.20.1',
+            'prefix_length' => 24,
+            'nameservers' => '1.1.1.1',
+            'start_ip' => '192.168.20.50',
+            'end_ip' => '192.168.20.50',
+            'is_active' => true,
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('assignedGuestIpAddresses')
+                ->once()
+                ->withArgs(fn ($server, ?string $node): bool => $node === 'pve2')
+                ->andReturn([]);
+        });
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post($this->adminBaseUrl.'/virtual-machines', [
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $server->id,
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'admin-created-vps',
+            'hostname' => 'admin-created-vps',
+            'node' => 'pve2',
+            'storage' => 'fast-zfs',
+            'os_template' => 'Ubuntu 24.04 PVE2',
+            'login_username' => 'ubuntu',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $vm = VirtualMachine::query()->where('name', 'admin-created-vps')->firstOrFail();
+
+        $this->assertSame('pve2', $vm->node);
+        $this->assertSame('fast-zfs', $vm->storage);
+        $this->assertSame('Ubuntu 24.04 PVE2', $vm->os_template);
+        $this->assertSame('192.168.20.50', $vm->ip_address);
+    }
+
     public function test_admin_can_change_vm_ip_and_push_cloud_init_network_config(): void
     {
         $admin = User::factory()->create();

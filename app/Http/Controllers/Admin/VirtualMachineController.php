@@ -127,6 +127,14 @@ class VirtualMachineController extends Controller
                 ->withInput($request->except('login_password'));
         }
 
+        if (! empty($data['proxmox_server_id']) && (int) $data['proxmox_server_id'] !== (int) $image->proxmox_server_id) {
+            return back()
+                ->withErrors([
+                    'cloud_image_id' => 'این OS Template به Proxmox انتخاب شده تعلق ندارد.',
+                ])
+                ->withInput($request->except('login_password'));
+        }
+
         try {
             $result = $this->cloudProvisioning->create($customer, $data, project: $project);
             $vm = $result['vm'];
@@ -394,7 +402,7 @@ class VirtualMachineController extends Controller
             'vm' => $vm,
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id'),
             'projects' => Project::query()->with('owner')->orderBy('name')->get(),
-            'servers' => ProxmoxServer::query()->orderBy('name')->pluck('name', 'id'),
+            'servers' => ProxmoxServer::query()->orderBy('name')->get(),
             'bundles' => VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get(),
             'ipPools' => IpPool::query()
                 ->with('proxmoxServer')
@@ -418,9 +426,13 @@ class VirtualMachineController extends Controller
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
             'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'cloud_image_id' => ['required', 'integer', 'exists:cloud_images,id'],
+            'proxmox_server_id' => ['nullable', 'integer', 'exists:proxmox_servers,id'],
             'vm_bundle_id' => ['nullable', 'integer', 'exists:vm_bundles,id'],
             'name' => ['required', 'string', 'max:255'],
             'hostname' => ['nullable', 'string', 'max:255'],
+            'node' => ['nullable', 'string', 'max:255'],
+            'storage' => ['nullable', 'string', 'max:255'],
+            'os_template' => ['nullable', 'string', 'max:255'],
             'login_username' => ['nullable', 'string', 'max:64'],
             'login_password' => ['nullable', 'string', 'min:8', 'max:255'],
             'ssh_public_key' => ['nullable', 'string', 'max:5000'],

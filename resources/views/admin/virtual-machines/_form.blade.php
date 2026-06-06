@@ -19,7 +19,16 @@
         </select>
         @error('project_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
     </label>
-    <x-form.select name="proxmox_server_id" label="Proxmox Server" :selected="$vm->proxmox_server_id" :options="$servers->prepend('بدون اتصال فعلا', '')" />
+    <label>
+        <span class="text-sm font-black text-slate-700">Proxmox Server</span>
+        <select name="proxmox_server_id" x-model="form.proxmox_server_id" @change="resetForServer()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+            <option value="">بدون اتصال فعلا</option>
+            @foreach($servers as $server)
+                <option value="{{ $server->id }}">{{ $server->name }}{{ $server->datacenter ? ' / '.$server->datacenter : '' }}</option>
+            @endforeach
+        </select>
+        @error('proxmox_server_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+    </label>
     <label class="block md:col-span-2"><span class="text-sm font-black text-slate-700">باندل سخت‌افزاری</span><select name="vm_bundle_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none"><option value="">Custom منابع دستی</option>@foreach($bundles as $bundle)<option value="{{ $bundle->id }}" @selected((string) old('vm_bundle_id', $vm->vm_bundle_id) === (string) $bundle->id)>{{ $bundle->name }} - {{ $bundle->cpu_cores }} CPU / {{ $bundle->ram_gb }}GB RAM / {{ $bundle->disk_gb }}GB - {{ app(App\Services\WalletService::class)->format($bundle->monthly_price) }}</option>@endforeach</select>@error('vm_bundle_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror<p class="mt-1 text-xs text-slate-500">اگر باندل انتخاب شود CPU/RAM/Disk/IP از باندل برداشته می‌شود.</p></label>
     <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 md:col-span-2">
         <p class="text-sm font-black text-slate-700">منابع فعلی از باندل خوانده می‌شود</p>
@@ -56,8 +65,44 @@
         <p class="mt-1 text-xs text-slate-500">بعد از تغییر IP، ipconfig0 و nameserver در Cloud-init روی Proxmox بازسازی می‌شود.</p>
     </label>
     <x-form.input name="vmid" type="number" label="Proxmox VMID" :value="$vm->vmid" />
-    <x-form.input name="node" label="Node" :value="$vm->node" dir-ltr />
-    <x-form.input name="storage" label="Storage" :value="$vm->storage" dir-ltr />
-    <x-form.input name="os_template" label="OS Template" :value="$vm->os_template" dir-ltr />
+    <label>
+        <span class="text-sm font-black text-slate-700">Node</span>
+        <select name="node" x-model="form.node" @change="syncStorageForNode()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+            <option value="">انتخاب Node</option>
+            @if($vm->node)
+                <option value="{{ $vm->node }}">{{ $vm->node }} (current)</option>
+            @endif
+            <template x-for="node in options.nodes" :key="node.name">
+                <option :value="node.name" x-text="node.display || node.name"></option>
+            </template>
+        </select>
+        @error('node') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+    </label>
+    <label>
+        <span class="text-sm font-black text-slate-700">Storage</span>
+        <select name="storage" x-model="form.storage" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+            <option value="">انتخاب Storage</option>
+            @if($vm->storage)
+                <option value="{{ $vm->storage }}">{{ $vm->storage }} (current)</option>
+            @endif
+            <template x-for="storage in visibleStorages" :key="`${storage.node}-${storage.storage}`">
+                <option :value="storage.storage" x-text="storage.display || storage.storage"></option>
+            </template>
+        </select>
+        @error('storage') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+    </label>
+    <label>
+        <span class="text-sm font-black text-slate-700">OS Template</span>
+        <select name="os_template" x-model="form.os_template" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+            <option value="">انتخاب OS Template</option>
+            @if($vm->os_template)
+                <option value="{{ $vm->os_template }}">{{ $vm->os_template }} (current)</option>
+            @endif
+            <template x-for="template in visibleTemplates" :key="`${template.node}-${template.vmid}`">
+                <option :value="template.name || `VMID ${template.vmid}`" x-text="template.display"></option>
+            </template>
+        </select>
+        @error('os_template') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+    </label>
 </div>
 <div class="mt-6 flex gap-3"><button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره VM</button><a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a></div>
