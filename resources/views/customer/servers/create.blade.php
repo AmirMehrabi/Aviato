@@ -208,7 +208,7 @@
                     </div>
                     <div x-show="walletNeedsTopUp" x-cloak class="rounded-lg border border-red-100 bg-red-50 p-4">
                         <p class="text-xs font-black text-red-700">کیف پول کافی نیست</p>
-                        <p class="mt-2 text-xs leading-6 text-red-600">برای ساخت این VPS موجودی کیف پول باید حداقل <span x-text="minimumBalanceLabel"></span> باشد.</p>
+                        <p class="mt-2 text-xs leading-6 text-red-600">برای ساخت این ماشین مجازی موجودی کیف پول باید حداقل <span x-text="minimumBalanceLabel"></span> باشد.</p>
                     </div>
                     <div x-show="selectedImage && !selectedImage.has_available_ip" x-cloak class="rounded-lg border border-amber-200 bg-amber-50 p-4">
                         <p class="text-xs font-black text-amber-800">ظرفیت IP محدود است</p>

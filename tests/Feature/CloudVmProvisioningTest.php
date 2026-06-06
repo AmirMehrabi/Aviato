@@ -782,7 +782,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->get($this->customerBaseUrl.'/servers/create')
             ->assertOk()
             ->assertSee('کیف پول کافی نیست', false)
-            ->assertSee('برای ساخت این VPS موجودی کیف پول باید حداقل', false)
+            ->assertSee('برای ساخت این ماشین مجازی موجودی کیف پول باید حداقل', false)
             ->assertSee('افزایش موجودی کیف پول', false)
             ->assertDontSee('هزینه اولیه ساخت');
     }
