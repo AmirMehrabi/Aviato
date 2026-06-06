@@ -55,7 +55,7 @@ class CloudVmProvisioningService
         $networkBridge = trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge;
 
         $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge): VirtualMachine {
-            $name = $this->generateUniqueVmName($project->owner ?? $customer, $bundle);
+            $name = $this->generateUniqueVmName($bundle, $resources);
             $vm = VirtualMachine::create([
                 'customer_id' => $project->owner_customer_id,
                 'project_id' => $project->id,
@@ -65,7 +65,7 @@ class CloudVmProvisioningService
                 'cloud_image_id' => $image->id,
                 'template_vmid' => $image->template_vmid,
                 'name' => $name,
-                'hostname' => $image->cloud_init_enabled ? $name : null,
+                'hostname' => $image->cloud_init_enabled ? Str::lower($name) : null,
                 'node' => $node,
                 'storage' => $storage,
                 'os_template' => $osTemplate,
@@ -169,21 +169,15 @@ class CloudVmProvisioningService
         return Str::password(18);
     }
 
-    private function generateUniqueVmName(Customer $customer, ?VmBundle $bundle): string
+    /**
+     * @param  array{cpu_cores: int, ram_gb: int, disk_gb: int}  $resources
+     */
+    private function generateUniqueVmName(?VmBundle $bundle, array $resources): string
     {
-        $customerSeed = $this->customerNameSeed($customer);
-        $bundleSeed = Str::slug((string) ($bundle?->slug ?: $bundle?->name ?: 'vps')) ?: 'vps';
-        $base = Str::of("vps-{$customerSeed}-{$bundleSeed}")
-            ->lower()
-            ->replaceMatches('/[^a-z0-9-]+/', '-')
-            ->replaceMatches('/-+/', '-')
-            ->trim('-')
-            ->limit(46, '')
-            ->trim('-')
-            ->toString() ?: 'vps-customer';
+        $base = 'VPS-'.now()->format('ym').'-'.$this->bundleSpecsToken($bundle, $resources);
 
         for ($attempt = 0; $attempt < 20; $attempt++) {
-            $candidate = $base.'-'.Str::lower(Str::random(6));
+            $candidate = $base.'-'.$this->uniqueKey();
 
             if (! VirtualMachine::query()->where('name', $candidate)->exists()) {
                 return $candidate;
@@ -191,28 +185,27 @@ class CloudVmProvisioningService
         }
 
         do {
-            $candidate = 'vps-'.Str::lower(Str::random(14));
+            $candidate = $base.'-'.$this->uniqueKey(10);
         } while (VirtualMachine::query()->where('name', $candidate)->exists());
 
         return $candidate;
     }
 
-    private function customerNameSeed(Customer $customer): string
+    /**
+     * @param  array{cpu_cores: int, ram_gb: int, disk_gb: int}  $resources
+     */
+    private function bundleSpecsToken(?VmBundle $bundle, array $resources): string
     {
-        foreach ([
-            $customer->name,
-            Str::before((string) $customer->email, '@'),
-            preg_replace('/\D+/', '', (string) $customer->phone),
-            'customer-'.$customer->id,
-        ] as $candidate) {
-            $slug = Str::slug((string) $candidate);
+        $cpu = (int) ($bundle?->cpu_cores ?? $resources['cpu_cores']);
+        $ram = (int) ($bundle?->ram_gb ?? $resources['ram_gb']);
+        $disk = (int) ($bundle?->disk_gb ?? $resources['disk_gb']);
 
-            if ($slug !== '') {
-                return Str::limit($slug, 22, '');
-            }
-        }
+        return "{$cpu}C{$ram}G{$disk}G";
+    }
 
-        return 'customer-'.$customer->id;
+    private function uniqueKey(int $length = 6): string
+    {
+        return Str::upper(Str::random($length));
     }
 
     private function normalizeSshPublicKeys(string $value): ?string

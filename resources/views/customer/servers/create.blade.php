@@ -28,7 +28,7 @@
             walletUrl: @js(route('customer.wallet.show', [], false)),
             profileUrl: @js(route('customer.profile.show', [], false)),
             quota: @js($quota),
-            customerSeed: @js(\Illuminate\Support\Str::slug($customer->name) ?: \Illuminate\Support\Str::slug(\Illuminate\Support\Str::before((string) $customer->email, '@')) ?: preg_replace('/\D+/', '', (string) $customer->phone) ?: 'customer-'.$customer->id),
+            namePeriod: @js(now()->format('ym')),
             osFamilies: @js($osFamilies),
             bundles: @js($bundles->map(fn ($bundle) => [
                 'id' => $bundle->id,
@@ -64,26 +64,40 @@
             <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                 <div class="border-b border-slate-100 px-5 py-4">
                     <p class="text-xs font-black uppercase text-[#0069FF]">Step 1</p>
-                    <h2 class="mt-1 text-xl font-black text-slate-950">سیستم عامل را انتخاب کنید</h2>
+                    <h2 class="mt-1 text-xl font-black text-slate-950">سیستم عامل و نسخه را انتخاب کنید</h2>
                 </div>
                 <div class="p-5">
+                    <input type="hidden" name="cloud_image_id" :value="form.cloud_image_id">
                     <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                         <template x-for="family in osFamilies" :key="family.key">
-                            <button
-                                type="button"
+                            <div
                                 @click="selectOs(family.key)"
-                                class="group flex min-h-28 items-center gap-2 rounded-lg border p-2 text-right transition"
+                                class="group min-h-32 cursor-pointer rounded-lg border p-3 text-right transition"
                                 :class="form.os_family === family.key ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white hover:border-[#B8D6FF] hover:bg-[#F8FBFF]'"
                             >
-                                <span class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200" :class="logoFrameClasses(family.logo_key)">
-                                    <img x-show="logoAsset(family.logo_key)" :src="logoAsset(family.logo_key)" :alt="family.label + ' logo'" class="size-full object-contain p-1.5">
-                                    <span x-show="!logoAsset(family.logo_key)" class="text-base font-black" :class="logoClasses(family.logo_key)" x-text="logoText(family.logo_key)"></span>
-                                </span>
-                                <span class="min-w-0">
-                                    <span class="block font-black text-slate-950" x-text="family.label"></span>
-                                    <span class="mt-1 block text-xs font-bold text-slate-500" x-text="`${family.count} نسخه آماده`"></span>
-                                </span>
-                            </button>
+                                <div class="flex items-center gap-2">
+                                    <span class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200" :class="logoFrameClasses(family.logo_key)">
+                                        <img x-show="logoAsset(family.logo_key)" :src="logoAsset(family.logo_key)" :alt="family.label + ' logo'" class="size-full object-contain p-1.5">
+                                        <span x-show="!logoAsset(family.logo_key)" class="text-base font-black" :class="logoClasses(family.logo_key)" x-text="logoText(family.logo_key)"></span>
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block font-black text-slate-950" x-text="family.label"></span>
+                                        <span class="mt-1 block text-xs font-bold text-slate-500" x-text="selectedImageForFamily(family.key)?.os_version || selectedImageForFamily(family.key)?.name || `${family.count} نسخه آماده`"></span>
+                                    </span>
+                                </div>
+                                <label x-show="form.os_family === family.key" x-cloak class="mt-4 block cursor-default" @click.stop>
+                                    <select
+                                        x-model="form.cloud_image_id"
+                                        @change="applyImage()"
+                                        class="w-full rounded-lg border border-[#B8D6FF] bg-white px-3 py-2.5 text-sm font-black text-slate-800 focus:border-[#0069FF] focus:outline-none"
+                                    >
+                                        <template x-for="image in imagesForFamily(family.key)" :key="image.id">
+                                            <option :value="String(image.id)" x-text="image.os_version || image.name"></option>
+                                        </template>
+                                    </select>
+                                </label>
+                                <span x-show="form.os_family === family.key && selectedImage && !selectedImage.cloud_init_enabled" class="mt-3 inline-flex rounded-md bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-200">No CloudInit</span>
+                            </div>
                         </template>
                     </div>
                     <p x-show="!osFamilies.length" class="rounded-lg border border-dashed border-slate-300 p-5 text-center text-sm font-bold text-slate-500">فعلا هیچ Cloud Image فعالی منتشر نشده است.</p>
@@ -93,31 +107,6 @@
             <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                 <div class="border-b border-slate-100 px-5 py-4">
                     <p class="text-xs font-black uppercase text-[#0069FF]">Step 2</p>
-                    <h2 class="mt-1 text-xl font-black text-slate-950">نسخه را انتخاب کنید</h2>
-                </div>
-                <div class="divide-y divide-slate-100">
-                    <template x-for="image in filteredImages" :key="image.id">
-                        <label class="flex cursor-pointer items-center gap-4 px-5 py-4 transition hover:bg-slate-50" :class="String(form.cloud_image_id) === String(image.id) ? 'bg-[#F2F8FF]' : 'bg-white'">
-                            <input type="radio" name="cloud_image_id" :value="image.id" x-model="form.cloud_image_id" @change="applyImage()" class="size-4 border-slate-300 text-[#0069FF] focus:ring-[#0069FF]">
-                            <span class="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200" :class="logoFrameClasses(image.logo_key)">
-                                <img x-show="logoAsset(image.logo_key)" :src="logoAsset(image.logo_key)" :alt="image.name + ' logo'" class="size-full object-contain p-1">
-                                <span x-show="!logoAsset(image.logo_key)" class="text-sm font-black" :class="logoClasses(image.logo_key)" x-text="logoText(image.logo_key)"></span>
-                            </span>
-                            <span class="min-w-0 flex-1">
-                                <span class="block font-black text-slate-950" x-text="image.os_version || image.name"></span>
-                                <span class="mt-1 block text-xs font-bold text-slate-500" x-text="image.description || image.server || (image.cloud_init_enabled ? 'CloudInit ready template' : 'Template بدون CloudInit')"></span>
-                            </span>
-                            <span x-show="!image.cloud_init_enabled" class="hidden rounded-md bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-200 md:inline">No CloudInit</span>
-                            <span class="hidden rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-500 md:inline" x-text="image.server || 'Auto'"></span>
-                        </label>
-                    </template>
-                    <p x-show="form.os_family && !filteredImages.length" class="px-5 py-6 text-center text-sm font-bold text-slate-500">برای این سیستم عامل نسخه‌ای منتشر نشده است.</p>
-                </div>
-            </section>
-
-            <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                <div class="border-b border-slate-100 px-5 py-4">
-                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 3</p>
                     <h2 class="mt-1 text-xl font-black text-slate-950">پلن VPS را انتخاب کنید</h2>
                 </div>
                     <div class="grid gap-4 p-5 lg:grid-cols-3">
@@ -149,29 +138,15 @@
 
             <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 4</p>
+                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 3</p>
                     <h2 class="mt-1 text-xl font-black text-slate-950">دسترسی اولیه</h2>
                 </div>
-                <div class="grid gap-5 p-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                <div class="grid gap-5 p-5">
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p class="text-xs font-black text-slate-500">شناسه VPS</p>
-                                <p class="mt-2 break-all text-left text-lg font-black text-slate-950" dir="ltr" x-text="generatedNamePreview"></p>
-                            </div>
-                            <span class="shrink-0 rounded-md bg-white px-2.5 py-1 text-[11px] font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">Auto</span>
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <span class="text-sm font-black text-slate-700">شناسه VPS</span>
+                            <span class="break-all text-left text-lg font-black text-slate-950" dir="ltr" x-text="generatedNamePreview"></span>
                         </div>
-                        <div class="mt-4 grid gap-3 text-xs font-bold text-slate-600 sm:grid-cols-2 lg:grid-cols-1">
-                            <div class="rounded-md bg-white p-3 ring-1 ring-slate-200">
-                                <span class="block text-slate-400">Plan</span>
-                                <span class="mt-1 block text-slate-800" x-text="selectedBundle?.name || '—'"></span>
-                            </div>
-                            <div class="rounded-md bg-white p-3 ring-1 ring-slate-200">
-                                <span class="block text-slate-400">Hostname</span>
-                                <span class="mt-1 block break-all text-left text-slate-800" dir="ltr" x-text="cloudInitEnabled ? generatedNamePreview : 'CloudInit disabled'"></span>
-                            </div>
-                        </div>
-                        <p class="mt-4 text-xs font-bold leading-6 text-slate-500">نام نهایی هنگام ثبت با پسوند یکتا ساخته می‌شود و در Proxmox و پنل یکسان خواهد بود.</p>
                     </div>
 
                     <div x-show="cloudInitEnabled" class="space-y-4">
@@ -181,44 +156,31 @@
                                 <input name="login_username" x-model="form.login_username" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="username" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
                                 @error('login_username') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                             </label>
-                            <div class="rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] p-4">
-                                <p class="text-xs font-black text-[#0050D0]">Password policy</p>
-                                <p class="mt-2 text-xs font-bold leading-6 text-slate-600">اگر رمز را خالی بگذارید، رمز امن ساخته و فقط یک بار بعد از ساخت نمایش داده می‌شود.</p>
-                            </div>
+                            <label class="block">
+                                <span class="flex items-center justify-between gap-3">
+                                    <span class="text-sm font-black text-slate-700">SSH Public Key</span>
+                                    <span x-show="sshKeyAdded" class="text-xs font-black text-emerald-700">Key added</span>
+                                </span>
+                                <textarea name="ssh_public_key" x-model="form.ssh_public_key" rows="3" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm focus:border-[#0069FF] focus:outline-none" placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."></textarea>
+                                @error('ssh_public_key') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+                            </label>
                         </div>
 
                         <div class="grid gap-4 md:grid-cols-2">
                             <label class="block">
                                 <span class="text-sm font-black text-slate-700">Password</span>
-                                <input name="login_password" x-model="form.login_password" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
+                                <input name="login_password" x-model="form.login_password" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" placeholder="Auto generate" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
                                 @error('login_password') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                             </label>
                             <label class="block">
                                 <span class="text-sm font-black text-slate-700">Confirm Password</span>
-                                <input name="login_password_confirmation" x-model="form.login_password_confirmation" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
+                                <input name="login_password_confirmation" x-model="form.login_password_confirmation" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" placeholder="Auto generate" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
                             </label>
-                        </div>
-
-                        <label class="block">
-                            <span class="flex items-center justify-between gap-3">
-                                <span class="text-sm font-black text-slate-700">SSH Public Key</span>
-                                <span x-show="sshKeyAdded" class="rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700 ring-1 ring-emerald-200">Key added</span>
-                            </span>
-                            <textarea name="ssh_public_key" x-model="form.ssh_public_key" rows="4" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm focus:border-[#0069FF] focus:outline-none" placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."></textarea>
-                            @error('ssh_public_key') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-                        </label>
-
-                        <div class="flex flex-wrap gap-2">
-                            <span class="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">CloudInit</span>
-                            <span class="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">SSH default port</span>
-                            <span class="rounded-md px-2.5 py-1 text-[11px] font-black" :class="form.login_password ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'">
-                                <span x-text="form.login_password ? 'Custom password' : 'Generated password'"></span>
-                            </span>
                         </div>
                     </div>
 
-                    <div x-show="!cloudInitEnabled" class="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-900">
-                        این template با CloudInit ساخته نشده است؛ username، hostname، password و SSH key هنگام ساخت تنظیم نمی‌شوند.
+                    <div x-show="!cloudInitEnabled" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-900">
+                        این template با CloudInit ساخته نشده است؛ username، password و SSH key هنگام ساخت تنظیم نمی‌شوند.
                     </div>
                 </div>
             </section>
@@ -283,7 +245,7 @@
             osFamilies: config.osFamilies,
             bundles: config.bundles,
             images: config.images,
-            customerSeed: config.customerSeed || 'customer',
+            namePeriod: config.namePeriod || '',
             form: {
                 os_family: '',
                 cloud_image_id: @js((string) old('cloud_image_id', '')),
@@ -299,6 +261,7 @@
             init() {
                 if (this.form.cloud_image_id && this.selectedImage) {
                     this.form.os_family = this.selectedImage.os_family;
+                    this.applyImage();
                 } else if (this.osFamilies.length) {
                     this.selectOs(this.osFamilies[0].key);
                 }
@@ -307,7 +270,6 @@
                     this.applyBundle();
                 }
             },
-            get filteredImages() { return this.images.filter((image) => image.os_family === this.form.os_family); },
             get selectedImage() { return this.images.find((image) => String(image.id) === String(this.form.cloud_image_id)); },
             get visibleBundles() {
                 if (!this.selectedImage) return [];
@@ -335,16 +297,22 @@
                 return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle;
             },
             get generatedNamePreview() {
-                const customer = this.slug(this.customerSeed || 'customer');
-                const bundle = this.slug(this.selectedBundle?.name || 'vps');
-                return `vps-${customer}-${bundle}-xxxxxx`.replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+                return `VPS-${this.namePeriod || 'YYMM'}-${this.bundleSpecsToken()}-XXXXXX`;
             },
             get sshKeyAdded() {
                 return this.form.ssh_public_key.trim().length > 0;
             },
+            imagesForFamily(family) {
+                return this.images.filter((image) => image.os_family === family);
+            },
+            selectedImageForFamily(family) {
+                if (this.form.os_family === family && this.selectedImage) return this.selectedImage;
+                return this.imagesForFamily(family)[0] || null;
+            },
             selectOs(family) {
                 this.form.os_family = family;
-                const firstImage = this.filteredImages[0];
+                const current = this.selectedImage && this.selectedImage.os_family === family ? this.selectedImage : null;
+                const firstImage = current || this.imagesForFamily(family)[0];
                 this.form.cloud_image_id = firstImage ? String(firstImage.id) : '';
                 this.applyImage();
             },
@@ -388,12 +356,12 @@
                 this.submitting = true;
                 this.$refs.createForm.submit();
             },
-            slug(value) {
-                return String(value || '')
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/^-+|-+$/g, '')
-                    .slice(0, 48);
+            bundleSpecsToken() {
+                const bundle = this.selectedBundle || {};
+                const cpu = Number(bundle.cpu_cores || this.form.cpu_cores || 0);
+                const ram = Number(bundle.ram_gb || this.form.ram_gb || 0);
+                const disk = Number(bundle.disk_gb || this.form.disk_gb || 0);
+                return `${cpu}C${ram}G${disk}G`;
             },
             logoText(key) {
                 return { ubuntu: 'U', debian: 'D', rocky: 'R', windows: 'W' }[key] || 'OS';

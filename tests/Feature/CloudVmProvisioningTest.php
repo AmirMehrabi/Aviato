@@ -50,8 +50,8 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertSame($customer->id, $vm->customer_id);
         $this->assertSame($image->id, $vm->cloud_image_id);
         $this->assertNotSame('customer-vps-101', $vm->name);
-        $this->assertMatchesRegularExpression('/^vps-[a-z0-9-]+-starter-[a-z0-9]{6}$/', $vm->name);
-        $this->assertSame($vm->name, $vm->hostname);
+        $this->assertMatchesRegularExpression('/^VPS-'.now()->format('ym').'-2C4G40G-[A-Z0-9]{6}$/', $vm->name);
+        $this->assertSame(strtolower($vm->name), $vm->hostname);
         $this->assertSame('192.168.10.50', $vm->ip_address);
         $this->assertSame('vmbr1', $vm->network_bridge);
         $this->assertNotNull($vm->login_password);
@@ -85,8 +85,8 @@ class CloudVmProvisioningTest extends TestCase
             ->assertSessionHas('provisioning_password');
 
         $vm = VirtualMachine::query()->firstOrFail();
-        $this->assertStringStartsWith('vps-ali-customer-starter-', $vm->name);
-        $this->assertSame($vm->name, $vm->hostname);
+        $this->assertStringStartsWith('VPS-'.now()->format('ym').'-2C4G40G-', $vm->name);
+        $this->assertSame(strtolower($vm->name), $vm->hostname);
         $this->assertNotSame('user-controlled-name', $vm->name);
         $this->assertNotSame('user-controlled-hostname', $vm->hostname);
     }
@@ -213,7 +213,7 @@ class CloudVmProvisioningTest extends TestCase
         $names = VirtualMachine::query()->pluck('name')->all();
         $this->assertCount(2, $names);
         $this->assertCount(2, array_unique($names));
-        $this->assertSame($names, VirtualMachine::query()->pluck('hostname')->all());
+        $this->assertSame(array_map('strtolower', $names), VirtualMachine::query()->pluck('hostname')->all());
     }
 
     public function test_proxmox_cloud_init_encodes_sshkeys_for_api_payload(): void
