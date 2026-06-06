@@ -102,9 +102,13 @@ class CustomerVmUpgradeTest extends TestCase
         ]);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
+            $mock->shouldReceive('shutdownVm')->once()->andReturn(['task_id' => 'UPID:shutdown']);
+            $mock->shouldReceive('waitForVmStopped')->once()->andReturn(['status' => 'stopped']);
             $mock->shouldReceive('updateVmHardware')->once()->andReturn(['task_id' => 'UPID:hardware']);
             $mock->shouldReceive('resizeDisk')->once()->withAnyArgs()->andReturn(['task_id' => 'UPID:resize']);
-            $mock->shouldReceive('waitForTask')->twice()->withAnyArgs()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
+            $mock->shouldReceive('startVm')->once()->andReturn(['task_id' => 'UPID:start']);
+            $mock->shouldReceive('waitForTask')->times(4)->withAnyArgs()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
             $mock->shouldReceive('vmConfig')->once()->andReturn(['cores' => 4, 'memory' => 8192, 'scsi0' => 'local-lvm:80']);
         });
 
@@ -117,6 +121,8 @@ class CustomerVmUpgradeTest extends TestCase
         $this->assertSame(4, $vm->cpu_cores);
         $this->assertSame(8, $vm->ram_gb);
         $this->assertSame(80, $vm->disk_gb);
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
+        $this->assertSame('UPID:start', $vm->remote_state['upgrade_restart']['start']['task_id']);
         $this->assertSame(VmUpgradeOrder::STATUS_SUCCEEDED, $order->status);
     }
 

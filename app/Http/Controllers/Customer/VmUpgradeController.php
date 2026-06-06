@@ -32,7 +32,7 @@ class VmUpgradeController extends Controller
             $bundle = VmBundle::query()->where('is_active', true)->findOrFail($data['vm_bundle_id']);
             $this->upgrades->requestBundleUpgrade($customer, $virtualMachine, $bundle);
 
-            return back()->with('status', 'درخواست ارتقای باندل ثبت شد. تا پایان اعمال ارتقا، عملیات دیگر روی این سرور محدود می شود.');
+            return back()->with('status', 'درخواست ارتقای باندل ثبت شد. سرور برای اعمال ارتقا کامل خاموش می شود و بعد از چند ثانیه دوباره روشن خواهد شد.');
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {

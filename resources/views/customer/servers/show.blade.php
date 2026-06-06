@@ -306,6 +306,7 @@
                                 <option value="">باندل بزرگتری موجود نیست</option>
                             @endforelse
                         </select>
+                        <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-6 text-amber-800">بعد از ثبت ارتقای باندل، سرور برای اعمال منابع کامل خاموش می شود و پس از چند ثانیه دوباره روشن خواهد شد.</p>
                         <button type="submit" x-bind:disabled="submitting || {{ ($isLocked || $hasPendingUpgrade || $eligibleBundles->isEmpty()) ? 'true' : 'false' }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:opacity-60">
                             <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
                             <span x-text="submitting ? 'در حال ثبت...' : 'ثبت ارتقای باندل'">ثبت ارتقای باندل</span>

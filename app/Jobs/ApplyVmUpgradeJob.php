@@ -17,6 +17,8 @@ class ApplyVmUpgradeJob implements ShouldQueue
 
     public const QUEUE = 'upgrades';
 
+    private const BUNDLE_RESTART_PAUSE_SECONDS = 5;
+
     public function __construct(public int $orderId) {}
 
     public function handle(ProxmoxService $proxmox): void
@@ -45,8 +47,10 @@ class ApplyVmUpgradeJob implements ShouldQueue
                 default => throw new \RuntimeException('Unsupported upgrade type: '.$order->type),
             };
 
-            foreach ($this->taskIds($result) as $taskId) {
-                $proxmox->waitForTask($vm->proxmoxServer, $vm->node, $taskId);
+            if ($order->type !== VmUpgradeOrder::TYPE_BUNDLE) {
+                foreach ($this->taskIds($result) as $taskId) {
+                    $proxmox->waitForTask($vm->proxmoxServer, $vm->node, $taskId);
+                }
             }
 
             $config = $proxmox->vmConfig($vm->proxmoxServer, $vm->node, (int) $vm->vmid);
@@ -62,18 +66,46 @@ class ApplyVmUpgradeJob implements ShouldQueue
     private function applyBundle(VmUpgradeOrder $order, VirtualMachine $vm, ProxmoxService $proxmox): array
     {
         $after = $order->after_snapshot;
-        $result = $proxmox->updateVmHardware($vm->proxmoxServer, $vm->node, (int) $vm->vmid, [
+        $server = $vm->proxmoxServer;
+        $node = (string) $vm->node;
+        $vmid = (int) $vm->vmid;
+        $result = [
+            'restart_required' => true,
+            'restart_pause_seconds' => self::BUNDLE_RESTART_PAUSE_SECONDS,
+        ];
+
+        $remoteStatus = $proxmox->vmStatus($server, $node, $vmid);
+        $result['status_before_shutdown'] = $remoteStatus;
+
+        if (($remoteStatus['status'] ?? null) !== 'stopped') {
+            $shutdown = $proxmox->shutdownVm($server, $node, $vmid);
+            $result['shutdown'] = $shutdown;
+            $this->waitForTaskResult($proxmox, $vm, $shutdown, 180);
+            $result['status_after_shutdown'] = $proxmox->waitForVmStopped($server, $node, $vmid, 60);
+        }
+
+        $hardware = $proxmox->updateVmHardware($server, $node, $vmid, [
             'cpu_cores' => (int) $after['cpu_cores'],
             'ram_gb' => (int) $after['ram_gb'],
         ]);
+        $result['hardware'] = $hardware;
+        $result['task_id'] = $hardware['task_id'] ?? null;
+        $this->waitForTaskResult($proxmox, $vm, $hardware);
 
         $currentDisk = (int) ($order->before_snapshot['disk_gb'] ?? $vm->disk_gb);
         $targetDisk = (int) ($after['disk_gb'] ?? $vm->disk_gb);
         if ($targetDisk > $currentDisk) {
             $diskDevice = (string) data_get($vm->desired_state, 'disk_device', $vm->cloudImage?->disk_device ?: 'scsi0');
-            $diskResize = $proxmox->resizeDisk($vm->proxmoxServer, $vm->node, (int) $vm->vmid, $diskDevice, $targetDisk);
+            $diskResize = $proxmox->resizeDisk($server, $node, $vmid, $diskDevice, $targetDisk);
             $result['disk_resize'] = $diskResize;
+            $this->waitForTaskResult($proxmox, $vm, $diskResize);
         }
+
+        $this->pauseBeforeRestart();
+
+        $start = $proxmox->startVm($server, $node, $vmid);
+        $result['start'] = $start;
+        $this->waitForTaskResult($proxmox, $vm, $start, 180);
 
         return $result;
     }
@@ -124,8 +156,15 @@ class ApplyVmUpgradeJob implements ShouldQueue
                     'ram_gb' => (int) $after['ram_gb'],
                     'disk_gb' => (int) $after['disk_gb'],
                     'ip_count' => (int) $after['ip_count'],
+                    'status' => VirtualMachine::STATUS_RUNNING,
+                    'last_stopped_at' => now(),
+                    'last_started_at' => now(),
                     'last_billed_at' => now(),
-                    'remote_state' => array_merge($vm->remote_state ?? [], ['upgrade_config' => $config]),
+                    'desired_state' => array_merge($vm->desired_state ?? [], ['status' => VirtualMachine::STATUS_RUNNING]),
+                    'remote_state' => array_merge($vm->remote_state ?? [], [
+                        'upgrade_config' => $config,
+                        'upgrade_restart' => $result,
+                    ]),
                 ])->save();
             }
 
@@ -169,6 +208,27 @@ class ApplyVmUpgradeJob implements ShouldQueue
                 'failure_reason' => $exception->getMessage(),
             ])->save();
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function waitForTaskResult(ProxmoxService $proxmox, VirtualMachine $vm, array $result, int $timeoutSeconds = 300): void
+    {
+        if (empty($result['task_id'])) {
+            return;
+        }
+
+        $proxmox->waitForTask($vm->proxmoxServer, (string) $vm->node, (string) $result['task_id'], $timeoutSeconds);
+    }
+
+    private function pauseBeforeRestart(): void
+    {
+        if (app()->runningUnitTests()) {
+            return;
+        }
+
+        sleep(self::BUNDLE_RESTART_PAUSE_SECONDS);
     }
 
     /**
