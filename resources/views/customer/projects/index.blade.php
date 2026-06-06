@@ -40,7 +40,7 @@
 
         <aside class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <h2 class="text-lg font-black text-slate-950">پروژه جدید</h2>
-            <p class="mt-2 text-sm leading-7 text-slate-500">VMهایی که داخل پروژه ساخته می‌شوند از کیف پول مالک پروژه محاسبه می‌شوند.</p>
+            <p class="mt-2 text-sm leading-7 text-slate-500">ماشین های مجازی که داخل پروژه ساخته می‌شوند از کیف پول مالک پروژه محاسبه می‌شوند.</p>
             <form method="POST" action="{{ route('customer.projects.store', [], false) }}" class="mt-5 space-y-4">
                 @csrf
                 <label class="block">

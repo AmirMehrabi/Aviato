@@ -1,7 +1,7 @@
 @extends('layouts.marketing')
 
 @section('title', 'آویاتو: قیمت‌گذاری سرویس‌های ابری')
-@section('description', 'قیمت پلن های VPS آویاتو با منابع مشخص، دیسک NVMe، IP اختصاصی و پرداخت ماهانه یا ساعتی.')
+@section('description', 'قیمت پلن های ماشین مجازی آویاتو با منابع مشخص، دیسک NVMe، IP اختصاصی و پرداخت ماهانه یا ساعتی.')
 
 @php
     $activePage = 'pricing';
@@ -20,7 +20,7 @@
         <div class="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_420px] lg:items-end">
             <div>
                 <p class="text-sm font-black text-[#0069FF]">قیمت های روشن</p>
-                <h1 class="mt-4 max-w-4xl text-4xl font-black leading-tight text-slate-950 md:text-6xl">پلن VPS را راحت مقایسه کنید و بخرید.</h1>
+                <h1 class="mt-4 max-w-4xl text-4xl font-black leading-tight text-slate-950 md:text-6xl">پلن ماشین مجازی را راحت مقایسه کنید و بخرید.</h1>
                 <p class="mt-6 max-w-3xl text-lg leading-9 text-slate-600">در هر پلن می بینید چه مقدار CPU، RAM، دیسک و IP می گیرید و هزینه ماهانه یا ساعتی آن چقدر است. بعد از انتخاب پلن، می توانید حساب مشتری بسازید و سفارش را ادامه دهید.</p>
             </div>
             <div class="rounded-2xl border border-[#B8D6FF] bg-white p-6 shadow-xl shadow-[#0080FF]/10">

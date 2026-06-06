@@ -2,7 +2,7 @@
 
 @section('title', 'مانیتورینگ')
 @section('header_title', 'مانیتورینگ')
-@section('header_subtitle', 'وضعیت زنده، نمودار مصرف و سلامت بکاپ VPSها')
+@section('header_subtitle', 'وضعیت زنده، نمودار مصرف و سلامت بکاپ ماشین های مجازی')
 
 @php
     $activeNav = 'monitoring';
@@ -10,9 +10,9 @@
 
 @section('search_data')
 [
-    {"title":"مانیتورینگ","description":"نمودار مصرف و سلامت VPSها","type":"صفحه","url":@json(route('customer.monitoring.index', [], false)),"keywords":"monitoring metrics cpu ram network مانیتورینگ"}
+    {"title":"مانیتورینگ","description":"نمودار مصرف و سلامت ماشین های مجازی","type":"صفحه","url":@json(route('customer.monitoring.index', [], false)),"keywords":"monitoring metrics cpu ram network مانیتورینگ"}
     @foreach ($servers as $server)
-        ,{"title":@json('مانیتورینگ '.$server->name),"description":@json(($server->ip_address ?: 'بدون IP').' - '.($server->node ?: 'نامشخص')),"type":"VM","url":@json(route('customer.monitoring.index', ['server' => $server->uuid], false)),"keywords":@json($server->name.' '.$server->hostname.' '.$server->ip_address.' '.$server->node.' monitoring')}
+        ,{"title":@json('مانیتورینگ '.$server->name),"description":@json($server->ip_address ?: 'بدون IP'),"type":"ماشین مجازی","url":@json(route('customer.monitoring.index', ['server' => $server->uuid], false)),"keywords":@json($server->name.' '.$server->hostname.' '.$server->ip_address.' monitoring')}
     @endforeach
 ]
 @endsection
@@ -28,7 +28,7 @@
     >
         @if ($servers->isEmpty())
             <section class="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-                <p class="font-black text-slate-950">برای مشاهده مانیتورینگ ابتدا VPS بسازید.</p>
+                <p class="font-black text-slate-950">برای مشاهده مانیتورینگ ابتدا ماشین مجازی بسازید.</p>
                 <p class="mt-2 text-sm text-slate-500">بعد از آماده شدن ماشین، نمودارهای CPU، RAM، شبکه و وضعیت بکاپ از این صفحه نمایش داده می‌شود.</p>
                 <a href="{{ route('customer.servers.create', [], false) }}" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">ساخت ماشین مجازی</a>
             </section>
@@ -36,7 +36,7 @@
             <section class="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
                 <aside class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                     <div class="border-b border-slate-200 p-5">
-                        <p class="text-xs font-black text-slate-500">انتخاب VPS</p>
+                        <p class="text-xs font-black text-slate-500">انتخاب ماشین مجازی</p>
                         <h2 class="mt-2 text-lg font-black text-slate-950">مانیتورینگ ماشین</h2>
                     </div>
                     <div class="max-h-[520px] divide-y divide-slate-100 overflow-y-auto">
@@ -50,7 +50,7 @@
                                 <span class="grid size-10 shrink-0 place-items-center rounded-lg text-xs font-black" :class="server.status === 'running' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'" x-text="server.status === 'running' ? 'ON' : 'OFF'"></span>
                                 <span class="min-w-0 flex-1">
                                     <span class="block truncate font-black text-slate-950" dir="ltr" x-text="server.name"></span>
-                                    <span class="mt-1 block truncate text-xs font-bold text-slate-500" dir="ltr" x-text="`${server.ip_address || 'no-ip'} · VMID ${server.vmid || '—'}`"></span>
+                                    <span class="mt-1 block truncate text-xs font-bold text-slate-500" dir="ltr" x-text="server.ip_address || 'no-ip'"></span>
                                 </span>
                             </button>
                         </template>
@@ -61,7 +61,7 @@
                     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                         <div class="flex flex-col gap-4 border-b border-slate-200 p-5 lg:flex-row lg:items-center lg:justify-between">
                             <div class="min-w-0">
-                                <p class="text-xs font-black text-slate-500">VPS انتخاب‌شده</p>
+                                <p class="text-xs font-black text-slate-500">ماشین مجازی انتخاب‌شده</p>
                                 <h2 class="mt-1 truncate text-xl font-black text-slate-950" dir="ltr" x-text="selected?.name || '—'"></h2>
                                 <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr" x-text="selected ? `${selected.ip_address || 'no-ip'} · ${selected.node || 'node'} · ${selected.cpu_cores} CPU / ${selected.ram_gb}GB RAM / ${selected.disk_gb}GB Disk` : ''"></p>
                             </div>
@@ -78,7 +78,7 @@
                         </div>
 
                         <div x-show="error" class="m-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800" x-text="error"></div>
-                        <div x-show="loading" class="p-8 text-center text-sm font-bold text-slate-500">در حال دریافت داده از Proxmox...</div>
+                        <div x-show="loading" class="p-8 text-center text-sm font-bold text-slate-500">در حال دریافت داده های مانیتورینگ...</div>
 
                         <div class="grid gap-3 border-b border-slate-200 bg-slate-50 p-5 md:grid-cols-2 xl:grid-cols-5">
                             <template x-for="card in cards" :key="card.label">
@@ -90,7 +90,7 @@
                             </template>
                         </div>
 
-                        <div x-show="!loading && samples.length === 0 && !error" class="p-8 text-center text-sm font-bold text-slate-500">برای این بازه زمانی نمونه‌ای از Proxmox دریافت نشد.</div>
+                        <div x-show="!loading && samples.length === 0 && !error" class="p-8 text-center text-sm font-bold text-slate-500">برای این بازه زمانی نمونه‌ای دریافت نشد.</div>
 
                         <div x-show="samples.length > 0" class="grid gap-5 p-5 xl:grid-cols-2">
                             <template x-for="graph in graphs" :key="graph.key">
@@ -141,7 +141,7 @@
                         <template x-for="alert in alerts" :key="alert.key">
                             <div class="rounded-lg border px-4 py-3 text-sm font-bold" :class="alert.tone === 'red' ? 'border-red-200 bg-red-50 text-red-800' : 'border-amber-200 bg-amber-50 text-amber-900'" x-text="alert.message"></div>
                         </template>
-                        <div x-show="alerts.length === 0" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">هشدار فعالی برای این VPS وجود ندارد.</div>
+                        <div x-show="alerts.length === 0" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">هشدار فعالی برای این ماشین مجازی وجود ندارد.</div>
                     </div>
                 </div>
 
@@ -213,7 +213,7 @@
                 get alerts() {
                     const items = [];
                     if ((this.latest.status || this.selected?.status) && (this.latest.status || this.selected?.status) !== 'running') {
-                        items.push({ key: 'down', tone: 'red', message: 'این VPS در حال حاضر روشن نیست.' });
+                        items.push({ key: 'down', tone: 'red', message: 'این ماشین مجازی در حال حاضر روشن نیست.' });
                     }
                     if (Number(this.latest.cpu_percent || 0) >= 90) {
                         items.push({ key: 'cpu', tone: 'amber', message: 'مصرف CPU بالاتر از ۹۰٪ است.' });
@@ -222,10 +222,10 @@
                         items.push({ key: 'memory', tone: 'amber', message: 'مصرف RAM بالاتر از ۹۰٪ است.' });
                     }
                     if (!this.backup.policy_enabled) {
-                        items.push({ key: 'backup-disabled', tone: 'amber', message: 'بکاپ خودکار برای این VPS فعال نیست.' });
+                        items.push({ key: 'backup-disabled', tone: 'amber', message: 'بکاپ خودکار برای این ماشین مجازی فعال نیست.' });
                     }
                     if (this.backup.last_status === 'failed') {
-                        items.push({ key: 'backup-failed', tone: 'red', message: 'آخرین بکاپ این VPS ناموفق بوده است.' });
+                        items.push({ key: 'backup-failed', tone: 'red', message: 'آخرین بکاپ این ماشین مجازی ناموفق بوده است.' });
                     }
                     return items;
                 },

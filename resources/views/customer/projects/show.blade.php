@@ -30,7 +30,7 @@
             <p class="mt-1 text-sm font-bold text-slate-500">نقش شما: {{ $activeMembership?->role }}</p>
         </article>
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-            <p class="text-xs font-black text-slate-500">VMs</p>
+            <p class="text-xs font-black text-slate-500">ماشین های مجازی</p>
             <p class="mt-2 text-xl font-black text-slate-950">{{ $project->virtualMachines->count() }}</p>
             <a href="{{ route('customer.servers.index', [], false) }}" class="mt-2 inline-flex text-sm font-black text-[#0069FF]">مشاهده ماشین ها</a>
         </article>

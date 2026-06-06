@@ -2,7 +2,7 @@
 
 @section('title', 'جزئیات صورتحساب')
 @section('header_title', 'جزئیات صورتحساب '.$invoice->number)
-@section('header_subtitle', 'تفکیک کارکرد VMها و مبلغ برداشت شده از کیف پول در این دوره')
+@section('header_subtitle', 'تفکیک کارکرد ماشین های مجازی و مبلغ برداشت شده از کیف پول در این دوره')
 
 @php
     $activeNav = 'invoices';
@@ -43,7 +43,7 @@
             <table class="min-w-full text-right text-sm">
                 <thead class="bg-slate-50 text-xs font-black text-slate-500">
                     <tr>
-                        <th class="px-5 py-4">VM</th>
+                        <th class="px-5 py-4">ماشین مجازی</th>
                         <th class="px-5 py-4">شرح</th>
                         <th class="px-5 py-4">ساعت کارکرد</th>
                         <th class="px-5 py-4">نرخ ساعتی</th>

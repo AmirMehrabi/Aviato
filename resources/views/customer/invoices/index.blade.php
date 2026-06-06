@@ -2,7 +2,7 @@
 
 @section('title', 'صورتحساب ها')
 @section('header_title', 'صورتحساب های ماهانه')
-@section('header_subtitle', 'گزارش تفصیلی مصرف ماهانه به تفکیک VM و برداشت های کیف پول')
+@section('header_subtitle', 'گزارش تفصیلی مصرف ماهانه به تفکیک ماشین مجازی و برداشت های کیف پول')
 
 @php
     $activeNav = 'invoices';

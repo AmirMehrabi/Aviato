@@ -30,7 +30,7 @@
             <div class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <h2 class="text-lg font-black text-slate-950">راهنمای برداشت ها</h2>
                 <div class="mt-4 space-y-3 text-sm leading-7 text-slate-600">
-                    <p>کسرهای PAYG با نوع <span class="font-black text-rose-600">charge</span> ثبت می شوند و به ازای هر VM توضیح دقیق دارند.</p>
+                    <p>کسرهای PAYG با نوع <span class="font-black text-rose-600">charge</span> ثبت می شوند و به ازای هر ماشین مجازی توضیح دقیق دارند.</p>
                     <p>شارژهای کیف پول با نوع <span class="font-black text-emerald-600">credit</span> ثبت می شوند و بعدا می توانند به پرداخت های واقعی درگاه متصل شوند.</p>
                     <p>صورتحساب پایان ماه همان برداشت های ثبت شده در کیف پول را به صورت تجمیعی و تفصیلی نمایش می دهد.</p>
                 </div>
@@ -69,7 +69,7 @@
                                     <span>{{ $transaction->created_at?->format('Y/m/d H:i') }}</span>
                                     <span>مانده پس از تراکنش: {{ $wallets->format($transaction->balance_after) }}</span>
                                     @if (!empty($meta['vm_name']))
-                                        <span dir="ltr">VM: {{ $meta['vm_name'] }}</span>
+                                        <span dir="ltr">ماشین مجازی: {{ $meta['vm_name'] }}</span>
                                     @endif
                                     @if (!empty($meta['provider_reference']))
                                         <span dir="ltr">Ref: {{ $meta['provider_reference'] }}</span>
