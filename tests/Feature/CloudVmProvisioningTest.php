@@ -60,17 +60,13 @@ class CloudVmProvisioningTest extends TestCase
         Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
     }
 
-    public function test_remote_assigned_pool_ip_is_skipped_when_reserving(): void
+    public function test_create_uses_local_ip_pool_as_source_of_truth_when_reserving(): void
     {
         Bus::fake();
 
         $customer = Customer::factory()->create();
         $customer->wallet()->update(['balance' => 1000000]);
         [$image, $bundle] = $this->catalog('192.168.10.51');
-
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')->once()->andReturn(['192.168.10.50']);
-        });
 
         $this->actingAs($customer, 'customer');
         $this->post($this->customerBaseUrl.'/servers', [
@@ -82,9 +78,9 @@ class CloudVmProvisioningTest extends TestCase
         ])->assertRedirect($this->customerBaseUrl.'/servers');
 
         $vm = VirtualMachine::query()->firstOrFail();
-        $this->assertSame('192.168.10.51', $vm->ip_address);
+        $this->assertSame('192.168.10.50', $vm->ip_address);
         $this->assertDatabaseHas('ip_addresses', [
-            'address' => '192.168.10.51',
+            'address' => '192.168.10.50',
             'virtual_machine_id' => $vm->id,
             'status' => IpAddress::STATUS_RESERVED,
         ]);
