@@ -20,3 +20,30 @@
         text-rendering: optimizeLegibility;
     }
 }
+
+@layer components {
+    .ticket-composer .toastui-editor-defaultUI {
+        border: 0;
+    }
+
+    .ticket-composer .toastui-editor-toolbar {
+        border-top: 0;
+    }
+
+    .ticket-composer .toastui-editor-defaultUI-toolbar {
+        min-height: 44px;
+    }
+
+    .ticket-composer .toastui-editor-contents,
+    .ticket-markdown {
+        font-family: var(--font-sans);
+    }
+
+    .ticket-markdown :where(p, ul, ol, blockquote, pre) {
+        margin-bottom: 0.9rem;
+    }
+
+    .ticket-markdown :where(p:last-child, ul:last-child, ol:last-child, blockquote:last-child, pre:last-child) {
+        margin-bottom: 0;
+    }
+}

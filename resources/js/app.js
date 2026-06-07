@@ -9,10 +9,15 @@ window.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('textarea[data-ticket-editor]').forEach((textarea) => {
         if (textarea.dataset.editorReady) return;
 
+        const wrapper = document.createElement('div');
+        wrapper.className = 'ticket-composer mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white';
+        const toolbar = document.createElement('div');
+        toolbar.className = 'ticket-composer-toolbar flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-2 py-2';
         const container = document.createElement('div');
-        container.className = 'ticket-editor rounded-xl border border-slate-200 bg-white';
+        container.className = 'ticket-editor bg-white';
         textarea.classList.add('hidden');
-        textarea.after(container);
+        textarea.after(wrapper);
+        wrapper.append(toolbar, container);
 
         const editor = new Editor({
             el: container,
@@ -28,6 +33,48 @@ window.addEventListener('DOMContentLoaded', () => {
                 ['link', 'code', 'codeblock'],
             ],
         });
+
+        const commands = [
+            { label: 'B', title: 'Bold', command: 'bold', className: 'font-black' },
+            { label: 'I', title: 'Italic', command: 'italic', className: 'italic' },
+            { label: 'H', title: 'Heading', command: 'heading' },
+            { label: '•', title: 'Bullet list', command: 'bulletList' },
+            { label: '1.', title: 'Ordered list', command: 'orderedList' },
+            { label: '“”', title: 'Quote', command: 'blockQuote' },
+            { label: '<>', title: 'Code', command: 'code' },
+            { label: 'Link', title: 'Link', command: 'addLink' },
+        ];
+
+        commands.forEach((item) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.title = item.title;
+            button.className = `grid h-9 min-w-9 place-items-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] ${item.className || ''}`;
+            button.textContent = item.label;
+            button.addEventListener('click', () => editor.exec(item.command));
+            toolbar.append(button);
+        });
+
+        const attachmentInput = textarea.form?.querySelector('[data-ticket-attachments]');
+        if (attachmentInput) {
+            const attachButton = document.createElement('button');
+            attachButton.type = 'button';
+            attachButton.title = 'Attach files';
+            attachButton.className = 'mr-auto inline-flex h-9 items-center gap-2 rounded-lg border border-[#B8D6FF] bg-white px-3 text-xs font-black text-[#0069FF] transition hover:bg-[#EBF3FF]';
+            attachButton.textContent = 'Attach file';
+            attachButton.addEventListener('click', () => attachmentInput.click());
+            toolbar.append(attachButton);
+
+            const fileSummary = document.createElement('div');
+            fileSummary.className = 'ticket-attachment-summary hidden border-t border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600';
+            wrapper.append(fileSummary);
+
+            attachmentInput.addEventListener('change', () => {
+                const names = Array.from(attachmentInput.files || []).map((file) => `${file.name} (${Math.ceil(file.size / 1024)} KB)`);
+                fileSummary.textContent = names.length ? `Attached: ${names.join('، ')}` : '';
+                fileSummary.classList.toggle('hidden', names.length === 0);
+            });
+        }
 
         textarea.form?.addEventListener('submit', () => {
             textarea.value = editor.getMarkdown();

@@ -40,7 +40,7 @@
                     <label class="flex items-center gap-2 text-sm font-black text-amber-700"><input type="checkbox" name="internal" value="1" class="rounded border-slate-300"> داخلی</label>
                 </div>
                 <textarea name="body" rows="9" data-ticket-editor class="mt-4 w-full rounded-lg border border-slate-200 px-3 py-3 text-sm font-bold"></textarea>
-                <input type="file" name="attachments[]" multiple class="mt-4 w-full rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm font-bold">
+                <input type="file" name="attachments[]" multiple data-ticket-attachments accept="image/*,.pdf,.txt,.log,.csv,.json,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx" class="mt-4 w-full rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm font-bold">
                 <button class="mt-4 rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ثبت</button>
             </form>
         </section>

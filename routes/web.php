@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResourceRateController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\SupportTeamController;
+use App\Http\Controllers\Admin\TicketAttachmentController as AdminTicketAttachmentController;
 use App\Http\Controllers\Admin\TicketCategoryController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\VirtualMachineConsoleController;
@@ -28,6 +29,7 @@ use App\Http\Controllers\Customer\ProfileController;
 use App\Http\Controllers\Customer\ProjectController;
 use App\Http\Controllers\Customer\ServerConsoleController;
 use App\Http\Controllers\Customer\ServerController;
+use App\Http\Controllers\Customer\TicketAttachmentController;
 use App\Http\Controllers\Customer\TicketController;
 use App\Http\Controllers\Customer\VmUpgradeController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
@@ -72,6 +74,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::post('tickets/{ticket}/reply', [AdminTicketController::class, 'reply'])->name('admin.tickets.reply');
         Route::patch('tickets/{ticket}/assignment', [AdminTicketController::class, 'assignment'])->name('admin.tickets.assignment');
         Route::patch('tickets/{ticket}/status', [AdminTicketController::class, 'status'])->name('admin.tickets.status');
+        Route::get('tickets/{ticket}/attachments/{attachment}', [AdminTicketAttachmentController::class, 'show'])->name('admin.tickets.attachments.show');
         Route::resource('tickets', AdminTicketController::class)->only(['index', 'create', 'store', 'show'])->names('admin.tickets');
         Route::resource('support-teams', SupportTeamController::class)
             ->parameters(['support-teams' => 'supportTeam'])
@@ -220,6 +223,7 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::post('tickets/{ticket}/reply', [TicketController::class, 'reply'])->name('customer.tickets.reply');
         Route::patch('tickets/{ticket}/close', [TicketController::class, 'close'])->name('customer.tickets.close');
         Route::patch('tickets/{ticket}/reopen', [TicketController::class, 'reopen'])->name('customer.tickets.reopen');
+        Route::get('tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'show'])->name('customer.tickets.attachments.show');
         Route::resource('tickets', TicketController::class)->only(['index', 'create', 'store', 'show'])->names('customer.tickets');
         Route::get('wallet', [CustomerWalletController::class, 'show'])->name('customer.wallet.show');
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');

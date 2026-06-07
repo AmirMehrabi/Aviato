@@ -91,7 +91,7 @@ class TicketController extends Controller
         $data = $request->validate([
             'body' => ['required', 'string', 'min:3'],
             'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['file', 'max:10240'],
+            'attachments.*' => ['file', 'max:20480'],
         ]);
 
         $this->tickets->reply($ticket, $request->user('customer'), $data['body'], $request->file('attachments', []));
@@ -124,7 +124,7 @@ class TicketController extends Controller
             'priority' => ['required', Rule::in(array_keys(Ticket::priorities()))],
             'body' => ['required', 'string', 'min:3'],
             'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['file', 'max:10240'],
+            'attachments.*' => ['file', 'max:20480'],
         ];
     }
 

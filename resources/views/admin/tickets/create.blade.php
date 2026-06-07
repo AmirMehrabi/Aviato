@@ -17,7 +17,7 @@
             <label class="mt-4 block"><span class="text-sm font-black text-slate-700">سرویس اختیاری</span><select name="virtual_machine_id" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-3 text-sm font-bold"><option value="">بدون سرویس</option>@foreach(($selectedCustomer?->virtualMachines ?? collect()) as $vm)<option value="{{ $vm->id }}" @selected(old('virtual_machine_id') == $vm->id) dir="ltr">{{ $vm->name }}</option>@endforeach</select><span class="mt-2 block text-xs font-bold text-slate-500">برای انتخاب VM، از صفحه مشتری با پارامتر customer_id وارد شوید یا بعد از ساخت از داخل تیکت لینک کنید.</span></label>
             <label class="mt-4 block"><span class="text-sm font-black text-slate-700">موضوع</span><input name="subject" value="{{ old('subject') }}" required class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-3 text-sm font-bold"></label>
             <label class="mt-4 block"><span class="text-sm font-black text-slate-700">متن</span><textarea name="body" rows="12" data-ticket-editor class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-3 text-sm font-bold">{{ old('body') }}</textarea></label>
-            <input type="file" name="attachments[]" multiple class="mt-4 w-full rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm font-bold">
+            <input type="file" name="attachments[]" multiple data-ticket-attachments accept="image/*,.pdf,.txt,.log,.csv,.json,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx" class="mt-4 w-full rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm font-bold">
         </section>
         <aside class="space-y-3">
             <button class="w-full rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ثبت تیکت</button>

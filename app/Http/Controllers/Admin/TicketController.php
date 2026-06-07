@@ -80,7 +80,7 @@ class TicketController extends Controller
             'priority' => ['required', Rule::in(array_keys(Ticket::priorities()))],
             'body' => ['required', 'string', 'min:3'],
             'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['file', 'max:10240'],
+            'attachments.*' => ['file', 'max:20480'],
         ]);
 
         $customer = Customer::query()->findOrFail($data['customer_id']);
@@ -112,7 +112,7 @@ class TicketController extends Controller
             'body' => ['required', 'string', 'min:3'],
             'internal' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['file', 'max:10240'],
+            'attachments.*' => ['file', 'max:20480'],
         ]);
 
         $this->tickets->reply($ticket, $request->user('admin'), $data['body'], $request->file('attachments', []), (bool) ($data['internal'] ?? false));

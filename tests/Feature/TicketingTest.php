@@ -128,6 +128,9 @@ class TicketingTest extends TestCase
         $this->actingAs($customer, 'customer')
             ->get('https://cp.localhost/tickets/'.$ticket->number)
             ->assertOk()
+            ->assertSee('درخواست اولیه')
+            ->assertSee('گفتگو')
+            ->assertSee('وضعیت تیکت')
             ->assertSee('Public customer text')
             ->assertDontSee('Private escalation note');
     }
