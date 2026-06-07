@@ -537,11 +537,27 @@ class VirtualMachineController extends Controller
             $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $cloudInit['task_id'], 180);
         }
 
+        $antiSpoofing = $this->proxmox->applyVmIpAntiSpoofing(
+            $virtualMachine->proxmoxServer,
+            $virtualMachine->node,
+            (int) $virtualMachine->vmid,
+            $virtualMachine->reservedIpAddress->address,
+            'net0',
+            $virtualMachine->network_bridge ?: 'vmbr1',
+        );
+
+        $verifiedConfig = $this->proxmox->vmConfig($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+        $verifiedMacAddress = filled($verifiedConfig['net0'] ?? null)
+            ? $this->proxmox->macAddressFromNetworkDevice((string) $verifiedConfig['net0'])
+            : null;
+
         $virtualMachine->forceFill([
+            'mac_address' => $antiSpoofing['mac_address'] ?: $verifiedMacAddress,
             'desired_state' => $virtualMachine->desiredStateSnapshot(),
             'remote_state' => array_merge($virtualMachine->remote_state ?? [], [
                 'cloudinit_network_updated_at' => now()->toISOString(),
                 'cloudinit_network_ip' => $virtualMachine->ip_address,
+                'anti_spoofing' => $antiSpoofing,
             ]),
         ])->save();
     }

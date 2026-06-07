@@ -71,6 +71,71 @@ class ProxmoxServiceDeleteTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function test_apply_vm_ip_anti_spoofing_syncs_vm_firewall_ipfilter(): void
+    {
+        $sent = [];
+
+        Http::fake(function (Request $request) use (&$sent) {
+            $sent[] = [
+                'method' => $request->method(),
+                'url' => $request->url(),
+                'data' => $request->data(),
+            ];
+
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/nodes/pve1/qemu/123/config')) {
+                return Http::response([
+                    'data' => [
+                        'net0' => 'virtio=BC:24:11:AA:22:33,bridge=vmbr1',
+                    ],
+                ]);
+            }
+
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/nodes/pve1/qemu/123/firewall/ipset/ipfilter-net0')) {
+                $matches = collect($sent)
+                    ->where('method', 'GET')
+                    ->where('url', 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/ipset/ipfilter-net0')
+                    ->count();
+
+                if ($matches === 1) {
+                    return Http::response(['message' => 'no such ipset'], 404);
+                }
+
+                return Http::response([
+                    'data' => [
+                        ['cidr' => '5.202.19.118'],
+                    ],
+                ]);
+            }
+
+            return Http::response(['data' => null], 200);
+        });
+
+        $result = app(ProxmoxService::class)->applyVmIpAntiSpoofing($this->server(), 'pve1', 123, '5.202.19.112');
+
+        $this->assertSame('BC:24:11:AA:22:33', $result['mac_address']);
+        $this->assertSame('5.202.19.112', $result['allowed_ip']);
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'PUT'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/config'
+            && ($request['data']['net0'] ?? null) === 'virtio=BC:24:11:AA:22:33,bridge=vmbr1,firewall=1'));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'PUT'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/options'
+            && (int) ($request['data']['enable'] ?? 0) === 1
+            && (int) ($request['data']['ipfilter'] ?? 0) === 1));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/ipset'
+            && ($request['data']['name'] ?? null) === 'ipfilter-net0'));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'DELETE'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/ipset/ipfilter-net0/5.202.19.118'));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/ipset/ipfilter-net0'
+            && ($request['data']['cidr'] ?? null) === '5.202.19.112'));
+    }
+
     public function test_delete_vm_retries_without_unreferenced_disk_cleanup_when_proxmox_rejects_option(): void
     {
         Http::fakeSequence()

@@ -279,7 +279,7 @@ class ProxmoxService
             'scsihw' => 'virtio-scsi-pci',
             'scsi0' => "{$storage}:{$diskGb}",
             'ide2' => "{$isoVolume},media=cdrom",
-            'net0' => "virtio,bridge={$bridge}",
+            'net0' => "virtio,bridge={$bridge},firewall=1",
             'boot' => 'order=ide2;scsi0;net0',
             'agent' => 1,
             'onboot' => ! empty($options['onboot']) ? 1 : 0,
@@ -347,7 +347,7 @@ class ProxmoxService
         $payload = array_filter([
             'cores' => (int) $options['cpu_cores'],
             'memory' => (int) $options['ram_gb'] * 1024,
-            'net0' => $networkBridge !== '' ? $this->qemuNetworkDeviceWithBridge((string) ($currentConfig['net0'] ?? ''), $networkBridge) : null,
+            'net0' => $networkBridge !== '' ? $this->qemuNetworkDeviceWithBridge((string) ($currentConfig['net0'] ?? ''), $networkBridge, true) : null,
             'ciuser' => $options['login_username'] ?? null,
             'cipassword' => $options['login_password'] ?? null,
             'sshkeys' => $this->cloudInitSshKeys($options['ssh_public_key'] ?? null),
@@ -371,12 +371,12 @@ class ProxmoxService
         ];
     }
 
-    private function qemuNetworkDeviceWithBridge(string $currentConfig, string $bridge): string
+    private function qemuNetworkDeviceWithBridge(string $currentConfig, string $bridge, bool $firewall = false): string
     {
         $currentConfig = trim($currentConfig);
 
         if ($currentConfig === '') {
-            return "virtio,bridge={$bridge}";
+            return "virtio,bridge={$bridge}".($firewall ? ',firewall=1' : '');
         }
 
         $parts = array_values(array_filter(
@@ -386,10 +386,17 @@ class ProxmoxService
 
         $hasBridge = false;
 
+        $hasFirewall = false;
+
         foreach ($parts as $index => $part) {
             if (str_starts_with($part, 'bridge=')) {
                 $parts[$index] = "bridge={$bridge}";
                 $hasBridge = true;
+            }
+
+            if (str_starts_with($part, 'firewall=')) {
+                $parts[$index] = $firewall ? 'firewall=1' : $part;
+                $hasFirewall = true;
             }
         }
 
@@ -397,7 +404,139 @@ class ProxmoxService
             $parts[] = "bridge={$bridge}";
         }
 
+        if ($firewall && ! $hasFirewall) {
+            $parts[] = 'firewall=1';
+        }
+
         return implode(',', $parts);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function applyVmIpAntiSpoofing(ProxmoxServer $server, string $node, int $vmid, string $ipAddress, string $interface = 'net0', ?string $bridge = null): array
+    {
+        $ipAddress = trim($ipAddress);
+
+        if (filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+            throw new RuntimeException('A valid IPv4 address is required to apply VM anti-spoofing.');
+        }
+
+        if (! preg_match('/^net\d+$/', $interface)) {
+            throw new RuntimeException('A valid VM network interface id is required to apply VM anti-spoofing.');
+        }
+
+        $config = $this->vmConfig($server, $node, $vmid);
+        $currentDevice = (string) ($config[$interface] ?? '');
+        $updatedDevice = $this->qemuNetworkDeviceWithBridge(
+            $currentDevice,
+            trim((string) $bridge) ?: $this->bridgeFromNetworkDevice($currentDevice) ?: 'vmbr1',
+            true,
+        );
+
+        $networkPayload = null;
+
+        if ($currentDevice !== $updatedDevice) {
+            $networkPayload = [$interface => $updatedDevice];
+            $this->request($server)
+                ->asForm()
+                ->put("/nodes/{$node}/qemu/{$vmid}/config", $networkPayload)
+                ->throw();
+        }
+
+        $optionsPayload = ['enable' => 1, 'ipfilter' => 1];
+        $this->request($server)
+            ->asForm()
+            ->put("/nodes/{$node}/qemu/{$vmid}/firewall/options", $optionsPayload)
+            ->throw();
+
+        $ipset = 'ipfilter-'.$interface;
+        $this->ensureVmFirewallIpset($server, $node, $vmid, $ipset);
+        $entries = $this->vmFirewallIpsetEntries($server, $node, $vmid, $ipset);
+
+        foreach ($entries as $entry) {
+            $cidr = (string) ($entry['cidr'] ?? '');
+
+            if ($cidr !== '' && $cidr !== $ipAddress) {
+                $this->request($server)
+                    ->delete("/nodes/{$node}/qemu/{$vmid}/firewall/ipset/{$ipset}/".rawurlencode($cidr))
+                    ->throw();
+            }
+        }
+
+        if (! collect($entries)->contains(fn (array $entry): bool => (string) ($entry['cidr'] ?? '') === $ipAddress)) {
+            $this->request($server)
+                ->asForm()
+                ->post("/nodes/{$node}/qemu/{$vmid}/firewall/ipset/{$ipset}", ['cidr' => $ipAddress])
+                ->throw();
+        }
+
+        return [
+            'interface' => $interface,
+            'ipset' => $ipset,
+            'allowed_ip' => $ipAddress,
+            'firewall_options' => $optionsPayload,
+            'network_payload' => $networkPayload,
+            'mac_address' => $this->macAddressFromNetworkDevice($updatedDevice),
+        ];
+    }
+
+    public function macAddressFromNetworkDevice(string $networkDevice): ?string
+    {
+        if (preg_match('/(?:^|,)(?:virtio|e1000|rtl8139|vmxnet3)=([0-9A-Fa-f:]{17})(?:,|$)/', $networkDevice, $matches)) {
+            return strtoupper($matches[1]);
+        }
+
+        return null;
+    }
+
+    private function bridgeFromNetworkDevice(string $networkDevice): ?string
+    {
+        foreach (explode(',', $networkDevice) as $part) {
+            $part = trim($part);
+
+            if (str_starts_with($part, 'bridge=')) {
+                return substr($part, 7) ?: null;
+            }
+        }
+
+        return null;
+    }
+
+    private function ensureVmFirewallIpset(ProxmoxServer $server, string $node, int $vmid, string $ipset): void
+    {
+        try {
+            $this->vmFirewallIpsetEntries($server, $node, $vmid, $ipset);
+
+            return;
+        } catch (RequestException $exception) {
+            if (! $this->isMissingFirewallResource($exception)) {
+                throw $exception;
+            }
+        }
+
+        $this->request($server)
+            ->asForm()
+            ->post("/nodes/{$node}/qemu/{$vmid}/firewall/ipset", ['name' => $ipset])
+            ->throw();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function vmFirewallIpsetEntries(ProxmoxServer $server, string $node, int $vmid, string $ipset): array
+    {
+        $entries = $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/firewall/ipset/{$ipset}") ?? [];
+
+        return is_array($entries) ? $entries : [];
+    }
+
+    private function isMissingFirewallResource(RequestException $exception): bool
+    {
+        $status = $exception->response->status();
+
+        return in_array($status, [404, 500], true)
+            && str_contains(strtolower($exception->response->body()), 'no such');
     }
 
     private function cloudInitSshKeys(mixed $sshPublicKey): ?string

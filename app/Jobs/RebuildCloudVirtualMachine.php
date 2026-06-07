@@ -157,19 +157,34 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                 }
             }
 
+            if ($address) {
+                $antiSpoofing = $proxmox->applyVmIpAntiSpoofing($server, $node, $vmid, $address->address, 'net0', $vm->network_bridge ?: 'vmbr1');
+                $history[] = ['step' => 'anti_spoofing', 'result' => $antiSpoofing, 'at' => now()->toISOString()];
+
+                if (! empty($antiSpoofing['mac_address'])) {
+                    $vm->forceFill(['mac_address' => $antiSpoofing['mac_address']])->save();
+                }
+            }
+
             $start = $proxmox->startVm($server, $node, $vmid);
             $history[] = ['step' => 'start', 'result' => $start, 'at' => now()->toISOString()];
             if (! empty($start['task_id'])) {
                 $history[] = ['step' => 'start_wait', 'result' => $proxmox->waitForTask($server, $node, (string) $start['task_id']), 'at' => now()->toISOString()];
             }
 
-            $history[] = ['step' => 'config_verify', 'result' => $proxmox->vmConfig($server, $node, $vmid), 'at' => now()->toISOString()];
+            $verifiedConfig = $proxmox->vmConfig($server, $node, $vmid);
+            $history[] = ['step' => 'config_verify', 'result' => $verifiedConfig, 'at' => now()->toISOString()];
 
             if ($address) {
                 $ipPools->assign($address, $vm);
             }
 
+            $verifiedMacAddress = filled($verifiedConfig['net0'] ?? null)
+                ? $proxmox->macAddressFromNetworkDevice((string) $verifiedConfig['net0'])
+                : null;
+
             $vm->forceFill([
+                'mac_address' => $vm->mac_address ?: $verifiedMacAddress,
                 'status' => VirtualMachine::STATUS_RUNNING,
                 'provisioning_status' => VirtualMachine::PROVISION_READY,
                 'provisioning_task_id' => null,

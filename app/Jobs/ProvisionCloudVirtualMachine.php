@@ -116,6 +116,15 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 }
             }
 
+            if ($address) {
+                $antiSpoofing = $proxmox->applyVmIpAntiSpoofing($server, $vm->node, $vmid, $address->address, 'net0', $networkBridge);
+                $history[] = ['step' => 'anti_spoofing', 'result' => $antiSpoofing];
+
+                if (! empty($antiSpoofing['mac_address'])) {
+                    $vm->forceFill(['mac_address' => $antiSpoofing['mac_address']])->save();
+                }
+            }
+
             if ($this->options['start_after_create'] ?? true) {
                 $start = $proxmox->startVm($server, $vm->node, $vmid);
                 $history[] = ['step' => 'start', 'result' => $start];
@@ -124,13 +133,19 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 }
             }
 
-            $history[] = ['step' => 'config_verify', 'result' => $proxmox->vmConfig($server, $vm->node, $vmid)];
+            $verifiedConfig = $proxmox->vmConfig($server, $vm->node, $vmid);
+            $history[] = ['step' => 'config_verify', 'result' => $verifiedConfig];
 
             if ($address) {
                 $ipPools->assign($address, $vm);
             }
 
+            $verifiedMacAddress = filled($verifiedConfig['net0'] ?? null)
+                ? $proxmox->macAddressFromNetworkDevice((string) $verifiedConfig['net0'])
+                : null;
+
             $vm->forceFill([
+                'mac_address' => $vm->mac_address ?: $verifiedMacAddress,
                 'status' => ($this->options['start_after_create'] ?? true) ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
                 'provisioning_status' => VirtualMachine::PROVISION_READY,
                 'last_started_at' => ($this->options['start_after_create'] ?? true) ? now() : null,
