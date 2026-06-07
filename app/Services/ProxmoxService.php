@@ -471,12 +471,15 @@ class ProxmoxService
                 ->throw();
         }
 
+        $rules = $this->syncVmAntiSpoofingFirewallRules($server, $node, $vmid, $interface, $ipset);
+
         return [
             'interface' => $interface,
             'ipset' => $ipset,
             'allowed_ip' => $ipAddress,
             'firewall_options' => $optionsPayload,
             'network_payload' => $networkPayload,
+            'rules' => $rules,
             'mac_address' => $this->macAddressFromNetworkDevice($updatedDevice),
         ];
     }
@@ -529,6 +532,74 @@ class ProxmoxService
         $entries = $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/firewall/ipset/{$ipset}") ?? [];
 
         return is_array($entries) ? $entries : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function syncVmAntiSpoofingFirewallRules(ProxmoxServer $server, string $node, int $vmid, string $interface, string $ipset): array
+    {
+        $managedComments = [
+            'Aviato anti-spoof: allow assigned source IP',
+            'Aviato anti-spoof: drop other source IPs',
+        ];
+
+        $existingRules = $this->vmFirewallRules($server, $node, $vmid);
+
+        collect($existingRules)
+            ->filter(fn (array $rule): bool => in_array((string) ($rule['comment'] ?? ''), $managedComments, true))
+            ->pluck('pos')
+            ->filter(fn (mixed $position): bool => is_numeric($position))
+            ->map(fn (mixed $position): int => (int) $position)
+            ->sortDesc()
+            ->each(function (int $position) use ($server, $node, $vmid): void {
+                $this->request($server)
+                    ->delete("/nodes/{$node}/qemu/{$vmid}/firewall/rules/{$position}")
+                    ->throw();
+            });
+
+        $allowRule = [
+            'type' => 'out',
+            'action' => 'ACCEPT',
+            'iface' => $interface,
+            'source' => '+'.$ipset,
+            'enable' => 1,
+            'pos' => 0,
+            'comment' => $managedComments[0],
+        ];
+        $dropRule = [
+            'type' => 'out',
+            'action' => 'DROP',
+            'iface' => $interface,
+            'enable' => 1,
+            'pos' => 1,
+            'comment' => $managedComments[1],
+        ];
+
+        $this->request($server)
+            ->asForm()
+            ->post("/nodes/{$node}/qemu/{$vmid}/firewall/rules", $allowRule)
+            ->throw();
+
+        $this->request($server)
+            ->asForm()
+            ->post("/nodes/{$node}/qemu/{$vmid}/firewall/rules", $dropRule)
+            ->throw();
+
+        return [
+            array_diff_key($allowRule, ['pos' => true]),
+            array_diff_key($dropRule, ['pos' => true]),
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function vmFirewallRules(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        $rules = $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/firewall/rules") ?? [];
+
+        return is_array($rules) ? $rules : [];
     }
 
     private function isMissingFirewallResource(RequestException $exception): bool

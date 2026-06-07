@@ -107,6 +107,15 @@ class ProxmoxServiceDeleteTest extends TestCase
                 ]);
             }
 
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/nodes/pve1/qemu/123/firewall/rules')) {
+                return Http::response([
+                    'data' => [
+                        ['pos' => 4, 'type' => 'out', 'action' => 'DROP', 'comment' => 'Aviato anti-spoof: drop other source IPs'],
+                        ['pos' => 3, 'type' => 'out', 'action' => 'ACCEPT', 'comment' => 'Aviato anti-spoof: allow assigned source IP'],
+                    ],
+                ]);
+            }
+
             return Http::response(['data' => null], 200);
         });
 
@@ -134,6 +143,27 @@ class ProxmoxServiceDeleteTest extends TestCase
         $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
             && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/ipset/ipfilter-net0'
             && ($request['data']['cidr'] ?? null) === '5.202.19.112'));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'DELETE'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules/4'));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'DELETE'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules/3'));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules'
+            && ($request['data']['type'] ?? null) === 'out'
+            && ($request['data']['action'] ?? null) === 'ACCEPT'
+            && ($request['data']['iface'] ?? null) === 'net0'
+            && ($request['data']['source'] ?? null) === '+ipfilter-net0'
+            && ($request['data']['comment'] ?? null) === 'Aviato anti-spoof: allow assigned source IP'));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules'
+            && ($request['data']['type'] ?? null) === 'out'
+            && ($request['data']['action'] ?? null) === 'DROP'
+            && ($request['data']['iface'] ?? null) === 'net0'
+            && ($request['data']['comment'] ?? null) === 'Aviato anti-spoof: drop other source IPs'));
     }
 
     public function test_delete_vm_retries_without_unreferenced_disk_cleanup_when_proxmox_rejects_option(): void
