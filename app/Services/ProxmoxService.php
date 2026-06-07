@@ -471,7 +471,20 @@ class ProxmoxService
                 ->throw();
         }
 
-        $rules = $this->syncVmAntiSpoofingFirewallRules($server, $node, $vmid, $interface, $ipset);
+        try {
+            $rules = $this->syncVmAntiSpoofingFirewallRules($server, $node, $vmid, $interface, $ipAddress);
+        } catch (\Throwable $exception) {
+            $rules = ['error' => $exception->getMessage()];
+            $this->logError('Proxmox VM anti-spoofing firewall rules could not be synced', $server, [
+                'node' => $node,
+                'vmid' => $vmid,
+                'interface' => $interface,
+                'ipset' => $ipset,
+                'ip_address' => $ipAddress,
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+            ]);
+        }
 
         return [
             'interface' => $interface,
@@ -537,7 +550,7 @@ class ProxmoxService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function syncVmAntiSpoofingFirewallRules(ProxmoxServer $server, string $node, int $vmid, string $interface, string $ipset): array
+    private function syncVmAntiSpoofingFirewallRules(ProxmoxServer $server, string $node, int $vmid, string $interface, string $ipAddress): array
     {
         $managedComments = [
             'Aviato anti-spoof: allow assigned source IP',
@@ -562,7 +575,7 @@ class ProxmoxService
             'type' => 'out',
             'action' => 'ACCEPT',
             'iface' => $interface,
-            'source' => '+'.$ipset,
+            'source' => $ipAddress,
             'enable' => 1,
             'pos' => 0,
             'comment' => $managedComments[0],
