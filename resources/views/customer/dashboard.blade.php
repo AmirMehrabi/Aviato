@@ -88,7 +88,7 @@
                 </div>
                 <div class="mt-5 flex w-full max-w-xl flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm shadow-slate-200/70 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p class="text-xs font-black text-slate-500">آمادگی حساب</p>
+                        <p class="text-xs font-black text-slate-500">موجودی حساب</p>
                         <p class="mt-1 text-xl font-black {{ $walletIsBlocked ? 'text-red-600' : 'text-slate-950' }}">{{ $wallets->format($wallet->balance) }}</p>
                     </div>
                     <span class="rounded-xl px-3 py-2 text-xs font-black {{ $walletIsBlocked ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700' }}">{{ $walletIsBlocked ? 'نیازمند شارژ یا رفع قفل' : 'آماده ساخت ماشین' }}</span>
