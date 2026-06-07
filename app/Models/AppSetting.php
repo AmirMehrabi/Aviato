@@ -29,6 +29,34 @@ class AppSetting extends Model
 
     public const KAVENEGAR_TEMPLATE = 'kavenegar.template';
 
+    public const SMTP_HOST = 'smtp.host';
+
+    public const SMTP_PORT = 'smtp.port';
+
+    public const SMTP_USERNAME = 'smtp.username';
+
+    public const SMTP_PASSWORD = 'smtp.password';
+
+    public const SMTP_ENCRYPTION = 'smtp.encryption';
+
+    public const SMTP_FROM_ADDRESS = 'smtp.from_address';
+
+    public const SMTP_FROM_NAME = 'smtp.from_name';
+
+    public const TICKET_EMAIL_NOTIFICATIONS_ENABLED = 'ticket.notifications.email_enabled';
+
+    public const TICKET_SMS_NOTIFICATIONS_ENABLED = 'ticket.notifications.sms_enabled';
+
+    public const TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE = 'ticket.kavenegar.customer_created_template';
+
+    public const TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE = 'ticket.kavenegar.admin_new_template';
+
+    public const TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE = 'ticket.kavenegar.customer_reply_template';
+
+    public const TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE = 'ticket.kavenegar.admin_reply_template';
+
+    public const TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE = 'ticket.kavenegar.assignment_template';
+
     public const VM_CREATION_CHARGE_ENABLED = 'vm.creation_charge.enabled';
 
     public const VM_CREATION_CHARGE_PERCENTAGE = 'vm.creation_charge.percentage';
@@ -123,6 +151,25 @@ class AppSetting extends Model
             'sms0098' => 'SMS0098',
             'kavenegar' => 'Kavenegar Lookup',
         ];
+    }
+
+    public static function smtpEncryptions(): array
+    {
+        return [
+            '' => 'بدون رمزنگاری',
+            'tls' => 'TLS',
+            'ssl' => 'SSL',
+        ];
+    }
+
+    public static function ticketEmailNotificationsEnabled(): bool
+    {
+        return filter_var(static::getValue(self::TICKET_EMAIL_NOTIFICATIONS_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function ticketSmsNotificationsEnabled(): bool
+    {
+        return filter_var(static::getValue(self::TICKET_SMS_NOTIFICATIONS_ENABLED, false), FILTER_VALIDATE_BOOL);
     }
 
     public static function vmCreationChargeEnabled(): bool

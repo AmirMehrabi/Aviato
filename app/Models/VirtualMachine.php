@@ -143,6 +143,11 @@ class VirtualMachine extends Model
         return $this->hasMany(VmUpgradeOrder::class)->latest();
     }
 
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
     public function disks(): HasMany
     {
         return $this->hasMany(VmDisk::class);

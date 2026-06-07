@@ -26,6 +26,20 @@ class SettingController extends Controller
             'sms0098Username' => (string) AppSetting::getValue(AppSetting::SMS0098_USERNAME, ''),
             'sms0098PanelNo' => (string) AppSetting::getValue(AppSetting::SMS0098_PANEL_NO, ''),
             'kavenegarTemplate' => (string) AppSetting::getValue(AppSetting::KAVENEGAR_TEMPLATE, ''),
+            'smtpHost' => (string) AppSetting::getValue(AppSetting::SMTP_HOST, ''),
+            'smtpPort' => (int) AppSetting::getValue(AppSetting::SMTP_PORT, 587),
+            'smtpUsername' => (string) AppSetting::getValue(AppSetting::SMTP_USERNAME, ''),
+            'smtpEncryption' => (string) AppSetting::getValue(AppSetting::SMTP_ENCRYPTION, 'tls'),
+            'smtpEncryptions' => AppSetting::smtpEncryptions(),
+            'smtpFromAddress' => (string) AppSetting::getValue(AppSetting::SMTP_FROM_ADDRESS, config('mail.from.address')),
+            'smtpFromName' => (string) AppSetting::getValue(AppSetting::SMTP_FROM_NAME, config('mail.from.name')),
+            'ticketEmailNotificationsEnabled' => AppSetting::ticketEmailNotificationsEnabled(),
+            'ticketSmsNotificationsEnabled' => AppSetting::ticketSmsNotificationsEnabled(),
+            'ticketKavenegarCustomerCreatedTemplate' => (string) AppSetting::getValue(AppSetting::TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE, ''),
+            'ticketKavenegarAdminNewTemplate' => (string) AppSetting::getValue(AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE, ''),
+            'ticketKavenegarCustomerReplyTemplate' => (string) AppSetting::getValue(AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE, ''),
+            'ticketKavenegarAdminReplyTemplate' => (string) AppSetting::getValue(AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE, ''),
+            'ticketKavenegarAssignmentTemplate' => (string) AppSetting::getValue(AppSetting::TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE, ''),
             'vmCreationChargeEnabled' => AppSetting::vmCreationChargeEnabled(),
             'vmCreationChargePercentage' => AppSetting::vmCreationChargePercentage(),
             'unverifiedCustomerVmLimit' => AppSetting::unverifiedCustomerVmLimit(),
@@ -48,6 +62,20 @@ class SettingController extends Controller
             'sms0098_panel_no' => ['nullable', 'string', 'max:50'],
             'kavenegar_api_key' => ['nullable', 'string', 'max:255'],
             'kavenegar_template' => ['nullable', 'string', 'max:100'],
+            'smtp_host' => ['nullable', 'string', 'max:255'],
+            'smtp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'smtp_username' => ['nullable', 'string', 'max:255'],
+            'smtp_password' => ['nullable', 'string', 'max:255'],
+            'smtp_encryption' => ['nullable', 'string', Rule::in(array_keys(AppSetting::smtpEncryptions()))],
+            'smtp_from_address' => ['nullable', 'email', 'max:255'],
+            'smtp_from_name' => ['nullable', 'string', 'max:255'],
+            'ticket_email_notifications_enabled' => ['nullable', 'boolean'],
+            'ticket_sms_notifications_enabled' => ['nullable', 'boolean'],
+            'ticket_kavenegar_customer_created_template' => ['nullable', 'string', 'max:100'],
+            'ticket_kavenegar_admin_new_template' => ['nullable', 'string', 'max:100'],
+            'ticket_kavenegar_customer_reply_template' => ['nullable', 'string', 'max:100'],
+            'ticket_kavenegar_admin_reply_template' => ['nullable', 'string', 'max:100'],
+            'ticket_kavenegar_assignment_template' => ['nullable', 'string', 'max:100'],
             'vm_creation_charge_enabled' => ['required', 'boolean'],
             'vm_creation_charge_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
             'unverified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'],
@@ -91,6 +119,19 @@ class SettingController extends Controller
         AppSetting::setValue(AppSetting::SMS0098_USERNAME, $data['sms0098_username'] ?? '', 'string', 'sms0098');
         AppSetting::setValue(AppSetting::SMS0098_PANEL_NO, $data['sms0098_panel_no'] ?? '', 'string', 'sms0098');
         AppSetting::setValue(AppSetting::KAVENEGAR_TEMPLATE, $data['kavenegar_template'] ?? '', 'string', 'kavenegar');
+        AppSetting::setValue(AppSetting::SMTP_HOST, $data['smtp_host'] ?? '', 'string', 'smtp');
+        AppSetting::setValue(AppSetting::SMTP_PORT, (int) ($data['smtp_port'] ?? 587), 'integer', 'smtp');
+        AppSetting::setValue(AppSetting::SMTP_USERNAME, $data['smtp_username'] ?? '', 'string', 'smtp');
+        AppSetting::setValue(AppSetting::SMTP_ENCRYPTION, $data['smtp_encryption'] ?? '', 'string', 'smtp');
+        AppSetting::setValue(AppSetting::SMTP_FROM_ADDRESS, $data['smtp_from_address'] ?? config('mail.from.address'), 'string', 'smtp');
+        AppSetting::setValue(AppSetting::SMTP_FROM_NAME, $data['smtp_from_name'] ?? config('mail.from.name'), 'string', 'smtp');
+        AppSetting::setValue(AppSetting::TICKET_EMAIL_NOTIFICATIONS_ENABLED, (bool) ($data['ticket_email_notifications_enabled'] ?? false), 'boolean', 'ticketing');
+        AppSetting::setValue(AppSetting::TICKET_SMS_NOTIFICATIONS_ENABLED, (bool) ($data['ticket_sms_notifications_enabled'] ?? false), 'boolean', 'ticketing');
+        AppSetting::setValue(AppSetting::TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE, $data['ticket_kavenegar_customer_created_template'] ?? '', 'string', 'ticketing');
+        AppSetting::setValue(AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE, $data['ticket_kavenegar_admin_new_template'] ?? '', 'string', 'ticketing');
+        AppSetting::setValue(AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE, $data['ticket_kavenegar_customer_reply_template'] ?? '', 'string', 'ticketing');
+        AppSetting::setValue(AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE, $data['ticket_kavenegar_admin_reply_template'] ?? '', 'string', 'ticketing');
+        AppSetting::setValue(AppSetting::TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE, $data['ticket_kavenegar_assignment_template'] ?? '', 'string', 'ticketing');
         AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_ENABLED, (bool) $data['vm_creation_charge_enabled'], 'boolean', 'billing');
         AppSetting::setValue(AppSetting::VM_CREATION_CHARGE_PERCENTAGE, (float) $data['vm_creation_charge_percentage'], 'float', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, (int) $data['unverified_customer_vm_limit'], 'integer', 'customer');
@@ -104,6 +145,10 @@ class SettingController extends Controller
 
         if (! empty($data['kavenegar_api_key'])) {
             AppSetting::setValue(AppSetting::KAVENEGAR_API_KEY, $data['kavenegar_api_key'], 'string', 'kavenegar');
+        }
+
+        if (! empty($data['smtp_password'])) {
+            AppSetting::setValue(AppSetting::SMTP_PASSWORD, $data['smtp_password'], 'string', 'smtp');
         }
 
         if ($effectiveNationalCodeToken !== '') {

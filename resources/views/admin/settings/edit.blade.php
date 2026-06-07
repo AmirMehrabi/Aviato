@@ -27,6 +27,33 @@
             <x-form.select name="sms_gateway" label="درگاه ارسال پیامک" :selected="$smsGateway" :options="$smsGateways" />
 
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h2 class="text-sm font-black text-slate-900">اعلان‌های تیکت و SMTP</h2>
+                <p class="mt-1 text-xs leading-6 text-slate-500">ارسال ایمیل و پیامک تیکت اختیاری است. اعلان داخلی پنل همیشه برای رویدادهای تیکت ثبت می‌شود.</p>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <x-form.checkbox name="ticket_email_notifications_enabled" label="ارسال ایمیل برای تیکت فعال باشد" :checked="$ticketEmailNotificationsEnabled" />
+                    <x-form.checkbox name="ticket_sms_notifications_enabled" label="ارسال پیامک برای تیکت فعال باشد" :checked="$ticketSmsNotificationsEnabled" />
+                    <x-form.input name="smtp_host" label="SMTP Host" :value="$smtpHost" dir-ltr />
+                    <x-form.input name="smtp_port" type="number" label="SMTP Port" :value="$smtpPort" dir-ltr />
+                    <x-form.input name="smtp_username" label="SMTP Username" :value="$smtpUsername" dir-ltr />
+                    <x-form.input name="smtp_password" type="password" label="SMTP Password" value="" dir-ltr help="برای حفظ رمز فعلی، این فیلد را خالی بگذارید." />
+                    <x-form.select name="smtp_encryption" label="Encryption" :selected="$smtpEncryption" :options="$smtpEncryptions" />
+                    <x-form.input name="smtp_from_address" label="From Email" :value="$smtpFromAddress" dir-ltr />
+                    <x-form.input name="smtp_from_name" label="From Name" :value="$smtpFromName" />
+                </div>
+                <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <h3 class="text-xs font-black text-amber-900">Template های کاوه‌نگار برای تیکت</h3>
+                    <p class="mt-1 text-xs leading-6 text-amber-800">توکن‌ها: token = شماره تیکت، token2 = نام مشتری/اپراتور، token3 = دسته‌بندی یا وضعیت.</p>
+                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+                        <x-form.input name="ticket_kavenegar_customer_created_template" label="Customer: ticket created" :value="$ticketKavenegarCustomerCreatedTemplate" dir-ltr />
+                        <x-form.input name="ticket_kavenegar_admin_new_template" label="Admin: new ticket" :value="$ticketKavenegarAdminNewTemplate" dir-ltr />
+                        <x-form.input name="ticket_kavenegar_customer_reply_template" label="Customer: admin reply" :value="$ticketKavenegarCustomerReplyTemplate" dir-ltr />
+                        <x-form.input name="ticket_kavenegar_admin_reply_template" label="Admin: customer reply" :value="$ticketKavenegarAdminReplyTemplate" dir-ltr />
+                        <x-form.input name="ticket_kavenegar_assignment_template" label="Assignment notice" :value="$ticketKavenegarAssignmentTemplate" dir-ltr />
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h2 class="text-sm font-black text-slate-900">هزینه اولیه ساخت ماشین مجازی</h2>
                 <p class="mt-1 text-xs leading-6 text-slate-500">در صورت فعال بودن، هنگام ثبت اولین درخواست ساخت VM درصدی از قیمت ماهانه پلن از کیف پول مالک پروژه کسر می‌شود.</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">

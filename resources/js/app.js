@@ -1,7 +1,41 @@
 import Alpine from 'alpinejs';
 import RFB from '@novnc/novnc';
+import { Editor } from '@toast-ui/editor';
+import '@toast-ui/editor/dist/toastui-editor.css';
 
 window.Alpine = Alpine;
+
+window.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('textarea[data-ticket-editor]').forEach((textarea) => {
+        if (textarea.dataset.editorReady) return;
+
+        const container = document.createElement('div');
+        container.className = 'ticket-editor rounded-xl border border-slate-200 bg-white';
+        textarea.classList.add('hidden');
+        textarea.after(container);
+
+        const editor = new Editor({
+            el: container,
+            height: '360px',
+            initialEditType: 'wysiwyg',
+            previewStyle: 'tab',
+            initialValue: textarea.value || '',
+            usageStatistics: false,
+            toolbarItems: [
+                ['heading', 'bold', 'italic', 'strike'],
+                ['hr', 'quote'],
+                ['ul', 'ol', 'task'],
+                ['link', 'code', 'codeblock'],
+            ],
+        });
+
+        textarea.form?.addEventListener('submit', () => {
+            textarea.value = editor.getMarkdown();
+        });
+
+        textarea.dataset.editorReady = '1';
+    });
+});
 
 window.customerVmConsole = function customerVmConsole(config) {
     return {

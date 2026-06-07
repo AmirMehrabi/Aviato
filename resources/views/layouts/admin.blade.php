@@ -103,6 +103,7 @@
                         ['label' => 'مشتریان', 'route' => 'admin.customers.index', 'active' => request()->routeIs('admin.customers.*'), 'icon' => 'M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0M19 8v6m3-3h-6'],
                         ['label' => 'Proxmox', 'route' => 'admin.proxmox-servers.index', 'active' => request()->routeIs('admin.proxmox-servers.*'), 'icon' => 'M5 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4H5V6Zm0 4h14v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-8Zm3 4h2m4 0h2M8 17h8'],
                         ['label' => 'ماشین‌ها', 'route' => 'admin.virtual-machines.index', 'active' => request()->routeIs('admin.virtual-machines.*'), 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
+                        ['label' => 'تیکت‌ها', 'route' => 'admin.tickets.index', 'active' => request()->routeIs('admin.tickets.*') || request()->routeIs('admin.support-teams.*') || request()->routeIs('admin.ticket-categories.*'), 'icon' => 'M4 5h16v10H7l-3 3V5Zm5 4h6m-6 3h4'],
                         ['label' => 'Cloud Images', 'route' => 'admin.cloud-images.index', 'active' => request()->routeIs('admin.cloud-images.*'), 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
                         ['label' => 'IP Pools', 'route' => 'admin.ip-pools.index', 'active' => request()->routeIs('admin.ip-pools.*'), 'icon' => 'M12 3v4m0 10v4M4.9 7.1l2.8 2.8m8.6 8.6 2.8 2.8M3 12h4m10 0h4M4.9 16.9l2.8-2.8m8.6-8.6 2.8-2.8'],
                         ['label' => 'قیمت منابع', 'route' => 'admin.billing.rates.index', 'active' => request()->routeIs('admin.billing.rates.*'), 'icon' => 'M7 4h10v16H7V4Zm3 4h4m-4 4h4m-4 4h2'],
@@ -245,18 +246,15 @@
                     <span class="inline-flex items-center justify-center rounded-full bg-[#0069FF] px-2 py-0.5 text-xs font-black text-white">۳</span>
                 </div>
                 <div class="mt-4 space-y-3">
-                    <div class="flex gap-3 rounded-lg border border-slate-200 p-3">
-                        <span class="mt-1 size-2.5 shrink-0 rounded-full bg-[#0069FF]"></span>
-                        <p class="text-sm leading-7 text-slate-600"><span class="font-black text-slate-900">thr-node-03</span> با موفقیت Sync شد.</p>
-                    </div>
-                    <div class="flex gap-3 rounded-lg border border-slate-200 p-3">
-                        <span class="mt-1 size-2.5 shrink-0 rounded-full bg-amber-500"></span>
-                        <p class="text-sm leading-7 text-slate-600">Provisioning برای <span class="font-black text-slate-900">staging-api</span> از SLA عبور کرد.</p>
-                    </div>
-                    <div class="flex gap-3 rounded-lg border border-slate-200 p-3">
-                        <span class="mt-1 size-2.5 shrink-0 rounded-full bg-red-500"></span>
-                        <p class="text-sm leading-7 text-slate-600">هشدار CPU روی <span class="font-black text-slate-900">db-main</span> ثبت شد.</p>
-                    </div>
+                    @foreach (auth('admin')->user()?->notifications()->latest()->limit(3)->get() ?? collect() as $notification)
+                        <a href="{{ data_get($notification->data, 'url', route('admin.tickets.index')) }}" class="flex gap-3 rounded-lg border border-slate-200 p-3 transition hover:bg-slate-50">
+                            <span class="mt-1 size-2.5 shrink-0 rounded-full {{ $notification->read_at ? 'bg-slate-300' : 'bg-[#0069FF]' }}"></span>
+                            <p class="text-sm leading-7 text-slate-600"><span class="font-black text-slate-900">{{ data_get($notification->data, 'title', 'اعلان') }}</span><br>{{ data_get($notification->data, 'body', '') }}</p>
+                        </a>
+                    @endforeach
+                    @if ((auth('admin')->user()?->notifications()->count() ?? 0) === 0)
+                        <p class="rounded-lg border border-slate-200 p-4 text-center text-sm font-bold text-slate-500">اعلان جدیدی وجود ندارد.</p>
+                    @endif
                 </div>
             </div>
 

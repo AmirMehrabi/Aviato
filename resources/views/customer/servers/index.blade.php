@@ -47,10 +47,10 @@
 @foreach ($serverRows as $server)
     {
         "title": @json($server['name']),
-        "description": @json($server['ip'].' - '.$server['node'].' - '.$server['resources']),
+        "description": @json($server['ip'].' - '.$server['resources']),
         "type": "ماشین مجازی",
         "url": @json($server['show_url']),
-        "keywords": @json($server['name'].' '.$server['hostname'].' '.$server['ip'].' '.$server['node'].' '.$server['status'].' '.$server['provisioning_status'])
+        "keywords": @json($server['name'].' '.$server['hostname'].' '.$server['ip'].' '.$server['status'].' '.$server['provisioning_status'])
     }@if (! $loop->last),@endif
 @endforeach
 ]
@@ -94,7 +94,7 @@
             <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                     <h2 class="text-xl font-black text-slate-950">فهرست ماشین ها</h2>
-                    <p class="mt-1 text-sm leading-7 text-slate-500">سرورها را براساس وضعیت، IP، hostname یا node پیدا کنید.</p>
+                    <p class="mt-1 text-sm leading-7 text-slate-500">سرورها را براساس وضعیت، IP یا hostname پیدا کنید.</p>
                 </div>
                 <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex w-fit justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
                     ساخت ماشین
@@ -107,7 +107,7 @@
                         <circle cx="11" cy="11" r="8"/>
                         <path d="m21 21-4.35-4.35" stroke-linecap="round"/>
                     </svg>
-                    <input name="search" value="{{ $filters['search'] ?? '' }}" placeholder="جستجو نام، hostname، IP یا node..." class="h-12 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10">
+                    <input name="search" value="{{ $filters['search'] ?? '' }}" placeholder="جستجو نام، hostname یا IP..." class="h-12 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10">
                 </div>
                 <div class="flex flex-wrap gap-2">
                     @foreach ([
@@ -158,7 +158,7 @@
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <a href="{{ $server['show_url'] }}" class="block truncate text-lg font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $server['name'] }}</a>
-                                    <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr">{{ $server['hostname'] }} · {{ $server['node'] }}</p>
+                                    <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr">{{ $server['hostname'] }}</p>
                                 </div>
                                 <div class="flex shrink-0 flex-col items-end gap-2">
                                     <span class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black" :class="server(@js($server['id'])).status_class">

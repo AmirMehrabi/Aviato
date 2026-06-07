@@ -14,18 +14,35 @@ class KavenegarLookupClient
         $apiKey = (string) AppSetting::getValue(AppSetting::KAVENEGAR_API_KEY, '');
         $template = (string) AppSetting::getValue(AppSetting::KAVENEGAR_TEMPLATE, '');
 
+        $this->sendLookup($phone, $template, $code);
+    }
+
+    public function sendLookup(string $phone, string $template, string $token, ?string $token2 = null, ?string $token3 = null): void
+    {
+        $apiKey = (string) AppSetting::getValue(AppSetting::KAVENEGAR_API_KEY, '');
+
         if ($apiKey === '' || $template === '') {
             throw new RuntimeException('تنظیمات درگاه Kavenegar کامل نیست.');
+        }
+
+        $payload = [
+            'receptor' => $this->normalizeIranianPhone($phone),
+            'token' => $token,
+            'template' => $template,
+        ];
+
+        if (filled($token2)) {
+            $payload['token2'] = $token2;
+        }
+
+        if (filled($token3)) {
+            $payload['token3'] = $token3;
         }
 
         try {
             $response = Http::asForm()
                 ->timeout(15)
-                ->post('https://api.kavenegar.com/v1/'.rawurlencode($apiKey).'/verify/lookup.json', [
-                    'receptor' => $this->normalizeIranianPhone($phone),
-                    'token' => $code,
-                    'template' => $template,
-                ]);
+                ->post('https://api.kavenegar.com/v1/'.rawurlencode($apiKey).'/verify/lookup.json', $payload);
         } catch (Throwable) {
             throw new RuntimeException('اتصال به درگاه Kavenegar ناموفق بود.');
         }

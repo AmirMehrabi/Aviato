@@ -56,6 +56,11 @@ class Customer extends Authenticatable
         return $this->hasMany(VirtualMachine::class);
     }
 
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
     public function ownedProjects(): HasMany
     {
         return $this->hasMany(Project::class, 'owner_customer_id');

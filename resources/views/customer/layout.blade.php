@@ -38,6 +38,7 @@
             ],
             'حساب' => [
                 ['key' => 'profile', 'label' => 'پروفایل', 'route' => route('customer.profile.show', [], false), 'icon' => 'M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm-8 9a8 8 0 0 1 16 0'],
+                ['key' => 'tickets', 'label' => 'تیکت‌ها', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M4 5h16v10H7l-3 3V5Zm5 4h6m-6 3h4'],
                 ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm12 3h4v5h-4a2.5 2.5 0 0 1 0-5Zm1 2.5h.01'],
                 ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm8 0v5h5M8 13h8M8 17h6'],
             ],
@@ -60,6 +61,8 @@
                     { title: 'ساخت ماشین', description: 'انتخاب پلن، سیستم عامل و دیتاسنتر', url: '{{ route('customer.servers.create', [], false) }}', type: 'عملیات' },
                     { title: 'بکاپ ها', description: 'بکاپ دستی، برنامه بکاپ خودکار و نگهداری نسخه ها', url: '{{ route('customer.backups.index', [], false) }}', type: 'صفحه' },
                     { title: 'مانیتورینگ', description: 'نمودار مصرف CPU، RAM، شبکه و وضعیت بکاپ', url: '{{ route('customer.monitoring.index', [], false) }}', type: 'صفحه' },
+                    { title: 'تیکت‌ها', description: 'درخواست‌های پشتیبانی و پاسخ‌ها', url: '{{ route('customer.tickets.index', [], false) }}', type: 'صفحه' },
+                    { title: 'تیکت جدید', description: 'ثبت درخواست جدید برای پشتیبانی', url: '{{ route('customer.tickets.create', [], false) }}', type: 'عملیات' },
                     { title: 'پروفایل', description: 'کد ملی، سطح حساب و سهمیه ساخت', url: '{{ route('customer.profile.show', [], false) }}', type: 'صفحه' },
                     { title: 'کیف پول', description: 'موجودی، تراکنش ها و افزایش اعتبار', url: '{{ route('customer.wallet.show', [], false) }}', type: 'صفحه' },
                     { title: 'افزایش اعتبار', description: 'شارژ سریع کیف پول', url: '{{ route('customer.wallet.show', ['topup' => 1], false) }}', type: 'عملیات' },
