@@ -166,7 +166,7 @@
                                     <span x-show="copied === 'ssh'">Copied</span>
                                 </button>
                             </div>
-                            <p class="mt-3 text-xs font-bold leading-6 text-slate-500">اگر اتصال برقرار نشد، آماده بودن Provisioning و باز بودن SSH در سیستم عامل را بررسی کنید.</p>
+                            {{-- <p class="mt-3 text-xs font-bold leading-6 text-slate-500">اگر اتصال برقرار نشد، آماده بودن Provisioning و باز بودن SSH در سیستم عامل را بررسی کنید.</p> --}}
                         @else
                             <div class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
                                 <p class="font-black text-amber-900">IP هنوز آماده نیست.</p>
@@ -181,7 +181,7 @@
                             @endif
                             <a href="{{ $monitoringUrl }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مانیتورینگ</a>
                             <a href="{{ $backupUrl }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">بکاپ ها</a>
-                            <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-50">سرورها</a>
+                            {{-- <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-50">سرورها</a> --}}
                         </div>
                     </div>
                 </div>
