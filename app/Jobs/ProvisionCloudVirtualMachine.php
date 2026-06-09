@@ -85,20 +85,40 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             }
 
             $cloudInitEnabled = (bool) $image->cloud_init_enabled;
+
+            if (! $cloudInitEnabled) {
+                $start = $proxmox->startVm($server, $vm->node, $vmid);
+                $history[] = ['step' => 'start', 'result' => $start];
+                if (! empty($start['task_id'])) {
+                    $history[] = ['step' => 'start_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $start['task_id'])];
+                }
+
+                $vm->forceFill([
+                    'status' => VirtualMachine::STATUS_RUNNING,
+                    'provisioning_status' => VirtualMachine::PROVISION_READY,
+                    'last_started_at' => now(),
+                    'last_billed_at' => now(),
+                    'last_seen_at' => now(),
+                    'remote_state' => ['steps' => $history, 'finished_at' => now()->toISOString()],
+                ])->save();
+
+                return;
+            }
+
             $config = $proxmox->configureCloudInit($server, [
                 'node' => $vm->node,
                 'vmid' => $vmid,
                 'cpu_cores' => $vm->cpu_cores,
                 'ram_gb' => $vm->ram_gb,
-                'login_username' => $cloudInitEnabled ? $vm->login_username : null,
-                'login_password' => $cloudInitEnabled ? $vm->login_password : null,
-                'ssh_public_key' => $cloudInitEnabled ? $vm->ssh_public_key : null,
-                'ipconfig0' => ($cloudInitEnabled && $address) ? $ipPools->ipConfig($address) : null,
-                'nameserver' => ($cloudInitEnabled && $address) ? $ipPools->nameservers($address) : null,
-                'cicustom' => $cloudInitEnabled ? 'vendor=local:snippets/ubuntu-password-login.yml' : null,
+                'login_username' => $vm->login_username,
+                'login_password' => $vm->login_password,
+                'ssh_public_key' => $vm->ssh_public_key,
+                'ipconfig0' => $address ? $ipPools->ipConfig($address) : null,
+                'nameserver' => $address ? $ipPools->nameservers($address) : null,
+                'cicustom' => 'vendor=local:snippets/ubuntu-password-login.yml',
                 'network_bridge' => $networkBridge,
                 'onboot' => $this->options['onboot'] ?? false,
-                'description' => $cloudInitEnabled ? 'Cloud-init configured by Aviato panel' : 'Configured by Aviato panel',
+                'description' => 'Cloud-init configured by Aviato panel',
             ]);
             $history[] = ['step' => 'config', 'result' => $config];
 
@@ -108,12 +128,10 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 $history[] = ['step' => 'resize_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $resize['task_id'])];
             }
 
-            if ($cloudInitEnabled) {
-                $cloudInit = $proxmox->regenerateCloudInit($server, $vm->node, $vmid);
-                $history[] = ['step' => 'cloudinit_regenerate', 'result' => $cloudInit];
-                if (! empty($cloudInit['task_id'])) {
-                    $history[] = ['step' => 'cloudinit_regenerate_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $cloudInit['task_id'])];
-                }
+            $cloudInit = $proxmox->regenerateCloudInit($server, $vm->node, $vmid);
+            $history[] = ['step' => 'cloudinit_regenerate', 'result' => $cloudInit];
+            if (! empty($cloudInit['task_id'])) {
+                $history[] = ['step' => 'cloudinit_regenerate_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $cloudInit['task_id'])];
             }
 
             if ($address) {
