@@ -154,6 +154,11 @@ class VirtualMachine extends Model
         return $this->hasMany(VmDisk::class);
     }
 
+    public function transfers(): HasMany
+    {
+        return $this->hasMany(VmTransfer::class);
+    }
+
     public function pendingUpgradeOrders(): HasMany
     {
         return $this->hasMany(VmUpgradeOrder::class)

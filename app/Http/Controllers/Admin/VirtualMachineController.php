@@ -17,6 +17,7 @@ use App\Services\CloudVmProvisioningService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\VirtualMachineDeletionService;
+use App\Services\VmTransferService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -33,6 +34,7 @@ class VirtualMachineController extends Controller
         private readonly CloudVmProvisioningService $cloudProvisioning,
         private readonly IpPoolService $ipPools,
         private readonly VirtualMachineDeletionService $deletions,
+        private readonly VmTransferService $vmTransferService,
     ) {}
 
     public function index(Request $request): View
@@ -377,6 +379,54 @@ class VirtualMachineController extends Controller
         ])->save();
 
         return back()->with('status', 'VM خاموش شد. فقط IP و Disk محاسبه می‌شوند.');
+    }
+
+    public function showTransferForm(VirtualMachine $virtualMachine): View
+    {
+        $virtualMachine->load(['customer', 'project', 'transfers.fromCustomer', 'transfers.toCustomer', 'transfers.initiatedBy']);
+
+        return view('admin.virtual-machines.transfer', [
+            'vm' => $virtualMachine,
+            'customers' => Customer::query()
+                ->where('status', 'active')
+                ->where('id', '!=', $virtualMachine->customer_id)
+                ->orderBy('name')
+                ->get(),
+            'transfers' => $virtualMachine->transfers()->with(['fromCustomer', 'toCustomer', 'fromProject', 'toProject', 'initiatedBy'])->latest()->get(),
+            'billing' => $this->billing,
+        ]);
+    }
+
+    public function transfer(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $data = $request->validate([
+            'to_customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'confirm_transfer' => ['required', 'accepted'],
+        ]);
+
+        $toCustomer = Customer::findOrFail($data['to_customer_id']);
+
+        if ($virtualMachine->customer_id === $toCustomer->id) {
+            return back()->withErrors(['to_customer_id' => 'VM already belongs to this customer.']);
+        }
+
+        try {
+            $transfer = $this->vmTransferService->transferVm(
+                $virtualMachine,
+                $toCustomer,
+                auth()->id(),
+                $data['notes'] ?? null
+            );
+
+            return redirect()
+                ->route('admin.virtual-machines.show', $virtualMachine)
+                ->with('status', "VM successfully transferred to {$toCustomer->name}. Transfer ID: {$transfer->id}");
+        } catch (\Exception $exception) {
+            return back()
+                ->withInput()
+                ->with('error', 'Transfer failed: '.$exception->getMessage());
+        }
     }
 
     private function remoteVmMatchesPanelVm(VirtualMachine $vm): bool

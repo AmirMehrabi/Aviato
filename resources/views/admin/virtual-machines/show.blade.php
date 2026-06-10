@@ -17,6 +17,7 @@
         </div>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E]">ویرایش</a>
+            <a href="{{ route('admin.virtual-machines.transfer.show', $vm) }}" class="rounded-lg bg-purple-100 px-5 py-3 text-sm font-black text-purple-900 hover:bg-purple-200">Transfer Ownership</a>
             @if($vm->proxmoxServer && $vm->node && $vm->vmid && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $vm->isActionLocked())
                 <a href="{{ route('admin.virtual-machines.console.show', $vm) }}" class="rounded-lg bg-sky-300 px-5 py-3 text-sm font-black text-sky-950">Console</a>
             @endif

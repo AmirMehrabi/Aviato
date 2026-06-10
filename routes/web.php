@@ -107,6 +107,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.virtual-machines.stop');
         Route::post('virtual-machines/{virtualMachine}/retry-provisioning', [VirtualMachineController::class, 'retryProvisioning'])
             ->name('admin.virtual-machines.retry-provisioning');
+        Route::get('virtual-machines/{virtualMachine}/transfer', [VirtualMachineController::class, 'showTransferForm'])
+            ->name('admin.virtual-machines.transfer.show');
+        Route::post('virtual-machines/{virtualMachine}/transfer', [VirtualMachineController::class, 'transfer'])
+            ->name('admin.virtual-machines.transfer');
         Route::get('virtual-machines/{virtualMachine}/console', [VirtualMachineConsoleController::class, 'show'])
             ->name('admin.virtual-machines.console.show');
         Route::post('virtual-machines/{virtualMachine}/console/session', [VirtualMachineConsoleController::class, 'session'])
