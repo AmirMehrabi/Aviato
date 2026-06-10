@@ -34,7 +34,7 @@
                     <x-form.checkbox name="customer_wallet_negative_sms_enabled" label="ارسال پیامک هشدار کیف پول فعال باشد" :checked="$customerWalletNegativeSmsEnabled" />
                     <x-form.input name="customer_wallet_negative_sms_template" label="Template کاوه‌نگار هشدار کیف پول" :value="$customerWalletNegativeSmsTemplate" dir-ltr />
                 </div>
-                <p class="mt-3 text-xs leading-6 text-slate-500">برای نام کامل مشتری از placeholder کاوه‌نگار %token10 استفاده کنید؛ این Template فقط همین مقدار را برای نام مشتری مصرف می‌کند.</p>
+                <p class="mt-3 text-xs leading-6 text-slate-500">این Template فقط یک token می‌گیرد و باید از placeholder کاوه‌نگار %token برای نام کوچک مشتری استفاده کند.</p>
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">

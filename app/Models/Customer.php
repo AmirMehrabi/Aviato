@@ -6,6 +6,7 @@ use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -117,6 +118,21 @@ class Customer extends Authenticatable
     public function smsNotificationsEnabled(): bool
     {
         return (bool) ($this->sms_notifications_enabled ?? true);
+    }
+
+    protected function firstName(): Attribute
+    {
+        return Attribute::get(function (?string $value, array $attributes): string {
+            $source = trim((string) ($value ?: ($attributes['name'] ?? '')));
+
+            if ($source === '') {
+                return '';
+            }
+
+            $parts = preg_split('/\s+/', $source, 2) ?: [$source];
+
+            return trim((string) $parts[0]);
+        });
     }
 
     public function isSuspended(): bool

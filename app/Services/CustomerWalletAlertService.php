@@ -95,7 +95,11 @@ class CustomerWalletAlertService
         }
 
         try {
-            app(KavenegarLookupClient::class)->sendLookupWithSpacedToken($customer->phone, $template, $customer->name);
+            app(KavenegarLookupClient::class)->sendLookup(
+                $customer->phone,
+                $template,
+                $customer->first_name !== '' ? $customer->first_name : $customer->name,
+            );
         } catch (Throwable $exception) {
             Log::warning('Customer wallet negative SMS notification failed.', [
                 'customer_id' => $customer->id,
