@@ -31,7 +31,7 @@ class EnsureCustomerWalletAccess
         }
 
         return redirect()
-            ->route('customer.wallet.show')
+            ->route('customer.suspension.notice')
             ->with('error', 'حساب شما تعلیق شده است و فقط امکان شارژ کیف پول را دارید.');
     }
 }

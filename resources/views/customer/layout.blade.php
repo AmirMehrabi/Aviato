@@ -45,6 +45,36 @@
         ];
     @endphp
 
+    @if ($customer->isSuspended())
+        <div class="border-b border-red-200 bg-red-50 px-4 py-3 text-red-900 sm:px-6 lg:px-8">
+            <div class="mx-auto flex max-w-[1600px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div class="flex items-start gap-3">
+                    <span class="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl bg-red-600 text-white">
+                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+                            <path d="M12 8v5" stroke-linecap="round"/>
+                            <path d="M12 17h.01" stroke-linecap="round"/>
+                            <path d="M10.3 3.9h3.4L22 17.8A2 2 0 0 1 20.3 21H3.7A2 2 0 0 1 2 17.8L10.3 3.9Z" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <p class="text-xs font-black tracking-[0.2em] text-red-700">ACCOUNT SUSPENDED</p>
+                        <p class="mt-1 text-sm font-bold leading-7 text-red-800">
+                            حساب شما به دلیل بدهی کیف پول تعلیق شده است. فقط شارژ کیف پول، صورتحساب‌ها و تراکنش‌های مالی در دسترس است.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white transition hover:bg-red-500">
+                        رفتن به کیف پول
+                    </a>
+                    <a href="{{ route('customer.suspension.notice', [], false) }}" class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-black text-red-700 transition hover:bg-red-100">
+                        مشاهده توضیح
+                    </a>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div
         x-data="{
             sidebarOpen: false,

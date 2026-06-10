@@ -68,4 +68,22 @@ class WalletController extends Controller
             'topUpPresets' => [200000, 500000, 1000000, 2000000],
         ]);
     }
+
+    public function suspensionNotice(Request $request): View
+    {
+        $customer = $request->user('customer');
+        $activeProject = $this->projects->activeProject($request, $customer);
+        $wallet = $this->wallets->walletFor($activeProject->owner);
+        $pendingUsage = $this->usageBilling->projectPendingUsage($activeProject->id);
+
+        return view('customer.suspension.notice', [
+            'customer' => $customer,
+            'activeProject' => $activeProject,
+            'activeMembership' => $this->projects->membership($activeProject, $customer),
+            'projects' => $this->projects->projectsFor($customer),
+            'wallet' => $wallet,
+            'wallets' => $this->wallets,
+            'pendingUsage' => $pendingUsage,
+        ]);
+    }
 }

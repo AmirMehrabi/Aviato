@@ -198,6 +198,10 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         ->middleware('auth:customer')
         ->name('customer.logout');
 
+    Route::get('suspended', [CustomerWalletController::class, 'suspensionNotice'])
+        ->middleware('auth:customer')
+        ->name('customer.suspension.notice');
+
     Route::middleware(['auth:customer', 'customer.wallet.access'])->group(function () use ($customerHome) {
         Route::get($customerHome, DashboardController::class)->name('dashboard');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
