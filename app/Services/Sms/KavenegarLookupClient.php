@@ -39,6 +39,33 @@ class KavenegarLookupClient
             $payload['token3'] = $token3;
         }
 
+        $this->sendPayload($apiKey, $payload);
+    }
+
+    public function sendLookupWithSpacedToken(string $phone, string $template, string $token): void
+    {
+        $apiKey = (string) AppSetting::getValue(AppSetting::KAVENEGAR_API_KEY, '');
+        $token = trim(preg_replace('/\s+/u', ' ', $token) ?? $token);
+
+        if ($apiKey === '' || $template === '' || $token === '') {
+            throw new RuntimeException('تنظیمات درگاه Kavenegar کامل نیست.');
+        }
+
+        $payload = [
+            'receptor' => $this->normalizeIranianPhone($phone),
+            'token' => $this->compactToken($token),
+            'token10' => $token,
+            'template' => $template,
+        ];
+
+        $this->sendPayload($apiKey, $payload);
+    }
+
+    /**
+     * @param  array<string, string>  $payload
+     */
+    private function sendPayload(string $apiKey, array $payload): void
+    {
         try {
             $response = Http::asForm()
                 ->timeout(15)
@@ -47,17 +74,28 @@ class KavenegarLookupClient
             throw new RuntimeException('اتصال به درگاه Kavenegar ناموفق بود.');
         }
 
+        $responsePayload = $response->json();
+        $message = (string) data_get($responsePayload, 'return.message', '');
+
         if (! $response->ok()) {
-            throw new RuntimeException('ارسال پیامک Kavenegar ناموفق بود. کد خطا: '.$response->status());
+            throw new RuntimeException($message !== ''
+                ? 'ارسال پیامک Kavenegar ناموفق بود: '.$message
+                : 'ارسال پیامک Kavenegar ناموفق بود. کد خطا: '.$response->status());
         }
 
-        $payload = $response->json();
-        $status = data_get($payload, 'return.status');
+        $status = data_get($responsePayload, 'return.status');
         if ((int) $status !== 200) {
-            $message = (string) data_get($payload, 'return.message', 'پاسخ نامعتبر از درگاه Kavenegar دریافت شد.');
+            $message = (string) data_get($responsePayload, 'return.message', 'پاسخ نامعتبر از درگاه Kavenegar دریافت شد.');
 
             throw new RuntimeException($message);
         }
+    }
+
+    private function compactToken(string $token): string
+    {
+        $compact = preg_replace('/[\s_[:punct:]]+/u', '', $token) ?? '';
+
+        return mb_substr($compact !== '' ? $compact : 'customer', 0, 100);
     }
 
     private function normalizeIranianPhone(string $phone): string
