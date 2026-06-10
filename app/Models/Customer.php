@@ -129,9 +129,9 @@ class Customer extends Authenticatable
                 return '';
             }
 
-            $parts = preg_split('/\s+/', $source, 2) ?: [$source];
+            $spacePosition = strpos($source, ' ');
 
-            return trim((string) $parts[0]);
+            return $spacePosition === false ? $source : substr($source, 0, $spacePosition);
         });
     }
 
