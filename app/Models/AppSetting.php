@@ -29,6 +29,12 @@ class AppSetting extends Model
 
     public const KAVENEGAR_TEMPLATE = 'kavenegar.template';
 
+    public const CUSTOMER_WALLET_NEGATIVE_THRESHOLD = 'customer.wallet.negative_threshold';
+
+    public const CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED = 'customer.wallet.negative_sms_enabled';
+
+    public const CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE = 'customer.wallet.negative_sms_template';
+
     public const SMTP_HOST = 'smtp.host';
 
     public const SMTP_PORT = 'smtp.port';
@@ -224,5 +230,20 @@ class AppSetting extends Model
         }
 
         return (int) round($creationCharge * static::vmRebuildFeeMultiplierPercentage() / 100);
+    }
+
+    public static function customerWalletNegativeThreshold(): int
+    {
+        return (int) static::getValue(self::CUSTOMER_WALLET_NEGATIVE_THRESHOLD, 0);
+    }
+
+    public static function customerWalletNegativeSmsEnabled(): bool
+    {
+        return filter_var(static::getValue(self::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, true), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function customerWalletNegativeSmsTemplate(): string
+    {
+        return (string) static::getValue(self::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, '');
     }
 }

@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'email', 'phone', 'national_code', 'national_code_hash', 'national_code_verified_at', 'password', 'email_verified_at', 'email_verification_code', 'email_verification_expires_at', 'status', 'suspended_at', 'suspension_reason'])]
+#[Fillable(['name', 'email', 'phone', 'national_code', 'national_code_hash', 'national_code_verified_at', 'password', 'email_verified_at', 'email_verification_code', 'email_verification_expires_at', 'status', 'suspended_at', 'suspension_reason', 'sms_notifications_enabled'])]
 #[Hidden(['password', 'remember_token'])]
 class Customer extends Authenticatable
 {
@@ -114,6 +114,11 @@ class Customer extends Authenticatable
         ])->save();
     }
 
+    public function smsNotificationsEnabled(): bool
+    {
+        return (bool) ($this->sms_notifications_enabled ?? true);
+    }
+
     public function isSuspended(): bool
     {
         return $this->status === self::STATUS_SUSPENDED;
@@ -137,6 +142,7 @@ class Customer extends Authenticatable
             'national_code_verified_at' => 'datetime',
             'national_code' => 'encrypted',
             'suspended_at' => 'datetime',
+            'sms_notifications_enabled' => 'boolean',
             'password' => 'hashed',
         ];
     }

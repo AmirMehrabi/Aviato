@@ -56,6 +56,13 @@
                     :checked="(bool) $customer->email_verified_at"
                     wrapper-class="flex items-center justify-between gap-3 rounded-lg bg-[#EBF3FF] p-3 text-sm font-bold text-[#0069FF]"
                 />
+
+                <x-form.checkbox
+                    name="sms_notifications_enabled"
+                    label="ارسال پیامک‌های هشدار مالی فعال باشد"
+                    :checked="(bool) old('sms_notifications_enabled', $customer->sms_notifications_enabled ?? true)"
+                    wrapper-class="flex items-center justify-between gap-3 rounded-lg bg-slate-100 p-3 text-sm font-bold text-slate-700"
+                />
             </div>
         </div>
 

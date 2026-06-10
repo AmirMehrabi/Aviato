@@ -27,6 +27,17 @@
             <x-form.select name="sms_gateway" label="درگاه ارسال پیامک" :selected="$smsGateway" :options="$smsGateways" />
 
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h2 class="text-sm font-black text-slate-900">هشدار کیف پول منفی مشتری</h2>
+                <p class="mt-1 text-xs leading-6 text-slate-500">وقتی موجودی کیف پول به این مقدار یا پایین‌تر برسد، برای مشتری پیامک هشدار ارسال می‌شود. پس از 3 هشدار، حساب به‌طور خودکار تعلیق و VMهای فعال خاموش می‌شوند.</p>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <x-form.input name="customer_wallet_negative_threshold" type="number" label="آستانه کیف پول منفی" :value="$customerWalletNegativeThreshold" dir-ltr />
+                    <x-form.checkbox name="customer_wallet_negative_sms_enabled" label="ارسال پیامک هشدار کیف پول فعال باشد" :checked="$customerWalletNegativeSmsEnabled" />
+                    <x-form.input name="customer_wallet_negative_sms_template" label="Template کاوه‌نگار هشدار کیف پول" :value="$customerWalletNegativeSmsTemplate" dir-ltr />
+                </div>
+                <p class="mt-3 text-xs leading-6 text-slate-500">توکن کاوه‌نگار برای این Template فقط `token = نام مشتری` را دریافت می‌کند.</p>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h2 class="text-sm font-black text-slate-900">اعلان‌های تیکت و SMTP</h2>
                 <p class="mt-1 text-xs leading-6 text-slate-500">ارسال ایمیل و پیامک تیکت اختیاری است. اعلان داخلی پنل همیشه برای رویدادهای تیکت ثبت می‌شود.</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">

@@ -89,6 +89,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.customers.wallet-transactions.store');
         Route::patch('customers/{customer}/wallet-lock', [WalletController::class, 'updateLock'])
             ->name('admin.customers.wallet-lock.update');
+        Route::patch('customers/{customer}/sms-notifications', [CustomerController::class, 'updateSmsNotifications'])
+            ->name('admin.customers.sms-notifications.update');
 
         Route::patch('customers/{customer}/suspend', [CustomerController::class, 'suspend'])
             ->name('admin.customers.suspend');
@@ -196,7 +198,7 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         ->middleware('auth:customer')
         ->name('customer.logout');
 
-    Route::middleware('auth:customer')->group(function () use ($customerHome) {
+    Route::middleware(['auth:customer', 'customer.wallet.access'])->group(function () use ($customerHome) {
         Route::get($customerHome, DashboardController::class)->name('dashboard');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
         Route::patch('profile/national-code', [ProfileController::class, 'updateNationalCode'])->name('customer.profile.national-code.update');

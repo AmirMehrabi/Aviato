@@ -62,7 +62,7 @@ class CustomerController extends Controller
     public function create(): View
     {
         return view('admin.customers.create', [
-            'customer' => new Customer(['status' => Customer::STATUS_ACTIVE]),
+            'customer' => new Customer(['status' => Customer::STATUS_ACTIVE, 'sms_notifications_enabled' => true]),
         ]);
     }
 
@@ -134,6 +134,19 @@ class CustomerController extends Controller
         return back()->with('status', 'مشتری فعال شد.');
     }
 
+    public function updateSmsNotifications(Request $request, Customer $customer): RedirectResponse
+    {
+        $data = $request->validate([
+            'sms_notifications_enabled' => ['required', 'boolean'],
+        ]);
+
+        $customer->forceFill([
+            'sms_notifications_enabled' => (bool) $data['sms_notifications_enabled'],
+        ])->save();
+
+        return back()->with('status', (bool) $data['sms_notifications_enabled'] ? 'اعلان پیامکی مشتری فعال شد.' : 'اعلان پیامکی مشتری غیرفعال شد.');
+    }
+
     public function impersonate(Request $request, Customer $customer): RedirectResponse
     {
         Auth::guard('customer')->login($customer);
@@ -164,6 +177,8 @@ class CustomerController extends Controller
             $data['suspended_at'] = null;
             $data['suspension_reason'] = null;
         }
+
+        $data['sms_notifications_enabled'] = (bool) ($data['sms_notifications_enabled'] ?? false);
 
         return $data;
     }

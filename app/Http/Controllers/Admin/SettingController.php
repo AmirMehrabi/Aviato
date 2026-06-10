@@ -26,6 +26,9 @@ class SettingController extends Controller
             'sms0098Username' => (string) AppSetting::getValue(AppSetting::SMS0098_USERNAME, ''),
             'sms0098PanelNo' => (string) AppSetting::getValue(AppSetting::SMS0098_PANEL_NO, ''),
             'kavenegarTemplate' => (string) AppSetting::getValue(AppSetting::KAVENEGAR_TEMPLATE, ''),
+            'customerWalletNegativeThreshold' => AppSetting::customerWalletNegativeThreshold(),
+            'customerWalletNegativeSmsEnabled' => AppSetting::customerWalletNegativeSmsEnabled(),
+            'customerWalletNegativeSmsTemplate' => AppSetting::customerWalletNegativeSmsTemplate(),
             'smtpHost' => (string) AppSetting::getValue(AppSetting::SMTP_HOST, ''),
             'smtpPort' => (int) AppSetting::getValue(AppSetting::SMTP_PORT, 587),
             'smtpUsername' => (string) AppSetting::getValue(AppSetting::SMTP_USERNAME, ''),
@@ -62,6 +65,9 @@ class SettingController extends Controller
             'sms0098_panel_no' => ['nullable', 'string', 'max:50'],
             'kavenegar_api_key' => ['nullable', 'string', 'max:255'],
             'kavenegar_template' => ['nullable', 'string', 'max:100'],
+            'customer_wallet_negative_threshold' => ['required', 'integer'],
+            'customer_wallet_negative_sms_enabled' => ['nullable', 'boolean'],
+            'customer_wallet_negative_sms_template' => ['nullable', 'string', 'max:100'],
             'smtp_host' => ['nullable', 'string', 'max:255'],
             'smtp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'smtp_username' => ['nullable', 'string', 'max:255'],
@@ -119,6 +125,9 @@ class SettingController extends Controller
         AppSetting::setValue(AppSetting::SMS0098_USERNAME, $data['sms0098_username'] ?? '', 'string', 'sms0098');
         AppSetting::setValue(AppSetting::SMS0098_PANEL_NO, $data['sms0098_panel_no'] ?? '', 'string', 'sms0098');
         AppSetting::setValue(AppSetting::KAVENEGAR_TEMPLATE, $data['kavenegar_template'] ?? '', 'string', 'kavenegar');
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_THRESHOLD, (int) $data['customer_wallet_negative_threshold'], 'integer', 'billing');
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, (bool) ($data['customer_wallet_negative_sms_enabled'] ?? false), 'boolean', 'billing');
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, $data['customer_wallet_negative_sms_template'] ?? '', 'string', 'billing');
         AppSetting::setValue(AppSetting::SMTP_HOST, $data['smtp_host'] ?? '', 'string', 'smtp');
         AppSetting::setValue(AppSetting::SMTP_PORT, (int) ($data['smtp_port'] ?? 587), 'integer', 'smtp');
         AppSetting::setValue(AppSetting::SMTP_USERNAME, $data['smtp_username'] ?? '', 'string', 'smtp');

@@ -25,6 +25,14 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 <a href="{{ route('admin.customers.edit', $customer) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
+                <form method="POST" action="{{ route('admin.customers.sms-notifications.update', $customer) }}">
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="sms_notifications_enabled" value="{{ $customer->sms_notifications_enabled ? 0 : 1 }}">
+                    <button class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] transition hover:bg-slate-100">
+                        {{ $customer->sms_notifications_enabled ? 'غیرفعال‌سازی پیامک' : 'فعال‌سازی پیامک' }}
+                    </button>
+                </form>
                 @if($customer->status === 'suspended')
                     <form method="POST" action="{{ route('admin.customers.activate', $customer) }}">@csrf @method('PATCH') <button class="rounded-lg bg-[#B8D6FF] px-5 py-3 text-sm font-black text-[#031B4E]">فعال‌سازی</button></form>
                 @else
@@ -37,6 +45,7 @@
     <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @foreach ([
             ['label' => 'وضعیت حساب', 'value' => $customer->status === 'suspended' ? 'تعلیق شده' : 'فعال', 'tone' => $customer->status === 'suspended' ? 'text-red-600' : 'text-[#0069FF]'],
+            ['label' => 'اعلان پیامکی', 'value' => $customer->sms_notifications_enabled ? 'فعال' : 'غیرفعال', 'tone' => $customer->sms_notifications_enabled ? 'text-[#0069FF]' : 'text-slate-500'],
             ['label' => 'موجودی کیف پول', 'value' => $wallets->format($financial['balance']), 'tone' => $financial['balance'] < 0 ? 'text-red-600' : 'text-[#0069FF]'],
             ['label' => 'مصرف ماهانه', 'value' => $wallets->format($financial['monthly_spend']), 'tone' => 'text-slate-950'],
             ['label' => 'مصرف محاسبه نشده', 'value' => $wallets->format($financial['unpaid_total']), 'tone' => $financial['unpaid_total'] > 0 ? 'text-amber-700' : 'text-[#0069FF]'],

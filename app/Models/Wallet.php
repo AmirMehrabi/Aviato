@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['customer_id', 'balance', 'is_locked', 'lock_reason', 'last_transaction_at'])]
+#[Fillable(['customer_id', 'balance', 'is_locked', 'lock_reason', 'last_transaction_at', 'negative_notification_count', 'negative_notified_at'])]
 class Wallet extends Model
 {
     public function customer(): BelongsTo
@@ -31,6 +31,8 @@ class Wallet extends Model
             'balance' => 'integer',
             'is_locked' => 'boolean',
             'last_transaction_at' => 'datetime',
+            'negative_notification_count' => 'integer',
+            'negative_notified_at' => 'datetime',
         ];
     }
 }

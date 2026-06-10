@@ -29,6 +29,7 @@ class UpdateCustomerRequest extends FormRequest
             'status' => ['required', Rule::in(['active', 'suspended'])],
             'suspension_reason' => ['nullable', 'string', 'max:255'],
             'email_verified' => ['nullable', 'boolean'],
+            'sms_notifications_enabled' => ['nullable', 'boolean'],
         ];
     }
 }

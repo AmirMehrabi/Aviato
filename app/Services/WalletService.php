@@ -13,6 +13,8 @@ use Illuminate\Validation\ValidationException;
 
 class WalletService
 {
+    public function __construct(private readonly CustomerWalletAlertService $walletAlerts) {}
+
     public function walletFor(Customer $customer): Wallet
     {
         return $customer->wallet()->firstOrCreate([], ['balance' => 0]);
@@ -86,7 +88,7 @@ class WalletService
             throw ValidationException::withMessages(['amount' => 'Amount must be greater than zero.']);
         }
 
-        return DB::transaction(function () use ($customer, $signedAmount, $type, $description, $actor, $reference, $metadata, $allowNegative): WalletTransaction {
+        $transaction = DB::transaction(function () use ($customer, $signedAmount, $type, $description, $actor, $reference, $metadata, $allowNegative): WalletTransaction {
             $wallet = Wallet::query()->where('customer_id', $customer->id)->lockForUpdate()->first();
             $wallet ??= Wallet::create(['customer_id' => $customer->id, 'balance' => 0]);
 
@@ -122,5 +124,9 @@ class WalletService
 
             return $transaction;
         });
+
+        $this->walletAlerts->handleWalletBalanceChange($customer);
+
+        return $transaction;
     }
 }
