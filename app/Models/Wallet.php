@@ -24,6 +24,7 @@ class Wallet extends Model
     {
         return $this->hasMany(Payment::class)->latest();
     }
+    
 
     protected function casts(): array
     {
