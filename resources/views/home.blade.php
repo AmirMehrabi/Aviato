@@ -63,7 +63,7 @@
 @section('content')
     <section id="top" class="relative isolate flex min-h-[52vh] items-center overflow-hidden px-4 pb-12 pt-24 md:min-h-[58vh] md:px-8 md:pb-16 md:pt-28 lg:px-10">
         <div aria-hidden="true" class="absolute inset-0 -z-20 bg-[#F5F8FD]"></div>
-        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center" style="background-image: url('{{ asset('assets/images/hero-section.png') }}');"></div>
+        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center" style="background-image: url('{{ asset('assets/images/hero-section.webp') }}');"></div>
         <div aria-hidden="true" class="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-white to-white/0"></div>
 
         <div class="mx-auto w-full max-w-7xl">
