@@ -1,50 +1,55 @@
 @extends('layouts.marketing')
 
-@section('title', 'آویاتو: ارائه‌دهنده‌ی سرویس‌های ابری')
-@section('description', 'خرید ماشین مجازی آویاتو با دیسک NVMe، IP اختصاصی، قیمت مشخص و پشتیبانی فارسی برای راه اندازی سایت، فروشگاه و اپلیکیشن.')
+@section('title', 'آویاتو | از زمین تا ابر، با اطمینان')
+@section('description', 'خرید ماشین مجازی آویاتو با دیسک NVMe، IP اختصاصی، قیمت روشن و پشتیبانی فارسی برای راه اندازی سایت، فروشگاه و اپلیکیشن.')
 
 @php
     $activePage = 'home';
 
     $marketingBundles = ($bundles ?? collect())->values();
-    $heroBundle = $marketingBundles->get(1) ?? $marketingBundles->first();
     $recommendedIndex = min(1, max(0, $marketingBundles->count() - 1));
 
     $planMeta = [
-        ['label' => 'شروع آسان', 'use' => 'سایت، وردپرس و پروژه های کوچک'],
-        ['label' => 'پیشنهاد ما', 'use' => 'فروشگاه، اپلیکیشن و سرویس های در حال رشد'],
-        ['label' => 'برای کارهای جدی تر', 'use' => 'دیتابیس، پردازش و سایت های پربازدید'],
-        ['label' => 'منابع بیشتر', 'use' => 'تیم ها و پروژه هایی که قدرت بیشتری می خواهند'],
+        ['label' => 'شروع سبک', 'use' => 'برای سایت، وردپرس و پروژه های کوچک'],
+        ['label' => 'انتخاب پیشنهادی', 'use' => 'برای فروشگاه، اپلیکیشن و سرویس های در حال رشد'],
+        ['label' => 'منابع بیشتر', 'use' => 'برای دیتابیس، پردازش و سایت های پربازدید'],
+        ['label' => 'برای تیم ها', 'use' => 'برای پروژه هایی که به ظرفیت بالاتری نیاز دارند'],
+    ];
+
+    $currentCustomers = [
+        ['name' => 'مبیت', 'url' => 'https://mobit.ir', 'logo' => 'assets/images/customers/mobit-logo.svg'],
+        ['name' => 'حسابرو', 'url' => 'https://hesabro.ir', 'logo' => 'assets/images/customers/hesabro-logo.png'],
+        ['name' => 'کارخانه نوآوری کرمان', 'url' => 'https://kermanif.ir', 'logo' => 'assets/images/customers/kermanif-logo.png'],
     ];
 
     $differenceRows = [
-        ['title' => 'خرید ساده و سریع', 'body' => 'پلن ها را می بینید، منابع و قیمت را مقایسه می کنید و بعد سرور خود را می سازید.'],
-        ['title' => 'قیمت و منابع مشخص', 'body' => 'CPU، RAM، دیسک NVMe، تعداد IP و هزینه ماهانه قبل از خرید برای شما مشخص است.'],
-        ['title' => 'مناسب برای شروع کار', 'body' => 'با IP اختصاصی، دیسک سریع، بکاپ، فایروال و پشتیبانی فارسی راحت تر سرویس خود را راه اندازی می کنید.'],
+        ['title' => 'خرید بدون ابهام', 'body' => 'قبل از پرداخت می دانید چه منابعی می گیرید، هزینه چقدر است و سفارش از کجا پیگیری می شود.'],
+        ['title' => 'شروع قابل پیش بینی', 'body' => 'پس از ثبت سفارش، ساخت ماشین مجازی شروع می شود و اطلاعات اتصال داخل پنل مشتری قرار می گیرد.'],
+        ['title' => 'پشتیبانی قابل فهم', 'body' => 'برای انتخاب پلن، شروع کار و رفع سوال های رایج، با تیم فارسی زبان در ارتباط هستید.'],
     ];
 
     $useCases = [
-        ['title' => 'سایت و وردپرس', 'body' => 'برای سایت شرکتی، وبلاگ، فروشگاه و پنل های مدیریتی.'],
-        ['title' => 'اپلیکیشن و API', 'body' => 'برای سرویس هایی که باید همیشه آنلاین باشند و منابع مشخص داشته باشند.'],
-        ['title' => 'دیتابیس و پردازش', 'body' => 'برای دیتابیس های سبک، کارهای پس زمینه و پردازش های روزمره.'],
-        ['title' => 'تست و تمرین', 'body' => 'برای ساخت محیط تست، بررسی نسخه جدید و جدا کردن پروژه ها از هم.'],
+        ['title' => 'سایت و وردپرس', 'body' => 'برای سایت شرکتی، وبلاگ، فروشگاه و پنل های مدیریتی که باید همیشه در دسترس باشند.'],
+        ['title' => 'اپلیکیشن و API', 'body' => 'برای سرویس هایی که نیاز به منابع مشخص، IP اختصاصی و دسترسی مدیریتی دارند.'],
+        ['title' => 'دیتابیس و پردازش', 'body' => 'برای دیتابیس های سبک، صف، کش و کارهای پس زمینه روزمره.'],
+        ['title' => 'تست و توسعه', 'body' => 'برای محیط جداگانه تست، بررسی نسخه جدید و تمرین بدون درگیر کردن سرویس اصلی.'],
     ];
 
     $steps = [
-        ['number' => '01', 'title' => 'پلن را انتخاب کنید', 'body' => 'منابع و قیمت هر ماشین مجازی را ببینید و پلنی را انتخاب کنید که به کار شما می آید.'],
-        ['number' => '02', 'title' => 'ثبت نام و پرداخت کنید', 'body' => 'حساب کاربری بسازید، کیف پول را شارژ کنید و سفارش را در پنل مشتری ثبت کنید.'],
-        ['number' => '03', 'title' => 'وارد سرور شوید', 'body' => 'بعد از آماده شدن سرور، IP و اطلاعات اتصال در پنل نمایش داده می شود.'],
+        ['number' => '01', 'title' => 'پلن را انتخاب کنید', 'body' => 'منابع، قیمت و تعداد IP را می بینید و پلن مناسب پروژه را انتخاب می کنید.'],
+        ['number' => '02', 'title' => 'حساب را شارژ کنید', 'body' => 'در پنل مشتری ثبت نام می کنید، کیف پول را شارژ می کنید و سفارش را ثبت می کنید.'],
+        ['number' => '03', 'title' => 'اطلاعات اتصال را بگیرید', 'body' => 'بعد از آماده شدن ماشین مجازی، IP و مشخصات اتصال در پنل نمایش داده می شود.'],
     ];
 
     $operations = [
-        ['title' => 'دیسک NVMe', 'body' => 'سرعت بهتر برای سایت، فروشگاه، دیتابیس و کارهای روزمره.'],
+        ['title' => 'دیسک NVMe', 'body' => 'برای بارگذاری سریع تر سایت، فروشگاه، دیتابیس و ابزارهای کاری.'],
         ['title' => 'IP اختصاصی', 'body' => 'برای دامنه، SSL، اتصال مستقیم و جدا نگه داشتن سرویس ها.'],
-        ['title' => 'بکاپ و فایروال', 'body' => 'برای کم کردن ریسک و کنترل دسترسی های مهم سرور.'],
-        ['title' => 'پشتیبانی فارسی', 'body' => 'برای انتخاب پلن، شروع کار و حل مشکل های رایج سرور مجازی.'],
+        ['title' => 'بکاپ و فایروال', 'body' => 'برای کاهش ریسک و کنترل دسترسی های مهم ماشین مجازی.'],
+        ['title' => 'پشتیبانی فارسی', 'body' => 'برای انتخاب پلن، شروع کار و پاسخ به سوال های فنی رایج.'],
     ];
 
     $faqs = [
-        ['q' => 'بعد از خرید، سرور چه زمانی آماده می شود؟', 'a' => 'بعد از ثبت سفارش و پرداخت، ساخت ماشین مجازی به صورت خودکار شروع می شود. وقتی سرور آماده شد، IP و اطلاعات اتصال را در پنل مشتری می بینید.'],
+        ['q' => 'بعد از خرید، ماشین مجازی چه زمانی آماده می شود؟', 'a' => 'بعد از ثبت سفارش و پرداخت، ساخت ماشین مجازی به صورت خودکار شروع می شود. وقتی سرور آماده شد، IP و اطلاعات اتصال را در پنل مشتری می بینید.'],
         ['q' => 'برای سایت یا اپلیکیشنم کدام پلن بهتر است؟', 'a' => 'اگر تازه شروع کرده اید، معمولا یک پلن کوچک تر کافی است. برای فروشگاه، سایت پربازدید یا اپلیکیشنی که کاربر زیادی دارد، بهتر است پلنی انتخاب کنید که کمی فضای رشد هم داشته باشد.'],
         ['q' => 'آیا دسترسی کامل به سرور دارم؟', 'a' => 'بله. سرور با دسترسی مدیریتی تحویل داده می شود و می توانید وب سرور، دیتابیس، Docker و ابزارهای مورد نیاز خودتان را نصب کنید.'],
         ['q' => 'هزینه ها چطور پرداخت می شوند؟', 'a' => 'قیمت هر پلن قبل از سفارش مشخص است و پرداخت از کیف پول مشتری انجام می شود. قبل از خرید، منابع و هزینه ماهانه را می بینید.'],
@@ -53,164 +58,73 @@
     ];
 @endphp
 
+@section('body_class', 'bg-[#F5F8FD]')
+
 @section('content')
-    <section id="top" class="relative isolate overflow-hidden bg-[#06162E] px-4 pb-16 pt-12 text-white md:px-8 md:pb-24 md:pt-20 lg:px-10">
-        <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-full bg-[radial-gradient(circle_at_top_right,rgba(0,128,255,0.28),transparent_34%),linear-gradient(180deg,#071B3A_0%,#06162E_72%)]"></div>
-        <div aria-hidden="true" class="absolute left-[-7rem] top-16 -z-10 h-72 w-72 rounded-full bg-[#0080FF]/20 blur-3xl"></div>
-        <div aria-hidden="true" class="absolute right-[-6rem] top-28 -z-10 h-60 w-60 rounded-full bg-sky-300/10 blur-3xl"></div>
-        <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 h-full opacity-[0.16] [background-image:radial-gradient(#93c5fd_1px,transparent_1px)] [background-size:28px_28px]"></div>
+    <section id="top" class="relative isolate flex min-h-[52vh] items-center overflow-hidden px-4 pb-12 pt-24 md:min-h-[58vh] md:px-8 md:pb-16 md:pt-28 lg:px-10">
+        <div aria-hidden="true" class="absolute inset-0 -z-20 bg-[#F5F8FD]"></div>
+        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center" style="background-image: url('{{ asset('assets/images/hero-section.png') }}');"></div>
+        <div aria-hidden="true" class="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-white to-white/0"></div>
 
-        <div class="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(430px,0.92fr)_minmax(0,1.08fr)] lg:items-center">
-            <div class="order-2 hidden lg:block">
-                <div class="relative mx-auto max-w-[720px]">
-                    <div aria-hidden="true" class="absolute -inset-5 -z-10 rounded-[2rem] bg-[#0069FF]/10 blur-2xl"></div>
-                    <div class="overflow-hidden rounded-2xl border border-white/10 bg-[#F8FAFC] shadow-2xl shadow-slate-950/30">
-                        <div class="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-1">
-                            <div class="flex items-center gap-2">
-                                <span class="size-3 rounded-full bg-[#ff5f57] ring-1 ring-black/5"></span>
-                                <span class="size-3 rounded-full bg-[#febc2e] ring-1 ring-black/5"></span>
-                                <span class="size-3 rounded-full bg-[#28c840] ring-1 ring-black/5"></span>
-                            </div>
-                            <div class="flex min-w-0 flex-1 justify-center">
-                                <div class="max-w-xs truncate rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-center text-xs font-bold text-slate-500" dir="ltr">
-                                    aviato.ir/servers/create
-                                </div>
-                            </div>
-                            <div class="h-4 w-14"></div>
-                        </div>
-
-                        <div class="p-4">
-                            <div class="mb-4 flex items-center justify-between gap-4">
-                                <div>
-                                    <p class="text-xs  uppercase text-[#0069FF]">ساخت ماشین مجازی جدید</p>
-                                    <p class="mt-1 text-sm  text-slate-950">سیستم عامل، پلن و دسترسی اولیه را انتخاب کنید</p>
-                                </div>
-                                <span class="rounded-lg border border-[#B8D6FF] bg-[#F2F8FF] px-3 py-2 text-xs  text-[#0069FF]">کیف پول آماده</span>
-                            </div>
-
-                            <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_210px]">
-                                <div class="space-y-4">
-                                    <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                                        <div class="border-b border-slate-100 px-4 py-1">
-                                            <h2 class="mt-1 text-sm  text-slate-950">۱- سیستم عامل را انتخاب کنید</h2>
-                                        </div>
-                                        <div class="grid gap-2 p-4 md:grid-cols-3">
-                                            @foreach ([['assets/images/distro/ubuntu.png', 'Ubuntu', '۳ نسخه آماده', 'bg-orange-100 text-orange-700 border-orange-200'], ['assets/images/distro/debian.png', 'Debian', '۲ نسخه آماده', 'bg-red-100 text-red-700 border-red-200']] as $family)
-                                                <div class="flex items-center gap-1.5 rounded-lg border p-3 text-right {{ $loop->first ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white' }}">
-                                                    <span class="grid size-9 rounded-full shrink-0 place-items-center  border text-xs  {{ $family[3] }}">
-                                                        <img src="{{ asset($family[0]) }}" class="size-9" alt="Ubuntu Logo">
-                                                    </span>
-                                                    <span class="min-w-0">
-                                                        <span class="block text-sm  text-slate-950">{{ $family[1] }}</span>
-                                                        {{-- <span class="mt-1 block text-[11px] font-bold text-slate-500">{{ $family[2] }}</span> --}}
-                                                    </span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </section>
-          
-                                    <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                                        <div class="border-b border-slate-100 px-4 py-1">
-                                            <h2 class="mt-1 text-sm  text-slate-950">۲- نسخه و پلن ماشین مجازی</h2>
-                                        </div>
-                                        <div class="grid gap-3 p-4 md:grid-cols-[1fr_1.15fr]">
-                                            <div class="flex items-center gap-3 rounded-lg bg-[#F2F8FF] p-3">
-                                                {{-- <span class="size-4 rounded-full border-4 border-[#0069FF] bg-white"></span> --}}
-                                                <img src="{{ asset("assets/images/distro/ubuntu.png") }}" class="size-9" alt="Ubuntu Logo">
-                                                {{-- <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-orange-100 text-xs  text-orange-700">U</span> --}}
-                                                <span class="min-w-0">
-                                                    <span class="block text-sm  text-slate-950">Ubuntu 22.04 LTS</span>
-                                                    {{-- <span class="mt-1 block text-[11px] font-bold text-slate-500">Cloud-init ready</span> --}}
-                                                </span>
-                                            </div>
-                                            <div class="relative rounded-xl border border-[#0069FF] bg-[#F2F8FF] p-3 text-right ring-4 ring-[#0069FF]/10">
-                                                <span class="absolute left-3 top-3 rounded-md bg-[#0069FF] px-2 py-1 text-[10px]  text-white">پیشنهادی</span>
-                                                <span class="block text-sm  text-slate-950">{{ $heroBundle?->name ?? 'پلن پیشنهادی' }}</span>
-                                                {{-- <span class="mt-2 block text-xs leading-6 text-slate-500">{{ $heroBundle?->description ?: 'مناسب سایت و فروشگاه فعال' }}</span> --}}
-                                                <span class="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
-                                                    <span class="rounded-lg bg-white p-1 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->cpu_cores ?? 4 }}</b><br>CPU</span>
-                                                    <span class="rounded-lg bg-white p-1 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->ram_gb ?? 8 }}</b><br>RAM</span>
-                                                    <span class="rounded-lg bg-white p-1 ring-1 ring-slate-200 text-black"><b>{{ $heroBundle?->disk_gb ?? 80 }}</b><br>Disk</span>
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                                        <div class="border-b border-slate-100 px-4 py-1">
-                                            <h2 class="mt-1 text-sm  text-slate-950">۳- دسترسی اولیه</h2>
-                                        </div>
-                                        <div class="grid gap-3 px-4 pt-2 pb-4 md:grid-cols-2">
-                                            <div>
-                                                <span class="text-xs  text-slate-700">نام ماشین مجازی</span>
-                                                <div class="mt-2 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-xs font-bold text-slate-500" dir="ltr">web-01</div>
-                                            </div>
-                                            <div>
-                                                <span class="text-xs  text-slate-700">Username</span>
-                                                <div class="mt-2 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-xs font-bold text-slate-500" dir="ltr">ubuntu</div>
-                                            </div>
-                                        </div>
-                                    </section>
-                                </div>
-
-                                <aside class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
-                                    <h2 class="text-base  text-slate-950">حساب و کتاب</h2>
-                                    <div class="mt-4 space-y-3 text-xs">
-                                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class=" text-slate-950">Ubuntu</span></div>
-                                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">پلن</span><span class=" text-slate-950">{{ $heroBundle?->name ?? '—' }}</span></div>
-                                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class=" text-slate-950" dir="ltr">{{ $heroBundle?->cpu_cores ?? 4 }} CPU / {{ $heroBundle?->ram_gb ?? 8 }}GB</span></div>
-                                        <div class="rounded-lg bg-slate-50 p-3">
-                                            <p class="text-[11px]  text-slate-500">هزینه ماهانه تقریبی</p>
-                                            <p class="mt-2 text-lg  text-slate-950">{{ $heroBundle ? $wallets->format($heroBundle->monthly_price) : '—' }}</p>
-                                        </div>
-                                        <div class="rounded-lg border border-dashed border-slate-300 p-3 text-[11px] leading-5 text-slate-500">IP به صورت خودکار تخصیص داده می شود.</div>
-                                    </div>
-                                    <a href="{{ route('customer.register') }}" class="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#0069FF] px-4 py-3 text-xs  text-white transition hover:bg-[#0050D0]">ساخت ماشین مجازی</a>
-                                </aside>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="order-1">
-                <h1 class="max-w-3xl text-4xl  leading-tight tracking-normal text-white md:text-6xl">
-                    سرور مجازی سریع،
-                    <span class="block text-[#8FC7FF]">با قیمت مشخص</span>
+        <div class="mx-auto w-full max-w-7xl">
+            <div class="mx-auto max-w-3xl text-center md:mx-0 md:text-right">
+                <h1 class="text-4xl leading-[1.22] text-slate-950 sm:text-5xl md:text-6xl">
+                    از زمین تا ابر،
+                    <span class="block text-[#1976C9]">با اطمینان.</span>
                 </h1>
-                <p class="mt-6 max-w-2xl text-base leading-9 text-slate-300 md:text-lg">
-                    ماشین مجازی آویاتو برای راه اندازی سایت، فروشگاه و اپلیکیشن است. پلن ها روشن هستند، قیمت را قبل از خرید می بینید و برای شروع کار پشتیبانی فارسی دارید.
+                <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-700 md:mx-0 md:text-lg md:leading-9">
+                    ماشین مجازی ساده و قابل اعتماد برای سایت، فروشگاه و سرویس هایی که باید بدون ابهام راه اندازی شوند.
                 </p>
-
-                <div class="mt-9 flex flex-col gap-3 sm:flex-row">
-                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-7 py-4 text-base  text-white shadow-xl shadow-[#0069FF]/25 transition hover:bg-[#0050D0]">
-                        خرید سرور مجازی
+                <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row md:justify-start">
+                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
+                        شروع کنید
                     </a>
-                    <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-lg border border-white/20 px-7 py-4 text-base  text-white shadow-sm transition hover:bg-white/10">
-                        دیدن پلن ها و قیمت ها
+                    <a href="{{ route('contact') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/75 px-7 py-3.5 text-sm font-bold text-slate-700 shadow-sm backdrop-blur transition hover:border-[#B8D6FF] hover:bg-white hover:text-[#0069FF]">
+                        با ما تماس بگیرید
                     </a>
                 </div>
-
-                {{-- <div class="mt-10 grid gap-4 border-y border-sky-100 py-6 sm:grid-cols-3">
-                    @foreach ([['راه اندازی سریع', 'بعد از ثبت سفارش'], ['NVMe', 'دیسک سریع'], ['قیمت مشخص', 'قبل از پرداخت']] as $metric)
-                        <div class="border-r-2 border-[#0069FF] pr-4">
-                            <p class="text-2xl  text-slate-950">{{ $metric[0] }}</p>
-                            <p class="mt-1 text-sm font-bold text-slate-500">{{ $metric[1] }}</p>
-                        </div>
-                    @endforeach
-                </div> --}}
             </div>
         </div>
     </section>
 
-    <section id="plans" class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
+    <section class="bg-white px-4 py-16 md:px-8 md:py-20 lg:px-10">
+        <div class="mx-auto max-w-7xl">
+            <div class="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
+                <div class="text-center lg:text-right">
+                    <p class="text-sm font-bold text-[#2C67C9]">مشتریان فعلی آویاتو</p>
+                    <h2 class="mt-3 text-2xl leading-tight text-slate-950 md:text-4xl">
+                        <span class="block">زیرساخت آرام</span>
+                        <span class="block">برای کارهای واقعی.</span>
+                    </h2>
+                    <p class="mt-5 leading-8 text-slate-600">
+                        آویاتو میزبان پروژه هایی است که برای فروش، پشتیبانی، توسعه و کار روزانه به ماشین مجازی پایدار نیاز دارند.
+                    </p>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-3">
+                    @foreach ($currentCustomers as $customer)
+                        <a href="{{ $customer['url'] }}" target="_blank" rel="noopener noreferrer" class="group flex min-h-40 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-[#FBFDFF] p-6 text-center transition hover:-translate-y-1 hover:border-[#B9D6FF] hover:bg-white hover:shadow-xl hover:shadow-slate-200/60">
+                            <span class="flex h-16 w-full items-center justify-center">
+                                <img src="{{ asset($customer['logo']) }}" alt="{{ $customer['name'] }}" class="max-h-14 max-w-44 object-contain">
+                            </span>
+                            <span class="mt-5 text-lg font-bold text-slate-950">{{ $customer['name'] }}</span>
+                            <span class="mt-2 text-sm font-bold text-slate-500" dir="ltr">{{ parse_url($customer['url'], PHP_URL_HOST) }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="plans" class="bg-[#F5F8FD] px-4 py-20 md:px-8 md:py-24 lg:px-10">
         <div class="mx-auto max-w-7xl">
             <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                 <div class="max-w-2xl">
-                    <p class="text-sm  text-[#0069FF]">پلن های ماشین مجازی</p>
-                    <h2 class="mt-3 text-3xl  leading-tight text-slate-950 md:text-4xl">پلن مناسب خود را راحت انتخاب کنید.</h2>
+                    <p class="text-sm font-bold text-[#2C67C9]">پلن های ماشین مجازی</p>
+                    <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">با یک پلن روشن شروع کنید.</h2>
+                    <p class="mt-4 leading-8 text-slate-600">منابع، تعداد IP و هزینه ماهانه قبل از خرید مشخص است؛ انتخاب پلن نباید پیچیده باشد.</p>
                 </div>
-                <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-lg border border-sky-200 bg-white px-5 py-3 text-sm  text-slate-800 transition hover:border-[#0069FF] hover:text-[#0069FF]">همه پلن ها</a>
+                <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9]">همه پلن ها</a>
             </div>
 
             <div class="mt-10 grid gap-5 lg:grid-cols-3">
@@ -219,36 +133,36 @@
                         $meta = $planMeta[$loop->index] ?? $planMeta[3];
                         $isRecommended = $loop->index === $recommendedIndex;
                     @endphp
-                    <article class="relative rounded-2xl border bg-white p-6 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-100 {{ $isRecommended ? 'border-[#0069FF] bg-[#F7FBFF] shadow-xl shadow-[#0069FF]/10' : 'border-sky-100' }}">
+                    <article class="relative rounded-[1.75rem] border bg-white p-6 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-100 {{ $isRecommended ? 'border-[#B9D6FF] bg-[#F7FBFF] shadow-xl shadow-[#B9D6FF]/15' : 'border-slate-200' }}">
                         @if ($isRecommended)
-                            <span class="absolute left-5 top-5 rounded-md bg-[#0069FF] px-3 py-1 text-xs  text-white">پیشنهادی</span>
+                            <span class="absolute left-5 top-5 rounded-full bg-[#EEF5FF] px-3 py-1 text-xs font-bold text-[#2C67C9]">پیشنهادی</span>
                         @endif
 
-                        <p class="text-sm  text-[#0069FF]">{{ $meta['label'] }}</p>
-                        <h3 class="mt-3 text-3xl  text-slate-950">{{ $bundle->name }}</h3>
+                        <p class="text-sm font-bold text-[#2C67C9]">{{ $meta['label'] }}</p>
+                        <h3 class="mt-3 text-3xl text-slate-950">{{ $bundle->name }}</h3>
                         <p class="mt-2 min-h-7 text-sm font-bold text-slate-500">{{ $meta['use'] }}</p>
 
-                        <div class="mt-7 border-y border-sky-100 py-5">
-                            <p class="text-4xl  text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
+                        <div class="mt-7 border-y border-slate-100 py-5">
+                            <p class="text-4xl text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
                             <p class="mt-1 text-sm font-bold text-slate-500">ماهانه</p>
                         </div>
 
                         <p class="mt-5 min-h-16 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'ماشین مجازی آماده برای سایت، فروشگاه، اپلیکیشن و سرویس های آنلاین.' }}</p>
 
-                        <div class="mt-7 grid grid-cols-2 gap-2 text-sm  text-slate-700">
-                            <span class="rounded-lg bg-white p-3 ring-1 ring-sky-100" dir="ltr">{{ $bundle->cpu_cores }} vCPU</span>
-                            <span class="rounded-lg bg-white p-3 ring-1 ring-sky-100" dir="ltr">{{ $bundle->ram_gb }}GB RAM</span>
-                            <span class="rounded-lg bg-white p-3 ring-1 ring-sky-100" dir="ltr">{{ $bundle->disk_gb }}GB NVMe</span>
-                            <span class="rounded-lg bg-white p-3 ring-1 ring-sky-100" dir="ltr">{{ $bundle->ip_count }} IP</span>
+                        <div class="mt-7 grid grid-cols-2 gap-2 text-sm text-slate-700">
+                            <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->cpu_cores }} vCPU</span>
+                            <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->ram_gb }}GB RAM</span>
+                            <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->disk_gb }}GB NVMe</span>
+                            <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->ip_count }} IP</span>
                         </div>
 
-                        <a href="{{ route('customer.register') }}" class="mt-7 inline-flex w-full justify-center rounded-lg bg-[#0069FF] px-5 py-3 text-sm  text-white transition hover:bg-[#0050D0]">
+                        <a href="{{ route('customer.register') }}" class="mt-7 inline-flex w-full justify-center rounded-xl bg-[#4C86E8] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#3E76D6]">
                             خرید این پلن
                         </a>
                     </article>
                 @empty
-                    <div class="rounded-2xl border border-dashed border-sky-200 bg-sky-50 p-8 text-center lg:col-span-3">
-                        <h3 class="text-xl  text-slate-950">فعلا پلنی برای نمایش وجود ندارد.</h3>
+                    <div class="rounded-[1.75rem] border border-dashed border-slate-200 bg-[#F7FBFF] p-8 text-center lg:col-span-3">
+                        <h3 class="text-xl text-slate-950">فعلا پلنی برای نمایش وجود ندارد.</h3>
                         <p class="mt-3 text-sm leading-7 text-slate-600">بعد از فعال شدن پلن ها در پنل مدیریت، قیمت ها به صورت خودکار در صفحه خانه و صفحه قیمت ها نمایش داده می شوند.</p>
                     </div>
                 @endforelse
@@ -256,20 +170,20 @@
         </div>
     </section>
 
-    <section class="bg-[#F7FBFF] px-4 py-20 md:px-8 md:py-24 lg:px-10">
+    <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
             <div>
-                <p class="text-sm  text-[#0069FF]">چرا آویاتو؟</p>
-                <h2 class="mt-3 text-3xl  leading-tight text-slate-950 md:text-4xl">خرید ماشین مجازی بدون پیچیدگی اضافه.</h2>
+                <p class="text-sm font-bold text-[#2C67C9]">چرا آویاتو؟</p>
+                <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">زیرساختی که فهمیدنش سخت نیست.</h2>
                 <p class="mt-5 leading-8 text-slate-600">
-                    برای خرید سرور مجازی باید بدانید چه منابعی می گیرید، چقدر پرداخت می کنید و چطور سرور را تحویل می گیرید. ما همین مسیر را ساده کرده ایم.
+                    انتخاب ماشین مجازی وقتی راحت تر است که قیمت، منابع و مسیر تحویل از ابتدا روشن باشد.
                 </p>
             </div>
 
             <div class="grid gap-4">
                 @foreach ($differenceRows as $row)
-                    <article class="rounded-2xl border border-sky-100 bg-white p-6 shadow-sm shadow-sky-100">
-                        <h3 class="text-xl  text-slate-950">{{ $row['title'] }}</h3>
+                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
+                        <h3 class="text-xl text-slate-950">{{ $row['title'] }}</h3>
                         <p class="mt-3 text-sm leading-8 text-slate-600">{{ $row['body'] }}</p>
                     </article>
                 @endforeach
@@ -277,22 +191,22 @@
         </div>
     </section>
 
-    <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
+    <section class="bg-[#F5F8FD] px-4 py-20 md:px-8 md:py-24 lg:px-10">
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <div>
-                <p class="text-sm  text-[#0069FF]">برای چه کاری می خرید؟</p>
-                <h2 class="mt-3 text-3xl  leading-tight text-slate-950 md:text-4xl">برای سایت، فروشگاه، اپلیکیشن و تست.</h2>
-                <p class="mt-5 leading-8 text-slate-600">هر پروژه به اندازه خودش منابع می خواهد. پلنی را انتخاب کنید که با نیاز امروز شما هماهنگ است و برای رشد هم جا دارد.</p>
-                <a href="{{ route('solutions') }}" class="mt-8 inline-flex rounded-lg border border-sky-200 bg-white px-5 py-3 text-sm  text-slate-800 transition hover:border-[#0069FF] hover:text-[#0069FF]">دیدن کاربردها</a>
+                <p class="text-sm font-bold text-[#2C67C9]">کاربردهای رایج</p>
+                <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">برای پروژه امروز، با امکان رشد فردا.</h2>
+                <p class="mt-5 leading-8 text-slate-600">از یک سایت ساده تا سرویس های فنی تر، می توانید با منابع مشخص شروع کنید و بعد متناسب با رشد پروژه تصمیم بگیرید.</p>
+                <a href="{{ route('solutions') }}" class="mt-8 inline-flex rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9]">دیدن کاربردها</a>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
                 @foreach ($useCases as $case)
-                    <article class="rounded-2xl border border-sky-100 bg-white p-6 shadow-sm shadow-sky-100 transition hover:border-[#B8D6FF] hover:shadow-lg hover:shadow-sky-100">
-                        <div class="mb-5 grid size-10 place-items-center rounded-lg bg-[#EAF4FF] text-[#0069FF]">
+                    <article class="rounded-[1.75rem] border border-slate-200 bg-[#FBFDFF] p-6 shadow-sm shadow-slate-200/40 transition hover:border-[#B9D6FF] hover:shadow-lg hover:shadow-slate-200/60">
+                        <div class="mb-5 grid size-10 place-items-center rounded-2xl bg-[#EEF5FF] text-[#2C67C9]">
                             <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </div>
-                        <h3 class="text-xl  text-slate-950">{{ $case['title'] }}</h3>
+                        <h3 class="text-xl text-slate-950">{{ $case['title'] }}</h3>
                         <p class="mt-3 text-sm leading-7 text-slate-600">{{ $case['body'] }}</p>
                     </article>
                 @endforeach
@@ -300,38 +214,38 @@
         </div>
     </section>
 
-    <section class="bg-[#06152B] px-4 py-20 text-white md:px-8 md:py-24 lg:px-10">
+    <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
         <div class="mx-auto max-w-7xl">
             <div class="max-w-3xl">
-                <p class="text-sm  text-sky-300">مسیر خرید</p>
-                <h2 class="mt-3 text-3xl  leading-tight md:text-4xl">از انتخاب پلن تا ورود به سرور، در چند قدم ساده.</h2>
-                <p class="mt-5 leading-8 text-sky-100/75">بعد از انتخاب پلن و ثبت سفارش، سرور شما ساخته می شود و اطلاعات اتصال در پنل قرار می گیرد.</p>
+                <p class="text-sm font-bold text-[#2C67C9]">مسیر شروع</p>
+                <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">از انتخاب پلن تا اتصال، کوتاه و روشن.</h2>
+                <p class="mt-5 leading-8 text-slate-600">فرایند خرید طوری طراحی شده که بدون تماس های طولانی و توضیح های پیچیده بتوانید سفارش را ثبت و پیگیری کنید.</p>
             </div>
 
             <div class="mt-10 grid gap-4 md:grid-cols-3">
                 @foreach ($steps as $step)
-                    <article class="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
-                        <p class="text-sm  text-sky-300">{{ $step['number'] }}</p>
-                        <h3 class="mt-7 text-2xl  text-white">{{ $step['title'] }}</h3>
-                        <p class="mt-4 text-sm leading-8 text-sky-100/75">{{ $step['body'] }}</p>
+                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/50">
+                        <p class="text-sm font-bold text-[#2C67C9]">{{ $step['number'] }}</p>
+                        <h3 class="mt-7 text-2xl text-slate-950">{{ $step['title'] }}</h3>
+                        <p class="mt-4 text-sm leading-8 text-slate-600">{{ $step['body'] }}</p>
                     </article>
                 @endforeach
             </div>
         </div>
     </section>
 
-    <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
+    <section class="bg-[#F5F8FD] px-4 py-20 md:px-8 md:py-24 lg:px-10">
         <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.75fr_1.25fr]">
             <div>
-                <p class="text-sm  text-[#0069FF]">اطمینان قبل از پرداخت</p>
-                <h2 class="mt-3 text-3xl  leading-tight text-slate-950 md:text-4xl">قبل از خرید، همه چیز را واضح ببینید.</h2>
-                <p class="mt-5 leading-8 text-slate-600">منابع، دسترسی، پشتیبانی و هزینه ماهانه باید قبل از پرداخت برای شما روشن باشد.</p>
+                <p class="text-sm font-bold text-[#2C67C9]">قبل از پرداخت</p>
+                <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">همه چیز باید قابل فهم باشد.</h2>
+                <p class="mt-5 leading-8 text-slate-600">منابع، دسترسی، پشتیبانی و هزینه ماهانه باید قبل از خرید برای شما روشن باشد؛ بدون اصطلاحات اضافه و شرط های مبهم.</p>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
                 @foreach ($operations as $item)
-                    <article class="rounded-2xl border border-sky-100 bg-[#F7FBFF] p-6">
-                        <h3 class="text-xl  text-slate-950">{{ $item['title'] }}</h3>
+                    <article class="rounded-[1.75rem] border border-slate-200 bg-[#F7FBFF] p-6">
+                        <h3 class="text-xl text-slate-950">{{ $item['title'] }}</h3>
                         <p class="mt-4 text-sm leading-7 text-slate-600">{{ $item['body'] }}</p>
                     </article>
                 @endforeach
@@ -339,19 +253,19 @@
         </div>
     </section>
 
-    <section class="bg-[#F7FBFF] px-4 py-20 md:px-8 md:py-24 lg:px-10">
+    <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
         <div class="mx-auto max-w-5xl">
             <div class="text-center">
-                <p class="text-sm  text-[#0069FF]">سوالات قبل از خرید</p>
-                <h2 class="mt-3 text-3xl  leading-tight text-slate-950 md:text-4xl">پاسخ چند سوال رایج.</h2>
+                <p class="text-sm font-bold text-[#2C67C9]">سوالات قبل از خرید</p>
+                <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">پاسخ چند سوال رایج.</h2>
             </div>
 
-            <div class="mt-10 divide-y divide-sky-100 rounded-2xl border border-sky-100 bg-white shadow-sm shadow-sky-100">
+            <div class="mt-10 divide-y divide-slate-100 rounded-[1.75rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/50">
                 @foreach ($faqs as $faq)
                     <details class="group p-5 open:bg-white md:p-6" @if ($loop->first) open @endif>
-                        <summary class="flex cursor-pointer list-none items-center justify-between gap-5 text-right text-lg  text-slate-950">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-5 text-right text-lg text-slate-950">
                             {{ $faq['q'] }}
-                            <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-[#EAF4FF] text-[#0069FF] transition group-open:rotate-45">
+                            <span class="grid size-8 shrink-0 place-items-center rounded-2xl bg-[#EEF5FF] text-[#2C67C9] transition group-open:rotate-45">
                                 <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
                             </span>
                         </summary>
@@ -363,15 +277,15 @@
     </section>
 
     <section class="bg-white px-4 pb-20 md:px-8 lg:px-10">
-        <div class="mx-auto max-w-7xl overflow-hidden rounded-2xl bg-[#0069FF] p-7 text-white shadow-2xl shadow-[#0069FF]/20 md:p-12">
+        <div class="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#EEF5FF] p-7 text-slate-950 shadow-[0_24px_90px_rgba(148,163,184,0.18)] md:p-12">
             <div class="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
-                    <h2 class="max-w-3xl text-3xl  leading-tight md:text-4xl">پلن خود را انتخاب کنید و سرور مجازی بسازید.</h2>
-                    <p class="mt-4 max-w-2xl leading-8 text-blue-50">اگر آماده خرید هستید، ثبت نام کنید. اگر هنوز مقایسه می کنید، پلن ها و قیمت ها را کامل ببینید.</p>
+                    <h2 class="max-w-3xl text-3xl leading-tight md:text-4xl">برای شروع، یک پلن کافی است.</h2>
+                    <p class="mt-4 max-w-2xl leading-8 text-slate-600">اگر آماده خرید هستید، ثبت نام کنید. اگر هنوز در حال مقایسه هستید، پلن ها و قیمت ها را کامل ببینید.</p>
                 </div>
                 <div class="flex flex-col gap-3 sm:flex-row lg:flex-col">
-                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-lg bg-white px-7 py-4 text-base  text-[#0069FF] transition hover:bg-blue-50">خرید سرور مجازی</a>
-                    <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-lg border border-white/30 px-7 py-4 text-base  text-white transition hover:bg-white/10">دیدن پلن ها و قیمت ها</a>
+                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-xl bg-[#4C86E8] px-7 py-4 text-base font-bold text-white transition hover:bg-[#3E76D6]">خرید ماشین مجازی</a>
+                    <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-7 py-4 text-base font-bold text-slate-700 transition hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9]">دیدن پلن ها و قیمت ها</a>
                 </div>
             </div>
         </div>
