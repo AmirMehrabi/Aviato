@@ -8,8 +8,8 @@
 @section('content')
     <section class="bg-gradient-to-b from-[#EBF3FF] via-white to-white px-4 pb-16 pt-16 md:px-8 md:pt-24 lg:px-10">
         <div class="mx-auto max-w-4xl text-center">
-            <p class="text-sm font-black text-[#0069FF]">تماس با تیم ما</p>
-            <h1 class="mt-4 text-4xl font-black leading-tight md:text-5xl">برای خرید، انتخاب پلن یا پشتیبانی با ما در تماس باشید</h1>
+            <p class="text-sm  text-[#0069FF]">تماس با تیم ما</p>
+            <h1 class="mt-4 text-4xl  leading-tight md:text-5xl">برای خرید، انتخاب پلن یا پشتیبانی با ما در تماس باشید</h1>
             <p class="mt-6 text-lg leading-9 text-slate-600">اگر درباره سرور مجازی، قیمت ها یا انتخاب پلن سوال دارید، درخواست خود را ثبت کنید تا تیم آویاتو با شما هماهنگ کند.</p>
         </div>
     </section>
@@ -24,15 +24,15 @@
                     ['title' => 'آدرس دفتر', 'body' => 'کرمان، میدان قرنی، ساختمان پدر، واحد ۳۰۲', 'meta' => 'قرار ملاقات حضوری با هماهنگی قبلی'],
                 ] as $contact)
                     <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                        <p class="text-sm font-black text-[#0069FF]">{{ $contact['title'] }}</p>
-                        <p class="mt-3 text-2xl font-black text-slate-950">{{ $contact['body'] }}</p>
+                        <p class="text-sm  text-[#0069FF]">{{ $contact['title'] }}</p>
+                        <p class="mt-3 text-2xl  text-slate-950">{{ $contact['body'] }}</p>
                         <p class="mt-2 text-sm leading-7 text-slate-500">{{ $contact['meta'] }}</p>
                     </article>
                 @endforeach
             </div>
 
             <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-                <h2 class="text-2xl font-black">فرم تماس</h2>
+                <h2 class="text-2xl ">فرم تماس</h2>
                 <p class="mt-3 text-sm leading-8 text-slate-600">اطلاعات خودتان و موضوع درخواست را بنویسید تا بتوانیم بهتر راهنمایی تان کنیم.</p>
 
                 @if (session('status'))
@@ -83,7 +83,7 @@
                     </label>
                     <div class="md:col-span-2 flex flex-col items-start justify-between gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center">
                         <p class="text-xs font-bold text-slate-500">درخواست شما ثبت می شود و برای پیگیری با شما تماس می گیریم.</p>
-                        <button type="submit" x-bind:disabled="submitting" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-6 py-3 text-sm font-black text-white transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:opacity-70">
+                        <button type="submit" x-bind:disabled="submitting" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-6 py-3 text-sm  text-white transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:opacity-70">
                             <span x-show="! submitting">ارسال درخواست</span>
                             <span x-cloak x-show="submitting">در حال ثبت...</span>
                         </button>

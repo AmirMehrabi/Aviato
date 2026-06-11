@@ -70,7 +70,7 @@
 
                 <div :class="scrolled ? 'bg-slate-50/95 ring-slate-200/80 shadow-sm shadow-slate-950/5' :
                     '{{ $darkHeaderTop ? 'bg-white/10 ring-white/10' : 'bg-white/65 ring-sky-100/80 shadow-sm shadow-sky-100/60' }}'"
-                    class="hidden items-center gap-1 rounded-full p-1 text-sm font-black ring-1 {{ $darkHeaderTop ? 'bg-white/10 ring-white/10' : 'bg-white/65 ring-sky-100/80 shadow-sm shadow-sky-100/60' }} backdrop-blur transition-all duration-300 lg:flex">
+                    class="hidden items-center gap-1 rounded-full p-1 text-sm  ring-1 {{ $darkHeaderTop ? 'bg-white/10 ring-white/10' : 'bg-white/65 ring-sky-100/80 shadow-sm shadow-sky-100/60' }} backdrop-blur transition-all duration-300 lg:flex">
                     @foreach ($marketingNavItems as $item)
                         @php($isActive = $activePage === $item['key'])
                         <a href="{{ route($item['route']) }}"
@@ -86,11 +86,11 @@
                         :class="scrolled ?
                             '!border-slate-200 !bg-white !text-slate-700 hover:!border-[#B8D6FF] hover:!bg-[#EBF3FF] hover:!text-[#0069FF]' :
                             '{{ $darkHeaderTop ? 'border-white/20 bg-white/10 text-white hover:bg-white/15' : 'border-slate-200 bg-white/80 text-slate-700 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]' }}'"
-                        class="hidden items-center justify-center rounded-lg border {{ $darkHeaderTop ? 'border-white/20 bg-white/10 text-white' : 'border-slate-200 bg-white/80 text-slate-700' }} px-4 py-2 text-sm font-black shadow-sm transition sm:inline-flex">
+                        class="hidden items-center justify-center rounded-lg border {{ $darkHeaderTop ? 'border-white/20 bg-white/10 text-white' : 'border-slate-200 bg-white/80 text-slate-700' }} px-4 py-2 text-sm  shadow-sm transition sm:inline-flex">
                         ورود
                     </a>
                     <a href="{{ route('customer.register') }}"
-                        class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
+                        class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm  text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
                         ثبت نام مشتری
                     </a>
                 </div>
@@ -118,7 +118,7 @@
                 </div>
 
                 <div>
-                    <p class="text-sm font-black text-white">خرید و بررسی</p>
+                    <p class="text-sm  text-white">خرید و بررسی</p>
                     <div class="mt-4 grid gap-3 text-sm font-bold text-sky-100/70">
                         <a href="{{ route('home') }}" class="transition hover:text-white">خانه</a>
                         <a href="{{ route('pricing') }}" class="transition hover:text-white">قیمت‌گذاری</a>
@@ -129,7 +129,7 @@
                 </div>
 
                 <div>
-                    <p class="text-sm font-black text-white">ارتباط و پنل</p>
+                    <p class="text-sm  text-white">ارتباط و پنل</p>
                     <div class="mt-4 grid gap-3 text-sm font-bold text-sky-100/70">
                         <a href="{{ route('customer.login') }}" class="transition hover:text-white">ورود به پنل</a>
                         <a href="{{ route('changelog') }}" class="transition hover:text-white">تغییرات</a>
