@@ -70,12 +70,12 @@
             <nav class="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
                 <a href="{{ route('home') }}" class="flex min-w-0 items-center" aria-label="آویاتو">
                     <span class="relative block h-10 w-24 sm:w-40" :class="scrolled ? 'h-9 w-20 sm:w-40' : 'h-10 w-24 sm:w-40'">
-                        <img src="{{ asset('assets/images/aviato_logo_full_color.png') }}" alt="آویاتو"
+                        <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
                             x-show="scrolled || ! {{ $darkHeaderTop ? 'true' : 'false' }}"
                             :class="scrolled ? 'h-9 w-20' : 'h-10 w-24'"
                             class="absolute inset-0 h-10 w-24 object-contain object-right transition-all sm:w-40">
                         @if ($darkHeaderTop)
-                            <img src="{{ asset('assets/images/aviato_logo_full_white.png') }}" alt="آویاتو"
+                            <img src="{{ asset('assets/images/aviato_logo_full_white.webp') }}" alt="آویاتو"
                                 x-show="! scrolled" :class="scrolled ? 'h-9 w-20' : 'h-10 w-24'"
                                 class="absolute inset-0 h-10 w-24 object-contain object-right transition-all sm:w-40">
                         @endif
@@ -133,7 +133,7 @@
                 x-transition:leave-end="translate-x-full opacity-0"
                 class="absolute right-0 top-0 flex h-dvh w-[min(21rem,88vw)] flex-col border-l border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/15">
                 <div class="flex items-center justify-between gap-4">
-                    <img src="{{ asset('assets/images/aviato_logo_full_color.png') }}" alt="آویاتو"
+                    <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
                         class="h-10 w-28 object-contain object-right">
                     <button type="button" @click="menuOpen = false" class="grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50" aria-label="بستن منو">
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -170,7 +170,7 @@
         <footer class="border-t border-slate-200 bg-[#F5F8FD] px-4 py-12 text-slate-700 md:px-8 lg:px-10">
             <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.15fr_0.85fr_0.85fr]">
                 <div>
-                    <img src="{{ asset('assets/images/aviato_logo_full_color.png') }}" alt="آویاتو"
+                    <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
                         class="h-14 w-44 object-contain object-right">
                     <p class="mt-5 max-w-xl text-sm leading-8 text-slate-600">
                         ماشین مجازی ابری ساده، روشن و قابل پیش بینی برای تیم هایی که می خواهند سرور را بدون پیچیدگی اضافه بخرند و

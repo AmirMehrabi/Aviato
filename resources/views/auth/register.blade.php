@@ -18,7 +18,7 @@
         <div class="mx-auto flex min-h-[calc(100vh-3rem)] max-w-7xl flex-col">
             <header class="flex h-14 items-center justify-between gap-4">
                 <a href="{{ route('home') }}" class="flex items-center gap-2.5" aria-label="آویاتو">
-                    <img src="{{ asset('assets/images/aviato_logo_full_color.png') }}" alt="آویاتو" class="h-10 w-auto object-contain object-right">
+                    <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو" class="h-10 w-auto object-contain object-right">
                 </a>
                 <a href="{{ route('customer.login', [], false) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
                     ورود
