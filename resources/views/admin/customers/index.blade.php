@@ -91,7 +91,7 @@
                     </td>
                     <td class="px-5 py-4">
                         <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $statusClass }}">{{ $customer->status === 'suspended' ? 'تعلیق شده' : 'فعال' }}</span>
-                        <p class="mt-2 text-xs text-slate-500">{{ $customer->email_verified_at ? 'حساب تایید شده' : 'حساب تایید نشده' }}</p>
+                        <p class="mt-2 text-xs text-slate-500">{{ $customer->national_code_verified_at ? 'حساب تایید شده' : 'حساب تایید نشده' }}</p>
                     </td>
                     <td class="px-5 py-4">
                         <p class="font-black {{ $credit < 0 ? 'text-red-600' : 'text-[#0069FF]' }}">{{ $money->format($credit) }}</p>
