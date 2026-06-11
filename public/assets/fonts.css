@@ -12,3 +12,49 @@
      font-family: 'Pelak';
      src:  url('fonts/PelakFA.woff2') format('woff2')
    }
+
+
+  @font-face {
+    font-family: 'Estedad';
+    src: url('fonts/estedad/Estedad-Thin.woff2') format('woff2'),
+         url('fonts/estedad/Estedad-Thin.woff') format('woff');
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'Estedad';
+    src: url('fonts/estedad/Estedad-Light.woff2') format('woff2'),
+         url('fonts/estedad/Estedad-Light.woff') format('woff');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'Estedad';
+    src: url('fonts/estedad/Estedad-Medium.woff2') format('woff2'),
+         url('fonts/estedad/Estedad-Medium.woff') format('woff');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'Estedad';
+    src: url('fonts/estedad/Estedad-Bold.woff2') format('woff2'),
+         url('fonts/estedad/Estedad-Bold.woff') format('woff');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'Estedad';
+    src: url('fonts/estedad/Estedad-Black.woff2') format('woff2'),
+         url('fonts/estedad/Estedad-Black.woff') format('woff');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+  }
