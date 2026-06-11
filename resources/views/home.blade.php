@@ -73,7 +73,7 @@
                     <span class="block text-[#1976C9]">برای اوجی بی‌پایان</span>
                 </h1>
                 <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-700 md:mx-0 md:text-lg md:leading-9">
-                   زیرساخت ابری قابل اعتماد برای میزبانی امن، سریع و پایدار سرویس‌های شما.
+                  از اولین راه‌اندازی تا اوج رشد، سرورهایی پایدار برای سرویس‌های همیشه‌روشن.
                 </p>
                 <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row md:justify-start">
                     <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
