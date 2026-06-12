@@ -248,6 +248,33 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
 });
 
 Route::get('/', function (WalletService $wallets) {
+    $postsPath = resource_path('blog/posts');
+    $files = glob($postsPath.'/*.md');
+    $posts = [];
+
+    foreach ($files as $file) {
+        $content = file_get_contents($file);
+        if (preg_match('/^---\n(.+?)\n---\n(.+)$/s', $content, $matches)) {
+            $meta = [];
+            foreach (explode("\n", $matches[1]) as $line) {
+                if (preg_match('/^(\w+):\s*"?(.+?)"?$/', trim($line), $m)) {
+                    $meta[$m[1]] = $m[2];
+                }
+            }
+            $posts[] = [
+                'title' => $meta['title'] ?? '',
+                'slug' => $meta['slug'] ?? '',
+                'excerpt' => $meta['excerpt'] ?? '',
+                'category' => $meta['category'] ?? '',
+                'date' => $meta['date'] ?? '',
+                'date_display' => $meta['date_display'] ?? '',
+                'reading_time' => $meta['reading_time'] ?? '',
+            ];
+        }
+    }
+
+    usort($posts, fn ($a, $b) => $b['date'] <=> $a['date']);
+
     return view('home', [
         'bundles' => VmBundle::query()
             ->where('is_active', true)
@@ -256,6 +283,7 @@ Route::get('/', function (WalletService $wallets) {
             ->orderBy('monthly_price')
             ->get(),
         'wallets' => $wallets,
+        'latestPosts' => array_slice($posts, 0, 3),
     ]);
 })->name('home');
 

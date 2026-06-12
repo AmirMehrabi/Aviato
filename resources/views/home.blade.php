@@ -277,6 +277,51 @@
         </div>
     </section>
 
+    @if (! empty($latestPosts))
+    <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
+        <div class="mx-auto max-w-7xl">
+            <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+                <div class="max-w-2xl">
+                    <p class="text-sm font-bold text-[#2C67C9]"> بلاگ آویاتو</p>
+                    <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">مقاله‌ها و راهنماها.</h2>
+                    <p class="mt-4 leading-8 text-slate-600">مقالاتی درباره زیرساخت ابری، انتخاب سرور مجازی و مدیریت سرویس‌های آنلاین.</p>
+                </div>
+                <a href="{{ route('blog') }}" class="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9]">
+                    همه مقاله‌ها
+                    <svg class="size-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+            </div>
+
+            <div class="mt-10 grid gap-5 md:grid-cols-3">
+                @foreach ($latestPosts as $post)
+                    <a href="{{ route('blog.show', $post['slug']) }}" class="group flex flex-col rounded-[1.75rem] border border-slate-200 bg-white p-6 transition hover:-translate-y-1 hover:border-[#B9D6FF] hover:shadow-xl hover:shadow-slate-200/60">
+                        <div class="flex items-center gap-3 text-xs text-slate-500">
+                            <span class="rounded-full bg-[#EEF5FF] px-3 py-1 font-bold text-[#2C67C9]">{{ $post['category'] }}</span>
+                            <span>{{ $post['date_display'] }}</span>
+                        </div>
+
+                        <h3 class="mt-4 text-lg font-black leading-tight text-slate-950 transition group-hover:text-[#2C67C9]">
+                            {{ $post['title'] }}
+                        </h3>
+
+                        <p class="mt-3 flex-1 text-sm leading-7 text-slate-600">
+                            {{ $post['excerpt'] }}
+                        </p>
+
+                        <div class="mt-5 flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-400">{{ $post['reading_time'] }} مطالعه</span>
+                            <span class="inline-flex items-center gap-1 text-sm font-bold text-[#2C67C9] transition group-hover:gap-2">
+                                مطالعه
+                                <svg class="size-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
     <section class="bg-white px-4 pb-20 md:px-8 lg:px-10">
         <div class="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#EEF5FF] p-7 text-slate-950 shadow-[0_24px_90px_rgba(148,163,184,0.18)] md:p-12">
             <div class="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
