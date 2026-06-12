@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
+use League\CommonMark\Extension\Table\TableExtension;
 use League\CommonMark\MarkdownConverter;
 
 class BlogController extends Controller
@@ -68,6 +69,7 @@ class BlogController extends Controller
 
             $env = new Environment([]);
             $env->addExtension(new CommonMarkCoreExtension);
+            $env->addExtension(new TableExtension);
             $converter = new MarkdownConverter($env);
 
             $html = $converter->convertToHtml($markdown);
