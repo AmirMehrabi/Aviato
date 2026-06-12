@@ -55,6 +55,7 @@
             ['label' => 'خانه', 'route' => 'home', 'key' => 'home'],
             ['label' => 'قیمت‌گذاری', 'route' => 'pricing', 'key' => 'pricing'],
             ['label' => 'راهکارهای ما', 'route' => 'solutions', 'key' => 'solutions'],
+            ['label' => 'بلاگ', 'route' => 'blog', 'key' => 'blog'],
             ['label' => 'لیست تغییرات', 'route' => 'changelog', 'key' => 'changelog'],
             ['label' => 'تماس', 'route' => 'contact', 'key' => 'contact'],
         ];
@@ -189,6 +190,7 @@
                         <a href="{{ route('home') }}" class="transition hover:text-[#2C67C9]">خانه</a>
                         <a href="{{ route('pricing') }}" class="transition hover:text-[#2C67C9]">قیمت‌گذاری</a>
                         <a href="{{ route('solutions') }}" class="transition hover:text-[#2C67C9]">راهکارهای ما</a>
+                        <a href="{{ route('blog') }}" class="transition hover:text-[#2C67C9]">بلاگ</a>
                         <a href="{{ route('customer.register') }}" class="transition hover:text-[#2C67C9]">ثبت نام
                             مشتری</a>
                     </div>
