@@ -96,33 +96,84 @@
                 </button>
             </div>
 
-            <nav class="mt-6 space-y-0.5 text-sm font-semibold">
+            <nav class="mt-6 space-y-4 text-sm font-semibold">
                 @php
-                    $navItems = [
-                        ['label' => 'داشبورد', 'route' => 'admin.dashboard', 'active' => request()->routeIs('admin.dashboard'), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
-                        ['label' => 'مشتریان', 'route' => 'admin.customers.index', 'active' => request()->routeIs('admin.customers.*'), 'icon' => 'M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0M19 8v6m3-3h-6'],
-                        ['label' => 'فضاهای کاری', 'route' => 'admin.projects.index', 'active' => request()->routeIs('admin.projects.*'), 'icon' => 'M4 5h7v7H4V5Zm9 0h7v7h-7V5ZM4 14h7v5H4v-5Zm9 0h7v5h-7v-5Z'],
-                        ['label' => 'Proxmox', 'route' => 'admin.proxmox-servers.index', 'active' => request()->routeIs('admin.proxmox-servers.*'), 'icon' => 'M5 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4H5V6Zm0 4h14v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-8Zm3 4h2m4 0h2M8 17h8'],
-                        ['label' => 'ماشین‌ها', 'route' => 'admin.virtual-machines.index', 'active' => request()->routeIs('admin.virtual-machines.*'), 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
-                        ['label' => 'تیکت‌ها', 'route' => 'admin.tickets.index', 'active' => request()->routeIs('admin.tickets.*') || request()->routeIs('admin.support-teams.*') || request()->routeIs('admin.ticket-categories.*'), 'icon' => 'M4 5h16v10H7l-3 3V5Zm5 4h6m-6 3h4'],
-                        ['label' => 'Cloud Images', 'route' => 'admin.cloud-images.index', 'active' => request()->routeIs('admin.cloud-images.*'), 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
-                        ['label' => 'IP Pools', 'route' => 'admin.ip-pools.index', 'active' => request()->routeIs('admin.ip-pools.*'), 'icon' => 'M12 3v4m0 10v4M4.9 7.1l2.8 2.8m8.6 8.6 2.8 2.8M3 12h4m10 0h4M4.9 16.9l2.8-2.8m8.6-8.6 2.8-2.8'],
-                        ['label' => 'قیمت منابع', 'route' => 'admin.billing.rates.index', 'active' => request()->routeIs('admin.billing.rates.*'), 'icon' => 'M7 4h10v16H7V4Zm3 4h4m-4 4h4m-4 4h2'],
-                        ['label' => 'باندل‌ها', 'route' => 'admin.billing.bundles.index', 'active' => request()->routeIs('admin.billing.bundles.*'), 'icon' => 'M4 7h16M4 12h16M4 17h16'],
-                        ['label' => 'تنظیمات', 'route' => 'admin.settings.edit', 'active' => request()->routeIs('admin.settings.*'), 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 0v6m0-12V3m9 9h-6m-6 0H3m15.364 5.364-4.243-4.243m-6.364 0L3.636 17.364M20.364 6.636l-4.243 4.243m-6.364 0L5.636 6.636'],
+                    $navGroups = [
+                        [
+                            'items' => [
+                                ['label' => 'داشبورد', 'route' => 'admin.dashboard', 'active' => request()->routeIs('admin.dashboard'), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
+                            ],
+                        ],
+                        [
+                            'label' => 'مدیریت',
+                            'items' => [
+                                ['label' => 'مشتریان', 'route' => 'admin.customers.index', 'active' => request()->routeIs('admin.customers.*'), 'icon' => 'M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0M19 8v6m3-3h-6'],
+                                ['label' => 'فضاهای کاری', 'route' => 'admin.projects.index', 'active' => request()->routeIs('admin.projects.*'), 'icon' => 'M4 5h7v7H4V5Zm9 0h7v7h-7V5ZM4 14h7v5H4v-5Zm9 0h7v5h-7v-5Z'],
+                            ],
+                        ],
+                        [
+                            'label' => 'زیرساخت',
+                            'items' => [
+                                ['label' => 'Proxmox', 'route' => 'admin.proxmox-servers.index', 'active' => request()->routeIs('admin.proxmox-servers.*'), 'icon' => 'M5 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4H5V6Zm0 4h14v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-8Zm3 4h2m4 0h2M8 17h8'],
+                                ['label' => 'ماشین‌ها', 'route' => 'admin.virtual-machines.index', 'active' => request()->routeIs('admin.virtual-machines.*'), 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
+                                ['label' => 'Cloud Images', 'route' => 'admin.cloud-images.index', 'active' => request()->routeIs('admin.cloud-images.*'), 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
+                                ['label' => 'IP Pools', 'route' => 'admin.ip-pools.index', 'active' => request()->routeIs('admin.ip-pools.*'), 'icon' => 'M12 3v4m0 10v4M4.9 7.1l2.8 2.8m8.6 8.6 2.8 2.8M3 12h4m10 0h4M4.9 16.9l2.8-2.8m8.6-8.6 2.8-2.8'],
+                            ],
+                        ],
+                        [
+                            'label' => 'پشتیبانی',
+                            'items' => [
+                                ['label' => 'تیکت‌ها', 'route' => 'admin.tickets.index', 'active' => request()->routeIs('admin.tickets.*') || request()->routeIs('admin.support-teams.*') || request()->routeIs('admin.ticket-categories.*'), 'icon' => 'M4 5h16v10H7l-3 3V5Zm5 4h6m-6 3h4'],
+                            ],
+                        ],
+                        [
+                            'label' => 'صورتحساب',
+                            'items' => [
+                                ['label' => 'قیمت منابع', 'route' => 'admin.billing.rates.index', 'active' => request()->routeIs('admin.billing.rates.*'), 'icon' => 'M7 4h10v16H7V4Zm3 4h4m-4 4h4m-4 4h2'],
+                                ['label' => 'باندل‌ها', 'route' => 'admin.billing.bundles.index', 'active' => request()->routeIs('admin.billing.bundles.*'), 'icon' => 'M4 7h16M4 12h16M4 17h16'],
+                            ],
+                        ],
+                        [
+                            'label' => 'سیستم',
+                            'items' => [
+                                ['label' => 'تنظیمات', 'route' => 'admin.settings.edit', 'active' => request()->routeIs('admin.settings.*'), 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 0v6m0-12V3m9 9h-6m-6 0H3m15.364 5.364-4.243-4.243m-6.364 0L3.636 17.364M20.364 6.636l-4.243 4.243m-6.364 0L5.636 6.636'],
+                            ],
+                        ],
                     ];
                 @endphp
-                @foreach ($navItems as $item)
-                    <a
-                        href="{{ $item['route'] ? route($item['route']) : '#' }}"
-                        @click="if (window.innerWidth < 1024) sidebarOpen = false"
-                        class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition {{ $item['active'] ? 'bg-white text-[#0069FF] shadow-sm' : 'text-white/80 hover:bg-white/15 hover:text-white' }}"
-                    >
-                        <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span>{{ $item['label'] }}</span>
-                    </a>
+                @foreach ($navGroups as $group)
+                    @if (isset($group['label']))
+                        <div>
+                            <span class="block px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-white/50">{{ $group['label'] }}</span>
+                            <div class="space-y-0.5">
+                                @foreach ($group['items'] as $item)
+                                    <a
+                                        href="{{ $item['route'] ? route($item['route']) : '#' }}"
+                                        @click="if (window.innerWidth < 1024) sidebarOpen = false"
+                                        class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition {{ $item['active'] ? 'bg-white text-[#0069FF] shadow-sm' : 'text-white/80 hover:bg-white/15 hover:text-white' }}"
+                                    >
+                                        <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                            <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        <span>{{ $item['label'] }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        @foreach ($group['items'] as $item)
+                            <a
+                                href="{{ $item['route'] ? route($item['route']) : '#' }}"
+                                @click="if (window.innerWidth < 1024) sidebarOpen = false"
+                                class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition {{ $item['active'] ? 'bg-white text-[#0069FF] shadow-sm' : 'text-white/80 hover:bg-white/15 hover:text-white' }}"
+                            >
+                                <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span>{{ $item['label'] }}</span>
+                            </a>
+                        @endforeach
+                    @endif
                 @endforeach
             </nav>
 
