@@ -19,8 +19,8 @@ class CustomerWalletAlertService
 
     public function handleWalletBalanceChange(Customer $customer): void
     {
-        $customer->loadMissing('virtualMachines.proxmoxServer', 'wallet');
-        $wallet = $customer->wallet;
+        $customer->loadMissing('virtualMachines.proxmoxServer');
+        $wallet = Wallet::query()->where('customer_id', $customer->id)->first();
 
         if (! $wallet instanceof Wallet) {
             return;

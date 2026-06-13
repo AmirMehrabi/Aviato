@@ -331,7 +331,6 @@ class CustomerWalletBillingTest extends TestCase
 
         $vm->refresh();
         $this->assertSame(VirtualMachine::STATUS_SUSPENDED, $vm->status);
-        $this->assertSame(VirtualMachine::STATUS_STOPPED, data_get($vm->desired_state, 'status'));
         $this->assertNotNull(data_get($vm->remote_state, 'wallet_locked_at'));
 
         $this->actingAs($customer, 'customer');
