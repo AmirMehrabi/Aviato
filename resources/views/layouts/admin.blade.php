@@ -254,6 +254,7 @@
             </header>
 
             <div
+                x-cloak
                 x-show="searchOpen"
                 x-transition.opacity
                 @click.self="closePanels()"
@@ -288,6 +289,7 @@
             </div>
 
             <div
+                x-cloak
                 x-show="notificationsOpen"
                 x-transition
                 @click.away="notificationsOpen = false"
@@ -311,6 +313,7 @@
             </div>
 
             <div
+                x-cloak
                 x-show="profileOpen"
                 x-transition
                 @click.away="profileOpen = false"
@@ -345,6 +348,7 @@
             @yield('content')
 
             <div
+                x-cloak
                 x-show="createOpen"
                 x-transition.opacity
                 @click.self="createOpen = false"
