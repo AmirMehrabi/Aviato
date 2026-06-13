@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\ProjectMember;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
+use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,6 +29,88 @@ class CustomerProjectTest extends TestCase
             'customer_id' => $customer->id,
             'role' => ProjectMember::ROLE_OWNER,
         ]);
+    }
+
+    public function test_customer_can_create_workspace_and_it_becomes_active(): void
+    {
+        $customer = Customer::factory()->create();
+
+        $this->actingAs($customer, 'customer');
+
+        $response = $this->post($this->customerBaseUrl.'/projects', [
+            'name' => 'Production Servers',
+        ]);
+
+        $project = $customer->ownedProjects()->where('name', 'Production Servers')->firstOrFail();
+
+        $response->assertRedirect($this->customerBaseUrl.'/projects/'.$project->uuid);
+        $response->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'customer_id' => $customer->id,
+            'role' => ProjectMember::ROLE_OWNER,
+        ]);
+    }
+
+    public function test_owner_and_admin_member_can_rename_workspace(): void
+    {
+        $owner = Customer::factory()->create();
+        $admin = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $admin->id,
+            'role' => ProjectMember::ROLE_ADMIN,
+        ]);
+
+        $this->actingAs($owner, 'customer');
+        $this->patch($this->customerBaseUrl.'/projects/'.$project->uuid, [
+            'name' => 'Owner Renamed',
+        ])->assertSessionHas('status');
+
+        $this->assertSame('Owner Renamed', $project->fresh()->name);
+
+        $this->actingAs($admin, 'customer');
+        $this->patch($this->customerBaseUrl.'/projects/'.$project->uuid, [
+            'name' => 'Admin Renamed',
+        ])->assertSessionHas('status');
+
+        $this->assertSame('Admin Renamed', $project->fresh()->name);
+    }
+
+    public function test_regular_member_cannot_rename_workspace(): void
+    {
+        $owner = Customer::factory()->create();
+        $member = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $member->id,
+            'role' => ProjectMember::ROLE_MEMBER,
+        ]);
+
+        $this->actingAs($member, 'customer');
+
+        $this->patch($this->customerBaseUrl.'/projects/'.$project->uuid, [
+            'name' => 'Not Allowed',
+        ])->assertNotFound();
+
+        $this->assertNotSame('Not Allowed', $project->fresh()->name);
+    }
+
+    public function test_customer_can_only_switch_to_accessible_workspaces(): void
+    {
+        $customer = Customer::factory()->create();
+        $accessible = $customer->ensureDefaultProject();
+        $outsider = Customer::factory()->create()->ensureDefaultProject();
+
+        $this->actingAs($customer, 'customer');
+
+        $this->post($this->customerBaseUrl.'/projects/switch', [
+            'project_id' => $accessible->id,
+        ])->assertSessionHas(ProjectAccessService::SESSION_KEY, $accessible->id);
+
+        $this->post($this->customerBaseUrl.'/projects/switch', [
+            'project_id' => $outsider->id,
+        ])->assertNotFound();
     }
 
     public function test_project_member_can_see_project_vm_but_non_member_cannot_guess_it(): void

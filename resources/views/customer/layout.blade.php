@@ -26,8 +26,8 @@
         $balanceIsNegative = ($wallet->balance ?? 0) < 0;
         $activeNav = $activeNav ?? 'dashboard';
         $navGroups = [
-            'پروژه ها' => [
-                // ['key' => 'projects', 'label' => 'پروژه ها', 'route' => route('customer.projects.index', [], false), 'icon' => 'M4 5h7v7H4V5Zm9 0h7v7h-7V5ZM4 14h7v5H4v-5Zm9 0h7v5h-7v-5Z'],
+            'Workspace' => [
+                ['key' => 'projects', 'label' => 'Workspaces', 'route' => route('customer.projects.index', [], false), 'icon' => 'M4 5h7v7H4V5Zm9 0h7v7h-7V5ZM4 14h7v5H4v-5Zm9 0h7v5h-7v-5Z'],
                 ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
             ],
             'مدیریت' => [
@@ -86,7 +86,7 @@
             init() {
                 const baseItems = [
                     { title: 'داشبورد', description: 'نمای کلی ماشین ها، کیف پول و مصرف', url: '{{ route('dashboard', [], false) }}', type: 'صفحه' },
-                    { title: 'پروژه ها', description: 'انتخاب پروژه فعال و مدیریت اعضا', url: '{{ route('customer.projects.index', [], false) }}', type: 'صفحه' },
+                    { title: 'Workspaces', description: 'انتخاب Workspace فعال، ساخت Workspace و مدیریت اعضا', url: '{{ route('customer.projects.index', [], false) }}', type: 'صفحه' },
                     { title: 'سرورها', description: 'فهرست ماشین های ابری و وضعیت آنها', url: '{{ route('customer.servers.index', [], false) }}', type: 'صفحه' },
                     { title: 'ساخت ماشین', description: 'انتخاب پلن، سیستم عامل و دیتاسنتر', url: '{{ route('customer.servers.create', [], false) }}', type: 'عملیات' },
                     { title: 'بکاپ ها', description: 'بکاپ دستی، برنامه بکاپ خودکار و نگهداری نسخه ها', url: '{{ route('customer.backups.index', [], false) }}', type: 'صفحه' },
@@ -191,7 +191,7 @@
             <nav class="mt-7 space-y-6 text-sm font-bold">
 
             <div class=" border-white/10 pt-4 lg:px-3">
-                <p class="px-3 text-[10px] font-black text-[#5F79AA]">پروژه فعال</p>
+                <p class="px-3 text-[10px] font-black text-[#5F79AA]">ACTIVE WORKSPACE</p>
                 <form method="POST" action="{{ route('customer.projects.switch', [], false) }}" class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
                     @csrf
                     <select name="project_id" onchange="this.form.submit()" class="w-full rounded-md border border-white/10 bg-[#08245A] px-3 py-2 text-xs font-black text-white outline-none">
@@ -200,8 +200,12 @@
                         @endforeach
                     </select>
                     <div class="mt-2 flex items-center justify-between gap-2 text-[11px] font-bold text-[#9DB4DC]">
-                        <span>{{ $activeMembership?->role ?? 'member' }}</span>
-                        <a href="{{ route('customer.projects.show', $activeProject, false) }}" class="text-[#B8D6FF]">مدیریت</a>
+                        <span>{{ ucfirst($activeMembership?->role ?? 'member') }}</span>
+                        <span>{{ $activeProject->owner?->id === $customer->id ? 'Owner pays' : 'Owner: '.$activeProject->owner?->name }}</span>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                        <a href="{{ route('customer.projects.show', $activeProject, false) }}" class="inline-flex justify-center rounded-md bg-white/10 px-3 py-2 text-[11px] font-black text-[#B8D6FF] transition hover:bg-white/15">Open</a>
+                        <a href="{{ route('customer.projects.index', [], false) }}" class="inline-flex justify-center rounded-md border border-white/10 px-3 py-2 text-[11px] font-black text-[#C7D4EA] transition hover:bg-white/10">New</a>
                     </div>
                 </form>
             </div>
@@ -447,7 +451,14 @@
                             </nav>
                             <div class="mt-3">
                                 {{-- <p class="text-xs font-black text-[#0069FF]">{{ $customer->name }}</p> --}}
-                                <h1 class="mt-1 truncate text-2xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h1 class="truncate text-2xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
+                                    <a href="{{ route('customer.projects.show', $activeProject, false) }}" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-black text-slate-600 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
+                                        <span class="size-2 rounded-full bg-[#00A67E]"></span>
+                                        <span class="truncate">Workspace: {{ $activeProject->name }}</span>
+                                        <span class="hidden text-slate-400 sm:inline">{{ ucfirst($activeMembership?->role ?? 'member') }}</span>
+                                    </a>
+                                </div>
                                 <p class="mt-1 max-w-3xl text-sm leading-7 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>
                             </div>
                         </div>

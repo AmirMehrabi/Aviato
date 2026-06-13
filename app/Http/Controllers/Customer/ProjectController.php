@@ -73,7 +73,25 @@ class ProjectController extends Controller
         ]);
         $this->projects->switch($request, $customer, $project);
 
-        return redirect()->route('customer.projects.show', $project)->with('status', 'Project created.');
+        return redirect()->route('customer.projects.show', $project)->with('status', 'Workspace created.');
+    }
+
+    public function update(Request $request, Project $project): RedirectResponse
+    {
+        $customer = $request->user('customer');
+        $project->loadMissing(['members', 'owner']);
+        abort_unless($this->projects->canManageMembers($project, $customer), 404);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+        ]);
+
+        $project->update([
+            'name' => $data['name'],
+            'slug' => $this->uniqueSlug($project->owner, $data['name'], $project),
+        ]);
+
+        return back()->with('status', 'Workspace renamed.');
     }
 
     public function switch(Request $request): RedirectResponse
@@ -85,7 +103,7 @@ class ProjectController extends Controller
         $project = Project::query()->with('members')->findOrFail($data['project_id']);
         $this->projects->switch($request, $customer, $project);
 
-        return back()->with('status', 'Project switched.');
+        return back()->with('status', 'Workspace switched.');
     }
 
     public function storeMember(Request $request, Project $project): RedirectResponse
@@ -122,7 +140,7 @@ class ProjectController extends Controller
             ],
         );
 
-        return back()->with('status', 'Project member updated.');
+        return back()->with('status', 'Workspace member updated.');
     }
 
     public function updateMember(Request $request, Project $project, ProjectMember $member): RedirectResponse
@@ -144,7 +162,7 @@ class ProjectController extends Controller
 
         $member->update(['role' => $data['role']]);
 
-        return back()->with('status', 'Project member role updated.');
+        return back()->with('status', 'Workspace member role updated.');
     }
 
     public function destroyMember(Request $request, Project $project, ProjectMember $member): RedirectResponse
@@ -157,16 +175,19 @@ class ProjectController extends Controller
 
         $member->delete();
 
-        return back()->with('status', 'Project member removed.');
+        return back()->with('status', 'Workspace member removed.');
     }
 
-    private function uniqueSlug(Customer $customer, string $name): string
+    private function uniqueSlug(Customer $customer, string $name, ?Project $ignore = null): string
     {
         $slug = Str::slug($name) ?: 'project';
         $candidate = $slug;
         $suffix = 2;
 
-        while ($customer->ownedProjects()->where('slug', $candidate)->exists()) {
+        while ($customer->ownedProjects()
+            ->where('slug', $candidate)
+            ->when($ignore, fn ($query) => $query->whereKeyNot($ignore->getKey()))
+            ->exists()) {
             $candidate = $slug.'-'.$suffix++;
         }
 

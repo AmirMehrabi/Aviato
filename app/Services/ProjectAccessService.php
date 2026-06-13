@@ -19,6 +19,7 @@ class ProjectAccessService
         return Project::query()
             ->visibleTo($customer)
             ->with(['owner', 'members.customer'])
+            ->withCount(['members', 'virtualMachines'])
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get();
@@ -33,7 +34,9 @@ class ProjectAccessService
             ?? $projects->first();
 
         if (! $project) {
-            $project = $customer->ensureDefaultProject()->load(['owner', 'members.customer']);
+            $project = $customer->ensureDefaultProject()
+                ->load(['owner', 'members.customer'])
+                ->loadCount(['members', 'virtualMachines']);
         }
 
         $request->session()->put(self::SESSION_KEY, $project->id);

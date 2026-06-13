@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IpPoolController;
+use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResourceRateController;
 use App\Http\Controllers\Admin\SettingController;
@@ -101,6 +102,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.customers.impersonate');
         Route::resource('customers', CustomerController::class)
             ->names('admin.customers');
+
+        Route::get('workspaces', [AdminProjectController::class, 'index'])->name('admin.projects.index');
+        Route::get('workspaces/{project}', [AdminProjectController::class, 'show'])->name('admin.projects.show');
+        Route::patch('workspaces/{project}', [AdminProjectController::class, 'update'])->name('admin.projects.update');
 
         Route::get('virtual-machines/proxmox-servers/{proxmoxServer}/options', [VirtualMachineController::class, 'options'])
             ->name('admin.virtual-machines.options');
@@ -211,6 +216,7 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::get('projects', [ProjectController::class, 'index'])->name('customer.projects.index');
         Route::post('projects', [ProjectController::class, 'store'])->name('customer.projects.store');
         Route::get('projects/{project}', [ProjectController::class, 'show'])->name('customer.projects.show');
+        Route::patch('projects/{project}', [ProjectController::class, 'update'])->name('customer.projects.update');
         Route::post('projects/{project}/members', [ProjectController::class, 'storeMember'])->name('customer.projects.members.store');
         Route::patch('projects/{project}/members/{member}', [ProjectController::class, 'updateMember'])->name('customer.projects.members.update');
         Route::delete('projects/{project}/members/{member}', [ProjectController::class, 'destroyMember'])->name('customer.projects.members.destroy');
