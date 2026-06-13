@@ -1,98 +1,81 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>نیاز به شارژ کیف پول</title>
-    <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicons/favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicons/favicon-16x16.png') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicons/apple-touch-icon.png') }}">
-    <link rel="manifest" href="{{ asset('favicons/site.webmanifest') }}">
-    <meta name="theme-color" content="#B91C1C">
-    <link rel="stylesheet" href="{{ asset('assets/fonts.css') }}">
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="min-h-screen bg-[#0F172A] text-white">
-    <div class="relative isolate min-h-screen overflow-hidden">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,.22),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,.18),transparent_22%),linear-gradient(180deg,#0F172A_0%,#111827_55%,#1F2937_100%)]"></div>
-        <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-400 via-amber-300 to-red-500"></div>
+@extends('customer.layout')
 
-        <main class="relative mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-8 sm:px-6 lg:px-8">
-            <section class="grid w-full gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <div class="rounded-[28px] border border-white/10 bg-white/6 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-8">
-                    <div class="flex items-center gap-3">
-                        <div class="grid size-14 place-items-center rounded-2xl bg-red-500/15 text-red-200 ring-1 ring-red-400/25">
-                            <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-                                <path d="M12 8v5" stroke-linecap="round"/>
-                                <path d="M12 17h.01" stroke-linecap="round"/>
-                                <path d="M10.3 3.9h3.4L22 17.8A2 2 0 0 1 20.3 21H3.7A2 2 0 0 1 2 17.8L10.3 3.9Z" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs font-black tracking-[0.25em] text-red-300">نیاز به شارژ کیف پول</p>
-                            <h1 class="mt-1 text-3xl font-black text-white sm:text-4xl">کیف پول شما باید شارژ شود</h1>
-                        </div>
+@section('title', 'نیاز به شارژ کیف پول')
+
+@section('header_title', 'نیاز به شارژ کیف پول')
+@section('header_subtitle', 'موجودی کیف پول این فضای کاری کافی نیست')
+
+@section('content')
+    <div class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div class="space-y-6">
+            <div class="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm shadow-red-200/50 sm:p-8">
+                <div class="flex items-center gap-4">
+                    <div class="grid size-14 shrink-0 place-items-center rounded-2xl bg-red-100 text-red-600 ring-1 ring-red-200">
+                        <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+                            <path d="M12 8v5" stroke-linecap="round"/>
+                            <path d="M12 17h.01" stroke-linecap="round"/>
+                            <path d="M10.3 3.9h3.4L22 17.8A2 2 0 0 1 20.3 21H3.7A2 2 0 0 1 2 17.8L10.3 3.9Z" stroke-linejoin="round"/>
+                        </svg>
                     </div>
-
-                    <p class="mt-5 text-base leading-8 text-slate-200">
-                        موجودی این فضای کاری به آستانه لازم نرسیده است.
-                        فعلا فقط می‌توانید کیف پول را شارژ کنید و صورتحساب‌ها و تراکنش‌های مالی را ببینید.
-                    </p>
-
-                    @if (session('error'))
-                        <div class="mt-5 rounded-2xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
-                            {{ session('error') }}
-                        </div>
-                    @endif
-
-                    <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                        <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex items-center justify-center rounded-2xl bg-red-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-500/25 transition hover:bg-red-400">
-                            رفتن به کیف پول
-                        </a>
-                        <form method="POST" action="{{ route('customer.logout', [], false) }}">
-                            @csrf
-                            <button class="inline-flex w-full items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10">
-                                خروج از حساب
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="mt-8 grid gap-3 md:grid-cols-3">
-                        @foreach ([
-                            ['label' => 'موجودی کیف پول', 'value' => $wallets->format($wallet->balance)],
-                            ['label' => 'پروژه فعال', 'value' => $activeProject->name],
-                            ['label' => 'مصرف ثبت نشده', 'value' => $wallets->format($pendingUsage)],
-                        ] as $item)
-                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-                                <p class="text-xs font-black text-slate-400">{{ $item['label'] }}</p>
-                                <p class="mt-2 truncate text-lg font-black text-white">{{ $item['value'] }}</p>
-                            </div>
-                        @endforeach
+                    <div>
+                        <p class="text-xs font-black tracking-[0.25em] text-red-600">نیاز به شارژ کیف پول</p>
+                        <h2 class="mt-1 text-2xl font-black text-red-900 sm:text-3xl">کیف پول شما باید شارژ شود</h2>
                     </div>
                 </div>
 
-                <aside class="space-y-4">
-                    <div class="rounded-[28px] border border-white/10 bg-slate-950/45 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
-                        <p class="text-xs font-black tracking-[0.2em] text-amber-200">چه چیزهایی در دسترس است</p>
-                        <div class="mt-4 space-y-3 text-sm leading-7 text-slate-200">
-                            <p>کیف پول را شارژ کنید تا محدودیت برداشته شود.</p>
-                            <p>صورتحساب‌ها و تراکنش‌های مالی همچنان در دسترس هستند.</p>
-                            <p>ساخت، روشن کردن و مدیریت ماشین‌های مجازی تا شارژ کیف پول غیرفعال است.</p>
-                        </div>
-                    </div>
+                <p class="mt-5 text-sm leading-8 text-red-800">
+                    موجودی این فضای کاری به آستانه لازم نرسیده است.
+                    فعلا فقط می‌توانید کیف پول را شارژ کنید و صورتحساب‌ها و تراکنش‌های مالی را ببینید.
+                </p>
 
-                    <div class="rounded-[28px] border border-amber-400/20 bg-amber-400/10 p-6 text-amber-50 shadow-2xl shadow-black/10 backdrop-blur-xl">
-                        <h2 class="text-lg font-black">برای فعال شدن دوباره چه کار کنم؟</h2>
-                        <ol class="mt-4 space-y-3 text-sm leading-7">
-                            <li>1. کیف پول را شارژ کنید.</li>
-                            <li>2. بعد از ثبت موفق شارژ، محدودیت به‌صورت خودکار برداشته می‌شود.</li>
-                            <li>3. ماشین‌های مجازی متوقف‌شده را دوباره می‌توانید روشن کنید.</li>
-                        </ol>
+                @if (session('error'))
+                    <div class="mt-5 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm font-bold text-red-700">
+                        {{ session('error') }}
                     </div>
-                </aside>
-            </section>
-        </main>
+                @endif
+
+                <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                    <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex items-center justify-center rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-500">
+                        رفتن به کیف پول
+                    </a>
+                    <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-50">
+                        شارژ سریع
+                    </a>
+                </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-3">
+                @foreach ([
+                    ['label' => 'موجودی کیف پول', 'value' => $wallets->format($wallet->balance), 'color' => ($wallet->balance ?? 0) < 0 ? 'text-red-600' : 'text-slate-950'],
+                    ['label' => 'پروژه فعال', 'value' => $activeProject->name, 'color' => 'text-slate-950'],
+                    ['label' => 'مصرف ثبت نشده', 'value' => $wallets->format($pendingUsage), 'color' => 'text-amber-600'],
+                ] as $item)
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
+                        <p class="text-xs font-black text-slate-400">{{ $item['label'] }}</p>
+                        <p class="mt-2 truncate text-lg font-black {{ $item['color'] }}">{{ $item['value'] }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        <aside class="space-y-4">
+            <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
+                <p class="text-xs font-black tracking-[0.2em] text-amber-600">چه چیزهایی در دسترس است</p>
+                <div class="mt-4 space-y-3 text-sm leading-7 text-slate-600">
+                    <p>کیف پول را شارژ کنید تا محدودیت برداشته شود.</p>
+                    <p>صورتحساب‌ها و تراکنش‌های مالی همچنان در دسترس هستند.</p>
+                    <p>ساخت، روشن کردن و مدیریت ماشین‌های مجازی تا شارژ کیف پول غیرفعال است.</p>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-sm shadow-amber-200/40">
+                <h2 class="text-base font-black text-amber-900">برای فعال شدن دوباره چه کار کنم؟</h2>
+                <ol class="mt-4 space-y-3 text-sm leading-7 text-amber-800">
+                    <li>۱. کیف پول را شارژ کنید.</li>
+                    <li>۲. بعد از ثبت موفق شارژ، محدودیت به‌صورت خودکار برداشته می‌شود.</li>
+                    <li>۳. ماشین‌های مجازی متوقف‌شده را دوباره می‌توانید روشن کنید.</li>
+                </ol>
+            </div>
+        </aside>
     </div>
-</body>
-</html>
+@endsection
