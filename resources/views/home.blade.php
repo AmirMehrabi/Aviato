@@ -68,9 +68,9 @@
 
         <div class="mx-auto w-full max-w-7xl">
             <div class="mx-auto max-w-3xl text-center md:mx-0 md:text-right">
-                <h1 class="text-4xl leading-[1.22] text-slate-950 sm:text-5xl md:text-6xl">
+                <h1 class="text-4xl font- font-medium leading-[1.22] text-slate-950 sm:text-5xl md:text-6xl">
                    زیرساختی پایدار، 
-                    <span class="block text-[#1976C9]">برای اوجی بی‌پایان</span>
+                    <span class="block text-3xl  sm:text-4xl md:text-5xl font-light  text-gray-800">برای <span class="font-semibold text-[#1976C9]">اوجی</span> بی‌پایان</span>
                 </h1>
                 <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-700 md:mx-0 md:text-lg md:leading-9">
                   از اولین راه‌اندازی تا اوج رشد، سرورهایی پایدار برای سرویس‌های همیشه‌روشن.
