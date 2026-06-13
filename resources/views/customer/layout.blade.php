@@ -24,6 +24,7 @@
         $activeMembership = $activeMembership ?? $projectAccess->membership($activeProject, $customer);
         $customerInitial = mb_substr($customer->name ?? 'م', 0, 1);
         $balanceIsNegative = ($wallet->balance ?? 0) < 0;
+        $walletRestrictionThreshold = \App\Models\AppSetting::customerWalletNegativeThreshold();
         $activeNav = $activeNav ?? 'dashboard';
         $navGroups = [
             'فضای کاری' => [
@@ -45,7 +46,7 @@
         ];
     @endphp
 
-    @if ($customer->isSuspended())
+    @if (($wallet->balance ?? 0) < $walletRestrictionThreshold)
         <div class="border-b border-red-200 bg-red-50 px-4 py-3 text-red-900 sm:px-6 lg:px-8">
             <div class="mx-auto flex max-w-[1600px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div class="flex items-start gap-3">
@@ -57,9 +58,9 @@
                         </svg>
                     </span>
                     <div>
-                        <p class="text-xs font-black tracking-[0.2em] text-red-700">ACCOUNT SUSPENDED</p>
+                        <p class="text-xs font-black tracking-[0.2em] text-red-700">نیاز به شارژ کیف پول</p>
                         <p class="mt-1 text-sm font-bold leading-7 text-red-800">
-                            حساب شما به دلیل بدهی کیف پول تعلیق شده است. فقط شارژ کیف پول، صورتحساب‌ها و تراکنش‌های مالی در دسترس است.
+                            موجودی کیف پول این فضای کاری کافی نیست. فعلا فقط شارژ کیف پول، صورتحساب‌ها و تراکنش‌های مالی در دسترس است.
                         </p>
                     </div>
                 </div>

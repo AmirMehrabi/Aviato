@@ -4,16 +4,19 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Models\WalletTransaction;
 use App\Services\InvoiceService;
 use App\Services\PaymentService;
+use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Mockery;
 use Tests\TestCase;
 
 class CustomerWalletBillingTest extends TestCase
@@ -281,5 +284,65 @@ class CustomerWalletBillingTest extends TestCase
             ->assertSee($invoice->number);
 
         CarbonImmutable::setTestNow();
+    }
+
+    public function test_negative_wallet_locks_vms_and_blocks_them_until_top_up(): void
+    {
+        $customer = Customer::factory()->create();
+        $server = ProxmoxServer::create([
+            'name' => 'THR Proxmox',
+            'datacenter' => 'THR-1',
+            'host' => 'pve.local',
+            'port' => 8006,
+            'realm' => 'pam',
+            'username' => 'root',
+            'api_token_id' => 'root@pam!panel',
+            'api_token_secret' => 'secret',
+            'is_active' => true,
+            'maintenance_mode' => false,
+        ]);
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $server->id,
+            'vmid' => 101,
+            'name' => 'wallet-locked-vm',
+            'hostname' => 'wallet-locked-vm',
+            'node' => 'pve1',
+            'storage' => 'local-lvm',
+            'network_bridge' => 'vmbr1',
+            'ip_address' => '192.168.10.50',
+            'login_username' => 'ubuntu',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock) use ($server): void {
+            $mock->shouldReceive('stopVm')
+                ->once()
+                ->with(Mockery::on(fn ($value) => $value instanceof ProxmoxServer && $value->is($server)), 'pve1', 101)
+                ->andReturn(['task_id' => 'UPID:stop']);
+        });
+
+        app(WalletService::class)->charge($customer, 1000, 'کسر آزمایشی');
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::STATUS_SUSPENDED, $vm->status);
+        $this->assertSame(VirtualMachine::STATUS_STOPPED, data_get($vm->desired_state, 'status'));
+        $this->assertNotNull(data_get($vm->remote_state, 'wallet_locked_at'));
+
+        $this->actingAs($customer, 'customer');
+        $this->get($this->customerBaseUrl.'/dashboard')
+            ->assertRedirect($this->customerBaseUrl.'/suspended');
+
+        app(WalletService::class)->credit($customer, 2000, 'شارژ آزمایشی');
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
+        $this->assertNull(data_get($vm->remote_state, 'wallet_locked_at'));
+        $this->assertNotNull(data_get($vm->remote_state, 'wallet_unlocked_at'));
     }
 }

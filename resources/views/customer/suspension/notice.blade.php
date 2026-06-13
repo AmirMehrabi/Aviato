@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>حساب تعلیق شده</title>
+    <title>نیاز به شارژ کیف پول</title>
     <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicons/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicons/favicon-16x16.png') }}">
@@ -30,13 +30,13 @@
                             </svg>
                         </div>
                         <div>
-                            <p class="text-xs font-black tracking-[0.25em] text-red-300">ACCOUNT SUSPENDED</p>
-                            <h1 class="mt-1 text-3xl font-black text-white sm:text-4xl">حساب شما تعلیق شده است</h1>
+                            <p class="text-xs font-black tracking-[0.25em] text-red-300">نیاز به شارژ کیف پول</p>
+                            <h1 class="mt-1 text-3xl font-black text-white sm:text-4xl">کیف پول شما باید شارژ شود</h1>
                         </div>
                     </div>
 
                     <p class="mt-5 text-base leading-8 text-slate-200">
-                        به دلیل موجودی منفی و ارسال چند نوبت هشدار، دسترسی این حساب موقتا متوقف شده است.
+                        موجودی این فضای کاری به آستانه لازم نرسیده است.
                         فعلا فقط می‌توانید کیف پول را شارژ کنید و صورتحساب‌ها و تراکنش‌های مالی را ببینید.
                     </p>
 
@@ -74,20 +74,20 @@
 
                 <aside class="space-y-4">
                     <div class="rounded-[28px] border border-white/10 bg-slate-950/45 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
-                        <p class="text-xs font-black tracking-[0.2em] text-amber-200">WHAT IS AVAILABLE</p>
+                        <p class="text-xs font-black tracking-[0.2em] text-amber-200">چه چیزهایی در دسترس است</p>
                         <div class="mt-4 space-y-3 text-sm leading-7 text-slate-200">
-                            <p>کیف پول را شارژ کنید تا بدهی تسویه شود.</p>
+                            <p>کیف پول را شارژ کنید تا محدودیت برداشته شود.</p>
                             <p>صورتحساب‌ها و تراکنش‌های مالی همچنان در دسترس هستند.</p>
-                            <p>ساخت، روشن کردن و مدیریت ماشین‌های مجازی تا رفع تعلیق غیرفعال است.</p>
+                            <p>ساخت، روشن کردن و مدیریت ماشین‌های مجازی تا شارژ کیف پول غیرفعال است.</p>
                         </div>
                     </div>
 
                     <div class="rounded-[28px] border border-amber-400/20 bg-amber-400/10 p-6 text-amber-50 shadow-2xl shadow-black/10 backdrop-blur-xl">
-                        <h2 class="text-lg font-black">برای رفع تعلیق چه کار کنم؟</h2>
+                        <h2 class="text-lg font-black">برای فعال شدن دوباره چه کار کنم؟</h2>
                         <ol class="mt-4 space-y-3 text-sm leading-7">
                             <li>1. کیف پول را شارژ کنید.</li>
-                            <li>2. اگر حساب هنوز تعلیق بود، با پشتیبانی تماس بگیرید.</li>
-                            <li>3. بعد از فعال‌سازی مجدد، دسترسی کامل برمی‌گردد.</li>
+                            <li>2. بعد از ثبت موفق شارژ، محدودیت به‌صورت خودکار برداشته می‌شود.</li>
+                            <li>3. ماشین‌های مجازی متوقف‌شده را دوباره می‌توانید روشن کنید.</li>
                         </ol>
                     </div>
                 </aside>

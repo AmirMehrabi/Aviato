@@ -53,6 +53,16 @@ class WalletService
         return $prefix.$this->formattedAmount(abs($amount), $currency).' '.$this->currencyLabel($currency);
     }
 
+    public function customerWalletNegativeThreshold(): int
+    {
+        return AppSetting::customerWalletNegativeThreshold();
+    }
+
+    public function isBelowNegativeThreshold(Customer $customer): bool
+    {
+        return $this->walletFor($customer)->balance < $this->customerWalletNegativeThreshold();
+    }
+
     private function formattedAmount(int $amount, string $currency): string
     {
         if ($currency !== 'IRR') {

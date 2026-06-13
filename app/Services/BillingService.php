@@ -12,7 +12,7 @@ class BillingService
 {
     public function estimateMonthly(VirtualMachine $vm): int
     {
-        if ($vm->isActionLocked()) {
+        if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
             return 0;
         }
 
@@ -21,7 +21,7 @@ class BillingService
 
     public function estimateStoppedMonthly(VirtualMachine $vm): int
     {
-        if ($vm->isActionLocked()) {
+        if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
             return 0;
         }
 
@@ -30,7 +30,7 @@ class BillingService
 
     public function currentAccrued(VirtualMachine $vm): int
     {
-        if ($vm->isActionLocked()) {
+        if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
             return 0;
         }
 

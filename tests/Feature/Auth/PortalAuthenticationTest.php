@@ -7,6 +7,7 @@ use App\Mail\CustomerVerificationCodeMail;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -132,6 +133,27 @@ class PortalAuthenticationTest extends TestCase
             'phone' => null,
             'password' => 'password',
         ]);
+
+        $response = $this->post('https://cp.aviato.ir/login', [
+            'login' => 'customer@example.com',
+            'password' => 'password',
+        ]);
+
+        $response->assertRedirect('https://cp.aviato.ir/dashboard');
+        $this->assertAuthenticated('customer');
+    }
+
+    public function test_customer_can_login_even_when_their_wallet_is_negative(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'disabled');
+
+        $customer = Customer::factory()->create([
+            'email' => 'customer@example.com',
+            'phone' => null,
+            'password' => 'password',
+        ]);
+
+        app(WalletService::class)->charge($customer, 1000, 'کسر آزمایشی');
 
         $response = $this->post('https://cp.aviato.ir/login', [
             'login' => 'customer@example.com',

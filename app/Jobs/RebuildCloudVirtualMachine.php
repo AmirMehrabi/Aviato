@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\VirtualMachine;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
+use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
@@ -36,16 +37,17 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
         return 'rebuild-vm-'.$this->virtualMachineId;
     }
 
-    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools): void
+    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, WalletService $wallets): void
     {
         $vm = VirtualMachine::query()
-            ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool'])
+            ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool', 'project.owner', 'customer'])
             ->findOrFail($this->virtualMachineId);
 
         $server = $vm->proxmoxServer;
         $image = $vm->cloudImage;
         $address = $vm->reservedIpAddress;
         $history = data_get($vm->remote_state, 'rebuild_steps', []);
+        $billingCustomer = $vm->project?->owner ?? $vm->customer;
 
         Log::info('Cloud VM rebuild job started', [
             'virtual_machine_id' => $vm->id,
@@ -166,10 +168,15 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                 }
             }
 
-            $start = $proxmox->startVm($server, $node, $vmid);
-            $history[] = ['step' => 'start', 'result' => $start, 'at' => now()->toISOString()];
-            if (! empty($start['task_id'])) {
-                $history[] = ['step' => 'start_wait', 'result' => $proxmox->waitForTask($server, $node, (string) $start['task_id']), 'at' => now()->toISOString()];
+            $startAllowed = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
+            if ($startAllowed) {
+                $start = $proxmox->startVm($server, $node, $vmid);
+                $history[] = ['step' => 'start', 'result' => $start, 'at' => now()->toISOString()];
+                if (! empty($start['task_id'])) {
+                    $history[] = ['step' => 'start_wait', 'result' => $proxmox->waitForTask($server, $node, (string) $start['task_id']), 'at' => now()->toISOString()];
+                }
+            } else {
+                $history[] = ['step' => 'start_skipped_wallet_locked', 'result' => 'wallet below threshold', 'at' => now()->toISOString()];
             }
 
             $verifiedConfig = $proxmox->vmConfig($server, $node, $vmid);
@@ -185,10 +192,10 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
 
             $vm->forceFill([
                 'mac_address' => $vm->mac_address ?: $verifiedMacAddress,
-                'status' => VirtualMachine::STATUS_RUNNING,
+                'status' => $startAllowed ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
                 'provisioning_status' => VirtualMachine::PROVISION_READY,
                 'provisioning_task_id' => null,
-                'last_started_at' => now(),
+                'last_started_at' => $startAllowed ? now() : $vm->last_started_at,
                 'last_seen_at' => now(),
                 'remote_state' => array_merge($vm->remote_state ?? [], [
                     'rebuild_steps' => $history,

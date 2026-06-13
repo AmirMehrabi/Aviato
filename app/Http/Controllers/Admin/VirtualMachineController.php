@@ -18,6 +18,7 @@ use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmTransferService;
+use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -35,6 +36,7 @@ class VirtualMachineController extends Controller
         private readonly IpPoolService $ipPools,
         private readonly VirtualMachineDeletionService $deletions,
         private readonly VmTransferService $vmTransferService,
+        private readonly WalletService $wallets,
     ) {}
 
     public function index(Request $request): View
@@ -168,10 +170,14 @@ class VirtualMachineController extends Controller
             'disks',
             'upgradeOrders' => fn ($query) => $query->with(['toBundle', 'disk'])->latest()->limit(10),
         ]);
+        $billingCustomer = $virtualMachine->project?->owner ?? $virtualMachine->customer;
 
         return view('admin.virtual-machines.show', [
             'vm' => $virtualMachine,
             'billing' => $this->billing,
+            'wallet' => $billingCustomer ? $this->wallets->walletFor($billingCustomer) : null,
+            'wallets' => $this->wallets,
+            'billingCustomer' => $billingCustomer,
         ]);
     }
 
@@ -316,6 +322,13 @@ class VirtualMachineController extends Controller
     {
         if ($virtualMachine->isActionLocked()) {
             return back()->with('error', 'این VM در وضعیت حذف است و امکان روشن کردن ندارد.');
+        }
+
+        $virtualMachine->loadMissing(['project.owner', 'customer']);
+        $billingCustomer = $virtualMachine->project?->owner ?? $virtualMachine->customer;
+
+        if ($billingCustomer && $this->wallets->isBelowNegativeThreshold($billingCustomer)) {
+            return back()->with('error', 'این VM تا شارژ شدن کیف پول فضای کاری مربوطه قابل روشن کردن نیست.');
         }
 
         if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {

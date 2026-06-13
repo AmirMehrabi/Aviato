@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\VirtualMachine;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
+use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
 use Illuminate\Support\Facades\Log;
@@ -34,14 +35,15 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
         public readonly array $options = [],
     ) {}
 
-    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools): void
+    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, WalletService $wallets): void
     {
         $vm = VirtualMachine::query()
-            ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool'])
+            ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool', 'project.owner', 'customer'])
             ->findOrFail($this->virtualMachineId);
 
         $server = $vm->proxmoxServer;
         $image = $vm->cloudImage;
+        $billingCustomer = $vm->project?->owner ?? $vm->customer;
 
         if (! $server || ! $image) {
             throw new RuntimeException('Provisioning cannot continue without Proxmox server and cloud image.');
@@ -85,18 +87,24 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             }
 
             $cloudInitEnabled = (bool) $image->cloud_init_enabled;
+            $shouldStartAfterCreate = (bool) ($this->options['start_after_create'] ?? true);
+            $canAutoStart = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
 
             if (! $cloudInitEnabled) {
-                $start = $proxmox->startVm($server, $vm->node, $vmid);
-                $history[] = ['step' => 'start', 'result' => $start];
-                if (! empty($start['task_id'])) {
-                    $history[] = ['step' => 'start_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $start['task_id'])];
+                if ($shouldStartAfterCreate && $canAutoStart) {
+                    $start = $proxmox->startVm($server, $vm->node, $vmid);
+                    $history[] = ['step' => 'start', 'result' => $start];
+                    if (! empty($start['task_id'])) {
+                        $history[] = ['step' => 'start_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $start['task_id'])];
+                    }
+                } else {
+                    $history[] = ['step' => 'start_skipped_wallet_locked', 'result' => 'wallet below threshold'];
                 }
 
                 $vm->forceFill([
-                    'status' => VirtualMachine::STATUS_RUNNING,
+                    'status' => $shouldStartAfterCreate && $canAutoStart ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
                     'provisioning_status' => VirtualMachine::PROVISION_READY,
-                    'last_started_at' => now(),
+                    'last_started_at' => $shouldStartAfterCreate && $canAutoStart ? now() : null,
                     'last_billed_at' => now(),
                     'last_seen_at' => now(),
                     'remote_state' => ['steps' => $history, 'finished_at' => now()->toISOString()],
@@ -143,11 +151,15 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 }
             }
 
-            if ($this->options['start_after_create'] ?? true) {
-                $start = $proxmox->startVm($server, $vm->node, $vmid);
-                $history[] = ['step' => 'start', 'result' => $start];
-                if (! empty($start['task_id'])) {
-                    $history[] = ['step' => 'start_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $start['task_id'])];
+            if ($shouldStartAfterCreate) {
+                if ($canAutoStart) {
+                    $start = $proxmox->startVm($server, $vm->node, $vmid);
+                    $history[] = ['step' => 'start', 'result' => $start];
+                    if (! empty($start['task_id'])) {
+                        $history[] = ['step' => 'start_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $start['task_id'])];
+                    }
+                } else {
+                    $history[] = ['step' => 'start_skipped_wallet_locked', 'result' => 'wallet below threshold'];
                 }
             }
 
@@ -164,9 +176,9 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
             $vm->forceFill([
                 'mac_address' => $vm->mac_address ?: $verifiedMacAddress,
-                'status' => ($this->options['start_after_create'] ?? true) ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
+                'status' => $shouldStartAfterCreate && $canAutoStart ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
                 'provisioning_status' => VirtualMachine::PROVISION_READY,
-                'last_started_at' => ($this->options['start_after_create'] ?? true) ? now() : null,
+                'last_started_at' => $shouldStartAfterCreate && $canAutoStart ? now() : null,
                 'last_billed_at' => now(),
                 'last_seen_at' => now(),
                 'remote_state' => ['steps' => $history, 'finished_at' => now()->toISOString()],

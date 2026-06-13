@@ -6,11 +6,14 @@
 @if (session('status'))<div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>@endif
 @if (session('error'))<div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>@endif
 @if (session('provisioning_password'))<div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">Password اولیه فقط همین حالا نمایش داده می‌شود: <span dir="ltr">{{ session('provisioning_password') }}</span></div>@endif
+@php
+    $walletBlocked = ($wallet?->balance ?? 0) < \App\Models\AppSetting::customerWalletNegativeThreshold();
+@endphp
 <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
     <div class="absolute -left-16 -top-16 size-48 rounded-full bg-white/10 blur-2xl"></div>
     <div class="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-            <p class="text-sm font-bold text-white/60">VM #{{ $vm->id }} · Billing: {{ $vm->customer?->name ?: '—' }}</p>
+            <p class="text-sm font-bold text-white/60">VM #{{ $vm->id }} · Billing: {{ $billingCustomer?->name ?: '—' }}</p>
             <h1 class="mt-1 text-2xl font-black md:text-4xl" dir="ltr">{{ $vm->name }}</h1>
             <p class="mt-3 leading-8 text-white/75" dir="ltr">{{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local only' }} · {{ $vm->provisioning_status }}</p>
             <p class="mt-2 text-sm font-bold text-white/70">Project: {{ $vm->project?->name ?: '—' }} · Owner: {{ $vm->project?->owner?->name ?: '—' }} · Created by: {{ $vm->creator?->name ?: '—' }}</p>
@@ -35,7 +38,7 @@
             @else
                 <form method="POST" action="{{ route('admin.virtual-machines.start', $vm) }}">
                     @csrf
-                    <button class="rounded-lg bg-[#B8D6FF] px-5 py-3 text-sm font-black text-[#031B4E]">روشن کردن</button>
+                    <button @disabled($walletBlocked) class="rounded-lg bg-[#B8D6FF] px-5 py-3 text-sm font-black text-[#031B4E] disabled:cursor-not-allowed disabled:opacity-50">روشن کردن</button>
                 </form>
             @endif
             @if(! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at || $vm->deleteAttemptIsStale()))
@@ -50,13 +53,18 @@
 </div>
 <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 @foreach([
-['label' => 'وضعیت', 'value' => $vm->isRunning() ? 'روشن' : 'خاموش', 'tone' => $vm->isRunning() ? 'text-[#0069FF]' : 'text-slate-700'],
+['label' => 'وضعیت', 'value' => $vm->status === \App\Models\VirtualMachine::STATUS_SUSPENDED ? 'تعلیق' : ($vm->isRunning() ? 'روشن' : 'خاموش'), 'tone' => $vm->status === \App\Models\VirtualMachine::STATUS_SUSPENDED ? 'text-red-600' : ($vm->isRunning() ? 'text-[#0069FF]' : 'text-slate-700')],
 ['label' => 'هزینه ماهانه در وضعیت فعلی', 'value' => $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)), 'tone' => 'text-[#0069FF]'],
 ['label' => 'هزینه ماهانه اگر خاموش باشد', 'value' => $money->format($billing->estimateStoppedMonthly($vm)), 'tone' => 'text-amber-700'],
 ['label' => 'مصرف محاسبه نشده', 'value' => $money->format($billing->currentAccrued($vm)), 'tone' => 'text-slate-950'],
-['label' => 'Billing Customer', 'value' => $vm->customer?->name ?: '—', 'tone' => 'text-slate-950'],
+['label' => 'Billing Customer', 'value' => $billingCustomer?->name ?: '—', 'tone' => 'text-slate-950'],
 ] as $card)<div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-bold text-slate-500">{{ $card['label'] }}</p><p class="mt-3 text-xl font-black {{ $card['tone'] }}">{{ $card['value'] }}</p></div>@endforeach
 </section>
+@if ($walletBlocked)
+    <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+        کیف پول فضای کاری این VM منفی است. روشن کردن آن تا شارژ شدن کیف پول ممکن نیست.
+    </div>
+@endif
 <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]"><section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="text-xl font-black">مشخصات سخت‌افزار و Billing</h2><div class="mt-5 grid gap-3 md:grid-cols-4"><div class="rounded-xl bg-slate-50 p-4 text-center"><p class="text-2xl font-black">{{ $vm->cpu_cores }}</p><p class="text-xs text-slate-500">CPU Core فقط روشن</p></div><div class="rounded-xl bg-slate-50 p-4 text-center"><p class="text-2xl font-black">{{ $vm->ram_gb }}GB</p><p class="text-xs text-slate-500">RAM فقط روشن</p></div><div class="rounded-xl bg-slate-50 p-4 text-center"><p class="text-2xl font-black">{{ $vm->disk_gb }}GB</p><p class="text-xs text-slate-500">Disk همیشه</p></div><div class="rounded-xl bg-slate-50 p-4 text-center"><p class="text-2xl font-black">{{ $vm->ip_count }}</p><p class="text-xs text-slate-500">IP همیشه</p></div></div><div class="mt-5 rounded-xl border border-dashed border-slate-300 p-4"><p class="font-black">باندل</p><p class="mt-2 text-sm text-slate-600">{{ $vm->bundle ? $vm->bundle->name . ' - ' . $money->format($vm->bundle->monthly_price) . ' / ماه روشن' : 'Custom pricing از قیمت منابع' }}</p></div></section><section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="text-xl font-black">Proxmox</h2><div class="mt-5 space-y-3 text-sm"><p><span class="font-bold text-slate-500">Server:</span> {{ $vm->proxmoxServer?->name ?: '—' }}</p><p><span class="font-bold text-slate-500">Node:</span> <span dir="ltr">{{ $vm->node ?: '—' }}</span></p><p><span class="font-bold text-slate-500">VMID:</span> <span dir="ltr">{{ $vm->vmid ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Template:</span> <span dir="ltr">{{ $vm->template_vmid ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Image:</span> <span dir="ltr">{{ $vm->cloudImage?->name ?: $vm->iso_volume ?: $vm->os_template ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Storage:</span> <span dir="ltr">{{ $vm->storage ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Bridge:</span> <span dir="ltr">{{ $vm->network_bridge ?: '—' }}</span></p><p><span class="font-bold text-slate-500">Login:</span> <span dir="ltr">{{ $vm->login_username ?: '—' }}</span></p></div></section></div>
 <div class="mt-6 grid gap-6 xl:grid-cols-2">
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

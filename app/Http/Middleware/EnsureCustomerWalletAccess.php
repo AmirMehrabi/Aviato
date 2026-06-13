@@ -2,18 +2,27 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Customer;
 use Closure;
+use App\Models\Customer;
+use App\Services\ProjectAccessService;
+use App\Services\WalletService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureCustomerWalletAccess
 {
+    public function __construct(
+        private readonly ProjectAccessService $projects,
+        private readonly WalletService $wallets,
+    ) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $customer = $request->user('customer');
+        $activeProject = $customer instanceof Customer ? $this->projects->activeProject($request, $customer) : null;
+        $billingOwner = $activeProject?->owner ?? $customer;
 
-        if (! $customer instanceof Customer || ! $customer->isSuspended()) {
+        if (! $billingOwner instanceof Customer || ! $this->wallets->isBelowNegativeThreshold($billingOwner)) {
             return $next($request);
         }
 
@@ -32,6 +41,6 @@ class EnsureCustomerWalletAccess
 
         return redirect()
             ->route('customer.suspension.notice')
-            ->with('error', 'حساب شما تعلیق شده است و فقط امکان شارژ کیف پول را دارید.');
+            ->with('error', 'موجودی کیف پول شما کافی نیست. فعلا فقط شارژ کیف پول و پرداخت ها در دسترس است.');
     }
 }

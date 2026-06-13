@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\ProxmoxService;
+use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
@@ -146,6 +147,31 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
         $this->assertNotNull($vm->last_stopped_at);
+    }
+
+    public function test_admin_cannot_start_vm_when_billing_owner_wallet_is_negative(): void
+    {
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $vm = $this->readyVm($customer);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('stopVm')
+                ->once()
+                ->andReturn(['task_id' => 'UPID:stop']);
+            $mock->shouldNotReceive('startVm');
+        });
+
+        app(WalletService::class)->charge($customer, 1000, 'کسر آزمایشی');
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/start')
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::STATUS_SUSPENDED, $vm->status);
     }
 
     public function test_admin_create_persists_selected_proxmox_node_storage_and_os_template(): void

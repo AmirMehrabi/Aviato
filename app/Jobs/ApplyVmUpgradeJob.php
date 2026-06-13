@@ -2,10 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Models\Customer;
 use App\Models\VirtualMachine;
 use App\Models\VmDisk;
 use App\Models\VmUpgradeOrder;
 use App\Services\ProxmoxService;
+use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
@@ -21,10 +23,10 @@ class ApplyVmUpgradeJob implements ShouldQueue
 
     public function __construct(public int $orderId) {}
 
-    public function handle(ProxmoxService $proxmox): void
+    public function handle(ProxmoxService $proxmox, WalletService $wallets): void
     {
         $order = VmUpgradeOrder::query()
-            ->with(['virtualMachine.proxmoxServer', 'toBundle', 'disk'])
+            ->with(['virtualMachine.proxmoxServer', 'virtualMachine.project.owner', 'virtualMachine.customer', 'toBundle', 'disk'])
             ->findOrFail($this->orderId);
 
         if (! $order->isPending()) {
@@ -32,6 +34,7 @@ class ApplyVmUpgradeJob implements ShouldQueue
         }
 
         $vm = $order->virtualMachine;
+        $billingCustomer = $vm->project?->owner ?? $vm->customer;
 
         try {
             $order->forceFill(['status' => VmUpgradeOrder::STATUS_APPLYING])->save();
@@ -41,7 +44,7 @@ class ApplyVmUpgradeJob implements ShouldQueue
             }
 
             $result = match ($order->type) {
-                VmUpgradeOrder::TYPE_BUNDLE => $this->applyBundle($order, $vm, $proxmox),
+                VmUpgradeOrder::TYPE_BUNDLE => $this->applyBundle($order, $vm, $proxmox, $billingCustomer, $wallets),
                 VmUpgradeOrder::TYPE_EXTRA_DISK => $this->applyExtraDisk($order, $vm, $proxmox),
                 VmUpgradeOrder::TYPE_PRIMARY_DISK => $this->applyPrimaryDisk($order, $vm, $proxmox),
                 default => throw new \RuntimeException('Unsupported upgrade type: '.$order->type),
@@ -63,7 +66,7 @@ class ApplyVmUpgradeJob implements ShouldQueue
     /**
      * @return array<string, mixed>
      */
-    private function applyBundle(VmUpgradeOrder $order, VirtualMachine $vm, ProxmoxService $proxmox): array
+    private function applyBundle(VmUpgradeOrder $order, VirtualMachine $vm, ProxmoxService $proxmox, ?Customer $billingCustomer, WalletService $wallets): array
     {
         $after = $order->after_snapshot;
         $server = $vm->proxmoxServer;
@@ -73,6 +76,7 @@ class ApplyVmUpgradeJob implements ShouldQueue
             'restart_required' => true,
             'restart_pause_seconds' => self::BUNDLE_RESTART_PAUSE_SECONDS,
         ];
+        $billingBlocked = $billingCustomer ? $wallets->isBelowNegativeThreshold($billingCustomer) : false;
 
         $remoteStatus = $proxmox->vmStatus($server, $node, $vmid);
         $result['status_before_shutdown'] = $remoteStatus;
@@ -103,9 +107,13 @@ class ApplyVmUpgradeJob implements ShouldQueue
 
         $this->pauseBeforeRestart();
 
-        $start = $proxmox->startVm($server, $node, $vmid);
-        $result['start'] = $start;
-        $this->waitForTaskResult($proxmox, $vm, $start, 180);
+        if (! $billingBlocked) {
+            $start = $proxmox->startVm($server, $node, $vmid);
+            $result['start'] = $start;
+            $this->waitForTaskResult($proxmox, $vm, $start, 180);
+        } else {
+            $result['start_skipped_wallet_locked'] = true;
+        }
 
         return $result;
     }
@@ -156,11 +164,11 @@ class ApplyVmUpgradeJob implements ShouldQueue
                     'ram_gb' => (int) $after['ram_gb'],
                     'disk_gb' => (int) $after['disk_gb'],
                     'ip_count' => (int) $after['ip_count'],
-                    'status' => VirtualMachine::STATUS_RUNNING,
+                    'status' => ! empty($result['start_skipped_wallet_locked']) ? VirtualMachine::STATUS_STOPPED : VirtualMachine::STATUS_RUNNING,
                     'last_stopped_at' => now(),
-                    'last_started_at' => now(),
+                    'last_started_at' => empty($result['start_skipped_wallet_locked']) ? now() : $vm->last_started_at,
                     'last_billed_at' => now(),
-                    'desired_state' => array_merge($vm->desired_state ?? [], ['status' => VirtualMachine::STATUS_RUNNING]),
+                    'desired_state' => array_merge($vm->desired_state ?? [], ['status' => ! empty($result['start_skipped_wallet_locked']) ? VirtualMachine::STATUS_STOPPED : VirtualMachine::STATUS_RUNNING]),
                     'remote_state' => array_merge($vm->remote_state ?? [], [
                         'upgrade_config' => $config,
                         'upgrade_restart' => $result,
