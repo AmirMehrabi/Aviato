@@ -3,16 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\CloudImage;
 use App\Models\ContactSubmission;
-use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\IpAddress;
 use App\Models\Payment;
 use App\Models\ProxmoxServer;
+use App\Models\Ticket;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
-use App\Models\VmBundle;
 use App\Models\VmUpgradeOrder;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -55,86 +53,136 @@ class DashboardController extends Controller
             ->count();
         $newContacts = ContactSubmission::query()->where('status', ContactSubmission::STATUS_NEW)->count();
 
-        $operationStats = [
-            [
-                'label' => 'VM فعال',
-                'value' => $runningVms,
-                'detail' => $totalVms.' VM زنده در پنل',
-                'tone' => 'text-[#0069FF]',
-                'bar' => $this->percentage($runningVms, max($totalVms, 1)),
-                'url' => route('admin.virtual-machines.index', ['status' => VirtualMachine::STATUS_RUNNING]),
-            ],
-            [
-                'label' => 'صف Provisioning',
-                'value' => $pendingProvisioning,
-                'detail' => $failedProvisioning.' ساخت ناموفق',
-                'tone' => $failedProvisioning > 0 ? 'text-red-600' : ($pendingProvisioning > 0 ? 'text-amber-600' : 'text-slate-950'),
-                'bar' => $this->percentage($pendingProvisioning, max($totalVms, 1)),
-                'url' => route('admin.virtual-machines.index'),
-            ],
-            [
-                'label' => 'ریسک مالی',
-                'value' => $negativeWallets,
-                'detail' => $lockedWallets.' کیف پول قفل شده',
-                'tone' => $negativeWallets > 0 || $lockedWallets > 0 ? 'text-red-600' : 'text-slate-950',
-                'bar' => $this->percentage($negativeWallets + $lockedWallets, max(Customer::query()->count(), 1)),
-                'url' => route('admin.customers.index'),
-            ],
-            [
-                'label' => 'هشدار زیرساخت',
-                'value' => $proxmoxOffline + $proxmoxPendingSync + $staleDeleteAttempts,
-                'detail' => $proxmoxOffline.' آفلاین، '.$proxmoxPendingSync.' نیازمند Sync',
-                'tone' => $proxmoxOffline > 0 || $staleDeleteAttempts > 0 ? 'text-red-600' : ($proxmoxPendingSync > 0 ? 'text-amber-600' : 'text-slate-950'),
-                'bar' => $this->percentage($proxmoxOffline + $proxmoxPendingSync, max($proxmoxTotal, 1)),
-                'url' => route('admin.proxmox-servers.index'),
-            ],
-            [
-                'label' => 'درآمد امروز',
-                'value' => $this->wallets->format((int) WalletTransaction::query()
-                    ->where('amount', '>', 0)
-                    ->where('created_at', '>=', now()->startOfDay())
-                    ->sum('amount')),
-                'detail' => $pendingPayments.' پرداخت در انتظار',
-                'tone' => 'text-slate-950',
-                'bar' => min(100, max(8, Payment::query()->where('status', Payment::STATUS_SUCCESSFUL)->where('created_at', '>=', now()->startOfMonth())->count() * 8)),
-                'url' => route('admin.customers.index'),
-            ],
+        $todayRevenue = (int) WalletTransaction::query()
+            ->where('amount', '>', 0)
+            ->where('created_at', '>=', now()->startOfDay())
+            ->sum('amount');
+        $monthRevenue = (int) WalletTransaction::query()
+            ->where('amount', '>', 0)
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->sum('amount');
+        $monthInvoiceSum = (int) Invoice::query()
+            ->where('status', Invoice::STATUS_ISSUED)
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->sum('total_amount');
+        $monthInvoiceCount = Invoice::query()
+            ->where('status', Invoice::STATUS_ISSUED)
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->count();
+        $negativeWalletTotal = abs((int) Wallet::query()->where('balance', '<', 0)->sum('balance'));
+
+        $ticketsOpen = Ticket::query()->where('status', Ticket::STATUS_OPEN)->count();
+        $ticketsPending = Ticket::query()->where('status', Ticket::STATUS_PENDING)->count();
+        $ticketByPriority = [
+            'urgent' => Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])->where('priority', Ticket::PRIORITY_URGENT)->count(),
+            'high' => Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])->where('priority', Ticket::PRIORITY_HIGH)->count(),
+            'normal' => Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])->where('priority', Ticket::PRIORITY_NORMAL)->count(),
+            'low' => Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])->where('priority', Ticket::PRIORITY_LOW)->count(),
         ];
+        $recentTickets = Ticket::query()
+            ->with('customer')
+            ->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])
+            ->orderByRaw("FIELD(priority, 'urgent', 'high', 'normal', 'low')")
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(fn (Ticket $t) => [
+                'number' => $t->number,
+                'subject' => $t->subject,
+                'customer' => $t->customer?->name ?? '—',
+                'priority' => $t->priority,
+                'priority_label' => Ticket::priorities()[$t->priority] ?? $t->priority,
+                'status' => $t->status,
+                'status_label' => Ticket::statuses()[$t->status] ?? $t->status,
+                'time' => $t->last_activity_at?->diffForHumans() ?? $t->created_at->diffForHumans(),
+            ]);
+
+        $thirtyDaysAgo = now()->subDays(29)->startOfDay();
+        $revenueChartLabels = [];
+        $revenueChartData = [];
+        for ($i = 0; $i < 30; $i++) {
+            $day = $thirtyDaysAgo->copy()->addDays($i);
+            $revenueChartLabels[] = $day->format('M/d');
+            $revenueChartData[] = (int) WalletTransaction::query()
+                ->where('amount', '>', 0)
+                ->whereDate('created_at', $day)
+                ->sum('amount');
+        }
 
         $attentionItems = $this->attentionItems();
         $resourceTotals = $this->resourceTotals();
         $capacityRows = $this->capacityRows($resourceTotals);
-        $financialRisk = $this->financialRisk();
         $recentActivity = $this->recentActivity();
 
+        $readyScore = $this->readinessScore($proxmoxTotal, $proxmoxOnline, $proxmoxOffline, $failedProvisioning, $failedBackups, $staleDeleteAttempts);
+
         return view('admin.dashboard', [
-            'operationStats' => $operationStats,
-            'attentionItems' => $attentionItems,
-            'capacityRows' => $capacityRows,
-            'financialRisk' => $financialRisk,
+            'statusStrip' => [
+                [
+                    'label' => 'زیرساخت',
+                    'value' => "{$proxmoxOnline}/{$proxmoxTotal}",
+                    'sub' => $proxmoxOffline > 0 ? $proxmoxOffline.' آفلاین' : 'همه آنلاین',
+                    'tone' => $proxmoxOffline > 0 ? 'red' : ($proxmoxPendingSync > 0 ? 'amber' : 'green'),
+                    'url' => route('admin.proxmox-servers.index'),
+                ],
+                [
+                    'label' => 'VM Fleet',
+                    'value' => "{$runningVms}/{$totalVms}",
+                    'sub' => $failedProvisioning > 0 ? $failedProvisioning.' ساخت ناموفق' : ($pendingProvisioning > 0 ? $pendingProvisioning.' در صف' : 'همه فعال'),
+                    'tone' => $failedProvisioning > 0 ? 'red' : ($pendingProvisioning > 0 ? 'amber' : 'green'),
+                    'url' => route('admin.virtual-machines.index'),
+                ],
+                [
+                    'label' => 'درآمد امروز',
+                    'value' => $this->wallets->format($todayRevenue),
+                    'sub' => $this->wallets->format($monthRevenue).' ماهانه',
+                    'tone' => 'green',
+                    'url' => route('admin.customers.index'),
+                ],
+                [
+                    'label' => 'تیکت‌ها',
+                    'value' => $ticketsOpen + $ticketsPending,
+                    'sub' => $ticketByPriority['urgent'] > 0 ? $ticketByPriority['urgent'].' فوری' : 'بدون فوری',
+                    'tone' => $ticketByPriority['urgent'] > 0 ? 'red' : (($ticketsOpen + $ticketsPending) > 0 ? 'amber' : 'green'),
+                    'url' => route('admin.tickets.index'),
+                ],
+                [
+                    'label' => 'هشدارها',
+                    'value' => $attentionItems->count(),
+                    'sub' => $attentionItems->where('tone', 'red')->count().' بحرانی',
+                    'tone' => $attentionItems->where('tone', 'red')->count() > 0 ? 'red' : ($attentionItems->count() > 0 ? 'amber' : 'green'),
+                    'url' => '#operations-section',
+                ],
+            ],
+            'revenueChart' => [
+                'labels' => $revenueChartLabels,
+                'data' => $revenueChartData,
+            ],
+            'serverHealth' => $capacityRows,
+            'criticalAlerts' => $attentionItems->where('tone', '!=', 'blue')->take(6)->values(),
+            'ticketStats' => [
+                'open' => $ticketsOpen,
+                'pending' => $ticketsPending,
+                'by_priority' => $ticketByPriority,
+            ],
+            'recentTickets' => $recentTickets,
+            'financial' => [
+                'today_revenue' => $todayRevenue,
+                'month_revenue' => $monthRevenue,
+                'month_invoices' => $monthInvoiceCount,
+                'month_invoice_sum' => $monthInvoiceSum,
+                'negative_wallets' => $negativeWallets,
+                'negative_total' => $this->wallets->format($negativeWalletTotal),
+                'pending_payments' => $pendingPayments,
+                'locked_wallets' => $lockedWallets,
+            ],
             'recentActivity' => $recentActivity,
-            'wallets' => $this->wallets,
             'health' => [
                 'proxmox_total' => $proxmoxTotal,
                 'proxmox_online' => $proxmoxOnline,
-                'proxmox_offline' => $proxmoxOffline,
-                'pending_sync' => $proxmoxPendingSync,
-                'failed_backups' => $failedBackups,
-                'pending_upgrades' => $pendingUpgrades,
-                'failed_payments_today' => $failedPaymentsToday,
-                'new_contacts' => $newContacts,
-                'ready_score' => $this->readinessScore($proxmoxTotal, $proxmoxOnline, $proxmoxOffline, $failedProvisioning, $failedBackups, $staleDeleteAttempts),
+                'ready_score' => $readyScore,
             ],
-            'inventory' => [
-                'vms_total' => $totalVms,
-                'vms_running' => $runningVms,
-                'vms_deleting' => $deletingVms,
-                'customers' => Customer::query()->count(),
-                'active_customers' => Customer::query()->where('status', Customer::STATUS_ACTIVE)->count(),
-                'suspended_customers' => Customer::query()->where('status', Customer::STATUS_SUSPENDED)->count(),
-                'cloud_images' => CloudImage::query()->where('is_active', true)->count(),
-                'active_bundles' => VmBundle::query()->where('is_active', true)->count(),
-            ],
+            'wallets' => $this->wallets,
         ]);
     }
 
@@ -297,34 +345,6 @@ class DashboardController extends Controller
                 'value' => $this->percentage($resourceTotals['assigned_ips'], max($resourceTotals['assigned_ips'] + $resourceTotals['available_ips'], 1)),
                 'detail' => $resourceTotals['available_ips'].' IP آزاد',
                 'color' => 'bg-[#0069FF]',
-            ],
-        ];
-    }
-
-    private function financialRisk(): array
-    {
-        $negativeWallets = Wallet::query()->where('balance', '<', 0);
-        $pendingPayments = Payment::query()->where('status', Payment::STATUS_PENDING);
-        $issuedInvoices = Invoice::query()->where('status', Invoice::STATUS_ISSUED);
-
-        return [
-            [
-                'title' => $negativeWallets->count().' کیف پول منفی',
-                'body' => 'مجموع بدهی کیف پول: '.$this->wallets->format(abs((int) $negativeWallets->sum('balance'))),
-                'tone' => $negativeWallets->count() > 0 ? 'red' : 'blue',
-                'url' => route('admin.customers.index'),
-            ],
-            [
-                'title' => $pendingPayments->count().' پرداخت در انتظار',
-                'body' => 'مبلغ درگاه‌های باز: '.$this->wallets->format((int) $pendingPayments->sum('amount')),
-                'tone' => $pendingPayments->count() > 0 ? 'amber' : 'blue',
-                'url' => route('admin.customers.index'),
-            ],
-            [
-                'title' => $issuedInvoices->count().' فاکتور صادرشده',
-                'body' => 'جمع فاکتورها: '.$this->wallets->format((int) $issuedInvoices->sum('total_amount')),
-                'tone' => 'blue',
-                'url' => route('admin.customers.index'),
             ],
         ];
     }

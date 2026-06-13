@@ -2,7 +2,10 @@ import Alpine from 'alpinejs';
 import RFB from '@novnc/novnc';
 import { Editor } from '@toast-ui/editor';
 import '@toast-ui/editor/dist/toastui-editor.css';
+import { Chart, registerables } from 'chart.js';
 
+Chart.register(...registerables);
+window.Chart = Chart;
 window.Alpine = Alpine;
 
 window.addEventListener('DOMContentLoaded', () => {
