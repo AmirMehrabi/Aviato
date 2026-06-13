@@ -76,7 +76,7 @@ class ProjectController extends Controller
             'slug' => $this->uniqueSlug($project->owner, $data['name'], $project),
         ]);
 
-        return back()->with('status', 'Workspace renamed.');
+        return back()->with('status', 'نام فضای کاری تغییر کرد.');
     }
 
     private function uniqueSlug(Customer $customer, string $name, Project $ignore): string

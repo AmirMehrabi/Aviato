@@ -36,7 +36,7 @@ class AdminWorkspaceTest extends TestCase
 
         $this->get($this->adminBaseUrl.'/workspaces')
             ->assertOk()
-            ->assertSee('Workspaces')
+            ->assertSee('فضاهای کاری')
             ->assertSee('Production Servers')
             ->assertSee('John Owner');
     }
@@ -85,6 +85,6 @@ class AdminWorkspaceTest extends TestCase
             ->assertSee('John Owner')
             ->assertSee('Sarah Member')
             ->assertSee('project-vm')
-            ->assertSee('Billing owner');
+            ->assertSee('مسئول پرداخت');
     }
 }

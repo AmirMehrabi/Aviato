@@ -73,7 +73,7 @@ class ProjectController extends Controller
         ]);
         $this->projects->switch($request, $customer, $project);
 
-        return redirect()->route('customer.projects.show', $project)->with('status', 'Workspace created.');
+        return redirect()->route('customer.projects.show', $project)->with('status', 'فضای کاری ساخته شد.');
     }
 
     public function update(Request $request, Project $project): RedirectResponse
@@ -91,7 +91,7 @@ class ProjectController extends Controller
             'slug' => $this->uniqueSlug($project->owner, $data['name'], $project),
         ]);
 
-        return back()->with('status', 'Workspace renamed.');
+        return back()->with('status', 'نام فضای کاری تغییر کرد.');
     }
 
     public function switch(Request $request): RedirectResponse
@@ -103,7 +103,7 @@ class ProjectController extends Controller
         $project = Project::query()->with('members')->findOrFail($data['project_id']);
         $this->projects->switch($request, $customer, $project);
 
-        return back()->with('status', 'Workspace switched.');
+        return back()->with('status', 'فضای کاری فعال تغییر کرد.');
     }
 
     public function storeMember(Request $request, Project $project): RedirectResponse
@@ -140,7 +140,7 @@ class ProjectController extends Controller
             ],
         );
 
-        return back()->with('status', 'Workspace member updated.');
+        return back()->with('status', 'عضو فضای کاری به‌روزرسانی شد.');
     }
 
     public function updateMember(Request $request, Project $project, ProjectMember $member): RedirectResponse
@@ -162,7 +162,7 @@ class ProjectController extends Controller
 
         $member->update(['role' => $data['role']]);
 
-        return back()->with('status', 'Workspace member role updated.');
+        return back()->with('status', 'نقش عضو به‌روزرسانی شد.');
     }
 
     public function destroyMember(Request $request, Project $project, ProjectMember $member): RedirectResponse
@@ -175,7 +175,7 @@ class ProjectController extends Controller
 
         $member->delete();
 
-        return back()->with('status', 'Workspace member removed.');
+        return back()->with('status', 'عضو از فضای کاری حذف شد.');
     }
 
     private function uniqueSlug(Customer $customer, string $name, ?Project $ignore = null): string
