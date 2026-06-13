@@ -30,8 +30,7 @@ class BackupController extends Controller
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canViewVms($activeProject, $customer), 404);
         $wallet = $this->wallets->walletFor($customer);
-        $vms = $activeProject->virtualMachines()
-            ->notDeleted()
+        $vms = $this->projects->visibleVms($activeProject, $customer)
             ->with(['proxmoxServer', 'backupPolicy', 'backups' => fn ($query) => $query->latest()->limit(10)])
             ->latest()
             ->get();

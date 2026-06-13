@@ -33,7 +33,7 @@
 
                     <div class="mt-5 grid grid-cols-3 gap-2 text-center">
                         <div class="rounded-lg bg-slate-50 px-3 py-3">
-                            <p class="text-lg font-black text-slate-950">{{ number_format($project->virtual_machines_count ?? 0) }}</p>
+                            <p class="text-lg font-black text-slate-950">{{ number_format($project->visible_virtual_machines_count ?? $project->virtual_machines_count ?? 0) }}</p>
                             <p class="mt-1 text-[11px] font-bold text-slate-500">ماشین‌ها</p>
                         </div>
                         <div class="rounded-lg bg-slate-50 px-3 py-3">

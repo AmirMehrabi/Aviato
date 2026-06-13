@@ -29,8 +29,7 @@ class MonitoringController extends Controller
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canViewVms($activeProject, $customer), 404);
         $wallet = $this->wallets->walletFor($customer);
-        $servers = $activeProject->virtualMachines()
-            ->notDeleted()
+        $servers = $this->projects->visibleVms($activeProject, $customer)
             ->with([
                 'proxmoxServer',
                 'backupPolicy',

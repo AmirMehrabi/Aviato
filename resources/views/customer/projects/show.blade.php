@@ -35,7 +35,7 @@
         </article>
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <p class="text-xs font-black tracking-wide text-slate-500">ماشین‌ها</p>
-            <p class="mt-2 text-xl font-black text-slate-950">{{ number_format($project->virtualMachines->count()) }}</p>
+            <p class="mt-2 text-xl font-black text-slate-950">{{ number_format($visibleVirtualMachineCount ?? $project->virtualMachines->count()) }}</p>
             <a href="{{ route('customer.servers.index', [], false) }}" class="mt-1 inline-flex text-sm font-black text-[#0069FF]">مشاهده ماشین‌ها</a>
         </article>
     </section>
@@ -46,7 +46,7 @@
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="text-lg font-black text-slate-950">دسترسی فضای کاری</h2>
-                        <p class="mt-1 text-sm leading-7 text-slate-500">هر کاربر فقط منابع فضاهایی را می‌بیند که در آن عضو باشد.</p>
+                <p class="mt-1 text-sm leading-7 text-slate-500">مالک و مدیر همه ماشین‌های فضا را می‌بینند. نقش عضو فقط ماشین‌هایی را می‌بیند که خودش ساخته است.</p>
                     </div>
                     <span class="w-fit rounded-lg {{ $ownerPays ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-700' }} px-3 py-2 text-xs font-black">
                         مسئول پرداخت: {{ $project->owner?->name }}

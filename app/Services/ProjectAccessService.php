@@ -6,7 +6,9 @@ use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\VirtualMachine;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 
 class ProjectAccessService
@@ -83,6 +85,26 @@ class ProjectAccessService
         return (bool) $this->membership($project, $customer)?->canViewBilling();
     }
 
+    public function visibleVms(Project $project, Customer $customer): HasMany
+    {
+        $membership = $this->membership($project, $customer);
+        abort_unless($membership, 404);
+
+        $query = $project->virtualMachines()->notDeleted();
+
+        if ($membership->role === ProjectMember::ROLE_MEMBER) {
+            $query->where(function (Builder $query) use ($customer): void {
+                $query->where('created_by_customer_id', $customer->id)
+                    ->orWhere(function (Builder $query) use ($customer): void {
+                        $query->whereNull('created_by_customer_id')
+                            ->where('customer_id', $customer->id);
+                    });
+            });
+        }
+
+        return $query;
+    }
+
     public function resolveCustomerVm(Request $request, VirtualMachine $vm, bool $manage = false): VirtualMachine
     {
         $customer = $request->user('customer');
@@ -90,11 +112,19 @@ class ProjectAccessService
 
         abort_if($vm->isDeleted() || ! $vm->project, 404);
 
+        $membership = $this->membership($vm->project, $customer);
+        abort_unless($membership, 404);
+
         $allowed = $manage
             ? $this->canManageVms($vm->project, $customer)
             : $this->canViewVms($vm->project, $customer);
 
         abort_unless($allowed, 404);
+
+        if ($membership->role === ProjectMember::ROLE_MEMBER) {
+            $createdByCustomerId = $vm->created_by_customer_id ?? $vm->customer_id;
+            abort_unless((int) $createdByCustomerId === (int) $customer->id, 404);
+        }
 
         return $vm;
     }

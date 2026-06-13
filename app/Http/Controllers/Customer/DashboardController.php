@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
+use App\Models\VmDisk;
 use App\Services\BillingService;
 use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
@@ -26,12 +28,21 @@ class DashboardController extends Controller
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canViewVms($activeProject, $customer), 404);
         $wallet = $this->wallets->walletFor($customer);
-        $virtualMachines = $activeProject->virtualMachines()->notDeleted()->with('bundle')->latest()->get();
+        $virtualMachines = $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks'])->latest()->get();
         $transactions = $wallet->transactions()->with('createdBy')->limit(5)->get();
-        $summary = $this->billing->projectSummary($activeProject->id);
+        $summary = [
+            'running' => $virtualMachines->where('status', VirtualMachine::STATUS_RUNNING)->count(),
+            'stopped' => $virtualMachines->where('status', VirtualMachine::STATUS_STOPPED)->count(),
+            'monthly_spend' => $virtualMachines
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->sum(fn (VirtualMachine $vm): int => ($vm->isRunning() ? $this->billing->estimateMonthly($vm) : $this->billing->estimateStoppedMonthly($vm))
+                    + $vm->disks->where('status', VmDisk::STATUS_READY)->sum(fn ($disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth()))),
+            'unbilled_accrued' => 0,
+        ];
         $pendingUsage = $virtualMachines
             ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
             ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
+        $summary['unbilled_accrued'] = $pendingUsage;
         $latestInvoice = $customer->invoices()->latest('period_start')->first();
 
         $vmRows = $virtualMachines->map(function (VirtualMachine $vm): array {

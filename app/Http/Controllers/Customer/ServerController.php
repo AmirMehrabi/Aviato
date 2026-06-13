@@ -59,8 +59,7 @@ class ServerController extends Controller
             ])],
         ]);
 
-        $servers = $activeProject->virtualMachines()
-            ->notDeleted()
+        $servers = $this->projects->visibleVms($activeProject, $customer)
             ->with(['bundle', 'proxmoxServer', 'cloudImage'])
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['search'] ?? null, function ($query, string $search): void {
@@ -75,7 +74,7 @@ class ServerController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $summarySource = $activeProject->virtualMachines()->notDeleted()->with(['bundle', 'disks'])->get();
+        $summarySource = $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks'])->get();
         $pendingUsage = $summarySource
             ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
             ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
@@ -165,7 +164,7 @@ class ServerController extends Controller
             ->unique()
             ->values();
 
-        $servers = $activeProject->virtualMachines()
+        $servers = $this->projects->visibleVms($activeProject, $customer)
             ->with(['proxmoxServer', 'cloudImage'])
             ->when($ids->isNotEmpty(), fn ($query) => $query->whereIn('uuid', $ids))
             ->get([

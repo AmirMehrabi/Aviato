@@ -144,6 +144,54 @@ class CustomerProjectTest extends TestCase
         $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid)->assertNotFound();
     }
 
+    public function test_project_member_only_sees_own_vms_in_workspace_and_listings(): void
+    {
+        $owner = Customer::factory()->create();
+        $member = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $member->id,
+            'role' => ProjectMember::ROLE_MEMBER,
+        ]);
+
+        $ownerVm = VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'project_id' => $project->id,
+            'name' => 'owner-private-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $memberVm = VirtualMachine::create([
+            'customer_id' => $member->id,
+            'project_id' => $project->id,
+            'created_by_customer_id' => $member->id,
+            'name' => 'member-visible-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->actingAs($member, 'customer');
+
+        $this->get($this->customerBaseUrl.'/servers')
+            ->assertOk()
+            ->assertSee('member-visible-vm')
+            ->assertDontSee('owner-private-vm');
+
+        $this->get($this->customerBaseUrl.'/projects/'.$project->uuid)->assertOk();
+
+        $this->get($this->customerBaseUrl.'/servers/'.$memberVm->uuid)->assertOk();
+        $this->get($this->customerBaseUrl.'/servers/'.$ownerVm->uuid)->assertNotFound();
+    }
+
     public function test_project_owner_is_charged_for_member_created_vm_usage(): void
     {
         CarbonImmutable::setTestNow('2026-06-15 12:00:00');

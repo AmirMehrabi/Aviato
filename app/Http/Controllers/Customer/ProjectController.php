@@ -25,12 +25,17 @@ class ProjectController extends Controller
     {
         $customer = $request->user('customer');
         $activeProject = $this->projects->activeProject($request, $customer);
+        $projects = $this->projects->projectsFor($customer)->map(function (Project $project) use ($customer): Project {
+            $project->setAttribute('visible_virtual_machines_count', $this->projects->visibleVms($project, $customer)->count());
+
+            return $project;
+        });
 
         return view('customer.projects.index', [
             'customer' => $customer,
             'wallet' => $this->wallets->walletFor($customer),
             'wallets' => $this->wallets,
-            'projects' => $this->projects->projectsFor($customer),
+            'projects' => $projects,
             'activeProject' => $activeProject,
             'activeMembership' => $this->projects->membership($activeProject, $customer),
             'invoiceCount' => $customer->invoices()->count(),
@@ -42,13 +47,15 @@ class ProjectController extends Controller
         $customer = $request->user('customer');
         abort_unless($this->projects->membership($project->loadMissing(['members.customer', 'owner']), $customer), 404);
         $this->projects->switch($request, $customer, $project);
+        $visibleVirtualMachineCount = $this->projects->visibleVms($project, $customer)->count();
 
         return view('customer.projects.show', [
             'customer' => $customer,
             'wallet' => $this->wallets->walletFor($customer),
             'wallets' => $this->wallets,
             'projects' => $this->projects->projectsFor($customer),
-            'project' => $project->load(['owner', 'members.customer', 'virtualMachines.creator']),
+            'project' => $project->load(['owner', 'members.customer']),
+            'visibleVirtualMachineCount' => $visibleVirtualMachineCount,
             'activeProject' => $project,
             'activeMembership' => $this->projects->membership($project, $customer),
             'invoiceCount' => $customer->invoices()->count(),
