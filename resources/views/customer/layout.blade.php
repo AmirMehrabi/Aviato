@@ -190,26 +190,16 @@
             </div>
 
             <nav class="mt-7 space-y-6 text-sm font-bold">
-
-            <div class=" border-white/10 pt-4 lg:px-3">
-                <p class="px-3 text-[10px] font-black text-[#5F79AA]">فضای کاری فعال</p>
-                <form method="POST" action="{{ route('customer.projects.switch', [], false) }}" class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
-                    @csrf
-                    <select name="project_id" onchange="this.form.submit()" class="w-full rounded-md border border-white/10 bg-[#08245A] px-3 py-2 text-xs font-black text-white outline-none">
-                        @foreach($projects as $project)
-                            <option value="{{ $project->id }}" @selected((int) $activeProject->id === (int) $project->id)>{{ $project->name }}</option>
-                        @endforeach
-                    </select>
-                    <div class="mt-2 flex items-center justify-between gap-2 text-[11px] font-bold text-[#9DB4DC]">
-                        <span>{{ ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'][$activeMembership?->role ?? 'member'] ?? 'عضو' }}</span>
-                        <span>{{ $activeProject->owner?->id === $customer->id ? 'پرداخت با شماست' : 'مالک: '.$activeProject->owner?->name }}</span>
-                    </div>
-                    <div class="mt-3 grid grid-cols-2 gap-2">
-                        <a href="{{ route('customer.projects.show', $activeProject, false) }}" class="inline-flex justify-center rounded-md bg-white/10 px-3 py-2 text-[11px] font-black text-[#B8D6FF] transition hover:bg-white/15">باز کردن</a>
-                        <a href="{{ route('customer.projects.index', [], false) }}" class="inline-flex justify-center rounded-md border border-white/10 px-3 py-2 text-[11px] font-black text-[#C7D4EA] transition hover:bg-white/10">جدید</a>
-                    </div>
-                </form>
-            </div>
+                <div class="px-3 pt-2">
+                    <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
+                        @csrf
+                        <select name="project_id" onchange="this.form.submit()" class="w-full rounded-md border border-white/10 bg-[#08245A] px-3 py-1.5 text-xs font-black text-white outline-none">
+                            @foreach($projects as $project)
+                                <option value="{{ $project->id }}" @selected((int) $activeProject->id === (int) $project->id)>{{ $project->name }}</option>
+                            @endforeach
+                        </select>
+                    </form>
+                </div>
                 @foreach ($navGroups as $group => $items)
                     <div>
                         <p class="px-4 text-[10px] font-black text-[#5F79AA]">{{ $group }}</p>
