@@ -388,6 +388,7 @@ class VirtualMachineController extends Controller
         return view('admin.virtual-machines.transfer', [
             'vm' => $virtualMachine,
             'customers' => Customer::query()
+                ->with(['ownedProjects' => fn ($query) => $query->orderByDesc('is_default')->orderBy('name')])
                 ->where('status', 'active')
                 ->where('id', '!=', $virtualMachine->customer_id)
                 ->orderBy('name')
@@ -401,31 +402,42 @@ class VirtualMachineController extends Controller
     {
         $data = $request->validate([
             'to_customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'to_project_id' => ['required', 'integer', 'exists:projects,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'confirm_transfer' => ['required', 'accepted'],
         ]);
 
         $toCustomer = Customer::findOrFail($data['to_customer_id']);
+        $toProject = Project::query()
+            ->where('owner_customer_id', $toCustomer->id)
+            ->find($data['to_project_id']);
+
+        if (! $toProject) {
+            return back()
+                ->withInput()
+                ->withErrors(['to_project_id' => 'فضای کاری انتخاب‌شده برای این مشتری نیست.']);
+        }
 
         if ($virtualMachine->customer_id === $toCustomer->id) {
-            return back()->withErrors(['to_customer_id' => 'VM already belongs to this customer.']);
+            return back()->withErrors(['to_customer_id' => 'این ماشین همین حالا متعلق به این مشتری است.']);
         }
 
         try {
             $transfer = $this->vmTransferService->transferVm(
                 $virtualMachine,
                 $toCustomer,
-                auth()->id(),
-                $data['notes'] ?? null
+                auth('admin')->id(),
+                $data['notes'] ?? null,
+                $toProject,
             );
 
             return redirect()
                 ->route('admin.virtual-machines.show', $virtualMachine)
-                ->with('status', "VM successfully transferred to {$toCustomer->name}. Transfer ID: {$transfer->id}");
+                ->with('status', "ماشین به {$toCustomer->name} و فضای کاری {$toProject->name} منتقل شد. شماره انتقال: {$transfer->id}");
         } catch (\Exception $exception) {
             return back()
                 ->withInput()
-                ->with('error', 'Transfer failed: '.$exception->getMessage());
+                ->with('error', 'انتقال ناموفق بود: '.$exception->getMessage());
         }
     }
 

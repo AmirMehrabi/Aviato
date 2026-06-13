@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\Project;
 use App\Models\VirtualMachine;
 use App\Models\VmTransfer;
 use App\Models\WalletTransaction;
@@ -25,12 +26,14 @@ class VmTransferService
         VirtualMachine $vm,
         Customer $toCustomer,
         int $initiatedByUserId,
-        ?string $notes = null
+        ?string $notes = null,
+        ?Project $toProject = null,
     ): VmTransfer {
         // Validation
-        $this->validateTransfer($vm, $toCustomer);
+        $toProject ??= $toCustomer->ensureDefaultProject();
+        $this->validateTransfer($vm, $toCustomer, $toProject);
 
-        return DB::transaction(function () use ($vm, $toCustomer, $initiatedByUserId, $notes) {
+        return DB::transaction(function () use ($vm, $toCustomer, $toProject, $initiatedByUserId, $notes) {
             $fromCustomer = $vm->customer;
             $fromProject = $vm->project;
 
@@ -39,9 +42,6 @@ class VmTransferService
 
             // Calculate and handle unbilled amount
             $unbilledAmount = $vm->unbilled_amount ?? 0;
-
-            // Ensure target customer has a default project
-            $toProject = $toCustomer->ensureDefaultProject();
 
             // Create transfer record
             $transfer = VmTransfer::create([
@@ -98,31 +98,35 @@ class VmTransferService
      *
      * @throws \Exception
      */
-    private function validateTransfer(VirtualMachine $vm, Customer $toCustomer): void
+    private function validateTransfer(VirtualMachine $vm, Customer $toCustomer, Project $toProject): void
     {
         // Check if VM is in a transferable state
         if ($vm->isDeleting() || $vm->isDeleted()) {
-            throw new \Exception('Cannot transfer a VM that is being deleted or has been deleted.');
+            throw new \Exception('ماشینی که در حال حذف است یا حذف شده، قابل انتقال نیست.');
         }
 
         // Check if VM has pending operations
         if ($vm->provisioning_status === VirtualMachine::PROVISION_PENDING) {
-            throw new \Exception('Cannot transfer a VM that is still being provisioned.');
+            throw new \Exception('ماشینی که هنوز در حال ساخت است، قابل انتقال نیست.');
         }
 
         // Check if there are pending upgrade orders
         if ($vm->pendingUpgradeOrders()->exists()) {
-            throw new \Exception('Cannot transfer a VM with pending upgrade orders. Please wait for them to complete or fail.');
+            throw new \Exception('این ماشین سفارش ارتقای در حال انجام دارد و فعلا قابل انتقال نیست.');
         }
 
         // Check if target customer is active
         if ($toCustomer->status !== 'active') {
-            throw new \Exception('Cannot transfer VM to an inactive customer.');
+            throw new \Exception('انتقال ماشین به مشتری غیرفعال مجاز نیست.');
         }
 
         // Check if transferring to the same customer
         if ($vm->customer_id === $toCustomer->id) {
-            throw new \Exception('VM is already owned by this customer.');
+            throw new \Exception('این ماشین همین حالا متعلق به این مشتری است.');
+        }
+
+        if ((int) $toProject->owner_customer_id !== (int) $toCustomer->id) {
+            throw new \Exception('فضای کاری انتخاب‌شده برای مشتری مقصد نیست.');
         }
     }
 

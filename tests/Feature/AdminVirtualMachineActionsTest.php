@@ -7,6 +7,7 @@ use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\IpAddress;
 use App\Models\IpPool;
+use App\Models\ProjectMember;
 use App\Models\ProxmoxServer;
 use App\Models\User;
 use App\Models\VirtualMachine;
@@ -390,6 +391,79 @@ class AdminVirtualMachineActionsTest extends TestCase
         $this->assertNull($vm->delete_error);
         $this->assertNotNull($vm->deleted_at);
         Bus::assertNotDispatched(DeleteVirtualMachineJob::class);
+    }
+
+    public function test_admin_can_transfer_vm_to_specific_target_customer_workspace(): void
+    {
+        $admin = User::factory()->create();
+        $sourceCustomer = Customer::factory()->create(['name' => 'Source Customer']);
+        $targetCustomer = Customer::factory()->create(['name' => 'Target Customer']);
+        $sourceProject = $sourceCustomer->ensureDefaultProject();
+        $targetCustomer->ensureDefaultProject();
+        $targetProject = $targetCustomer->ownedProjects()->create([
+            'name' => 'Production Workspace',
+            'slug' => 'production-workspace',
+            'is_default' => false,
+        ]);
+        $targetProject->members()->create([
+            'customer_id' => $targetCustomer->id,
+            'role' => ProjectMember::ROLE_OWNER,
+        ]);
+        $vm = $this->readyVm($sourceCustomer, [
+            'project_id' => $sourceProject->id,
+            'unbilled_amount' => 0,
+        ]);
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/transfer', [
+            'to_customer_id' => $targetCustomer->id,
+            'to_project_id' => $targetProject->id,
+            'notes' => 'Move to production workspace.',
+            'confirm_transfer' => '1',
+        ])
+            ->assertRedirect($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid)
+            ->assertSessionHas('status');
+
+        $vm->refresh();
+
+        $this->assertSame($targetCustomer->id, $vm->customer_id);
+        $this->assertSame($targetProject->id, $vm->project_id);
+        $this->assertDatabaseHas('vm_transfers', [
+            'virtual_machine_id' => $vm->id,
+            'from_customer_id' => $sourceCustomer->id,
+            'to_customer_id' => $targetCustomer->id,
+            'from_project_id' => $sourceProject->id,
+            'to_project_id' => $targetProject->id,
+            'initiated_by_user_id' => $admin->id,
+        ]);
+    }
+
+    public function test_admin_transfer_rejects_workspace_not_owned_by_target_customer(): void
+    {
+        $admin = User::factory()->create();
+        $sourceCustomer = Customer::factory()->create();
+        $targetCustomer = Customer::factory()->create();
+        $otherCustomer = Customer::factory()->create();
+        $targetCustomer->ensureDefaultProject();
+        $otherProject = $otherCustomer->ensureDefaultProject();
+        $vm = $this->readyVm($sourceCustomer);
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/transfer', [
+            'to_customer_id' => $targetCustomer->id,
+            'to_project_id' => $otherProject->id,
+            'confirm_transfer' => '1',
+        ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('to_project_id');
+
+        $this->assertSame($sourceCustomer->id, $vm->fresh()->customer_id);
+        $this->assertDatabaseMissing('vm_transfers', [
+            'virtual_machine_id' => $vm->id,
+            'to_project_id' => $otherProject->id,
+        ]);
     }
 
     private function readyVm(Customer $customer, array $overrides = []): VirtualMachine
