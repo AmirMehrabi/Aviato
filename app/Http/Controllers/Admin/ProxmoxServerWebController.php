@@ -10,6 +10,7 @@ use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
 use App\Services\StaleVirtualMachineCleanupService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -301,14 +302,14 @@ class ProxmoxServerWebController extends Controller
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, VirtualMachine>
+     * @return Collection<int, VirtualMachine>
      */
-    private function staleAnomalies(ProxmoxServer $server, ?array $liveSummary): \Illuminate\Database\Eloquent\Collection
+    private function staleAnomalies(ProxmoxServer $server, ?array $liveSummary): Collection
     {
         $inventory = $liveSummary ?: ($server->remote_inventory ?? []);
 
         if (! array_key_exists('virtual_machines', $inventory)) {
-            return new \Illuminate\Database\Eloquent\Collection;
+            return new Collection;
         }
 
         $remoteVmids = collect($inventory['virtual_machines'] ?? [])

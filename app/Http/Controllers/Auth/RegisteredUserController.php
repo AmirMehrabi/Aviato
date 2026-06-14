@@ -10,10 +10,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Throwable;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
+use Throwable;
 
 class RegisteredUserController extends Controller
 {
@@ -31,7 +31,8 @@ class RegisteredUserController extends Controller
         $verificationMode = $portal === 'customer' ? AppSetting::customerVerificationMode() : 'disabled';
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'email' => $portal === 'customer' && $verificationMode === 'email'
                 ? ['required', 'email', 'max:255', Rule::unique($model, 'email')]
                 : ['nullable', 'required_without:phone', 'email', 'max:255', Rule::unique($model, 'email')],
@@ -41,9 +42,13 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
+        $fullName = trim($data['first_name'].' '.$data['last_name']);
+
         /** @var Model $account */
         $account = $model::create([
-            'name' => $data['name'],
+            'name' => $fullName,
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
             'password' => $data['password'],

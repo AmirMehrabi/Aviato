@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
 use App\Models\AppSetting;
+use App\Models\Customer;
 use App\Services\CustomerVmQuotaService;
 use App\Services\NationalCodeService;
 use App\Services\NationalCodeVerificationClient;

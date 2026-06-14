@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Middleware\EnsurePortalHost;
 use App\Http\Middleware\EnsureCustomerWalletAccess;
+use App\Http\Middleware\EnsurePortalHost;
 use App\Http\Middleware\EnsureUserRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;

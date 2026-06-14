@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\VmBundle;
 use App\Models\User;
+use App\Models\VmBundle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

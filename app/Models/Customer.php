@@ -5,15 +5,15 @@ namespace App\Models;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'email', 'phone', 'national_code', 'national_code_hash', 'national_code_verified_at', 'password', 'email_verified_at', 'email_verification_code', 'email_verification_expires_at', 'status', 'suspended_at', 'suspension_reason', 'sms_notifications_enabled'])]
+#[Fillable(['name', 'first_name', 'last_name', 'email', 'phone', 'national_code', 'national_code_hash', 'national_code_verified_at', 'password', 'email_verified_at', 'email_verification_code', 'email_verification_expires_at', 'status', 'suspended_at', 'suspension_reason', 'sms_notifications_enabled'])]
 #[Hidden(['password', 'remember_token'])]
 class Customer extends Authenticatable
 {
@@ -123,6 +123,10 @@ class Customer extends Authenticatable
     protected function firstName(): Attribute
     {
         return Attribute::get(function (?string $value, array $attributes): string {
+            if (! empty($attributes['first_name'])) {
+                return $attributes['first_name'];
+            }
+
             $source = trim((string) ($value ?: ($attributes['name'] ?? '')));
 
             if ($source === '') {
@@ -132,6 +136,25 @@ class Customer extends Authenticatable
             $spacePosition = strpos($source, ' ');
 
             return $spacePosition === false ? $source : substr($source, 0, $spacePosition);
+        });
+    }
+
+    protected function lastName(): Attribute
+    {
+        return Attribute::get(function (?string $value, array $attributes): string {
+            if (! empty($attributes['last_name'])) {
+                return $attributes['last_name'];
+            }
+
+            $source = trim((string) ($value ?: ($attributes['name'] ?? '')));
+
+            if ($source === '') {
+                return '';
+            }
+
+            $spacePosition = strpos($source, ' ');
+
+            return $spacePosition === false ? '' : substr($source, $spacePosition + 1);
         });
     }
 

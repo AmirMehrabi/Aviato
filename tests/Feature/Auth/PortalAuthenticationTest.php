@@ -23,7 +23,8 @@ class PortalAuthenticationTest extends TestCase
         Mail::fake();
 
         $response = $this->post('https://cp.aviato.ir/register', [
-            'name' => 'Customer User',
+            'first_name' => 'Customer',
+            'last_name' => 'User',
             'email' => 'customer@example.com',
             'phone' => '+15551234567',
             'password' => 'password',
@@ -177,7 +178,8 @@ class PortalAuthenticationTest extends TestCase
         AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'sms');
 
         $response = $this->post('https://cp.aviato.ir/register', [
-            'name' => 'Sms Customer',
+            'first_name' => 'Sms',
+            'last_name' => 'Customer',
             'phone' => '09123456789',
             'password' => 'password',
             'password_confirmation' => 'password',

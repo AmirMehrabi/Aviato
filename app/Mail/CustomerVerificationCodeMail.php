@@ -16,8 +16,7 @@ class CustomerVerificationCodeMail extends Mailable
     public function __construct(
         public Customer $customer,
         public string $code
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {

@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\CloudImage;
 use App\Models\ProxmoxServer;
 use App\Models\User;
 use App\Models\VmBundle;
-use App\Models\CloudImage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

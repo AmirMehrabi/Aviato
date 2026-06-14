@@ -64,11 +64,19 @@
                             <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first() }}</div>
                         @endif
 
-                        <label class="block">
-                            <span class="text-sm font-black text-slate-700">نام</span>
-                            <input name="name" value="{{ old('name') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
-                            @error('name') <span class="mt-2 block text-sm font-bold text-red-600">{{ $message }}</span> @enderror
-                        </label>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="block">
+                                <span class="text-sm font-black text-slate-700">نام</span>
+                                <input name="first_name" value="{{ old('first_name') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
+                                @error('first_name') <span class="mt-2 block text-sm font-bold text-red-600">{{ $message }}</span> @enderror
+                            </label>
+
+                            <label class="block">
+                                <span class="text-sm font-black text-slate-700">نام خانوادگی</span>
+                                <input name="last_name" value="{{ old('last_name') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
+                                @error('last_name') <span class="mt-2 block text-sm font-bold text-red-600">{{ $message }}</span> @enderror
+                            </label>
+                        </div>
 
                         <div class="grid gap-4 sm:grid-cols-2">
                             <label class="block">

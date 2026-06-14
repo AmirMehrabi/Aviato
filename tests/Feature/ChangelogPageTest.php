@@ -18,7 +18,7 @@ class ChangelogPageTest extends TestCase
 
     public function test_authenticated_customer_is_redirected_away_from_the_changelog_page(): void
     {
-        $customer = new Customer();
+        $customer = new Customer;
 
         $this->actingAs($customer, 'customer')
             ->get('/changelog')

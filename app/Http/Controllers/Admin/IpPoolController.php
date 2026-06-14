@@ -17,8 +17,7 @@ class IpPoolController extends Controller
 {
     public function __construct(
         private readonly IpPoolService $ipPools,
-    ) {
-    }
+    ) {}
 
     public function index(): View
     {
