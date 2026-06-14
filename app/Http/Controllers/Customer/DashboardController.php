@@ -77,7 +77,6 @@ class DashboardController extends Controller
 
         $notifications = [
             ['title' => 'وضعیت کیف پول', 'body' => $wallet->balance < 0 ? 'کیف پول وارد محدوده بدهی شده است و بهتر است آن را شارژ کنید.' : 'کیف پول فعال است و تراکنش ها در لحظه ثبت می شوند.', 'tone' => $wallet->balance < 0 ? 'bg-red-500' : 'bg-emerald-500'],
-            ['title' => 'مصرف محاسبه نشده', 'body' => 'مبلغ تقریبی مصرف ثبت نشده: '.$this->wallets->format($pendingUsage), 'tone' => 'bg-blue-500'],
             ['title' => 'آخرین صورتحساب', 'body' => $latestInvoice ? 'آخرین صورتحساب شما با شماره '.$latestInvoice->number.' آماده مشاهده است.' : 'هنوز صورتحساب ماهانه ای برای حساب شما صادر نشده است.', 'tone' => 'bg-amber-500'],
         ];
 

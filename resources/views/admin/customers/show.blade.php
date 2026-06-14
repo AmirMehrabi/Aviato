@@ -48,7 +48,6 @@
             ['label' => 'اعلان پیامکی', 'value' => $customer->sms_notifications_enabled ? 'فعال' : 'غیرفعال', 'tone' => $customer->sms_notifications_enabled ? 'text-[#0069FF]' : 'text-slate-500'],
             ['label' => 'موجودی کیف پول', 'value' => $wallets->format($financial['balance']), 'tone' => $financial['balance'] < 0 ? 'text-red-600' : 'text-[#0069FF]'],
             ['label' => 'مصرف ماهانه', 'value' => $wallets->format($financial['monthly_spend']), 'tone' => 'text-slate-950'],
-            ['label' => 'مصرف محاسبه نشده', 'value' => $wallets->format($financial['unpaid_total']), 'tone' => $financial['unpaid_total'] > 0 ? 'text-amber-700' : 'text-[#0069FF]'],
         ] as $card)
             <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-bold text-slate-500">{{ $card['label'] }}</p>

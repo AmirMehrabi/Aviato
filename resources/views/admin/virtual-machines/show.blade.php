@@ -56,7 +56,6 @@
 ['label' => 'وضعیت', 'value' => $vm->status === \App\Models\VirtualMachine::STATUS_SUSPENDED ? 'تعلیق' : ($vm->isRunning() ? 'روشن' : 'خاموش'), 'tone' => $vm->status === \App\Models\VirtualMachine::STATUS_SUSPENDED ? 'text-red-600' : ($vm->isRunning() ? 'text-[#0069FF]' : 'text-slate-700')],
 ['label' => 'هزینه ماهانه در وضعیت فعلی', 'value' => $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)), 'tone' => 'text-[#0069FF]'],
 ['label' => 'هزینه ماهانه اگر خاموش باشد', 'value' => $money->format($billing->estimateStoppedMonthly($vm)), 'tone' => 'text-amber-700'],
-['label' => 'مصرف محاسبه نشده', 'value' => $money->format($billing->currentAccrued($vm)), 'tone' => 'text-slate-950'],
 ['label' => 'Billing Customer', 'value' => $billingCustomer?->name ?: '—', 'tone' => 'text-slate-950'],
 ] as $card)<div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-bold text-slate-500">{{ $card['label'] }}</p><p class="mt-3 text-xl font-black {{ $card['tone'] }}">{{ $card['value'] }}</p></div>@endforeach
 </section>
