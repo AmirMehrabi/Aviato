@@ -69,6 +69,15 @@ document.addEventListener('alpine:init', () => {
         <a href="{{ route('admin.customers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن مشتری</a>
     </div>
 
+    <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        @foreach ([['کل مشتریان', $stats['total']], ['فعال', $stats['active']], ['تعلیق شده', $stats['suspended']], ['تایید شده', $stats['verified']]] as [$label, $value])
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-bold text-slate-500">{{ $label }}</p>
+                <p class="mt-2 text-2xl font-black">{{ number_format($value) }}</p>
+            </div>
+        @endforeach
+    </div>
+
     <form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.customers.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div class="relative flex-1">
