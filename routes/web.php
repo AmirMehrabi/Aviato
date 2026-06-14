@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResourceRateController;
+use App\Http\Controllers\Admin\SearchController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\SupportTeamController;
 use App\Http\Controllers\Admin\TicketAttachmentController as AdminTicketAttachmentController;
@@ -69,6 +70,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
     Route::middleware('auth:admin')->group(function () use ($adminHome) {
         Route::get($adminHome, AdminDashboardController::class)->name('admin.dashboard');
+
+        Route::get('search', [SearchController::class, '__invoke'])->name('admin.search');
 
         Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
         Route::patch('settings', [SettingController::class, 'update'])->name('admin.settings.update');

@@ -17,39 +17,91 @@
     <style>[x-cloak]{display:none!important}</style>
 </head>
 <body class="overflow-x-hidden bg-[#F5F7FB] text-slate-950">
-    <div
-        x-data="{
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('adminLayout', () => ({
             sidebarOpen: false,
             createOpen: false,
             period: 'روزانه',
             searchOpen: false,
             searchQuery: '',
+            searchResults: [],
+            searchLoading: false,
+            searchTimer: null,
+            activeIndex: -1,
             notificationsOpen: false,
             profileOpen: false,
+
             openSearch() {
                 this.searchOpen = true;
                 this.notificationsOpen = false;
                 this.profileOpen = false;
+                this.searchResults = [];
+                this.activeIndex = -1;
                 this.$nextTick(() => this.$refs.adminSearch?.focus());
             },
+
             closePanels() {
                 this.searchOpen = false;
+                this.searchResults = [];
                 this.notificationsOpen = false;
                 this.profileOpen = false;
             },
-            submitSearch() {
-                const query = this.searchQuery.trim();
-                if (!query) return;
 
-                const target = /(^|\s)(vm|vps|ip|ماشین|سرور)|\d{1,3}(\.\d{1,3}){1,3}/i.test(query)
-                    ? '{{ route('admin.virtual-machines.index') }}'
-                    : /(proxmox|node|نود|کلاستر)/i.test(query)
-                        ? '{{ route('admin.proxmox-servers.index') }}'
-                        : '{{ route('admin.customers.index') }}';
+            doSearch() {
+                clearTimeout(this.searchTimer);
+                const q = this.searchQuery.trim();
+                if (q.length < 2) {
+                    this.searchResults = [];
+                    this.searchLoading = false;
+                    return;
+                }
+                this.searchLoading = true;
+                this.searchTimer = setTimeout(() => {
+                    fetch('{{ route("admin.search") }}?q=' + encodeURIComponent(q))
+                        .then(r => r.json())
+                        .then(data => {
+                            this.searchResults = data.groups || [];
+                            this.activeIndex = -1;
+                        })
+                        .finally(() => this.searchLoading = false);
+                }, 300);
+            },
 
-                window.location.href = `${target}?search=${encodeURIComponent(query)}`;
-            }
-        }"
+            searchKeydown(e) {
+                const total = this.searchResults.reduce((s, g) => s + g.items.length, 0);
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.activeIndex = this.activeIndex < total - 1 ? this.activeIndex + 1 : 0;
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.activeIndex = this.activeIndex > 0 ? this.activeIndex - 1 : total - 1;
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const link = this.$refs.searchDropdown?.querySelector('[data-active]');
+                    if (link) link.click();
+                } else if (e.key === 'Escape') {
+                    this.closePanels();
+                }
+            },
+
+            searchItemIdx(groupIdx, itemIdx) {
+                let idx = 0;
+                for (let i = 0; i < groupIdx; i++) idx += this.searchResults[i].items.length;
+                return idx + itemIdx;
+            },
+
+            highlight(text, query) {
+                if (!query || !text) return text;
+                const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return text.replace(new RegExp('(' + escaped + ')', 'gi'), '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
+            },
+        }));
+    });
+    </script>
+
+    <div
+        x-data="adminLayout"
         @keydown.window.ctrl.k.prevent="openSearch()"
         @keydown.window.meta.k.prevent="openSearch()"
         @keydown.window.escape="closePanels(); createOpen = false; sidebarOpen = false"
@@ -205,23 +257,82 @@
                         </svg>
                     </button>
 
-                    <div class="relative flex-1">
-                        <button
-                            type="button"
-                            @click="openSearch()"
-                            class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-400 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] md:max-w-md"
-                        >
-                            <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <div class="relative flex-1" x-data="{ focused: false }">
+                        <div class="relative">
+                            <svg class="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"/>
                                 <path d="m21 21-4.35-4.35" stroke-linecap="round"/>
                             </svg>
-                            <span class="hidden sm:inline">جستجو در مشتری، VM، IP...</span>
-                            <span class="sm:hidden">جستجو...</span>
-                            <div class="mr-auto hidden gap-1 text-[11px] font-black text-slate-400 md:flex">
+                            <input
+                                x-ref="adminSearch"
+                                x-model="searchQuery"
+                                @input.debounce.300ms="doSearch()"
+                                @focus="searchOpen = true; focused = true"
+                                @click.outside="setTimeout(() => { searchOpen = false; focused = false }, 150)"
+                                @keydown="searchKeydown($event)"
+                                type="text"
+                                placeholder="جستجو در مشتری، VM، IP..."
+                                class="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-[#0069FF] focus:bg-white focus:outline-none md:max-w-md"
+                            />
+                            <div class="absolute left-3 top-1/2 hidden -translate-y-1/2 gap-1 text-[11px] font-black text-slate-400 md:flex" x-show="!searchQuery" x-transition>
                                 <kbd class="rounded border border-slate-200 px-1.5 py-0.5">Ctrl</kbd>
                                 <kbd class="rounded border border-slate-200 px-1.5 py-0.5">K</kbd>
                             </div>
-                        </button>
+                        </div>
+                        <div
+                            x-ref="searchDropdown"
+                            x-show="searchOpen && searchQuery.length >= 2"
+                            x-transition:enter="transition ease-out duration-150"
+                            x-transition:enter-start="opacity-0 -translate-y-1"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            x-transition:leave="transition ease-in duration-100"
+                            x-transition:leave-start="opacity-100 translate-y-0"
+                            x-transition:leave-end="opacity-0 -translate-y-1"
+                            class="absolute left-0 top-full z-50 mt-2 w-full min-w-[320px] max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl md:left-auto md:right-0"
+                        >
+                            <template x-if="searchLoading">
+                                <div class="flex items-center justify-center gap-2 px-4 py-6 text-sm text-slate-400">
+                                    <svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    جستجو...
+                                </div>
+                            </template>
+                            <template x-if="!searchLoading && searchResults.length === 0 && searchQuery.length >= 2">
+                                <div class="px-4 py-6 text-center text-sm text-slate-400">نتیجه‌ای یافت نشد</div>
+                            </template>
+                            <template x-if="!searchLoading && searchResults.length > 0">
+                                <div class="max-h-80 overflow-y-auto py-2">
+                                    <template x-for="(group, gIdx) in searchResults" :key="gIdx">
+                                        <div>
+                                            <div class="flex items-center gap-2 px-4 py-2">
+                                                <svg class="size-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path :d="group.icon" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                <span class="text-xs font-bold text-slate-400" x-text="group.label"></span>
+                                                <span class="text-xs text-slate-300" x-text="group.items.length"></span>
+                                            </div>
+                                            <template x-for="(item, iIdx) in group.items" :key="iIdx">
+                                                <a
+                                                    :href="item.url"
+                                                    :data-active="searchItemIdx(gIdx, iIdx) === activeIndex ? '' : null"
+                                                    class="flex items-center gap-3 px-4 py-2.5 transition hover:bg-slate-50"
+                                                    :class="{ 'bg-[#EBF3FF]': searchItemIdx(gIdx, iIdx) === activeIndex }"
+                                                >
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="truncate text-sm font-bold text-slate-900" x-html="highlight(item.title, searchQuery)"></span>
+                                                            <span x-show="item.badge" x-text="item.badge" class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-black" :class="item.badgeClass"></span>
+                                                        </div>
+                                                        <p class="mt-0.5 truncate text-xs text-slate-400" x-html="highlight(item.subtitle, searchQuery)"></p>
+                                                    </div>
+                                                    <svg class="size-4 shrink-0 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 12H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke-linecap="round"/></svg>
+                                                </a>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <div x-show="!searchLoading && searchResults.length > 0" class="border-t border-slate-100 px-4 py-2.5">
+                                <p class="text-[11px] text-slate-400"><kbd class="rounded border border-slate-200 px-1 py-0.5 font-bold">↑↓</kbd> ناوبری · <kbd class="rounded border border-slate-200 px-1 py-0.5 font-bold">Enter</kbd> انتخاب · <kbd class="rounded border border-slate-200 px-1 py-0.5 font-bold">Esc</kbd> بستن</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -252,41 +363,6 @@
                     </div>
                 </div>
             </header>
-
-            <div
-                x-cloak
-                x-show="searchOpen"
-                x-transition.opacity
-                @click.self="closePanels()"
-                class="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/50 px-4 pt-20 backdrop-blur-sm"
-            >
-                <div class="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-                    <form @submit.prevent="submitSearch()">
-                        <input
-                            x-ref="adminSearch"
-                            x-model="searchQuery"
-                            type="text"
-                            placeholder="نام مشتری، hostname، IP یا VMID را جستجو کنید..."
-                            class="w-full rounded-lg border-2 border-[#0069FF] bg-white px-4 py-3 text-right text-base text-slate-950 placeholder:text-slate-400 focus:outline-none"
-                        />
-                        <div class="mt-4 flex gap-2">
-                            <button
-                                type="submit"
-                                class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]"
-                            >
-                                جستجو
-                            </button>
-                            <button
-                                type="button"
-                                @click="closePanels()"
-                                class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
-                            >
-                                لغو
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
 
             <div
                 x-cloak
