@@ -7,7 +7,15 @@
     @if (session('status'))
         <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
     @endif
-    <div class="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-2xl font-black">دسته‌بندی تیکت‌ها</h1>
+            <p class="mt-2 text-sm text-slate-500">مدیریت دسته‌بندی‌ها و اولویت پاسخ‌دهی.</p>
+        </div>
+    </div>
+
+    <div class="mt-6 grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
         <form method="POST" action="{{ route('admin.ticket-categories.store') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             @csrf
             <h1 class="text-xl font-black text-slate-950">دسته‌بندی جدید</h1>

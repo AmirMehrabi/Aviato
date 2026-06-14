@@ -4,7 +4,13 @@
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
 @if (session('status'))<div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>@endif
-<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h1 class="text-2xl font-black">باندل‌های VM</h1><p class="mt-2 text-sm text-slate-500">سخت‌افزار آماده برای ساخت سریع VM. قیمت باندل فقط در حالت روشن اعمال می‌شود.</p></div><a href="{{ route('admin.billing.bundles.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">باندل جدید</a></div>
+<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+        <h1 class="text-2xl font-black">باندل‌های VM</h1>
+        <p class="mt-2 text-sm text-slate-500">سخت‌افزار آماده برای ساخت سریع VM. قیمت باندل فقط در حالت روشن اعمال می‌شود.</p>
+    </div>
+    <a href="{{ route('admin.billing.bundles.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">باندل جدید</a>
+</div>
 <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 @forelse($bundles as $bundle)
 <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

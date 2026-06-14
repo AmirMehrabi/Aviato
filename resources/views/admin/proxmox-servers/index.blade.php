@@ -29,26 +29,21 @@
         <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
     @endif
 
-    <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
-        <div class="absolute -left-16 -top-16 size-48 rounded-full bg-white/10 blur-2xl"></div>
-        <div class="absolute -bottom-20 right-1/3 size-56 rounded-full bg-[#B8D6FF]/10 blur-3xl"></div>
-        <div class="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-                <p class="text-sm font-bold text-white/60">Datacenter Control Plane</p>
-                <h1 class="mt-2 text-2xl font-black md:text-4xl">سرورها و کلاسترهای Proxmox</h1>
-                <p class="mt-3 max-w-3xl leading-8 text-white/75">نمای کارتی برای مدیریت endpointها، وضعیت اتصال، syncهای معوق و ظرفیت دیتاسنتر.</p>
-            </div>
-            <a href="{{ route('admin.proxmox-servers.create') }}" class="inline-flex items-center justify-center rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] transition hover:bg-slate-100">افزودن سرور</a>
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-2xl font-black">سرورها و کلاسترهای Proxmox</h1>
+            <p class="mt-2 text-sm text-slate-500">مدیریت endpointها، وضعیت اتصال، syncهای معوق و ظرفیت دیتاسنتر.</p>
         </div>
+        <a href="{{ route('admin.proxmox-servers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن سرور</a>
+    </div>
 
-        <div class="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            @foreach ([['کل endpointها', $stats['total']], ['آنلاین', $stats['online']], ['آفلاین', $stats['offline']], ['در انتظار Sync', $stats['pending']]] as [$label, $value])
-                <div class="rounded-xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-                    <p class="text-xs font-bold text-white/60">{{ $label }}</p>
-                    <p class="mt-2 text-3xl font-black">{{ $value }}</p>
-                </div>
-            @endforeach
-        </div>
+    <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        @foreach ([['کل endpointها', $stats['total']], ['آنلاین', $stats['online']], ['آفلاین', $stats['offline']], ['در انتظار Sync', $stats['pending']]] as [$label, $value])
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-bold text-slate-500">{{ $label }}</p>
+                <p class="mt-2 text-2xl font-black">{{ $value }}</p>
+            </div>
+        @endforeach
     </div>
 
     <section class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">

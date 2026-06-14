@@ -8,16 +8,13 @@
             <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
         @endif
 
-        <section class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-                <h1 class="text-2xl font-black tracking-normal text-slate-950 md:text-3xl">IP Pools</h1>
-                <p class="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
-                    خلاصه ظرفیت هر Pool را ببینید و برای مشاهده IPهای مصرف‌شده، آزاد و ماشین‌های متصل وارد جزئیات Pool شوید.
-                </p>
+                <h1 class="text-2xl font-black">IP Pools</h1>
+                <p class="mt-2 text-sm text-slate-500">خلاصه ظرفیت هر Pool را ببینید و برای مشاهده IPهای مصرف‌شده، آزاد و ماشین‌های متصل وارد جزئیات Pool شوید.</p>
             </div>
-            <a href="{{ route('admin.ip-pools.create') }}" class="inline-flex items-center justify-center rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
-                Pool جدید
-            </a>
+            <a href="{{ route('admin.ip-pools.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Pool جدید</a>
+        </div>
         </section>
 
         <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
