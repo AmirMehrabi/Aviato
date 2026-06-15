@@ -128,46 +128,107 @@
                 <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9]">همه پلن ها</a>
             </div>
 
-            <div class="mt-10 grid gap-5 lg:grid-cols-3">
-                @forelse ($marketingBundles as $bundle)
-                    @php
-                        $meta = $planMeta[$loop->index] ?? $planMeta[3];
-                        $isRecommended = $loop->index === $recommendedIndex;
-                    @endphp
-                    <article class="relative rounded-[1.75rem] border bg-white p-6 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-100 {{ $isRecommended ? 'border-[#B9D6FF] bg-[#F7FBFF] shadow-xl shadow-[#B9D6FF]/15' : 'border-slate-200' }}">
-                        @if ($isRecommended)
-                            <span class="absolute left-5 top-5 rounded-full bg-[#EEF5FF] px-3 py-1 text-xs font-bold text-[#2C67C9]">پیشنهادی</span>
-                        @endif
+            @forelse ($marketingBundles as $bundle)
+                @php
+                    $meta = $planMeta[$loop->index] ?? $planMeta[3];
+                    $isRecommended = $loop->index === $recommendedIndex;
+                @endphp
 
+                {{-- Mobile: card-style stacked layout --}}
+                <div class="mt-6 rounded-[1.75rem] border bg-white p-5 shadow-sm md:hidden {{ $isRecommended ? 'border-[#B9D6FF] bg-[#F7FBFF]' : 'border-slate-200' }}">
+                    <div class="flex items-center gap-3">
                         <p class="text-sm font-bold text-[#2C67C9]">{{ $meta['label'] }}</p>
-                        <h3 class="mt-3 text-3xl text-slate-950">{{ $bundle->name }}</h3>
-                        <p class="mt-2 min-h-7 text-sm font-bold text-slate-500">{{ $meta['use'] }}</p>
-
-                        <div class="mt-7 border-y border-slate-100 py-5">
-                            <p class="text-4xl text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
-                            <p class="mt-1 text-sm font-bold text-slate-500">ماهانه</p>
-                        </div>
-
-                        <p class="mt-5 min-h-16 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'ماشین مجازی آماده برای سایت، فروشگاه، اپلیکیشن و سرویس های آنلاین.' }}</p>
-
-                        <div class="mt-7 grid grid-cols-2 gap-2 text-sm text-slate-700">
-                            <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->cpu_cores }} vCPU</span>
-                            <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->ram_gb }}GB RAM</span>
-                            <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->disk_gb }}GB NVMe</span>
-                            <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->ip_count }} IP</span>
-                        </div>
-
-                        <a href="{{ route('customer.register') }}" class="mt-7 inline-flex w-full justify-center rounded-xl bg-[#4C86E8] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#3E76D6]">
-                            خرید این پلن
-                        </a>
-                    </article>
-                @empty
-                    <div class="rounded-[1.75rem] border border-dashed border-slate-200 bg-[#F7FBFF] p-8 text-center lg:col-span-3">
-                        <h3 class="text-xl text-slate-950">فعلا پلنی برای نمایش وجود ندارد.</h3>
-                        <p class="mt-3 text-sm leading-7 text-slate-600">بعد از فعال شدن پلن ها در پنل مدیریت، قیمت ها به صورت خودکار در صفحه خانه و صفحه قیمت ها نمایش داده می شوند.</p>
+                        @if ($isRecommended)
+                            <span class="rounded-full bg-[#EEF5FF] px-3 py-1 text-xs font-bold text-[#2C67C9]">پیشنهادی</span>
+                        @endif
                     </div>
-                @endforelse
-            </div>
+                    <h3 class="mt-2 text-2xl text-slate-950">{{ $bundle->name }}</h3>
+                    <p class="mt-1 min-h-6 text-sm font-bold text-slate-500">{{ $meta['use'] }}</p>
+
+                    <div class="mt-5 border-y border-slate-100 py-4">
+                        <p class="text-3xl text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
+                        <p class="mt-1 text-sm font-bold text-slate-500">ماهانه</p>
+                    </div>
+
+                    <p class="mt-4 min-h-10 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'ماشین مجازی آماده برای سایت، فروشگاه، اپلیکیشن و سرویس های آنلاین.' }}</p>
+
+                    <div class="mt-5 grid grid-cols-2 gap-2 text-sm text-slate-700">
+                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->cpu_cores }} vCPU</span>
+                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->ram_gb }}GB RAM</span>
+                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->disk_gb }}GB NVMe</span>
+                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->ip_count }} IP</span>
+                    </div>
+
+                    <a href="{{ route('customer.register') }}" class="mt-5 inline-flex w-full justify-center rounded-xl bg-[#4C86E8] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#3E76D6]">
+                        خرید این پلن
+                    </a>
+                </div>
+            @empty
+                <div class="mt-10 rounded-[1.75rem] border border-dashed border-slate-200 bg-[#F7FBFF] p-8 text-center">
+                    <h3 class="text-xl text-slate-950">فعلا پلنی برای نمایش وجود ندارد.</h3>
+                    <p class="mt-3 text-sm leading-7 text-slate-600">بعد از فعال شدن پلن ها در پنل مدیریت، قیمت ها به صورت خودکار در صفحه خانه و صفحه قیمت ها نمایش داده می شوند.</p>
+                </div>
+            @endforelse
+
+            {{-- Desktop: table layout --}}
+            @if ($marketingBundles->isNotEmpty())
+                <div class="mt-10 hidden md:block">
+                    <div class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-lg shadow-slate-200/60">
+                        <table class="w-full bg-white text-sm" dir="rtl">
+                            <thead>
+                                <tr class="border-b border-slate-200 bg-white">
+                                    <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">پلن</th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500" dir="ltr">CPU</th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500" dir="ltr">RAM</th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500" dir="ltr">Storage</th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500" dir="ltr">IP</th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500">هزینه ماهانه</th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @forelse ($marketingBundles as $bundle)
+                                    @php
+                                        $meta = $planMeta[$loop->index] ?? $planMeta[3];
+                                        $isRecommended = $loop->index === $recommendedIndex;
+                                    @endphp
+                                    <tr class="transition {{ $isRecommended ? 'bg-slate-50' : 'hover:bg-slate-50/60' }}">
+                                        <td class="px-6 py-5">
+                                            <div class="flex items-center gap-3">
+                                                @if ($isRecommended)
+                                                    <span class="shrink-0 rounded-full bg-[#EEF5FF] px-3 py-1 text-xs font-bold text-[#2C67C9]">پیشنهادی</span>
+                                                @endif
+                                                <div>
+                                                    <p class="font-bold text-slate-950">{{ $bundle->name }}</p>
+                                                    <p class="mt-0.5 text-xs text-slate-500">{{ $meta['use'] }}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->cpu_cores }} vCPU</td>
+                                        <td class="px-6 py-5 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->ram_gb }}GB</td>
+                                        <td class="px-6 py-5 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->disk_gb }}GB NVMe</td>
+                                        <td class="px-6 py-5 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->ip_count }}</td>
+                                        <td class="px-6 py-5 text-center">
+                                            <p class="text-lg font-bold text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
+                                        </td>
+                                        <td class="px-6 py-5 text-center">
+                                            <a href="{{ route('customer.register') }}" class="inline-flex justify-center rounded-xl bg-[#4C86E8] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#3E76D6]">
+                                                خرید
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="px-6 py-10 text-center text-slate-500">
+                                           فعلا پلنی برای نمایش وجود ندارد.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
         </div>
     </section>
 
