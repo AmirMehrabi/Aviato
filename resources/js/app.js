@@ -179,4 +179,131 @@ window.customerVmConsole = function customerVmConsole(config) {
     };
 };
 
+window.adminNotificationDropdown = function adminNotificationDropdown(config) {
+    return {
+        items: config.items || [],
+        unreadCount: Number(config.unreadCount || 0),
+        csrf: config.csrf || '',
+        markReadUrlTemplate: config.markReadUrlTemplate || '',
+        markAllReadUrl: config.markAllReadUrl || '',
+        markingAll: false,
+        markingIds: {},
+
+        isUnread(notification) {
+            return ! notification.read;
+        },
+
+        markReadUrl(notificationId) {
+            return this.markReadUrlTemplate.replace('__NOTIFICATION__', encodeURIComponent(notificationId));
+        },
+
+        setNotificationRead(notificationId) {
+            const notification = this.items.find((item) => item.id === notificationId);
+            if (! notification || notification.read) {
+                return;
+            }
+
+            notification.read = true;
+            if (this.unreadCount > 0) {
+                this.unreadCount -= 1;
+            }
+
+            window.dispatchEvent(new CustomEvent('admin-notification-unread-changed', {
+                detail: { count: this.unreadCount },
+            }));
+        },
+
+        async markAllRead() {
+            if (this.markingAll || this.unreadCount === 0) {
+                return;
+            }
+
+            this.markingAll = true;
+
+            try {
+                const response = await fetch(this.markAllReadUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({}),
+                });
+
+                const data = await response.json();
+                if (! response.ok) {
+                    throw new Error(data?.message || 'Unable to mark notifications as read.');
+                }
+
+                this.items.forEach((notification) => {
+                    notification.read = true;
+                });
+                this.unreadCount = Number(data.unread_count ?? 0);
+                window.dispatchEvent(new CustomEvent('admin-notification-unread-changed', {
+                    detail: { count: this.unreadCount },
+                }));
+            } finally {
+                this.markingAll = false;
+            }
+        },
+
+        async markRead(notificationId, navigateTo = null) {
+            if (this.markingIds[notificationId]) {
+                if (navigateTo) {
+                    window.location.assign(navigateTo);
+                }
+
+                return;
+            }
+
+            this.markingIds = { ...this.markingIds, [notificationId]: true };
+
+            try {
+                const response = await fetch(this.markReadUrl(notificationId), {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({}),
+                });
+
+                const data = await response.json();
+                if (! response.ok) {
+                    throw new Error(data?.message || 'Unable to mark notification as read.');
+                }
+
+                this.setNotificationRead(notificationId);
+                this.unreadCount = Number(data.unread_count ?? this.unreadCount);
+                window.dispatchEvent(new CustomEvent('admin-notification-unread-changed', {
+                    detail: { count: this.unreadCount },
+                }));
+
+                if (navigateTo) {
+                    window.location.assign(navigateTo);
+                }
+            } catch (error) {
+                if (navigateTo) {
+                    window.location.assign(navigateTo);
+                    return;
+                }
+
+                console.error(error);
+            } finally {
+                const next = { ...this.markingIds };
+                delete next[notificationId];
+                this.markingIds = next;
+            }
+        },
+
+        openNotification(notification) {
+            this.markRead(notification.id, notification.url);
+        },
+    };
+};
+
 Alpine.start();

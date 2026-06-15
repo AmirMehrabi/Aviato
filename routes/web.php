@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IpPoolController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResourceRateController;
@@ -70,6 +71,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
     Route::middleware('auth:admin')->group(function () use ($adminHome) {
         Route::get($adminHome, AdminDashboardController::class)->name('admin.dashboard');
+        Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])
+            ->name('admin.notifications.mark-all-read');
+        Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])
+            ->name('admin.notifications.read');
 
         Route::get('search', [SearchController::class, '__invoke'])->name('admin.search');
 
