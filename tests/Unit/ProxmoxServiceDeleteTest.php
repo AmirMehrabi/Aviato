@@ -107,15 +107,6 @@ class ProxmoxServiceDeleteTest extends TestCase
                 ]);
             }
 
-            if ($request->method() === 'GET' && str_ends_with($request->url(), '/nodes/pve1/qemu/123/firewall/rules')) {
-                return Http::response([
-                    'data' => [
-                        ['pos' => 4, 'type' => 'out', 'action' => 'DROP', 'comment' => 'Aviato anti-spoof: drop other source IPs'],
-                        ['pos' => 3, 'type' => 'out', 'action' => 'ACCEPT', 'comment' => 'Aviato anti-spoof: allow assigned source IP'],
-                    ],
-                ]);
-            }
-
             return Http::response(['data' => null], 200);
         });
 
@@ -154,26 +145,7 @@ class ProxmoxServiceDeleteTest extends TestCase
             && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/ipset/ipfilter-net0'
             && ($request['data']['cidr'] ?? null) === '5.202.19.112'));
 
-        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'DELETE'
-            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules/4'));
-
-        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'DELETE'
-            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules/3'));
-
-        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
-            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules'
-            && ($request['data']['type'] ?? null) === 'out'
-            && ($request['data']['action'] ?? null) === 'ACCEPT'
-            && ($request['data']['iface'] ?? null) === 'net0'
-            && ($request['data']['source'] ?? null) === '5.202.19.112'
-            && ($request['data']['comment'] ?? null) === 'Aviato anti-spoof: allow assigned source IP'));
-
-        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
-            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules'
-            && ($request['data']['type'] ?? null) === 'out'
-            && ($request['data']['action'] ?? null) === 'DROP'
-            && ($request['data']['iface'] ?? null) === 'net0'
-            && ($request['data']['comment'] ?? null) === 'Aviato anti-spoof: drop other source IPs'));
+        $this->assertFalse(collect($sent)->contains(fn (array $request): bool => $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules'));
     }
 
     public function test_apply_vm_ip_anti_spoofing_keeps_ipset_when_visible_rule_sync_fails(): void
@@ -199,22 +171,12 @@ class ProxmoxServiceDeleteTest extends TestCase
                 return Http::response(['data' => []]);
             }
 
-            if ($request->method() === 'GET' && str_ends_with($request->url(), '/nodes/pve1/qemu/123/firewall/rules')) {
-                return Http::response(['data' => []]);
-            }
-
-            if ($request->method() === 'POST' && str_ends_with($request->url(), '/nodes/pve1/qemu/123/firewall/rules')) {
-                return Http::response(['errors' => ['source' => 'parameter verification failed']], 400);
-            }
-
             return Http::response(['data' => null], 200);
         });
 
         $result = app(ProxmoxService::class)->applyVmIpAntiSpoofing($this->server(), 'pve1', 123, '5.202.19.112');
 
         $this->assertSame('5.202.19.112', $result['allowed_ip']);
-        $this->assertArrayHasKey('error', $result['rules']);
-
         $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'PUT'
             && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/options'
             && (int) ($request['data']['enable'] ?? 0) === 1
