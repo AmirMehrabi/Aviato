@@ -107,6 +107,15 @@ class ProxmoxServiceDeleteTest extends TestCase
                 ]);
             }
 
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/nodes/pve1/qemu/123/firewall/rules')) {
+                return Http::response([
+                    'data' => [
+                        ['pos' => 4, 'type' => 'out', 'action' => 'DROP', 'comment' => 'Aviato anti-spoof: drop other source IPs'],
+                        ['pos' => 3, 'type' => 'out', 'action' => 'ACCEPT', 'comment' => 'Aviato anti-spoof: allow assigned source IP'],
+                    ],
+                ]);
+            }
+
             return Http::response(['data' => null], 200);
         });
 
@@ -145,7 +154,14 @@ class ProxmoxServiceDeleteTest extends TestCase
             && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/ipset/ipfilter-net0'
             && ($request['data']['cidr'] ?? null) === '5.202.19.112'));
 
-        $this->assertFalse(collect($sent)->contains(fn (array $request): bool => $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules'));
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'DELETE'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules/4'));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'DELETE'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules/3'));
+
+        $this->assertFalse(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/rules'));
     }
 
     public function test_apply_vm_ip_anti_spoofing_keeps_ipset_when_visible_rule_sync_fails(): void
@@ -168,6 +184,10 @@ class ProxmoxServiceDeleteTest extends TestCase
             }
 
             if ($request->method() === 'GET' && str_ends_with($request->url(), '/nodes/pve1/qemu/123/firewall/ipset/ipfilter-net0')) {
+                return Http::response(['data' => []]);
+            }
+
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/nodes/pve1/qemu/123/firewall/rules')) {
                 return Http::response(['data' => []]);
             }
 

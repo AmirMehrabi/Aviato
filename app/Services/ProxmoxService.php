@@ -488,6 +488,8 @@ class ProxmoxService
                 ->throw();
         }
 
+        $this->clearVmAntiSpoofingFirewallRules($server, $node, $vmid);
+
         return [
             'interface' => $interface,
             'ipset' => $ipset,
@@ -548,6 +550,35 @@ class ProxmoxService
         $entries = $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/firewall/ipset/{$ipset}") ?? [];
 
         return is_array($entries) ? $entries : [];
+    }
+
+    /**
+     * Remove the older Aviato rule layer so only `ipfilter-net0` remains.
+     */
+    private function clearVmAntiSpoofingFirewallRules(ProxmoxServer $server, string $node, int $vmid): void
+    {
+        $managedComments = [
+            'Aviato anti-spoof: allow assigned source IP',
+            'Aviato anti-spoof: drop other source IPs',
+        ];
+
+        $existingRules = $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/firewall/rules") ?? [];
+
+        if (! is_array($existingRules)) {
+            return;
+        }
+
+        collect($existingRules)
+            ->filter(fn (array $rule): bool => in_array((string) ($rule['comment'] ?? ''), $managedComments, true))
+            ->pluck('pos')
+            ->filter(fn (mixed $position): bool => is_numeric($position))
+            ->map(fn (mixed $position): int => (int) $position)
+            ->sortDesc()
+            ->each(function (int $position) use ($server, $node, $vmid): void {
+                $this->request($server)
+                    ->delete("/nodes/{$node}/qemu/{$vmid}/firewall/rules/{$position}")
+                    ->throw();
+            });
     }
 
     private function isMissingFirewallResource(RequestException $exception): bool
