@@ -20,7 +20,7 @@
         <nav class="mx-auto flex h-full max-w-7xl items-center justify-center gap-4 px-4 md:px-8 lg:px-10">
             <a href="{{ route('home') }}" class="flex min-w-0 items-center" aria-label="آویاتو">
                 <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
-                    class="h-9 w-20 object-contain object-right sm:w-40">
+                    class="h-9 w-20 object-contain object-right">
             </a>
             {{-- <div class="flex shrink-0 items-center gap-1 sm:gap-2">
                 <a href="{{ route('home') }}"
