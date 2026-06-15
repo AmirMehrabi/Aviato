@@ -195,11 +195,13 @@
                                     <tr class="transition {{ $isRecommended ? 'bg-slate-50' : 'hover:bg-slate-50/60' }}">
                                         <td class="px-6 py-5">
                                             <div class="flex items-center gap-3">
-                                                @if ($isRecommended)
-                                                    <span class="shrink-0 rounded-full bg-[#EEF5FF] px-3 py-1 text-xs font-bold text-[#2C67C9]">پیشنهادی</span>
-                                                @endif
                                                 <div>
-                                                    <p class="font-bold text-slate-950">{{ $bundle->name }}</p>
+                                                    <div class="flex items-center gap-2">
+                                                        <p class="font-bold text-slate-950">{{ $bundle->name }}</p>
+                                                        @if ($isRecommended)
+                                                            <span class="shrink-0 rounded-full bg-[#EEF5FF] px-3 py-1 text-xs font-bold text-[#2C67C9]">پیشنهادی</span>
+                                                        @endif
+                                                    </div>
                                                     <p class="mt-0.5 text-xs text-slate-500">{{ $meta['use'] }}</p>
                                                 </div>
                                             </div>
