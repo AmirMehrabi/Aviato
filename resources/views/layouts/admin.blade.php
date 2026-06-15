@@ -367,12 +367,18 @@
                 @click.away="notificationsOpen = false"
                 class="absolute end-4 top-16 z-50 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl md:end-8"
             >
+                @php
+                    $adminUser = auth('admin')->user();
+                    $adminNotifications = $adminUser?->notifications()->latest()->limit(5)->get() ?? collect();
+                    $adminNotificationsCount = $adminUser?->notifications()->count() ?? 0;
+                    $adminUnreadNotificationsCount = $adminUser?->unreadNotifications()->count() ?? 0;
+                @endphp
                 <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
                     <h3 class="text-sm font-black text-slate-900">اعلان‌ها</h3>
-                    <span class="inline-flex items-center justify-center rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white">۳</span>
+                    <span class="inline-flex items-center justify-center rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white">{{ $adminUnreadNotificationsCount }}</span>
                 </div>
                 <div class="max-h-72 overflow-y-auto p-2">
-                    @foreach (auth('admin')->user()?->notifications()->latest()->limit(5)->get() ?? collect() as $notification)
+                    @foreach ($adminNotifications as $notification)
                         <a href="{{ data_get($notification->data, 'url', route('admin.tickets.index')) }}" class="flex gap-3 rounded-lg p-3 transition hover:bg-slate-50">
                             <span class="mt-1 size-2 shrink-0 rounded-full {{ $notification->read_at ? 'bg-slate-300' : 'bg-[#0069FF]' }}"></span>
                             <div class="min-w-0">
@@ -381,11 +387,11 @@
                             </div>
                         </a>
                     @endforeach
-                    @if ((auth('admin')->user()?->notifications()->count() ?? 0) === 0)
+                    @if ($adminNotificationsCount === 0)
                         <p class="px-3 py-8 text-center text-sm font-bold text-slate-400">اعلان جدیدی وجود ندارد.</p>
                     @endif
                 </div>
-                @if ((auth('admin')->user()?->notifications()->unreadCount() ?? 0) > 0)
+                @if ($adminUnreadNotificationsCount > 0)
                     <div class="border-t border-slate-100 px-5 py-3">
                         <button class="w-full text-center text-xs font-bold text-[#0069FF] transition hover:text-[#0050D0]">خواندن همه</button>
                     </div>
