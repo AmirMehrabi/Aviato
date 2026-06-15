@@ -434,6 +434,18 @@ class ProxmoxService
             true,
         );
 
+        $clusterFirewallPayload = ['enable' => 1];
+        $this->request($server)
+            ->asForm()
+            ->put('/cluster/firewall/options', $clusterFirewallPayload)
+            ->throw();
+
+        $nodeFirewallPayload = ['enable' => 1];
+        $this->request($server)
+            ->asForm()
+            ->put("/nodes/{$node}/firewall/options", $nodeFirewallPayload)
+            ->throw();
+
         $networkPayload = null;
 
         if ($currentDevice !== $updatedDevice) {
@@ -444,7 +456,12 @@ class ProxmoxService
                 ->throw();
         }
 
-        $optionsPayload = ['enable' => 1, 'ipfilter' => 1];
+        $optionsPayload = [
+            'enable' => 1,
+            'ipfilter' => 1,
+            'policy_in' => 'ACCEPT',
+            'policy_out' => 'ACCEPT',
+        ];
         $this->request($server)
             ->asForm()
             ->put("/nodes/{$node}/qemu/{$vmid}/firewall/options", $optionsPayload)
@@ -490,6 +507,8 @@ class ProxmoxService
             'interface' => $interface,
             'ipset' => $ipset,
             'allowed_ip' => $ipAddress,
+            'cluster_firewall_options' => $clusterFirewallPayload,
+            'node_firewall_options' => $nodeFirewallPayload,
             'firewall_options' => $optionsPayload,
             'network_payload' => $networkPayload,
             'rules' => $rules,

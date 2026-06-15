@@ -274,10 +274,10 @@
                                 placeholder="جستجو در مشتری، VM، IP..."
                                 class="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-[#0069FF] focus:bg-white focus:outline-none md:max-w-md"
                             />
-                            <div class="absolute left-3 top-1/2 hidden -translate-y-1/2 gap-1 text-[11px] font-black text-slate-400 md:flex" x-show="!searchQuery" x-transition>
+                            {{-- <div class="absolute left-3 top-1/2 hidden -translate-y-1/2 gap-1 text-[11px] font-black text-slate-400 md:flex" x-show="!searchQuery" x-transition>
                                 <kbd class="rounded border border-slate-200 px-1.5 py-0.5">Ctrl</kbd>
                                 <kbd class="rounded border border-slate-200 px-1.5 py-0.5">K</kbd>
-                            </div>
+                            </div> --}}
                         </div>
                         <div
                             x-ref="searchDropdown"
@@ -335,30 +335,26 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5">
                         <button
                             type="button"
                             @click="notificationsOpen = !notificationsOpen; searchOpen = false; profileOpen = false"
-                            class="relative grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+                            class="relative flex size-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
                             aria-label="اعلان‌ها"
                         >
-                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
-                            <span class="absolute right-2 top-2 size-2 rounded-full bg-[#0069FF] ring-2 ring-white"></span>
+                            <span class="absolute start-1.5 top-1.5 size-2 rounded-full bg-[#0069FF] ring-2 ring-white"></span>
                         </button>
 
                         <button
                             type="button"
                             @click="profileOpen = !profileOpen; searchOpen = false; notificationsOpen = false"
-                            class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 transition hover:bg-slate-50"
+                            class="flex size-10 items-center justify-center rounded-full border border-slate-200 bg-[#0069FF] text-xs font-black text-white transition hover:bg-[#0050D0]"
                             aria-label="پروفایل"
                         >
-                            <span class="hidden text-right text-sm sm:block">
-                                <span class="block font-black leading-tight text-slate-950">امیر حسینی</span>
-                                <span class="block text-[11px] font-bold leading-4 text-slate-500">مدیر سیستم</span>
-                            </span>
-                            <span class="grid size-7 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">ا</span>
+                            ا
                         </button>
                     </div>
                 </div>
@@ -369,23 +365,31 @@
                 x-show="notificationsOpen"
                 x-transition
                 @click.away="notificationsOpen = false"
-                class="absolute left-4 top-16 z-50 w-80 rounded-lg border border-slate-200 bg-white p-5 shadow-2xl md:left-8"
+                class="absolute end-4 top-16 z-50 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl md:end-8"
             >
-                <div class="flex items-center justify-between">
-                    <h3 class="text-base font-black text-slate-950">اعلان‌ها</h3>
-                    <span class="inline-flex items-center justify-center rounded-full bg-[#0069FF] px-2 py-0.5 text-xs font-black text-white">۳</span>
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                    <h3 class="text-sm font-black text-slate-900">اعلان‌ها</h3>
+                    <span class="inline-flex items-center justify-center rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white">۳</span>
                 </div>
-                <div class="mt-4 space-y-3">
-                    @foreach (auth('admin')->user()?->notifications()->latest()->limit(3)->get() ?? collect() as $notification)
-                        <a href="{{ data_get($notification->data, 'url', route('admin.tickets.index')) }}" class="flex gap-3 rounded-lg border border-slate-200 p-3 transition hover:bg-slate-50">
-                            <span class="mt-1 size-2.5 shrink-0 rounded-full {{ $notification->read_at ? 'bg-slate-300' : 'bg-[#0069FF]' }}"></span>
-                            <p class="text-sm leading-7 text-slate-600"><span class="font-black text-slate-900">{{ data_get($notification->data, 'title', 'اعلان') }}</span><br>{{ data_get($notification->data, 'body', '') }}</p>
+                <div class="max-h-72 overflow-y-auto p-2">
+                    @foreach (auth('admin')->user()?->notifications()->latest()->limit(5)->get() ?? collect() as $notification)
+                        <a href="{{ data_get($notification->data, 'url', route('admin.tickets.index')) }}" class="flex gap-3 rounded-lg p-3 transition hover:bg-slate-50">
+                            <span class="mt-1 size-2 shrink-0 rounded-full {{ $notification->read_at ? 'bg-slate-300' : 'bg-[#0069FF]' }}"></span>
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-slate-900">{{ data_get($notification->data, 'title', 'اعلان') }}</p>
+                                <p class="mt-0.5 text-xs leading-5 text-slate-500">{{ data_get($notification->data, 'body', '') }}</p>
+                            </div>
                         </a>
                     @endforeach
                     @if ((auth('admin')->user()?->notifications()->count() ?? 0) === 0)
-                        <p class="rounded-lg border border-slate-200 p-4 text-center text-sm font-bold text-slate-500">اعلان جدیدی وجود ندارد.</p>
+                        <p class="px-3 py-8 text-center text-sm font-bold text-slate-400">اعلان جدیدی وجود ندارد.</p>
                     @endif
                 </div>
+                @if ((auth('admin')->user()?->notifications()->unreadCount() ?? 0) > 0)
+                    <div class="border-t border-slate-100 px-5 py-3">
+                        <button class="w-full text-center text-xs font-bold text-[#0069FF] transition hover:text-[#0050D0]">خواندن همه</button>
+                    </div>
+                @endif
             </div>
 
             <div
@@ -393,26 +397,28 @@
                 x-show="profileOpen"
                 x-transition
                 @click.away="profileOpen = false"
-                class="absolute left-4 top-16 z-50 w-64 rounded-lg border border-slate-200 bg-white p-4 shadow-2xl md:left-8"
+                class="absolute end-4 top-16 z-50 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl md:end-8"
             >
-                <div class="flex items-center gap-3 border-b border-slate-200 pb-4">
-                    <span class="grid size-12 place-items-center rounded-lg bg-[#0069FF] text-lg font-black text-white">ا</span>
-                    <div>
-                        <p class="font-black text-slate-950">امیر حسینی</p>
-                        <p class="text-sm text-slate-500">مدیر سیستم</p>
+                <div class="border-b border-slate-100 px-5 py-4">
+                    <div class="flex items-center gap-3">
+                        <span class="grid size-10 place-items-center rounded-full bg-[#0069FF] text-sm font-black text-white">ا</span>
+                        <div>
+                            <p class="text-sm font-black text-slate-900">امیر حسینی</p>
+                            <p class="text-xs text-slate-500">مدیر سیستم</p>
+                        </div>
                     </div>
                 </div>
-                <div class="mt-4 space-y-1">
-                    <a href="{{ route('admin.settings.edit') }}" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
-                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <div class="p-2">
+                    <a href="{{ route('admin.settings.edit') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
+                        <svg class="size-[18px] text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                             <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 0v6m0-12V3m9 9h-6m-6 0H3m15.364 5.364-4.243-4.243m-6.364 0L3.636 17.364M20.364 6.636l-4.243 4.243m-6.364 0L5.636 6.636" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         تنظیمات
                     </a>
                     <form method="POST" action="{{ route('admin.logout') }}">
                         @csrf
-                        <button type="submit" class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-right text-sm font-bold text-red-600 transition hover:bg-red-50">
-                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <button type="submit" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-right text-sm font-bold text-red-600 transition hover:bg-red-50">
+                            <svg class="size-[18px] text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                             خروج از حساب

@@ -125,13 +125,23 @@ class ProxmoxServiceDeleteTest extends TestCase
         $this->assertSame('5.202.19.112', $result['allowed_ip']);
 
         $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'PUT'
+            && $request['url'] === 'https://pve.local:8006/api2/json/cluster/firewall/options'
+            && (int) ($request['data']['enable'] ?? 0) === 1));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'PUT'
+            && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/firewall/options'
+            && (int) ($request['data']['enable'] ?? 0) === 1));
+
+        $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'PUT'
             && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/config'
             && ($request['data']['net0'] ?? null) === 'virtio=BC:24:11:AA:22:33,bridge=vmbr1,firewall=1'));
 
         $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'PUT'
             && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/options'
             && (int) ($request['data']['enable'] ?? 0) === 1
-            && (int) ($request['data']['ipfilter'] ?? 0) === 1));
+            && (int) ($request['data']['ipfilter'] ?? 0) === 1
+            && ($request['data']['policy_in'] ?? null) === 'ACCEPT'
+            && ($request['data']['policy_out'] ?? null) === 'ACCEPT'));
 
         $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
             && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/ipset'
@@ -208,7 +218,9 @@ class ProxmoxServiceDeleteTest extends TestCase
         $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'PUT'
             && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/options'
             && (int) ($request['data']['enable'] ?? 0) === 1
-            && (int) ($request['data']['ipfilter'] ?? 0) === 1));
+            && (int) ($request['data']['ipfilter'] ?? 0) === 1
+            && ($request['data']['policy_in'] ?? null) === 'ACCEPT'
+            && ($request['data']['policy_out'] ?? null) === 'ACCEPT'));
 
         $this->assertTrue(collect($sent)->contains(fn (array $request): bool => $request['method'] === 'POST'
             && $request['url'] === 'https://pve.local:8006/api2/json/nodes/pve1/qemu/123/firewall/ipset/ipfilter-net0'
