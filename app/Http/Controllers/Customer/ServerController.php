@@ -95,7 +95,8 @@ class ServerController extends Controller
             'servers' => $servers,
             'serverRows' => $servers->getCollection()->map(fn (VirtualMachine $server): array => [
                 'id' => $server->uuid,
-                'name' => $server->name,
+                'name' => $server->display_name,
+                'internal_name' => $server->name,
                 'hostname' => $server->hostname ?: '-',
                 'ip' => $server->ip_address ?: 'بدون IP',
                 'node' => $server->node ?: 'نامشخص',
@@ -266,6 +267,7 @@ class ServerController extends Controller
         $data = $request->validate([
             'cloud_image_id' => ['required', 'integer', 'exists:cloud_images,id,is_active,1'],
             'vm_bundle_id' => ['nullable', 'integer', 'exists:vm_bundles,id'],
+            'display_name' => ['nullable', 'string', 'max:128'],
             'login_username' => ['nullable', 'string', 'max:64'],
             'login_password' => ['nullable', 'string', 'min:8', 'max:255'],
             'ssh_public_key' => ['nullable', 'string', 'max:5000', $this->sshPublicKeyRule()],
@@ -334,7 +336,7 @@ class ServerController extends Controller
             $creationCharge = $bundle ? AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price) : 0;
 
             if ($creationCharge > 0) {
-                $this->wallets->charge($activeProject->owner, $creationCharge, 'هزینه اولیه ساخت ماشین مجازی '.$result['vm']->name, $result['vm'], [
+                $this->wallets->charge($activeProject->owner, $creationCharge, 'هزینه اولیه ساخت ماشین مجازی '.$result['vm']->display_name, $result['vm'], [
                     'category' => 'vm_creation_fee',
                     'percentage' => AppSetting::vmCreationChargePercentage(),
                     'monthly_price' => (int) $bundle->monthly_price,
@@ -475,7 +477,7 @@ class ServerController extends Controller
         }
 
         $data = $request->validate([
-            'rebuild_confirmation' => ['required', 'string', Rule::in([$server->name])],
+            'rebuild_confirmation' => ['required', 'string', Rule::in([$server->display_name])],
             'hostname' => ['nullable', 'string', 'max:255'],
             'login_username' => ['nullable', 'string', 'max:64'],
             'login_password' => ['nullable', 'string', 'min:8', 'max:255'],
@@ -544,7 +546,7 @@ class ServerController extends Controller
         $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
         $server->loadMissing(['reservedIpAddress', 'proxmoxServer', 'customer', 'bundle']);
         $request->validate([
-            'delete_confirmation' => ['required', 'string', Rule::in([$server->name])],
+            'delete_confirmation' => ['required', 'string', Rule::in([$server->display_name])],
         ], [
             'delete_confirmation.in' => 'برای حذف، نام سرور را دقیقا وارد کنید.',
         ]);

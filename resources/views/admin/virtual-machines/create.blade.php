@@ -114,6 +114,7 @@
             </label>
 
             <x-form.input name="name" label="نام VM در Proxmox" value="" dir-ltr />
+            <x-form.input name="display_name" label="نام نمایشی (Display Name)" value="" dir-ltr />
             <div x-show="cloudInitEnabled">
                 <x-form.input name="hostname" label="Hostname" value="" dir-ltr x-bind:disabled="!cloudInitEnabled" />
             </div>

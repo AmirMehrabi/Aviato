@@ -278,7 +278,8 @@
                                         <input type="checkbox" value="{{ $vm->id }}" class="size-4 rounded border-slate-300 text-[#0069FF]" :checked="selectedStale.includes({{ $vm->id }})" @change="toggleStale({{ $vm->id }}, $event.target.checked)">
                                     </td>
                                     <td class="py-4">
-                                        <p class="font-black text-slate-950">{{ $vm->name }}</p>
+                                        <p class="font-black text-slate-950">{{ $vm->display_name }}</p>
+                                        <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
                                         <p class="mt-1 text-xs text-slate-500">{{ $vm->hostname ?: 'No hostname' }} · {{ $vm->status }}</p>
                                     </td>
                                     <td class="py-4">{{ $vm->customer?->name ?? '—' }}</td>

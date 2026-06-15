@@ -118,8 +118,8 @@ document.addEventListener('alpine:init', () => {
                         @forelse($vms as $vm)
                             <tr>
                                 <td class="px-5 py-4">
-                                    <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->name }}</a>
-                                    <span class="block text-xs text-slate-500" dir="ltr">{{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local' }}</span>
+                                    <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</a>
+                                    <span class="block text-xs text-slate-500" dir="ltr">{{ $vm->name }} · {{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local' }}</span>
                                 </td>
                                 <td class="px-5 py-4 font-bold">{{ $vm->project?->name ?: '—' }}</td>
                                 <td class="px-5 py-4">{{ $vm->project?->owner?->name ?: '—' }}</td>

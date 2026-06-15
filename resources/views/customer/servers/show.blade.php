@@ -1,14 +1,14 @@
 @extends('customer.layout')
 
 @section('title', 'جزئیات سرور')
-@section('header_title', $server->name)
+@section('header_title', $server->display_name)
 @section('header_subtitle', 'اتصال، وضعیت، منابع و هزینه این ماشین مجازی')
 @section('breadcrumbs')
     <a href="{{ route('customer.servers.index', [], false) }}" class="transition hover:text-[#0069FF]">سرورها</a>
     <svg class="size-3.5 rotate-180 text-slate-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
         <path fill-rule="evenodd" d="M12.78 4.22a.75.75 0 0 1 0 1.06L8.06 10l4.72 4.72a.75.75 0 1 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/>
     </svg>
-    <span class="truncate text-slate-700" dir="ltr">{{ $server->name }}</span>
+    <span class="truncate text-slate-700" dir="ltr">{{ $server->display_name }}</span>
 @endsection
 
 @php
@@ -61,11 +61,11 @@
         "keywords": "servers list vps"
     },
     {
-        "title": "مانیتورینگ {{ $server->name }}",
+        "title": "مانیتورینگ {{ $server->display_name }}",
         "description": "نمودار مصرف CPU، RAM و شبکه",
         "type": "صفحه",
         "url": @json($monitoringUrl),
-        "keywords": @json('monitoring metrics '.$server->name.' '.$server->ip_address)
+        "keywords": @json('monitoring metrics '.$server->display_name.' '.$server->name.' '.$server->ip_address)
     }
 ]
 @endsection
@@ -138,7 +138,7 @@
                                 <span x-text="serverState.provisioning_label">{{ $provisioningLabel }}</span>
                             </span>
                         </div>
-                        <h2 class="mt-5 truncate text-4xl font-black leading-tight" dir="ltr">{{ $server->name }}</h2>
+                        <h2 class="mt-5 truncate text-4xl font-black leading-tight" dir="ltr">{{ $server->display_name }}</h2>
                         <p class="mt-2 truncate text-sm font-bold text-[#9DB4DC]" dir="ltr" x-text="serverState.hostname">{{ $server->hostname ?: 'hostname-not-set' }}</p>
                         <div class="mt-6 grid gap-3 sm:grid-cols-3">
                             <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
@@ -428,7 +428,7 @@
             x-data="{
                 rebuildDialogOpen: @js($errors->has('rebuild_confirmation') || $errors->has('login_password') || $errors->has('login_username') || $errors->has('hostname') || $errors->has('ssh_public_key')),
                 rebuildConfirmation: @js(old('rebuild_confirmation', '')),
-                rebuildConfirmationExpected: @js($server->name),
+                rebuildConfirmationExpected: @js($server->display_name),
                 rebuildAcknowledged: false,
                 submitting: false,
                 openRebuildDialog() {
@@ -539,7 +539,7 @@
                                 x-model="rebuildConfirmation"
                                 autocomplete="off"
                                 spellcheck="false"
-                                placeholder="{{ $server->name }}"
+                                    placeholder="{{ $server->display_name }}"
                                 class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-900 focus:border-[#0069FF] focus:outline-none"
                                 dir="ltr"
                             >
@@ -585,7 +585,7 @@
                 x-data="{
                     deleteDialogOpen: @js($errors->has('delete_confirmation')),
                     deleteConfirmation: @js(old('delete_confirmation', '')),
-                    deleteConfirmationExpected: @js($server->name),
+                    deleteConfirmationExpected: @js($server->display_name),
                     submitting: false,
                     openDeleteDialog() {
                         this.deleteConfirmation = '';
@@ -646,7 +646,7 @@
 
                             <p class="mt-3 text-sm font-bold leading-7 text-slate-600">
                                 برای حذف این سرور، دقیقاً نام
-                                <span class="rounded-lg bg-slate-100 px-2 py-1 font-black text-slate-950" dir="ltr">{{ $server->name }}</span>
+                                <span class="rounded-lg bg-slate-100 px-2 py-1 font-black text-slate-950" dir="ltr">{{ $server->display_name }}</span>
                                 را وارد کنید. این کار قابل بازگشت نیست.
                             </p>
 
@@ -660,7 +660,7 @@
                                     x-model="deleteConfirmation"
                                     autocomplete="off"
                                     spellcheck="false"
-                                    placeholder="{{ $server->name }}"
+                                placeholder="{{ $server->display_name }}"
                                     class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-900 focus:border-[#0069FF] focus:outline-none"
                                     dir="ltr"
                                 >

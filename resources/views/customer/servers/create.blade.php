@@ -151,6 +151,13 @@
                         </div>
                     </div>
 
+                    <label class="block">
+                        <span class="text-sm font-black text-slate-700">نام نمایشی (اختیاری)</span>
+                        <input name="display_name" x-model="form.display_name" maxlength="128" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none" placeholder="My Production Server">
+                        <span class="mt-1 block text-xs font-bold text-slate-400">نامی که در پنل نمایش داده می‌شود. در صورت خالی بودن، شناسه خودکار نمایش داده خواهد شد.</span>
+                        @error('display_name') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+                    </label>
+
                     <div x-show="cloudInitEnabled" class="space-y-4">
                         <div class="grid gap-4 md:grid-cols-2">
                             <label class="block">
@@ -276,6 +283,7 @@
                 os_family: '',
                 cloud_image_id: @js((string) old('cloud_image_id', '')),
                 vm_bundle_id: @js((string) old('vm_bundle_id', '')),
+                display_name: @js(old('display_name', '')),
                 cpu_cores: @js((int) old('cpu_cores', 2)),
                 ram_gb: @js((int) old('ram_gb', 4)),
                 disk_gb: @js((int) old('disk_gb', 50)),
@@ -323,7 +331,11 @@
                 return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && !this.sshKeyInvalid;
             },
             get generatedNamePreview() {
-                return `MACHINE-${this.namePeriod || 'YYMM'}-${this.bundleSpecsToken()}-XXXXXX`;
+                return `${this.osPrefix}-${this.namePeriod || 'YYMM'}-${this.bundleSpecsToken()}-XXXXXX`;
+            },
+            get osPrefix() {
+                const prefixes = { ubuntu: 'UBNT', debian: 'DBN', rocky: 'RKL', router_os: 'ROS', windows: 'WND' };
+                return prefixes[this.form.os_family] || 'VM';
             },
             get sshKeyAdded() {
                 return this.form.ssh_public_key.trim().length > 0;

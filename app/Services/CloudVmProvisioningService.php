@@ -16,6 +16,14 @@ use Throwable;
 
 class CloudVmProvisioningService
 {
+    private const OS_PREFIXES = [
+        'ubuntu' => 'UBNT',
+        'debian' => 'DBN',
+        'rocky' => 'RKL',
+        'router_os' => 'ROS',
+        'windows' => 'WND',
+    ];
+
     public function __construct(
         private readonly IpPoolService $ipPools,
     ) {}
@@ -55,7 +63,8 @@ class CloudVmProvisioningService
         $networkBridge = trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge;
 
         $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge): VirtualMachine {
-            $name = $this->generateUniqueVmName($bundle, $resources);
+            $osPrefix = self::OS_PREFIXES[$image->os_family] ?? 'VM';
+            $name = $this->generateUniqueVmName($bundle, $resources, $osPrefix);
             $vm = VirtualMachine::create([
                 'customer_id' => $project->owner_customer_id,
                 'project_id' => $project->id,
@@ -65,6 +74,7 @@ class CloudVmProvisioningService
                 'cloud_image_id' => $image->id,
                 'template_vmid' => $image->template_vmid,
                 'name' => $name,
+                'display_name' => $data['display_name'] ?? null,
                 'hostname' => $image->cloud_init_enabled ? Str::lower($name) : null,
                 'node' => $node,
                 'storage' => $storage,
@@ -166,9 +176,9 @@ class CloudVmProvisioningService
     /**
      * @param  array{cpu_cores: int, ram_gb: int, disk_gb: int}  $resources
      */
-    private function generateUniqueVmName(?VmBundle $bundle, array $resources): string
+    private function generateUniqueVmName(?VmBundle $bundle, array $resources, string $osPrefix): string
     {
-        $base = 'MACHINE-'.now()->format('ym').'-'.$this->bundleSpecsToken($bundle, $resources);
+        $base = $osPrefix.'-'.now()->format('ym').'-'.$this->bundleSpecsToken($bundle, $resources);
 
         for ($attempt = 0; $attempt < 20; $attempt++) {
             $candidate = $base.'-'.$this->uniqueKey();

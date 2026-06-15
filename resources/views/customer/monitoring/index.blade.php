@@ -12,7 +12,7 @@
 [
     {"title":"مانیتورینگ","description":"نمودار مصرف و سلامت ماشین های مجازی","type":"صفحه","url":@json(route('customer.monitoring.index', [], false)),"keywords":"monitoring metrics cpu ram network مانیتورینگ"}
     @foreach ($servers as $server)
-        ,{"title":@json('مانیتورینگ '.$server->name),"description":@json($server->ip_address ?: 'بدون IP'),"type":"ماشین مجازی","url":@json(route('customer.monitoring.index', ['server' => $server->uuid], false)),"keywords":@json($server->name.' '.$server->hostname.' '.$server->ip_address.' monitoring')}
+        ,{"title":@json('مانیتورینگ '.$server->display_name),"description":@json($server->ip_address ?: 'بدون IP'),"type":"ماشین مجازی","url":@json(route('customer.monitoring.index', ['server' => $server->uuid], false)),"keywords":@json($server->display_name.' '.$server->name.' '.$server->hostname.' '.$server->ip_address.' monitoring')}
     @endforeach
 ]
 @endsection

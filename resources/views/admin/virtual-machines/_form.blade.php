@@ -4,7 +4,8 @@
     $selectedIpAddressId = old('ip_address_id', $vm->ip_address_id);
 @endphp
 <div class="grid gap-5 md:grid-cols-2">
-    <x-form.input name="name" label="نام VM" :value="$vm->name" dir-ltr />
+    <x-form.input name="name" label="نام VM (Internal)" :value="$vm->name" dir-ltr />
+    <x-form.input name="display_name" label="نام نمایشی (Display Name)" :value="$vm->display_name" dir-ltr />
     <x-form.input name="hostname" label="Hostname" :value="$vm->hostname" dir-ltr />
     <x-form.select name="customer_id" label="مشتری" :selected="$vm->customer_id" :options="$customers->prepend('انتخاب مشتری', '')" />
     <label>

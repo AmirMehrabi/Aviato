@@ -133,7 +133,8 @@
                     <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->name }}</a>
+                                <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</a>
+                                <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
                                 <p class="mt-1 text-xs text-slate-500">Node: {{ $vm->node ?: '—' }}</p>
                             </div>
                             <span class="rounded-md px-2 py-1 text-xs font-black {{ $vm->status === 'running' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-200 text-slate-600' }}">{{ $vm->status === 'running' ? 'running' : 'stopped' }}</span>

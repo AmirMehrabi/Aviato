@@ -187,7 +187,7 @@
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-4">
                                     @if ($vm)
-                                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="block font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $vm->name }}</a>
+                                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="block font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $vm->display_name }}</a>
                                         <span class="mt-1 block text-xs text-slate-500" dir="ltr">{{ $vm->status }} / {{ $vm->provisioning_status }}</span>
                                     @else
                                         <span class="text-slate-400">بدون ماشین</span>

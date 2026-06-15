@@ -45,7 +45,7 @@
             <article class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                 <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <h2 class="font-black text-slate-950" dir="ltr">{{ $vm->name }}</h2>
+                        <h2 class="font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</h2>
                         <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ $vm->ip_address ?: 'no-ip' }}</p>
                     </div>
                     <form method="POST" action="{{ route('customer.backups.manual.store', $vm, false) }}">

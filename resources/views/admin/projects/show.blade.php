@@ -66,7 +66,8 @@
                             @forelse($project->virtualMachines as $vm)
                                 <tr>
                                     <td class="px-4 py-3">
-                                        <p class="font-black text-slate-950">{{ $vm->name }}</p>
+                                        <p class="font-black text-slate-950">{{ $vm->display_name }}</p>
+                                        <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
                                         <p class="mt-1 text-xs text-slate-500">{{ $vm->proxmoxServer?->name ?: 'بدون سرور' }}</p>
                                     </td>
                                     <td class="px-4 py-3 text-slate-600">{{ $vm->creator?->name ?: $vm->customer?->name }}</td>

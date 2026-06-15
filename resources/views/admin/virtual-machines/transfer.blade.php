@@ -47,7 +47,8 @@
         <div class="absolute -left-16 -top-16 size-48 rounded-full bg-white/10 blur-2xl"></div>
         <div class="relative">
             <p class="text-sm font-bold text-white/60">انتقال مالکیت ماشین</p>
-            <h1 class="mt-1 text-2xl font-black md:text-4xl" dir="ltr">{{ $vm->name }}</h1>
+            <h1 class="mt-1 text-2xl font-black md:text-4xl" dir="ltr">{{ $vm->display_name }}</h1>
+            <p class="mt-1 text-sm font-bold text-white/50" dir="ltr">{{ $vm->name }}</p>
             <p class="mt-3 leading-8 text-white/75">
                 مالک فعلی: <span class="font-black">{{ $vm->customer?->name }}</span> ·
                 فضای کاری فعلی: <span class="font-black">{{ $vm->project?->name }}</span>

@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
     'vmid',
     'template_vmid',
     'name',
+    'display_name',
     'hostname',
     'node',
     'storage',
@@ -92,6 +93,11 @@ class VirtualMachine extends Model
     public function getRouteKeyName(): string
     {
         return 'uuid';
+    }
+
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->getAttribute('display_name') ?: $this->name;
     }
 
     public function customer(): BelongsTo

@@ -14,7 +14,8 @@
     <div class="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
             <p class="text-sm font-bold text-white/60">VM #{{ $vm->id }} · Billing: {{ $billingCustomer?->name ?: '—' }}</p>
-            <h1 class="mt-1 text-2xl font-black md:text-4xl" dir="ltr">{{ $vm->name }}</h1>
+            <h1 class="mt-1 text-2xl font-black md:text-4xl" dir="ltr">{{ $vm->display_name }}</h1>
+            <p class="mt-1 text-sm font-bold text-white/50" dir="ltr">{{ $vm->name }}</p>
             <p class="mt-3 leading-8 text-white/75" dir="ltr">{{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local only' }} · {{ $vm->provisioning_status }}</p>
             <p class="mt-2 text-sm font-bold text-white/70">Project: {{ $vm->project?->name ?: '—' }} · Owner: {{ $vm->project?->owner?->name ?: '—' }} · Created by: {{ $vm->creator?->name ?: '—' }}</p>
         </div>

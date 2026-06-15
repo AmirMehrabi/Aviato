@@ -52,7 +52,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertSame($customer->id, $vm->customer_id);
         $this->assertSame($image->id, $vm->cloud_image_id);
         $this->assertNotSame('customer-vps-101', $vm->name);
-        $this->assertMatchesRegularExpression('/^VPS-'.now()->format('ym').'-2C4G40G-[A-Z0-9]{6}$/', $vm->name);
+        $this->assertMatchesRegularExpression('/^UBNT-'.now()->format('ym').'-2C4G40G-[A-Z0-9]{6}$/', $vm->name);
         $this->assertSame(strtolower($vm->name), $vm->hostname);
         $this->assertSame('192.168.10.50', $vm->ip_address);
         $this->assertSame('vmbr1', $vm->network_bridge);
@@ -105,7 +105,7 @@ class CloudVmProvisioningTest extends TestCase
             ->assertSessionHas('provisioning_password');
 
         $vm = VirtualMachine::query()->firstOrFail();
-        $this->assertStringStartsWith('VPS-'.now()->format('ym').'-2C4G40G-', $vm->name);
+        $this->assertStringStartsWith('UBNT-'.now()->format('ym').'-2C4G40G-', $vm->name);
         $this->assertSame(strtolower($vm->name), $vm->hostname);
         $this->assertNotSame('user-controlled-name', $vm->name);
         $this->assertNotSame('user-controlled-hostname', $vm->hostname);

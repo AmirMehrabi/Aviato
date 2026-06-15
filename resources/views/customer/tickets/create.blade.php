@@ -60,7 +60,7 @@
             <select name="virtual_machine_id" class="mt-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">
                 <option value="">بدون سرویس</option>
                 @foreach($virtualMachines as $vm)
-                    <option value="{{ $vm->id }}" @selected(old('virtual_machine_id') == $vm->id) dir="ltr">{{ $vm->name }} - {{ $vm->ip_address ?: 'no-ip' }}</option>
+                    <option value="{{ $vm->id }}" @selected(old('virtual_machine_id') == $vm->id) dir="ltr">{{ $vm->display_name }} - {{ $vm->ip_address ?: 'no-ip' }}</option>
                 @endforeach
             </select>
         </section>

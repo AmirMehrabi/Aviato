@@ -50,7 +50,7 @@
         "description": @json($server['ip'].' - '.$server['resources']),
         "type": "ماشین مجازی",
         "url": @json($server['show_url']),
-        "keywords": @json($server['name'].' '.$server['hostname'].' '.$server['ip'].' '.$server['status'].' '.$server['provisioning_status'])
+        "keywords": @json($server['name'].' '.$server['internal_name'].' '.$server['hostname'].' '.$server['ip'].' '.$server['status'].' '.$server['provisioning_status'])
     }@if (! $loop->last),@endif
 @endforeach
 ]
