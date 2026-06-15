@@ -97,7 +97,9 @@ class VirtualMachine extends Model
 
     public function getDisplayNameAttribute(): string
     {
-        return $this->getAttribute('display_name') ?: $this->name;
+        $value = $this->attributes['display_name'] ?? null;
+
+        return $value !== null && $value !== '' ? $value : $this->name;
     }
 
     public function customer(): BelongsTo
