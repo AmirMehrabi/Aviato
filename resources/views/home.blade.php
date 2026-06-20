@@ -153,9 +153,24 @@
                     <p class="mt-4 min-h-10 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'ماشین مجازی آماده برای سایت، فروشگاه، اپلیکیشن و سرویس های آنلاین.' }}</p>
 
                     <div class="mt-5 grid grid-cols-2 gap-2 text-sm text-slate-700">
-                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->cpu_cores }} vCPU</span>
-                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->ram_gb }}GB RAM</span>
-                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->disk_gb }}GB NVMe</span>
+                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">
+                            <span class="inline-flex items-center justify-center gap-1.5">
+                                <img src="{{ asset('assets/icons/cpu-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
+                                {{ $bundle->cpu_cores }} vCPU
+                            </span>
+                        </span>
+                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">
+                            <span class="inline-flex items-center justify-center gap-1.5">
+                                <img src="{{ asset('assets/icons/ram-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
+                                {{ $bundle->ram_gb }}GB RAM
+                            </span>
+                        </span>
+                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">
+                            <span class="inline-flex items-center justify-center gap-1.5">
+                                <img src="{{ asset('assets/icons/ssd-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
+                                {{ $bundle->disk_gb }}GB NVMe
+                            </span>
+                        </span>
                         <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->ip_count }} IP</span>
                     </div>
 
@@ -174,26 +189,15 @@
             @if ($marketingBundles->isNotEmpty())
                 <div class="mt-10 hidden md:block">
                     <div class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-lg shadow-slate-200/60">
-                        <table class="w-full bg-white text-sm" dir="rtl">
-                            <thead>
-                                <tr class="border-b border-slate-200 bg-white">
-                                    <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">پلن</th>
-                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500" dir="ltr">CPU</th>
-                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500" dir="ltr">RAM</th>
-                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500" dir="ltr">Storage</th>
-                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500" dir="ltr">IP</th>
-                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500">هزینه ماهانه</th>
-                                    <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500"></th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
+                        <table class="w-full border-separate border-spacing-y-1 text-sm" dir="rtl">
+                            <tbody>
                                 @forelse ($marketingBundles as $bundle)
                                     @php
                                         $meta = $planMeta[$loop->index] ?? $planMeta[3];
                                         $isRecommended = $loop->index === $recommendedIndex;
                                     @endphp
                                     <tr class="transition {{ $isRecommended ? 'bg-slate-50' : 'hover:bg-slate-50/60' }}">
-                                        <td class="px-6 py-5">
+                                        <td class="px-6 py-6">
                                             <div class="flex items-center gap-3">
                                                 <div>
                                                     <div class="flex items-center gap-2">
@@ -206,14 +210,29 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-6 py-5 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->cpu_cores }} vCPU</td>
-                                        <td class="px-6 py-5 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->ram_gb }}GB</td>
-                                        <td class="px-6 py-5 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->disk_gb }}GB NVMe</td>
-                                        <td class="px-6 py-5 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->ip_count }}</td>
-                                        <td class="px-6 py-5 text-center">
+                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">
+                                            <span class="inline-flex items-center justify-center gap-1.5">
+                                                <img src="{{ asset('assets/icons/cpu-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
+                                                {{ $bundle->cpu_cores }} vCPU
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">
+                                            <span class="inline-flex items-center justify-center gap-1.5">
+                                                <img src="{{ asset('assets/icons/ram-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
+                                                {{ $bundle->ram_gb }}GB
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">
+                                            <span class="inline-flex items-center justify-center gap-1.5">
+                                                <img src="{{ asset('assets/icons/ssd-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
+                                                {{ $bundle->disk_gb }}GB NVMe
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->ip_count }}</td>
+                                        <td class="px-6 py-6 text-center">
                                             <p class="text-lg font-bold text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
                                         </td>
-                                        <td class="px-6 py-5 text-center">
+                                        <td class="px-6 py-6 text-center">
                                             <a href="{{ route('customer.register') }}" class="inline-flex justify-center rounded-xl bg-[#4C86E8] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#3E76D6]">
                                                 خرید
                                             </a>
