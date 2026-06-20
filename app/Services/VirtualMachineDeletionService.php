@@ -27,6 +27,8 @@ class VirtualMachineDeletionService
             'actor' => $actor,
             'status' => $vm->status,
             'proxmox_server_id' => $vm->proxmox_server_id,
+            'provider' => $vm->provider,
+            'remote_id' => $vm->remote_id,
             'node' => $vm->node,
             'vmid' => $vm->vmid,
         ]);
@@ -101,11 +103,12 @@ class VirtualMachineDeletionService
             return ['status' => $status, 'queued' => false, 'finalized' => $vm->isDeleted(), 'vm' => $vm];
         }
 
-        if (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid) {
+        if ($vm->isProxmox() && (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid)) {
             Log::info('Virtual machine delete finalized locally because Proxmox connection data is incomplete', [
                 'virtual_machine_id' => $vm->id,
                 'actor' => $actor,
                 'proxmox_server_id' => $vm->proxmox_server_id,
+                'provider' => $vm->provider,
                 'node' => $vm->node,
                 'vmid' => $vm->vmid,
             ]);

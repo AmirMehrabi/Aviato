@@ -30,6 +30,24 @@
             quota: @js($quota),
             namePeriod: @js(now()->format('ym')),
             osFamilies: @js($osFamilies),
+            locations: @js($locations->map(fn ($location) => [
+                'id' => $location->id,
+                'name' => $location->name,
+                'provider' => $location->provider,
+                'region' => $location->region,
+                'remote_name' => $location->remote_name,
+                'hetzner_account_id' => $location->hetzner_account_id,
+                'proxmox_server_id' => $location->proxmox_server_id,
+                'bundle_ids' => $location->bundleMappings->pluck('vm_bundle_id')->map(fn ($id) => (int) $id)->values()->all(),
+            ])->values()),
+            locationMappings: @js($locationMappings->map(fn ($mapping) => [
+                'location_id' => $mapping->infrastructure_location_id,
+                'bundle_id' => $mapping->vm_bundle_id,
+                'hetzner_server_type' => $mapping->hetznerServerType?->name,
+                'monthly_price_usd' => $mapping->monthly_price_usd,
+                'monthly_price_irr' => $mapping->monthly_price_irr,
+                'usd_to_irr_rate' => $mapping->usd_to_irr_rate,
+            ])->values()),
             bundles: @js($bundles->map(fn ($bundle) => [
                 'id' => $bundle->id,
                 'name' => $bundle->name,
@@ -49,6 +67,9 @@
                 'os_family' => $image->os_family,
                 'os_version' => $image->os_version,
                 'logo_key' => $image->logo_key ?: $image->os_family,
+                'provider' => $image->provider ?: 'proxmox',
+                'infrastructure_location_id' => $image->infrastructure_location_id,
+                'hetzner_account_id' => data_get($image->provider_metadata, 'hetzner_account_id'),
                 'server' => $image->proxmoxServer?->datacenter ?: $image->proxmoxServer?->name,
                 'default_username' => $image->default_username,
                 'cloud_init_enabled' => $image->cloud_init_enabled,
@@ -66,6 +87,30 @@
             <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                 <div class="border-b border-slate-100 px-5 py-4">
                     <p class="text-xs font-black uppercase text-[#0069FF]">Step 1</p>
+                    <h2 class="mt-1 text-xl font-black text-slate-950">موقعیت سرور را انتخاب کنید</h2>
+                </div>
+                <div class="p-5">
+                    <input type="hidden" name="infrastructure_location_id" :value="form.infrastructure_location_id">
+                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <template x-for="location in locations" :key="location.id">
+                            <button
+                                type="button"
+                                @click="selectLocation(location.id)"
+                                class="rounded-xl border p-4 text-right transition"
+                                :class="String(form.infrastructure_location_id) === String(location.id) ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white hover:border-[#B8D6FF] hover:bg-[#F8FBFF]'"
+                            >
+                                <span class="block text-lg font-black text-slate-950" x-text="location.name"></span>
+                                <span class="mt-2 block text-xs font-bold text-slate-500" x-text="location.region || location.remote_name || 'Location'"></span>
+                            </button>
+                        </template>
+                    </div>
+                    <p x-show="!locations.length" class="rounded-lg border border-dashed border-slate-300 p-5 text-center text-sm font-bold text-slate-500">فعلا هیچ موقعیت فعالی برای ساخت ماشین مجازی تعریف نشده است.</p>
+                </div>
+            </section>
+
+            <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                <div class="border-b border-slate-100 px-5 py-4">
+                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 2</p>
                     <h2 class="mt-1 text-xl font-black text-slate-950">سیستم عامل و نسخه را انتخاب کنید</h2>
                 </div>
                 <div class="p-5">
@@ -108,7 +153,7 @@
 
             <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 2</p>
+                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 3</p>
                     <h2 class="mt-1 text-xl font-black text-slate-950">پلن ماشین مجازی را انتخاب کنید</h2>
                 </div>
                     <div class="grid gap-4 p-5 lg:grid-cols-3">
@@ -140,7 +185,7 @@
 
             <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 3</p>
+                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 4</p>
                     <h2 class="mt-1 text-xl font-black text-slate-950">دسترسی اولیه</h2>
                 </div>
                 <div class="grid gap-5 p-5">
@@ -214,6 +259,7 @@
 
                 <div class="p-5">
                     <div class="space-y-3 rounded-xl bg-white/75 p-4 text-sm ring-1 ring-[#D7E8FF]">
+                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">موقعیت</span><span class="font-black text-slate-950" x-text="selectedLocation?.name || '—'"></span></div>
                         <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="font-black text-slate-950" x-text="selectedOsLabel || '—'"></span></div>
                         <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">نسخه</span><span class="font-black text-slate-950" x-text="selectedImage?.os_version || '—'"></span></div>
                         <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">CloudInit</span><span class="font-black text-slate-950" x-text="cloudInitEnabled ? 'فعال' : 'غیرفعال'"></span></div>
@@ -276,10 +322,13 @@
             profileUrl: config.profileUrl,
             quota: config.quota,
             osFamilies: config.osFamilies,
+            locations: config.locations || [],
+            locationMappings: config.locationMappings || [],
             bundles: config.bundles,
             images: config.images,
             namePeriod: config.namePeriod || '',
             form: {
+                infrastructure_location_id: @js((string) old('infrastructure_location_id', '')),
                 os_family: '',
                 cloud_image_id: @js((string) old('cloud_image_id', '')),
                 vm_bundle_id: @js((string) old('vm_bundle_id', '')),
@@ -293,6 +342,9 @@
                 ssh_public_key: @js(old('ssh_public_key', '')),
             },
             init() {
+                if (!this.form.infrastructure_location_id && this.locations.length) {
+                    this.form.infrastructure_location_id = String(this.locations[0].id);
+                }
                 if (this.form.cloud_image_id && this.selectedImage) {
                     this.form.os_family = this.selectedImage.os_family;
                     this.applyImage();
@@ -304,11 +356,29 @@
                     this.applyBundle();
                 }
             },
+            get selectedLocation() { return this.locations.find((location) => String(location.id) === String(this.form.infrastructure_location_id)); },
             get selectedImage() { return this.images.find((image) => String(image.id) === String(this.form.cloud_image_id)); },
+            get availableImages() {
+                if (!this.selectedLocation) return [];
+                return this.images.filter((image) => {
+                    if (this.selectedLocation.provider === 'proxmox') {
+                        return image.provider === 'proxmox' && String(image.infrastructure_location_id) === String(this.selectedLocation.id);
+                    }
+
+                    return image.provider === 'hetzner' && String(image.hetzner_account_id) === String(this.selectedLocation.hetzner_account_id);
+                });
+            },
             get visibleBundles() {
-                if (!this.selectedImage) return [];
-                const allowed = new Set((this.selectedImage.allowed_bundle_ids || []).map((id) => String(id)));
-                return this.bundles.filter((bundle) => allowed.has(String(bundle.id)));
+                if (!this.selectedImage || !this.selectedLocation) return [];
+                if (this.selectedLocation.provider === 'proxmox') {
+                    const allowed = new Set((this.selectedImage.allowed_bundle_ids || []).map((id) => String(id)));
+                    return this.bundles.filter((bundle) => allowed.has(String(bundle.id)));
+                }
+
+                const allowed = new Set((this.selectedLocation.bundle_ids || []).map((id) => String(id)));
+                return this.bundles
+                    .filter((bundle) => allowed.has(String(bundle.id)))
+                    .map((bundle) => this.bundleWithLocationPrice(bundle));
             },
             get selectedBundle() { return this.visibleBundles.find((bundle) => String(bundle.id) === String(this.form.vm_bundle_id)); },
             get cloudInitEnabled() { return this.selectedImage ? Boolean(this.selectedImage.cloud_init_enabled) : true; },
@@ -328,7 +398,7 @@
                 return this.walletCanCreate && Boolean(this.quota.can_create) && Boolean(this.selectedImage?.has_available_ip);
             },
             get canSubmit() {
-                return !this.submitting && this.canCreate && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && !this.sshKeyInvalid;
+                return !this.submitting && this.canCreate && this.form.infrastructure_location_id && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && !this.sshKeyInvalid;
             },
             get generatedNamePreview() {
                 return `${this.osPrefix}-${this.namePeriod || 'YYMM'}-${this.bundleSpecsToken()}-XXXXXX`;
@@ -343,8 +413,18 @@
             get sshKeyInvalid() {
                 return this.cloudInitEnabled && !this.validSshPublicKeyInput(this.form.ssh_public_key);
             },
+            selectLocation(locationId) {
+                this.form.infrastructure_location_id = String(locationId);
+                const currentStillAvailable = this.selectedImage && this.availableImages.some((image) => String(image.id) === String(this.selectedImage.id));
+                if (!currentStillAvailable) {
+                    const firstImage = this.availableImages[0] || null;
+                    this.form.os_family = firstImage?.os_family || '';
+                    this.form.cloud_image_id = firstImage ? String(firstImage.id) : '';
+                }
+                this.applyImage();
+            },
             imagesForFamily(family) {
-                return this.images.filter((image) => image.os_family === family);
+                return this.availableImages.filter((image) => image.os_family === family);
             },
             selectedImageForFamily(family) {
                 if (this.form.os_family === family && this.selectedImage) return this.selectedImage;
@@ -361,6 +441,20 @@
                 if (!this.selectedImage) return;
                 this.form.login_username = this.cloudInitEnabled ? (this.selectedImage.default_username || 'ubuntu') : '';
                 this.syncBundleSelection();
+            },
+            bundleWithLocationPrice(bundle) {
+                if (!this.selectedLocation || this.selectedLocation.provider !== 'hetzner') return bundle;
+
+                const mapping = this.locationMappings.find((item) => String(item.location_id) === String(this.selectedLocation.id) && String(item.bundle_id) === String(bundle.id));
+                if (!mapping || !mapping.monthly_price_irr) return bundle;
+
+                return {
+                    ...bundle,
+                    price: new Intl.NumberFormat('fa-IR').format(Number(mapping.monthly_price_irr)) + ' IRR',
+                    monthly_price: Number(mapping.monthly_price_irr),
+                    minimum_create_balance: Math.max(Math.ceil(Number(mapping.monthly_price_irr) / 2), Number(bundle.minimum_create_balance || 0)),
+                    minimum_create_balance_label: new Intl.NumberFormat('fa-IR').format(Math.max(Math.ceil(Number(mapping.monthly_price_irr) / 2), Number(bundle.minimum_create_balance || 0))) + ' IRR',
+                };
             },
             applyBundle() {
                 if (!this.selectedBundle) return;

@@ -5,7 +5,8 @@ namespace App\Services;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\Payment;
-use App\Services\Payments\PaymentGatewayInterface;
+use App\Services\Payments\PaymentGatewayException;
+use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -14,20 +15,29 @@ class PaymentService
 {
     public function __construct(
         private readonly WalletService $wallets,
-        private readonly PaymentGatewayInterface $gateway,
+        private readonly PaymentGatewayManager $gateways,
     ) {}
 
-    public function createTopUp(Customer $customer, int $amount, ?string $description = null): Payment
+    public function createTopUp(Customer $customer, int $amount, ?string $description = null, ?string $provider = null): Payment
     {
         if ($amount <= 0) {
             throw ValidationException::withMessages(['amount' => 'Amount must be greater than zero.']);
+        }
+
+        $provider ??= AppSetting::defaultPaymentGateway();
+        $availableGateways = $this->gateways->available();
+
+        if (! array_key_exists($provider, $availableGateways)) {
+            throw ValidationException::withMessages([
+                'gateway' => 'درگاه پرداخت انتخاب‌شده در حال حاضر فعال و آماده نیست.',
+            ]);
         }
 
         $wallet = $this->wallets->walletFor($customer);
         $payment = Payment::create([
             'customer_id' => $customer->id,
             'wallet_id' => $wallet->id,
-            'provider' => config('payments.default', 'dummy'),
+            'provider' => $provider,
             'type' => Payment::TYPE_TOP_UP,
             'status' => Payment::STATUS_PENDING,
             'amount' => $amount,
@@ -36,7 +46,19 @@ class PaymentService
             'description' => $description ?: 'شارژ کیف پول مشتری',
         ]);
 
-        $payload = $this->gateway->initiate($payment);
+        $gateway = $this->gateways->gateway($provider);
+
+        try {
+            $payload = $gateway->initiate($payment);
+        } catch (PaymentGatewayException|ValidationException $exception) {
+            $this->failTopUp($payment, [
+                'initiation_failed_at' => now()->toIso8601String(),
+                'failed_reason' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        }
+
         $payment->forceFill([
             'gateway_payload' => $payload,
             'authority' => $payload['authority'] ?? $payment->authority,
@@ -58,7 +80,8 @@ class PaymentService
                 throw ValidationException::withMessages(['payment' => 'Payment can no longer be completed.']);
             }
 
-            $result = $this->gateway->complete($payment, $payload);
+            $gateway = $this->gateways->gateway($payment->provider);
+            $result = $gateway->complete($payment, $payload);
 
             $payment->forceFill([
                 'status' => Payment::STATUS_SUCCESSFUL,
@@ -71,7 +94,7 @@ class PaymentService
             $this->wallets->credit(
                 $payment->customer,
                 $payment->amount,
-                'شارژ کیف پول از طریق درگاه آزمایشی',
+                'شارژ کیف پول از طریق '.$gateway->label(),
                 reference: $payment,
                 metadata: [
                     'category' => 'wallet_top_up',
@@ -91,6 +114,18 @@ class PaymentService
         $payment->forceFill([
             'status' => Payment::STATUS_FAILED,
             'failed_at' => now(),
+            'gateway_payload' => array_merge($payment->gateway_payload ?? [], $payload),
+        ])->save();
+
+        return $payment;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function recordGatewayPayload(Payment $payment, array $payload): Payment
+    {
+        $payment->forceFill([
             'gateway_payload' => array_merge($payment->gateway_payload ?? [], $payload),
         ])->save();
 

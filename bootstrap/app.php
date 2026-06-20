@@ -22,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserRole::class,
         ]);
 
+        $middleware->validateCsrfTokens(except: [
+            'wallet/payments/*/callback',
+        ]);
+
         $middleware->redirectGuestsTo(function (Request $request) {
             $adminDomain = config('portals.admin.domain');
             $portal = $adminDomain && $request->getHost() === $adminDomain ? 'admin' : 'customer';

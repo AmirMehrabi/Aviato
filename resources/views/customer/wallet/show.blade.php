@@ -26,6 +26,56 @@
 
     <section class="mt-6 grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <aside class="space-y-6">
+            <div class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                <h2 class="text-lg font-black text-slate-950">افزایش موجودی</h2>
+                <p class="mt-2 text-sm leading-7 text-slate-500">درگاه پرداخت را انتخاب کنید. مبلغ فقط پس از تایید قطعی سرویس پرداخت به کیف پول اضافه می‌شود.</p>
+
+                @if ($errors->any())
+                    <div class="mt-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-bold leading-7 text-rose-700">
+                        {{ $errors->first() }}
+                    </div>
+                @endif
+
+                @if ((int) $activeProject->owner_customer_id !== (int) $customer->id)
+                    <div class="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-800">
+                        فقط مالک پروژه می‌تواند کیف پول این پروژه را شارژ کند.
+                    </div>
+                @elseif (empty($availablePaymentGateways))
+                    <div class="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-800">
+                        درگاه پرداخت در حال حاضر فعال نیست. برای شارژ کیف پول با پشتیبانی تماس بگیرید.
+                    </div>
+                @else
+                    <form method="POST" action="{{ route('customer.wallet.topups.store', [], false) }}" class="mt-5 space-y-4">
+                        @csrf
+                        <fieldset>
+                            <legend class="text-sm font-black text-slate-700">انتخاب درگاه پرداخت</legend>
+                            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                @foreach ($availablePaymentGateways as $gateway => $label)
+                                    <label class="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50 p-3 transition has-[:checked]:border-[#2563EB] has-[:checked]:bg-blue-50">
+                                        <input type="radio" name="gateway" value="{{ $gateway }}" class="sr-only" @checked((string) old('gateway', $defaultPaymentGateway) === $gateway)>
+                                        <span class="block text-sm font-black text-slate-950">{{ $label }}</span>
+                                        <span class="mt-1 block text-xs text-slate-500">پرداخت آنلاین و بازگشت خودکار</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </fieldset>
+                        <div class="grid grid-cols-2 gap-2">
+                            @foreach ($topUpPresets as $amount)
+                                <label class="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center transition has-[:checked]:border-[#2563EB] has-[:checked]:bg-blue-50">
+                                    <input type="radio" name="amount" value="{{ $amount }}" class="sr-only" @checked((int) old('amount') === $amount)>
+                                    <span class="text-sm font-black text-slate-950">{{ $wallets->format($amount) }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        <label class="block">
+                            <span class="text-sm font-black text-slate-700">مبلغ دلخواه ریالی</span>
+                            <input name="custom_amount" type="number" min="1000000" max="500000000" step="1000" value="{{ old('custom_amount') }}" dir="ltr" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-left focus:border-[#2563EB] focus:outline-none" placeholder="1000000">
+                            <span class="mt-1 block text-xs text-slate-500">حداقل مبلغ دلخواه 1,000,000 ریال است.</span>
+                        </label>
+                        <button class="inline-flex w-full items-center justify-center rounded-2xl bg-[#2563EB] px-5 py-3 text-sm font-black text-white transition hover:bg-[#1d4ed8]">ادامه و انتقال به درگاه</button>
+                    </form>
+                @endif
+            </div>
 
             <div class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <h2 class="text-lg font-black text-slate-950">راهنمای برداشت ها</h2>

@@ -38,6 +38,11 @@ class VmBundle extends Model
             ->orderBy('name');
     }
 
+    public function locationMappings(): HasMany
+    {
+        return $this->hasMany(VmBundleLocationMapping::class);
+    }
+
     protected function casts(): array
     {
         return [

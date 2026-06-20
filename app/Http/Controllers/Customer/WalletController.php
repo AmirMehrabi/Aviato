@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
 use App\Models\WalletTransaction;
+use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
@@ -17,6 +19,7 @@ class WalletController extends Controller
         private readonly WalletService $wallets,
         private readonly ProjectAccessService $projects,
         private readonly UsageBillingService $usageBilling,
+        private readonly PaymentGatewayManager $paymentGateways,
     ) {}
 
     public function show(Request $request): View
@@ -65,7 +68,9 @@ class WalletController extends Controller
             'pendingUsage' => $this->usageBilling->projectPendingUsage($activeProject->id),
             'monthlyCredits' => (int) (clone $baseQuery)->where('amount', '>', 0)->sum('amount'),
             'monthlyCharges' => (int) abs((clone $baseQuery)->where('amount', '<', 0)->sum('amount')),
-            'topUpPresets' => [200000, 500000, 1000000, 2000000],
+            'topUpPresets' => [1000000, 3000000, 10000000, 25000000],
+            'availablePaymentGateways' => $this->paymentGateways->available(),
+            'defaultPaymentGateway' => AppSetting::defaultPaymentGateway(),
         ]);
     }
 

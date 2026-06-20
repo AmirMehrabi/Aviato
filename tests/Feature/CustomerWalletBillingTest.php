@@ -2,13 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Models\WalletTransaction;
 use App\Services\InvoiceService;
+use App\Services\Payments\HesabroPaymentException;
+use App\Services\Payments\MellatClientInterface;
 use App\Services\PaymentService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
@@ -16,6 +20,7 @@ use App\Services\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Http;
 use Mockery;
 use Tests\TestCase;
 
@@ -25,20 +30,35 @@ class CustomerWalletBillingTest extends TestCase
 
     private string $customerBaseUrl = 'https://cp.localhost';
 
-    public function test_customer_can_complete_dummy_top_up_flow_once(): void
+    public function test_customer_can_complete_mellat_top_up_flow_once(): void
     {
         $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+
         $payment = app(PaymentService::class)->createTopUp($customer, 200000, 'شارژ کیف پول توسط مشتری');
+        $payment->refresh();
 
         $this->actingAs($customer, 'customer');
         $this->get($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/gateway')
             ->assertOk()
-            ->assertSee('Dummy Gateway');
+            ->assertSee('Mellat')
+            ->assertSee($payment->authority);
 
-        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/gateway')
+        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
+            'RefId' => $payment->authority,
+            'ResCode' => '0',
+            'SaleOrderId' => $payment->id,
+            'SaleReferenceId' => '127926981246',
+        ])
             ->assertRedirect($this->customerBaseUrl.'/wallet');
 
-        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/gateway')
+        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
+            'RefId' => $payment->authority,
+            'ResCode' => '0',
+            'SaleOrderId' => $payment->id,
+            'SaleReferenceId' => '127926981246',
+        ])
             ->assertRedirect($this->customerBaseUrl.'/wallet');
 
         $this->assertDatabaseHas('payments', [
@@ -56,6 +76,142 @@ class CustomerWalletBillingTest extends TestCase
         ]);
 
         $this->assertSame(200000, $customer->wallet()->firstOrFail()->balance);
+    }
+
+    public function test_mellat_callback_mismatch_fails_without_crediting_wallet(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+        $payment = app(PaymentService::class)->createTopUp($customer, 1000000, 'شارژ کیف پول توسط مشتری')->refresh();
+
+        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
+            'RefId' => 'WRONG-'.$payment->authority,
+            'ResCode' => '0',
+            'SaleOrderId' => $payment->id,
+            'SaleReferenceId' => '127926981246',
+        ])->assertRedirect($this->customerBaseUrl.'/wallet');
+
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => Payment::STATUS_FAILED,
+        ]);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+        $this->assertSame(0, $customer->wallet()->firstOrFail()->balance);
+    }
+
+    public function test_wallet_top_up_rejects_custom_amount_below_mellat_minimum(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+
+        $this->actingAs($customer, 'customer')
+            ->from($this->customerBaseUrl.'/wallet')
+            ->post($this->customerBaseUrl.'/wallet/top-ups', [
+                'custom_amount' => 999999,
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/wallet')
+            ->assertSessionHasErrors('custom_amount');
+
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    public function test_wallet_page_shows_requested_mellat_top_up_presets(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+
+        $this->actingAs($customer, 'customer')
+            ->get($this->customerBaseUrl.'/wallet')
+            ->assertOk()
+            ->assertSee('100,000 تومان')
+            ->assertSee('300,000 تومان')
+            ->assertSee('1,000,000 تومان')
+            ->assertSee('2,500,000 تومان');
+    }
+
+    public function test_customer_can_choose_hesabro_and_receive_payment_link(): void
+    {
+        $customer = Customer::factory()->create(['phone' => '09123456789']);
+        $this->enableHesabroGateway();
+
+        Http::fake(fn ($request) => Http::response([
+            'amount' => 1000000,
+            'callback_url' => $request['callback_url'],
+            'go_to_ipg_url' => 'https://payments.example/pay/token/123456',
+        ]));
+
+        $payment = app(PaymentService::class)->createTopUp(
+            $customer,
+            1000000,
+            'شارژ کیف پول توسط مشتری',
+            'hesabro',
+        );
+
+        $this->assertSame('hesabro', $payment->provider);
+        $this->assertSame('09123456789', $payment->gateway_payload['username']);
+        $this->assertSame('https://payments.example/pay/token/123456', $payment->gateway_payload['redirect_url']);
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request): bool => $request->method() === 'POST'
+            && $request->url() === 'https://api.hesabro.ir/@sabz-co/payment-service/wallet/user-charge?username=09123456789'
+            && $request->hasHeader('Authorization', 'Basic '.base64_encode('client-id:client-secret'))
+            && $request['amount'] === 1000000
+            && str_ends_with($request['callback_url'], '/wallet/payments/1/callback'));
+    }
+
+    public function test_hesabro_charge_rejects_mismatched_response(): void
+    {
+        $customer = Customer::factory()->create(['phone' => '09123456789']);
+        $this->enableHesabroGateway();
+
+        Http::fake(fn ($request) => Http::response([
+            'amount' => 900000,
+            'callback_url' => $request['callback_url'],
+            'go_to_ipg_url' => 'https://payments.example/pay/token/123456',
+        ]));
+
+        try {
+            app(PaymentService::class)->createTopUp($customer, 1000000, provider: 'hesabro');
+            $this->fail('The mismatched Hesabro charge response should be rejected.');
+        } catch (HesabroPaymentException $exception) {
+            $this->assertStringContainsString('همخوانی ندارد', $exception->getMessage());
+        }
+
+        $this->assertDatabaseHas('payments', [
+            'customer_id' => $customer->id,
+            'provider' => 'hesabro',
+            'status' => Payment::STATUS_FAILED,
+        ]);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+    }
+
+    public function test_hesabro_callback_credits_wallet_on_success(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableHesabroGateway();
+        $payment = Payment::create([
+            'customer_id' => $customer->id,
+            'wallet_id' => app(WalletService::class)->walletFor($customer)->id,
+            'provider' => 'hesabro',
+            'type' => Payment::TYPE_TOP_UP,
+            'status' => Payment::STATUS_PENDING,
+            'amount' => 1000000,
+            'currency' => 'IRR',
+            'authority' => '987',
+            'gateway_payload' => ['order_id' => '987'],
+        ]);
+
+        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
+            'order_id' => '987',
+            'status' => 'success',
+        ])->assertRedirect($this->customerBaseUrl.'/wallet');
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_SUCCESSFUL, $payment->status);
+        $this->assertSame('987', $payment->gateway_payload['callback']['order_id']);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+        $this->assertSame(1000000, $customer->wallet()->firstOrFail()->balance);
     }
 
     public function test_wallet_page_shows_transactions_and_filters(): void
@@ -343,5 +499,47 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
         $this->assertNull(data_get($vm->remote_state, 'wallet_locked_at'));
         $this->assertNotNull(data_get($vm->remote_state, 'wallet_unlocked_at'));
+    }
+
+    private function enableMellatGateway(): void
+    {
+        AppSetting::setValue(AppSetting::PAYMENTS_ENABLED, true, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::DEFAULT_PAYMENT_GATEWAY, 'mellat', 'string', 'payment');
+        AppSetting::setValue(AppSetting::MELLAT_PAYMENT_ENABLED, true, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::MELLAT_PAYMENT_MODE, 'test', 'string', 'payment');
+        AppSetting::setValue(AppSetting::MELLAT_TERMINAL_ID, '1234', 'string', 'payment');
+        AppSetting::setValue(AppSetting::MELLAT_USERNAME, 'merchant', 'string', 'payment');
+        AppSetting::setValue(AppSetting::MELLAT_PASSWORD, 'secret', 'string', 'payment');
+    }
+
+    private function enableHesabroGateway(): void
+    {
+        AppSetting::setValue(AppSetting::PAYMENTS_ENABLED, true, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::DEFAULT_PAYMENT_GATEWAY, 'hesabro', 'string', 'payment');
+        AppSetting::setValue(AppSetting::HESABRO_PAYMENT_ENABLED, true, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::HESABRO_CLIENT, 'sabz-co', 'string', 'payment');
+        AppSetting::setValue(AppSetting::HESABRO_CLIENT_ID, 'client-id', 'string', 'payment');
+        AppSetting::setValue(AppSetting::HESABRO_CLIENT_SECRET, 'client-secret', 'string', 'payment');
+    }
+
+    private function fakeMellatClient(): void
+    {
+        $this->app->bind(MellatClientInterface::class, fn (): MellatClientInterface => new class implements MellatClientInterface
+        {
+            public function bpPayRequest(array $parameters): string
+            {
+                return '0,REF-'.$parameters['orderId'];
+            }
+
+            public function bpVerifySettleRequest(array $parameters): string
+            {
+                return '0';
+            }
+
+            public function bpSettleRequest(array $parameters): string
+            {
+                return '0';
+            }
+        });
     }
 }

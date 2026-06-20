@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 
 #[Fillable([
     'proxmox_server_id',
+    'infrastructure_location_id',
+    'provider',
     'name',
     'slug',
     'description',
@@ -19,6 +21,9 @@ use Illuminate\Support\Str;
     'logo_key',
     'node',
     'template_vmid',
+    'remote_image_id',
+    'remote_architecture',
+    'provider_metadata',
     'default_username',
     'storage',
     'disk_device',
@@ -47,6 +52,11 @@ class CloudImage extends Model
         return $this->belongsTo(ProxmoxServer::class);
     }
 
+    public function infrastructureLocation(): BelongsTo
+    {
+        return $this->belongsTo(InfrastructureLocation::class);
+    }
+
     public function virtualMachines(): HasMany
     {
         return $this->hasMany(VirtualMachine::class);
@@ -60,10 +70,21 @@ class CloudImage extends Model
             ->orderBy('name');
     }
 
+    public function isHetzner(): bool
+    {
+        return $this->provider === InfrastructureLocation::PROVIDER_HETZNER;
+    }
+
+    public function isProxmox(): bool
+    {
+        return ($this->provider ?: InfrastructureLocation::PROVIDER_PROXMOX) === InfrastructureLocation::PROVIDER_PROXMOX;
+    }
+
     protected function casts(): array
     {
         return [
             'template_vmid' => 'integer',
+            'provider_metadata' => 'array',
             'min_cpu_cores' => 'integer',
             'min_ram_gb' => 'integer',
             'min_disk_gb' => 'integer',

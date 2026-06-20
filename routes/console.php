@@ -1,7 +1,9 @@
 <?php
 
 use App\Jobs\DeleteVirtualMachineJob;
+use App\Models\HetznerAccount;
 use App\Models\VirtualMachine;
+use App\Services\HetznerCatalogSyncService;
 use App\Services\InvoiceService;
 use App\Services\ProxmoxService;
 use App\Services\StaleVirtualMachineCleanupService;
@@ -23,6 +25,23 @@ Artisan::command('billing:generate-monthly-invoices', function (InvoiceService $
 
     $this->info(sprintf('Generated %d monthly invoice(s).', $generated->count()));
 })->purpose('Generate monthly customer usage invoices');
+
+Artisan::command('hetzner:sync-catalog {--account= : Limit sync to one Hetzner account ID}', function (HetznerCatalogSyncService $sync) {
+    $accountId = $this->option('account');
+
+    if ($accountId) {
+        $account = HetznerAccount::query()->findOrFail((int) $accountId);
+        $sync->sync($account);
+        $this->info('Synced Hetzner account #'.$account->id.'.');
+
+        return Command::SUCCESS;
+    }
+
+    $count = $sync->syncAll();
+    $this->info(sprintf('Synced %d Hetzner account(s).', $count));
+
+    return Command::SUCCESS;
+})->purpose('Sync Hetzner locations, images, server types, and price snapshots');
 
 Artisan::command('virtual-machines:inspect-delete {virtualMachine : Local VM id, UUID, name, or Proxmox VMID} {--server= : Required when identifying by VMID if it is ambiguous} {--sync : Run the delete job immediately instead of only queueing it} {--yes : Skip the confirmation prompt}', function (ProxmoxService $proxmox, VirtualMachineDeletionService $deletions) {
     $identifier = (string) $this->argument('virtualMachine');
@@ -264,6 +283,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('billing:charge-usage')->hourly();
+Schedule::command('hetzner:sync-catalog')->hourlyAt(5);
 Schedule::command('billing:generate-monthly-invoices')->monthlyOn(1, '00:15');
 Schedule::command('backup:run-due')->everyFifteenMinutes();
 Schedule::command('backup:sync')->hourlyAt(10);

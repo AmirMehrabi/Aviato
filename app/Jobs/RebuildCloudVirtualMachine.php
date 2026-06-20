@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\VirtualMachine;
+use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\WalletService;
@@ -37,11 +38,19 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
         return 'rebuild-vm-'.$this->virtualMachineId;
     }
 
-    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, WalletService $wallets): void
+    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, ?WalletService $wallets = null, ?HetznerCloudService $hetzner = null): void
     {
+        $wallets ??= app(WalletService::class);
+
         $vm = VirtualMachine::query()
-            ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool', 'project.owner', 'customer'])
+            ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool', 'project.owner', 'customer', 'infrastructureLocation.hetznerAccount'])
             ->findOrFail($this->virtualMachineId);
+
+        if ($vm->isHetzner()) {
+            $this->handleHetzner($vm, $wallets, $hetzner ?? app(HetznerCloudService::class));
+
+            return;
+        }
 
         $server = $vm->proxmoxServer;
         $image = $vm->cloudImage;
@@ -220,6 +229,86 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                 'provisioning_status' => $hasAttemptsRemaining
                     ? VirtualMachine::PROVISION_PENDING
                     : VirtualMachine::PROVISION_FAILED,
+                'remote_state' => array_merge($vm->remote_state ?? [], [
+                    'rebuild_steps' => $history,
+                    'rebuild_error' => $exception->getMessage(),
+                    $hasAttemptsRemaining ? 'rebuild_retrying_at' : 'rebuild_failed_at' => now()->toISOString(),
+                ]),
+            ])->save();
+
+            if ($hasAttemptsRemaining) {
+                throw $exception;
+            }
+        }
+    }
+
+    private function handleHetzner(VirtualMachine $vm, WalletService $wallets, HetznerCloudService $hetzner): void
+    {
+        $account = $vm->infrastructureLocation?->hetznerAccount;
+        $image = $vm->cloudImage;
+        $history = data_get($vm->remote_state, 'rebuild_steps', []);
+        $billingCustomer = $vm->project?->owner ?? $vm->customer;
+
+        try {
+            if (! $account || ! $image || ! $vm->remote_id || ! $image->remote_image_id) {
+                throw new RuntimeException('VM is missing Hetzner account, image, or remote server ID.');
+            }
+
+            $vm->forceFill([
+                'status' => VirtualMachine::STATUS_STOPPED,
+                'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+                'provisioning_task_id' => null,
+                'remote_state' => array_merge($vm->remote_state ?? [], [
+                    'rebuild_started_at' => data_get($vm->remote_state, 'rebuild_started_at') ?: now()->toISOString(),
+                    'rebuild_error' => null,
+                    'rebuild_steps' => $history,
+                ]),
+            ])->save();
+
+            $remoteBefore = $hetzner->server($account, $vm->remote_id);
+            $history[] = ['step' => 'status', 'result' => $remoteBefore, 'at' => now()->toISOString()];
+
+            if (($remoteBefore['status'] ?? null) === 'running') {
+                $shutdown = $hetzner->shutdown($account, $vm->remote_id);
+                $history[] = ['step' => 'shutdown', 'result' => $shutdown, 'at' => now()->toISOString()];
+                $hetzner->waitForAction($account, $shutdown['action']['id'] ?? null, 180);
+            }
+
+            $rebuild = $hetzner->rebuild($account, $vm->remote_id, (string) $image->remote_image_id);
+            $history[] = ['step' => 'rebuild', 'result' => $rebuild, 'at' => now()->toISOString()];
+            $hetzner->waitForAction($account, $rebuild['action']['id'] ?? null, 600);
+
+            $startAllowed = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
+            if ($startAllowed) {
+                $start = $hetzner->powerOn($account, $vm->remote_id);
+                $history[] = ['step' => 'start', 'result' => $start, 'at' => now()->toISOString()];
+                $hetzner->waitForAction($account, $start['action']['id'] ?? null, 180);
+            }
+
+            $server = $hetzner->server($account, $vm->remote_id) ?? [];
+
+            $vm->forceFill([
+                'remote_name' => $server['name'] ?? $vm->remote_name,
+                'ip_address' => data_get($server, 'public_net.ipv4.ip') ?: $vm->ip_address,
+                'status' => $startAllowed ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
+                'provisioning_status' => VirtualMachine::PROVISION_READY,
+                'provisioning_task_id' => null,
+                'last_started_at' => $startAllowed ? now() : $vm->last_started_at,
+                'last_seen_at' => now(),
+                'remote_state' => array_merge($vm->remote_state ?? [], [
+                    'rebuild_steps' => $history,
+                    'rebuild_finished_at' => now()->toISOString(),
+                    'rebuild_error' => null,
+                    'hetzner_server' => $server,
+                ]),
+            ])->save();
+        } catch (Throwable $exception) {
+            $hasAttemptsRemaining = $this->hasAttemptsRemaining();
+            $history[] = ['step' => 'failed', 'error' => $exception->getMessage(), 'at' => now()->toISOString()];
+
+            $vm->forceFill([
+                'status' => VirtualMachine::STATUS_STOPPED,
+                'provisioning_status' => $hasAttemptsRemaining ? VirtualMachine::PROVISION_PENDING : VirtualMachine::PROVISION_FAILED,
                 'remote_state' => array_merge($vm->remote_state ?? [], [
                     'rebuild_steps' => $history,
                     'rebuild_error' => $exception->getMessage(),

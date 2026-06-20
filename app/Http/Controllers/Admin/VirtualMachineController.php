@@ -14,6 +14,7 @@ use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
+use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\VirtualMachineDeletionService;
@@ -23,6 +24,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -37,6 +39,7 @@ class VirtualMachineController extends Controller
         private readonly VirtualMachineDeletionService $deletions,
         private readonly VmTransferService $vmTransferService,
         private readonly WalletService $wallets,
+        private readonly HetznerCloudService $hetzner,
     ) {}
 
     public function index(Request $request): View
@@ -55,7 +58,7 @@ class VirtualMachineController extends Controller
         ]);
 
         $vms = VirtualMachine::query()
-            ->with(['customer', 'project.owner', 'creator', 'proxmoxServer', 'bundle', 'cloudImage'])
+            ->with(['customer', 'project.owner', 'creator', 'proxmoxServer', 'infrastructureLocation', 'bundle', 'cloudImage'])
             ->when($filters['customer_id'] ?? null, fn ($query, int $customerId) => $query->where('customer_id', $customerId))
             ->when($filters['project_id'] ?? null, fn ($query, int $projectId) => $query->where('project_id', $projectId))
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
@@ -165,6 +168,7 @@ class VirtualMachineController extends Controller
             'project.owner',
             'creator',
             'proxmoxServer',
+            'infrastructureLocation.hetznerAccount',
             'bundle',
             'cloudImage',
             'disks',
@@ -183,17 +187,41 @@ class VirtualMachineController extends Controller
 
     public function retryProvisioning(VirtualMachine $virtualMachine): RedirectResponse
     {
-        $virtualMachine->loadMissing(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool']);
+        $virtualMachine->loadMissing(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool', 'infrastructureLocation.hetznerAccount']);
 
         if ($virtualMachine->provisioning_status !== VirtualMachine::PROVISION_FAILED) {
             return back()->with('error', 'Only failed provisioning jobs can be retried.');
         }
 
         if (! $virtualMachine->proxmoxServer || ! $virtualMachine->cloudImage || ! $virtualMachine->node || ! $virtualMachine->template_vmid) {
-            return back()->with('error', 'This VM is missing Proxmox, image, node, or template data and cannot be retried.');
+            if (! $virtualMachine->isHetzner()) {
+                return back()->with('error', 'This VM is missing Proxmox, image, node, or template data and cannot be retried.');
+            }
         }
 
         try {
+            if ($virtualMachine->isHetzner()) {
+                if (! $virtualMachine->infrastructureLocation?->hetznerAccount || ! $virtualMachine->cloudImage) {
+                    return back()->with('error', 'This VM is missing Hetzner account or image data and cannot be retried.');
+                }
+
+                $virtualMachine->forceFill([
+                    'remote_id' => null,
+                    'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+                    'provisioning_task_id' => null,
+                    'remote_state' => array_merge($virtualMachine->remote_state ?? [], [
+                        'retry_queued_at' => now()->toISOString(),
+                    ]),
+                ])->save();
+
+                ProvisionCloudVirtualMachine::dispatch($virtualMachine->id, [
+                    'start_after_create' => (bool) data_get($virtualMachine->desired_state, 'start_after_create', true),
+                    'onboot' => false,
+                ])->onQueue(ProvisionCloudVirtualMachine::QUEUE);
+
+                return back()->with('status', 'Hetzner provisioning retry queued.');
+            }
+
             if ($this->remoteVmMatchesPanelVm($virtualMachine)) {
                 if ($virtualMachine->reservedIpAddress) {
                     $this->ipPools->assign($virtualMachine->reservedIpAddress, $virtualMachine);
@@ -331,20 +359,29 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'این VM تا شارژ شدن کیف پول فضای کاری مربوطه قابل روشن کردن نیست.');
         }
 
-        if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
+        if ($virtualMachine->isProxmox() && (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid)) {
             return back()->with('error', 'اطلاعات Proxmox، Node یا VMID برای روشن کردن کامل نیست.');
+        }
+
+        if ($virtualMachine->isHetzner() && (! $virtualMachine->infrastructureLocation?->hetznerAccount || ! $virtualMachine->remote_id)) {
+            return back()->with('error', 'اطلاعات Hetzner برای روشن کردن کامل نیست.');
         }
 
         $accrued = $this->billing->currentAccrued($virtualMachine);
 
         try {
-            $start = $this->proxmox->startVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+            if ($virtualMachine->isHetzner()) {
+                $start = $this->hetzner->powerOn($virtualMachine->infrastructureLocation->hetznerAccount, $virtualMachine->remote_id);
+                $this->hetzner->waitForAction($virtualMachine->infrastructureLocation->hetznerAccount, $start['action']['id'] ?? null, 180);
+            } else {
+                $start = $this->proxmox->startVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
 
-            if (! empty($start['task_id'])) {
-                $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $start['task_id'], 180);
+                if (! empty($start['task_id'])) {
+                    $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $start['task_id'], 180);
+                }
             }
         } catch (Throwable $exception) {
-            return back()->with('error', 'روشن کردن VM در Proxmox ناموفق بود: '.$exception->getMessage());
+            return back()->with('error', 'روشن کردن VM ناموفق بود: '.$exception->getMessage());
         }
 
         $virtualMachine->forceFill([
@@ -365,22 +402,31 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'این VM در وضعیت حذف است و امکان خاموش کردن ندارد.');
         }
 
-        if (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid) {
+        if ($virtualMachine->isProxmox() && (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid)) {
             return back()->with('error', 'اطلاعات Proxmox، Node یا VMID برای خاموش کردن کامل نیست.');
+        }
+
+        if ($virtualMachine->isHetzner() && (! $virtualMachine->infrastructureLocation?->hetznerAccount || ! $virtualMachine->remote_id)) {
+            return back()->with('error', 'اطلاعات Hetzner برای خاموش کردن کامل نیست.');
         }
 
         $accrued = $this->billing->currentAccrued($virtualMachine);
 
         try {
-            $shutdown = $this->proxmox->shutdownVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+            if ($virtualMachine->isHetzner()) {
+                $shutdown = $this->hetzner->shutdown($virtualMachine->infrastructureLocation->hetznerAccount, $virtualMachine->remote_id);
+                $this->hetzner->waitForAction($virtualMachine->infrastructureLocation->hetznerAccount, $shutdown['action']['id'] ?? null, 180);
+            } else {
+                $shutdown = $this->proxmox->shutdownVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
 
-            if (! empty($shutdown['task_id'])) {
-                $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $shutdown['task_id'], 180);
+                if (! empty($shutdown['task_id'])) {
+                    $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $shutdown['task_id'], 180);
+                }
+
+                $this->proxmox->waitForVmStopped($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid, 60);
             }
-
-            $this->proxmox->waitForVmStopped($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid, 60);
         } catch (Throwable $exception) {
-            return back()->with('error', 'خاموش کردن VM در Proxmox ناموفق بود: '.$exception->getMessage());
+            return back()->with('error', 'خاموش کردن VM ناموفق بود: '.$exception->getMessage());
         }
 
         $virtualMachine->forceFill([
@@ -614,22 +660,32 @@ class VirtualMachineController extends Controller
             $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $cloudInit['task_id'], 180);
         }
 
-        $antiSpoofing = $this->proxmox->applyVmIpAntiSpoofing(
-            $virtualMachine->proxmoxServer,
-            $virtualMachine->node,
-            (int) $virtualMachine->vmid,
-            $virtualMachine->reservedIpAddress->address,
-            'net0',
-            $virtualMachine->network_bridge ?: 'vmbr1',
-        );
+        $antiSpoofing = null;
+        $verifiedMacAddress = null;
 
-        $verifiedConfig = $this->proxmox->vmConfig($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
-        $verifiedMacAddress = filled($verifiedConfig['net0'] ?? null)
-            ? $this->proxmox->macAddressFromNetworkDevice((string) $verifiedConfig['net0'])
-            : null;
+        try {
+            $antiSpoofing = $this->proxmox->applyVmIpAntiSpoofing(
+                $virtualMachine->proxmoxServer,
+                $virtualMachine->node,
+                (int) $virtualMachine->vmid,
+                $virtualMachine->reservedIpAddress->address,
+                'net0',
+                $virtualMachine->network_bridge ?: 'vmbr1',
+            );
+
+            $verifiedConfig = $this->proxmox->vmConfig($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+            $verifiedMacAddress = filled($verifiedConfig['net0'] ?? null)
+                ? $this->proxmox->macAddressFromNetworkDevice((string) $verifiedConfig['net0'])
+                : null;
+        } catch (Throwable $exception) {
+            Log::warning('Proxmox VM anti-spoofing firewall rules could not be synced after admin IP change', [
+                'virtual_machine_id' => $virtualMachine->id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
 
         $virtualMachine->forceFill([
-            'mac_address' => $antiSpoofing['mac_address'] ?: $verifiedMacAddress,
+            'mac_address' => ($antiSpoofing['mac_address'] ?? null) ?: $verifiedMacAddress ?: $virtualMachine->mac_address,
             'desired_state' => $virtualMachine->desiredStateSnapshot(),
             'remote_state' => array_merge($virtualMachine->remote_state ?? [], [
                 'cloudinit_network_updated_at' => now()->toISOString(),

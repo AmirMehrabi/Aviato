@@ -4,8 +4,10 @@ namespace App\Jobs;
 
 use App\Models\Customer;
 use App\Models\VirtualMachine;
+use App\Models\VmBundleLocationMapping;
 use App\Models\VmDisk;
 use App\Models\VmUpgradeOrder;
+use App\Services\HetznerCloudService;
 use App\Services\ProxmoxService;
 use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,10 +25,12 @@ class ApplyVmUpgradeJob implements ShouldQueue
 
     public function __construct(public int $orderId) {}
 
-    public function handle(ProxmoxService $proxmox, WalletService $wallets): void
+    public function handle(ProxmoxService $proxmox, ?WalletService $wallets = null, ?HetznerCloudService $hetzner = null): void
     {
+        $wallets ??= app(WalletService::class);
+
         $order = VmUpgradeOrder::query()
-            ->with(['virtualMachine.proxmoxServer', 'virtualMachine.project.owner', 'virtualMachine.customer', 'toBundle', 'disk'])
+            ->with(['virtualMachine.proxmoxServer', 'virtualMachine.infrastructureLocation.hetznerAccount', 'virtualMachine.project.owner', 'virtualMachine.customer', 'toBundle', 'disk'])
             ->findOrFail($this->orderId);
 
         if (! $order->isPending()) {
@@ -38,6 +42,17 @@ class ApplyVmUpgradeJob implements ShouldQueue
 
         try {
             $order->forceFill(['status' => VmUpgradeOrder::STATUS_APPLYING])->save();
+
+            if ($vm->isHetzner()) {
+                if ($order->type !== VmUpgradeOrder::TYPE_BUNDLE) {
+                    throw new \RuntimeException('This upgrade type is not supported for Hetzner machines.');
+                }
+
+                $result = $this->applyHetznerBundle($order, $vm, $hetzner ?? app(HetznerCloudService::class), $billingCustomer, $wallets);
+                $this->markSucceeded($order->refresh(), $result['server'] ?? [], $result);
+
+                return;
+            }
 
             if (! $vm->proxmoxServer || ! $vm->node || ! $vm->vmid) {
                 throw new \RuntimeException('VM is missing Proxmox server, node, or VMID.');
@@ -61,6 +76,53 @@ class ApplyVmUpgradeJob implements ShouldQueue
         } catch (Throwable $exception) {
             $this->markFailed($order->refresh(), $exception);
         }
+    }
+
+    private function applyHetznerBundle(VmUpgradeOrder $order, VirtualMachine $vm, HetznerCloudService $hetzner, ?Customer $billingCustomer, WalletService $wallets): array
+    {
+        $account = $vm->infrastructureLocation?->hetznerAccount;
+
+        if (! $account || ! $vm->remote_id || ! $order->toBundle) {
+            throw new \RuntimeException('VM is missing Hetzner account, remote ID, or target bundle.');
+        }
+
+        $mapping = VmBundleLocationMapping::query()
+            ->with('hetznerServerType')
+            ->where('infrastructure_location_id', $vm->infrastructure_location_id)
+            ->where('vm_bundle_id', $order->toBundle->id)
+            ->where('is_active', true)
+            ->first();
+
+        $serverType = $mapping?->hetznerServerType;
+        if (! $serverType) {
+            throw new \RuntimeException('No Hetzner server type is mapped for the target bundle.');
+        }
+
+        $billingBlocked = $billingCustomer ? $wallets->isBelowNegativeThreshold($billingCustomer) : false;
+        $remoteBefore = $hetzner->server($account, $vm->remote_id);
+        $result = ['server_before' => $remoteBefore, 'server_type' => $serverType->name];
+
+        if (($remoteBefore['status'] ?? null) === 'running') {
+            $shutdown = $hetzner->shutdown($account, $vm->remote_id);
+            $result['shutdown'] = $shutdown;
+            $hetzner->waitForAction($account, $shutdown['action']['id'] ?? null, 180);
+        }
+
+        $change = $hetzner->changeType($account, $vm->remote_id, $serverType->name, true);
+        $result['change_type'] = $change;
+        $hetzner->waitForAction($account, $change['action']['id'] ?? null, 300);
+
+        if (! $billingBlocked) {
+            $start = $hetzner->powerOn($account, $vm->remote_id);
+            $result['start'] = $start;
+            $hetzner->waitForAction($account, $start['action']['id'] ?? null, 180);
+        } else {
+            $result['start_skipped_wallet_locked'] = true;
+        }
+
+        $result['server'] = $hetzner->server($account, $vm->remote_id) ?? [];
+
+        return $result;
     }
 
     /**

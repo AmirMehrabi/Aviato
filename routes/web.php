@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\HetznerAccountController;
+use App\Http\Controllers\Admin\InfrastructureLocationController;
 use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
@@ -80,6 +82,17 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
         Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
         Route::patch('settings', [SettingController::class, 'update'])->name('admin.settings.update');
+        Route::post('hetzner-accounts/{hetznerAccount}/test', [HetznerAccountController::class, 'test'])
+            ->name('admin.hetzner-accounts.test');
+        Route::post('hetzner-accounts/{hetznerAccount}/sync', [HetznerAccountController::class, 'sync'])
+            ->name('admin.hetzner-accounts.sync');
+        Route::resource('hetzner-accounts', HetznerAccountController::class)
+            ->parameters(['hetzner-accounts' => 'hetznerAccount'])
+            ->names('admin.hetzner-accounts');
+        Route::resource('infrastructure-locations', InfrastructureLocationController::class)
+            ->parameters(['infrastructure-locations' => 'location'])
+            ->only(['index', 'edit', 'update'])
+            ->names('admin.infrastructure-locations');
 
         Route::post('tickets/{ticket}/reply', [AdminTicketController::class, 'reply'])->name('admin.tickets.reply');
         Route::patch('tickets/{ticket}/assignment', [AdminTicketController::class, 'assignment'])->name('admin.tickets.assignment');
@@ -216,6 +229,9 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         ->middleware('auth:customer')
         ->name('customer.suspension.notice');
 
+    Route::match(['GET', 'POST'], 'wallet/payments/{payment}/callback', [PaymentController::class, 'callback'])
+        ->name('customer.wallet.payments.callback');
+
     Route::middleware(['auth:customer', 'customer.wallet.access'])->group(function () use ($customerHome) {
         Route::get($customerHome, DashboardController::class)->name('dashboard');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
@@ -254,7 +270,6 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');
         Route::get('wallet/payments/{payment}/gateway', [PaymentController::class, 'showGateway'])->name('customer.wallet.payments.gateway.show');
         Route::post('wallet/payments/{payment}/gateway', [PaymentController::class, 'submitGateway'])->name('customer.wallet.payments.gateway.store');
-        Route::get('wallet/payments/{payment}/callback', [PaymentController::class, 'callback'])->name('customer.wallet.payments.callback');
 
         Route::get('invoices', [InvoiceController::class, 'index'])->name('customer.invoices.index');
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('customer.invoices.show');

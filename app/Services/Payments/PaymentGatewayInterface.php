@@ -6,6 +6,12 @@ use App\Models\Payment;
 
 interface PaymentGatewayInterface
 {
+    public function key(): string;
+
+    public function label(): string;
+
+    public function isAvailable(): bool;
+
     /**
      * @return array<string, mixed>
      */

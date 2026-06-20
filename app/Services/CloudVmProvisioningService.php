@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Jobs\ProvisionCloudVirtualMachine;
+use App\Models\AppSetting;
 use App\Models\CloudImage;
 use App\Models\Customer;
+use App\Models\InfrastructureLocation;
 use App\Models\Project;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
+use App\Models\VmBundleLocationMapping;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -26,6 +29,8 @@ class CloudVmProvisioningService
 
     public function __construct(
         private readonly IpPoolService $ipPools,
+        private readonly BillingService $billing,
+        private readonly ProxmoxService $proxmox,
     ) {}
 
     /**
@@ -39,12 +44,19 @@ class CloudVmProvisioningService
 
         $image = CloudImage::query()
             ->where('is_active', true)
-            ->with(['proxmoxServer', 'allowedBundles'])
+            ->with(['proxmoxServer', 'allowedBundles', 'infrastructureLocation'])
             ->findOrFail($data['cloud_image_id']);
 
+        $location = $this->resolveLocation($image, $data);
+        $provider = $location->provider;
         $server = $image->proxmoxServer;
-        if (! $server || ! $server->is_active || $server->maintenance_mode) {
+
+        if ($provider === InfrastructureLocation::PROVIDER_PROXMOX && (! $server || ! $server->is_active || $server->maintenance_mode)) {
             throw new RuntimeException('The selected image is not available for provisioning.');
+        }
+
+        if ($provider === InfrastructureLocation::PROVIDER_HETZNER) {
+            $this->assertHetznerReady($location, $data);
         }
 
         $resources = $this->resources($data);
@@ -62,17 +74,21 @@ class CloudVmProvisioningService
         $osTemplate = trim((string) ($data['os_template'] ?? '')) ?: $image->name;
         $networkBridge = trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge;
 
-        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge): VirtualMachine {
+        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $location, $provider, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge): VirtualMachine {
             $osPrefix = self::OS_PREFIXES[$image->os_family] ?? 'VM';
-            $name = $this->generateUniqueVmName($bundle, $resources, $osPrefix);
+            $requestedName = trim((string) ($data['name'] ?? ''));
+            $name = $requestedName !== '' ? $requestedName : $this->generateUniqueVmName($bundle, $resources, $osPrefix);
             $vm = VirtualMachine::create([
                 'customer_id' => $project->owner_customer_id,
                 'project_id' => $project->id,
                 'created_by_customer_id' => $customer->id,
-                'proxmox_server_id' => $server->id,
+                'proxmox_server_id' => $server?->id,
+                'infrastructure_location_id' => $location->id,
+                'provider' => $provider,
                 'vm_bundle_id' => $data['vm_bundle_id'] ?? null,
                 'cloud_image_id' => $image->id,
                 'template_vmid' => $image->template_vmid,
+                'remote_region' => $location->remote_name ?: $location->region,
                 'name' => $name,
                 'display_name' => $data['display_name'] ?? null,
                 'hostname' => $image->cloud_init_enabled ? Str::lower($name) : null,
@@ -90,6 +106,13 @@ class CloudVmProvisioningService
                 'status' => VirtualMachine::STATUS_STOPPED,
                 'provisioning_status' => VirtualMachine::PROVISION_PENDING,
                 'last_billed_at' => now(),
+                'provider_metadata' => $provider === InfrastructureLocation::PROVIDER_HETZNER
+                    ? ['hetzner_price' => $this->billing->hetznerPriceSnapshot(new VirtualMachine([
+                        'provider' => $provider,
+                        'vm_bundle_id' => $data['vm_bundle_id'] ?? null,
+                        'infrastructure_location_id' => $location->id,
+                    ]))]
+                    : null,
             ]);
 
             $vm->desired_state = $vm->desiredStateSnapshot() + [
@@ -102,8 +125,10 @@ class CloudVmProvisioningService
             return $vm;
         });
 
-        $this->reserveRequiredIp($vm);
-        $vm->forceFill(['network_bridge' => $networkBridge])->save();
+        if ($provider === InfrastructureLocation::PROVIDER_PROXMOX) {
+            $this->reserveRequiredIp($vm);
+            $vm->forceFill(['network_bridge' => $networkBridge])->save();
+        }
 
         if ($dispatch) {
             ProvisionCloudVirtualMachine::dispatch($vm->id, [
@@ -115,10 +140,79 @@ class CloudVmProvisioningService
         return ['vm' => $vm->refresh(), 'password' => $password];
     }
 
+    private function resolveLocation(CloudImage $image, array $data): InfrastructureLocation
+    {
+        if (! empty($data['infrastructure_location_id'])) {
+            return InfrastructureLocation::query()
+                ->where('is_active', true)
+                ->where('maintenance_mode', false)
+                ->findOrFail((int) $data['infrastructure_location_id']);
+        }
+
+        if ($image->infrastructure_location_id) {
+            return $image->infrastructureLocation()->firstOrFail();
+        }
+
+        if ($image->proxmox_server_id) {
+            $location = InfrastructureLocation::query()
+                ->where('provider', InfrastructureLocation::PROVIDER_PROXMOX)
+                ->where('proxmox_server_id', $image->proxmox_server_id)
+                ->first();
+
+            if ($location) {
+                return $location;
+            }
+
+            $image->loadMissing('proxmoxServer');
+
+            return InfrastructureLocation::query()->create([
+                'provider' => InfrastructureLocation::PROVIDER_PROXMOX,
+                'proxmox_server_id' => $image->proxmox_server_id,
+                'name' => $image->proxmoxServer?->datacenter ?: ($image->proxmoxServer?->name ?: 'Proxmox '.$image->proxmox_server_id),
+                'slug' => 'proxmox-'.$image->proxmox_server_id,
+                'region' => $image->proxmoxServer?->datacenter,
+                'remote_id' => (string) $image->proxmox_server_id,
+                'remote_name' => $image->proxmoxServer?->name,
+                'is_active' => true,
+                'maintenance_mode' => false,
+            ]);
+        }
+
+        throw new RuntimeException('No infrastructure location is attached to the selected image.');
+    }
+
+    private function assertHetznerReady(InfrastructureLocation $location, array $data): void
+    {
+        if (! $location->hetznerAccount || ! $location->hetznerAccount->is_active || $location->hetznerAccount->maintenance_mode) {
+            throw new RuntimeException('The selected location is not available for provisioning.');
+        }
+
+        if (AppSetting::hetznerUsdToIrrRate() <= 0) {
+            throw new RuntimeException('USD to IRR rate must be configured before creating Hetzner machines.');
+        }
+
+        $mapping = VmBundleLocationMapping::query()
+            ->where('infrastructure_location_id', $location->id)
+            ->where('vm_bundle_id', (int) ($data['vm_bundle_id'] ?? 0))
+            ->where('is_active', true)
+            ->whereNotNull('hetzner_server_type_id')
+            ->first();
+
+        if (! $mapping) {
+            throw new RuntimeException('No Hetzner server type is mapped for this plan in the selected location.');
+        }
+    }
+
     private function reserveRequiredIp(VirtualMachine $vm): void
     {
         try {
-            $this->ipPools->reserveForVm($vm, []);
+            $remoteAddresses = [];
+
+            if ($vm->isProxmox() && $vm->proxmoxServer && $vm->node) {
+                $remoteAddresses = $this->proxmox->assignedGuestIpAddresses($vm->proxmoxServer, $vm->node);
+            }
+
+            $this->ipPools->reserveForVm($vm, $remoteAddresses);
         } catch (Throwable $exception) {
             $vm->delete();
 

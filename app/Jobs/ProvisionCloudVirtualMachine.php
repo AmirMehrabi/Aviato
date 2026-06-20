@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\VirtualMachine;
+use App\Models\VmBundleLocationMapping;
+use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\WalletService;
@@ -35,11 +37,19 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
         public readonly array $options = [],
     ) {}
 
-    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, WalletService $wallets): void
+    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, ?WalletService $wallets = null, ?HetznerCloudService $hetzner = null): void
     {
+        $wallets ??= app(WalletService::class);
+
         $vm = VirtualMachine::query()
-            ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool', 'project.owner', 'customer'])
+            ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool', 'project.owner', 'customer', 'infrastructureLocation.hetznerAccount'])
             ->findOrFail($this->virtualMachineId);
+
+        if ($vm->isHetzner()) {
+            $this->handleHetzner($vm, $wallets, $hetzner ?? app(HetznerCloudService::class));
+
+            return;
+        }
 
         $server = $vm->proxmoxServer;
         $image = $vm->cloudImage;
@@ -91,6 +101,29 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             $canAutoStart = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
 
             if (! $cloudInitEnabled) {
+                $config = $proxmox->configureCloudInit($server, [
+                    'node' => $vm->node,
+                    'vmid' => $vmid,
+                    'cpu_cores' => $vm->cpu_cores,
+                    'ram_gb' => $vm->ram_gb,
+                    'login_username' => null,
+                    'login_password' => null,
+                    'ssh_public_key' => null,
+                    'ipconfig0' => null,
+                    'nameserver' => null,
+                    'cicustom' => null,
+                    'network_bridge' => $networkBridge,
+                    'onboot' => $this->options['onboot'] ?? false,
+                    'description' => 'Cloud-init disabled; base VM configured by Aviato panel',
+                ]);
+                $history[] = ['step' => 'config', 'result' => $config];
+
+                $resize = $proxmox->resizeDisk($server, $vm->node, $vmid, $image->disk_device, $vm->disk_gb);
+                $history[] = ['step' => 'resize', 'result' => $resize];
+                if (! empty($resize['task_id'])) {
+                    $history[] = ['step' => 'resize_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $resize['task_id'])];
+                }
+
                 if ($shouldStartAfterCreate && $canAutoStart) {
                     $start = $proxmox->startVm($server, $vm->node, $vmid);
                     $history[] = ['step' => 'start', 'result' => $start];
@@ -100,6 +133,9 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 } else {
                     $history[] = ['step' => 'start_skipped_wallet_locked', 'result' => 'wallet below threshold'];
                 }
+
+                $verifiedConfig = $proxmox->vmConfig($server, $vm->node, $vmid);
+                $history[] = ['step' => 'config_verify', 'result' => $verifiedConfig];
 
                 $vm->forceFill([
                     'status' => $shouldStartAfterCreate && $canAutoStart ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
@@ -214,6 +250,144 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             throw $exception;
         }
 
+    }
+
+    private function handleHetzner(VirtualMachine $vm, WalletService $wallets, HetznerCloudService $hetzner): void
+    {
+        $location = $vm->infrastructureLocation;
+        $account = $location?->hetznerAccount;
+        $image = $vm->cloudImage;
+        $billingCustomer = $vm->project?->owner ?? $vm->customer;
+        $history = data_get($vm->remote_state, 'steps', []);
+
+        if (! $location || ! $account || ! $image) {
+            throw new RuntimeException('Provisioning cannot continue without Hetzner account, location, and image.');
+        }
+
+        $mapping = VmBundleLocationMapping::query()
+            ->with('hetznerServerType')
+            ->where('vm_bundle_id', $vm->vm_bundle_id)
+            ->where('infrastructure_location_id', $location->id)
+            ->where('is_active', true)
+            ->first();
+
+        $serverType = $mapping?->hetznerServerType;
+        if (! $serverType) {
+            throw new RuntimeException('No Hetzner server type is mapped for this VM plan and location.');
+        }
+
+        try {
+            $shouldStartAfterCreate = (bool) ($this->options['start_after_create'] ?? true);
+            $canAutoStart = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
+            $payload = [
+                'name' => $vm->name,
+                'server_type' => $serverType->name,
+                'image' => $image->remote_image_id ?: $image->provider_metadata['remote_name'] ?? $image->name,
+                'location' => $location->remote_name ?: $location->region,
+                'start_after_create' => $shouldStartAfterCreate && $canAutoStart,
+                'public_net' => ['enable_ipv4' => true, 'enable_ipv6' => true],
+                'labels' => [
+                    'panel' => 'aviato',
+                    'virtual_machine_id' => (string) $vm->id,
+                    'customer_id' => (string) $vm->customer_id,
+                ],
+            ];
+
+            $userData = $this->hetznerUserData($vm);
+            if ($userData !== null) {
+                $payload['user_data'] = $userData;
+            }
+
+            $create = $hetzner->createServer($account, $payload);
+            $server = $create['server'] ?? [];
+            $actionId = $create['action']['id'] ?? null;
+            $history[] = ['step' => 'create', 'result' => $create, 'at' => now()->toISOString()];
+
+            if ($actionId) {
+                $history[] = ['step' => 'create_wait', 'result' => $hetzner->waitForAction($account, $actionId), 'at' => now()->toISOString()];
+            }
+
+            $remoteId = (string) ($server['id'] ?? '');
+            $server = $remoteId !== '' ? ($hetzner->server($account, $remoteId) ?? $server) : $server;
+            $ip = data_get($server, 'public_net.ipv4.ip')
+                ?: data_get($server, 'public_net.ipv6.ip');
+
+            $vm->forceFill([
+                'remote_id' => $remoteId ?: null,
+                'remote_name' => $server['name'] ?? $vm->name,
+                'ip_address' => $ip,
+                'status' => ($server['status'] ?? null) === 'running' ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
+                'provisioning_status' => VirtualMachine::PROVISION_READY,
+                'last_started_at' => ($server['status'] ?? null) === 'running' ? now() : null,
+                'last_billed_at' => now(),
+                'last_seen_at' => now(),
+                'remote_state' => [
+                    'steps' => $history,
+                    'finished_at' => now()->toISOString(),
+                    'hetzner_server' => $server,
+                ],
+            ])->save();
+        } catch (Throwable $exception) {
+            $hasAttemptsRemaining = $this->hasAttemptsRemaining();
+
+            Log::error('Hetzner VM provisioning failed', [
+                'virtual_machine_id' => $vm->id,
+                'remote_id' => $vm->remote_id,
+                'attempt' => $this->attempts(),
+                'will_retry' => $hasAttemptsRemaining,
+                'message' => $exception->getMessage(),
+            ]);
+
+            $vm->forceFill([
+                'status' => VirtualMachine::STATUS_STOPPED,
+                'provisioning_status' => $hasAttemptsRemaining
+                    ? VirtualMachine::PROVISION_PENDING
+                    : VirtualMachine::PROVISION_FAILED,
+                'remote_state' => [
+                    'steps' => $history,
+                    'error' => $exception->getMessage(),
+                    $hasAttemptsRemaining ? 'retrying_at' : 'failed_at' => now()->toISOString(),
+                    'attempt' => $this->attempts(),
+                ],
+            ])->save();
+
+            throw $exception;
+        }
+    }
+
+    private function hetznerUserData(VirtualMachine $vm): ?string
+    {
+        $lines = [
+            '#cloud-config',
+            'hostname: '.$vm->hostname,
+            'users:',
+            '  - name: '.($vm->login_username ?: 'root'),
+            '    groups: users, admin',
+            '    shell: /bin/bash',
+            '    sudo: ALL=(ALL) NOPASSWD:ALL',
+        ];
+
+        if ($vm->ssh_public_key) {
+            $lines[] = '    ssh_authorized_keys:';
+            foreach (preg_split('/\R/', trim($vm->ssh_public_key)) ?: [] as $key) {
+                $key = trim($key);
+                if ($key !== '') {
+                    $lines[] = '      - '.$key;
+                }
+            }
+        }
+
+        if ($vm->login_password) {
+            $lines[] = 'chpasswd:';
+            $lines[] = '  expire: false';
+            $lines[] = '  users:';
+            $lines[] = '    - name: '.($vm->login_username ?: 'root');
+            $lines[] = '      password: '.$vm->login_password;
+            $lines[] = '      type: text';
+            $lines[] = 'ssh_pwauth: true';
+        }
+
+        return implode("\n", $lines)."\n";
     }
 
     private function nextAvailableVmid(ProxmoxService $proxmox, VirtualMachine $vm): int

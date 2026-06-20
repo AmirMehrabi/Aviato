@@ -75,6 +75,32 @@ class AppSetting extends Model
 
     public const VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE = 'vm.rebuild_fee.multiplier_percentage';
 
+    public const HETZNER_USD_TO_IRR_RATE = 'hetzner.usd_to_irr_rate';
+
+    public const HETZNER_PRICE_MARKUP_PERCENTAGE = 'hetzner.price_markup_percentage';
+
+    public const PAYMENTS_ENABLED = 'payment.enabled';
+
+    public const DEFAULT_PAYMENT_GATEWAY = 'payment.default_gateway';
+
+    public const MELLAT_PAYMENT_ENABLED = 'payment.mellat.enabled';
+
+    public const MELLAT_PAYMENT_MODE = 'payment.mellat.mode';
+
+    public const MELLAT_TERMINAL_ID = 'payment.mellat.terminal_id';
+
+    public const MELLAT_USERNAME = 'payment.mellat.username';
+
+    public const MELLAT_PASSWORD = 'payment.mellat.password';
+
+    public const HESABRO_PAYMENT_ENABLED = 'payment.hesabro.enabled';
+
+    public const HESABRO_CLIENT = 'payment.hesabro.client';
+
+    public const HESABRO_CLIENT_ID = 'payment.hesabro.client_id';
+
+    public const HESABRO_CLIENT_SECRET = 'payment.hesabro.client_secret';
+
     public static function getValue(string $key, mixed $default = null): mixed
     {
         return Cache::rememberForever("settings.{$key}", function () use ($key, $default): mixed {
@@ -168,6 +194,95 @@ class AppSetting extends Model
         ];
     }
 
+    public static function mellatPaymentEnabled(): bool
+    {
+        return filter_var(static::getValue(self::MELLAT_PAYMENT_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function paymentsEnabled(): bool
+    {
+        return filter_var(static::getValue(self::PAYMENTS_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function defaultPaymentGateway(): string
+    {
+        $gateway = (string) static::getValue(self::DEFAULT_PAYMENT_GATEWAY, 'mellat');
+
+        return array_key_exists($gateway, static::paymentGateways()) ? $gateway : 'mellat';
+    }
+
+    public static function paymentGateways(): array
+    {
+        return [
+            'mellat' => 'بانک ملت',
+            'hesabro' => 'حسابرو',
+        ];
+    }
+
+    public static function mellatPaymentMode(): string
+    {
+        $mode = (string) static::getValue(self::MELLAT_PAYMENT_MODE, 'test');
+
+        return in_array($mode, array_keys(static::mellatPaymentModes()), true) ? $mode : 'test';
+    }
+
+    public static function mellatPaymentModes(): array
+    {
+        return [
+            'test' => 'تست',
+            'production' => 'عملیاتی',
+        ];
+    }
+
+    public static function mellatTerminalId(): string
+    {
+        return (string) static::getValue(self::MELLAT_TERMINAL_ID, '');
+    }
+
+    public static function mellatUsername(): string
+    {
+        return (string) static::getValue(self::MELLAT_USERNAME, '');
+    }
+
+    public static function mellatPassword(): string
+    {
+        return (string) static::getValue(self::MELLAT_PASSWORD, '');
+    }
+
+    public static function mellatPaymentConfigured(): bool
+    {
+        return static::mellatTerminalId() !== ''
+            && static::mellatUsername() !== ''
+            && static::mellatPassword() !== '';
+    }
+
+    public static function hesabroPaymentEnabled(): bool
+    {
+        return filter_var(static::getValue(self::HESABRO_PAYMENT_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function hesabroClient(): string
+    {
+        $client = trim((string) static::getValue(self::HESABRO_CLIENT, ''));
+
+        return ltrim($client, '@');
+    }
+
+    public static function hesabroClientId(): string
+    {
+        return (string) static::getValue(self::HESABRO_CLIENT_ID, '');
+    }
+
+    public static function hesabroClientSecret(): string
+    {
+        return (string) static::getValue(self::HESABRO_CLIENT_SECRET, '');
+    }
+
+    public static function hesabroPaymentConfigured(): bool
+    {
+        return static::hesabroClient() !== '' && static::hesabroClientId() !== '' && static::hesabroClientSecret() !== '';
+    }
+
     public static function ticketEmailNotificationsEnabled(): bool
     {
         return filter_var(static::getValue(self::TICKET_EMAIL_NOTIFICATIONS_ENABLED, false), FILTER_VALIDATE_BOOL);
@@ -230,6 +345,31 @@ class AppSetting extends Model
         }
 
         return (int) round($creationCharge * static::vmRebuildFeeMultiplierPercentage() / 100);
+    }
+
+    public static function hetznerUsdToIrrRate(): int
+    {
+        return max(0, (int) static::getValue(self::HETZNER_USD_TO_IRR_RATE, 0));
+    }
+
+    public static function hetznerPriceMarkupPercentage(): float
+    {
+        $percentage = (float) static::getValue(self::HETZNER_PRICE_MARKUP_PERCENTAGE, 0);
+
+        return max(0, $percentage);
+    }
+
+    public static function convertHetznerUsdToIrr(float $usd): int
+    {
+        $rate = static::hetznerUsdToIrrRate();
+
+        if ($rate <= 0) {
+            return 0;
+        }
+
+        $markup = 1 + (static::hetznerPriceMarkupPercentage() / 100);
+
+        return (int) round($usd * $rate * $markup);
     }
 
     public static function customerWalletNegativeThreshold(): int

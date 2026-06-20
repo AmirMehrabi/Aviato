@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\AppSetting;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
+use App\Models\VmBundleLocationMapping;
 use App\Models\VmDisk;
 use Illuminate\Support\Collection;
+use RuntimeException;
 
 class BillingService
 {
@@ -43,6 +46,10 @@ class BillingService
 
     public function hourlyWhenRunning(VirtualMachine $vm): float
     {
+        if ($vm->isHetzner()) {
+            return $this->hetznerHourly($vm);
+        }
+
         if ($vm->bundle) {
             return (float) $vm->bundle->hourly_price;
         }
@@ -57,6 +64,10 @@ class BillingService
 
     public function persistentHourly(VirtualMachine $vm): float
     {
+        if ($vm->isHetzner()) {
+            return $this->hetznerHourly($vm);
+        }
+
         $rates = $this->rates();
 
         return ($vm->disk_gb * $this->rate($rates, ResourceRate::DISK))
@@ -132,5 +143,67 @@ class BillingService
     private function rate(Collection $rates, string $resource): float
     {
         return (float) ($rates->get($resource)?->hourly_price ?? 0);
+    }
+
+    public function hetznerMonthlyPrice(VirtualMachine $vm): int
+    {
+        $mapping = $this->hetznerMapping($vm);
+        $serverType = $mapping?->hetznerServerType;
+        $usd = $serverType?->monthlyUsdForLocation($vm->infrastructureLocation?->remote_name)
+            ?? (float) ($mapping?->monthly_price_usd ?? 0);
+
+        if ($usd <= 0) {
+            $snapshot = (int) data_get($vm->provider_metadata, 'hetzner_price.monthly_price_irr', 0);
+
+            if ($snapshot > 0) {
+                return $snapshot;
+            }
+
+            throw new RuntimeException('Hetzner price mapping is missing for this VM.');
+        }
+
+        $converted = AppSetting::convertHetznerUsdToIrr($usd);
+
+        if ($converted <= 0) {
+            throw new RuntimeException('USD to IRR rate is not configured for Hetzner billing.');
+        }
+
+        return $converted;
+    }
+
+    public function hetznerPriceSnapshot(VirtualMachine $vm): array
+    {
+        $mapping = $this->hetznerMapping($vm);
+        $serverType = $mapping?->hetznerServerType;
+        $usd = $serverType?->monthlyUsdForLocation($vm->infrastructureLocation?->remote_name)
+            ?? (float) ($mapping?->monthly_price_usd ?? 0);
+
+        return [
+            'monthly_price_usd' => $usd,
+            'monthly_price_irr' => $usd > 0 ? AppSetting::convertHetznerUsdToIrr($usd) : 0,
+            'usd_to_irr_rate' => AppSetting::hetznerUsdToIrrRate(),
+            'markup_percentage' => AppSetting::hetznerPriceMarkupPercentage(),
+            'server_type' => $serverType?->name,
+            'location' => $vm->infrastructureLocation?->remote_name,
+        ];
+    }
+
+    private function hetznerHourly(VirtualMachine $vm): float
+    {
+        return $this->hetznerMonthlyPrice($vm) / ResourceRate::hoursPerMonth();
+    }
+
+    private function hetznerMapping(VirtualMachine $vm): ?VmBundleLocationMapping
+    {
+        if (! $vm->vm_bundle_id || ! $vm->infrastructure_location_id) {
+            return null;
+        }
+
+        return VmBundleLocationMapping::query()
+            ->with(['hetznerServerType', 'location'])
+            ->where('vm_bundle_id', $vm->vm_bundle_id)
+            ->where('infrastructure_location_id', $vm->infrastructure_location_id)
+            ->where('is_active', true)
+            ->first();
     }
 }

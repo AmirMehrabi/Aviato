@@ -49,6 +49,19 @@ class SettingController extends Controller
             'verifiedCustomerVmLimit' => AppSetting::verifiedCustomerVmLimit(),
             'deletedVmCooldownDays' => AppSetting::deletedVmCooldownDays(),
             'vmRebuildFeeMultiplierPercentage' => AppSetting::vmRebuildFeeMultiplierPercentage(),
+            'hetznerUsdToIrrRate' => AppSetting::hetznerUsdToIrrRate(),
+            'hetznerPriceMarkupPercentage' => AppSetting::hetznerPriceMarkupPercentage(),
+            'paymentsEnabled' => AppSetting::paymentsEnabled(),
+            'defaultPaymentGateway' => AppSetting::defaultPaymentGateway(),
+            'paymentGateways' => AppSetting::paymentGateways(),
+            'mellatPaymentEnabled' => AppSetting::mellatPaymentEnabled(),
+            'mellatPaymentMode' => AppSetting::mellatPaymentMode(),
+            'mellatPaymentModes' => AppSetting::mellatPaymentModes(),
+            'mellatTerminalId' => AppSetting::mellatTerminalId(),
+            'mellatUsername' => AppSetting::mellatUsername(),
+            'hesabroPaymentEnabled' => AppSetting::hesabroPaymentEnabled(),
+            'hesabroClient' => AppSetting::hesabroClient(),
+            'hesabroClientId' => AppSetting::hesabroClientId(),
         ]);
     }
 
@@ -65,7 +78,7 @@ class SettingController extends Controller
             'sms0098_panel_no' => ['nullable', 'string', 'max:50'],
             'kavenegar_api_key' => ['nullable', 'string', 'max:255'],
             'kavenegar_template' => ['nullable', 'string', 'max:100'],
-            'customer_wallet_negative_threshold' => ['required', 'integer'],
+            'customer_wallet_negative_threshold' => ['nullable', 'integer'],
             'customer_wallet_negative_sms_enabled' => ['nullable', 'boolean'],
             'customer_wallet_negative_sms_template' => ['nullable', 'string', 'max:100'],
             'smtp_host' => ['nullable', 'string', 'max:255'],
@@ -88,6 +101,19 @@ class SettingController extends Controller
             'verified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'],
             'deleted_vm_cooldown_days' => ['required', 'integer', 'min:0', 'max:3650'],
             'vm_rebuild_fee_multiplier_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            'hetzner_usd_to_irr_rate' => ['nullable', 'integer', 'min:0'],
+            'hetzner_price_markup_percentage' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'payments_enabled' => ['nullable', 'boolean'],
+            'default_payment_gateway' => ['nullable', 'string', Rule::in(array_keys(AppSetting::paymentGateways()))],
+            'mellat_payment_enabled' => ['nullable', 'boolean'],
+            'mellat_payment_mode' => ['nullable', 'string', Rule::in(array_keys(AppSetting::mellatPaymentModes()))],
+            'mellat_terminal_id' => ['nullable', 'integer', 'min:1'],
+            'mellat_username' => ['nullable', 'string', 'max:255'],
+            'mellat_password' => ['nullable', 'string', 'max:255'],
+            'hesabro_payment_enabled' => ['nullable', 'boolean'],
+            'hesabro_client' => ['nullable', 'string', 'max:255'],
+            'hesabro_client_id' => ['nullable', 'string', 'max:255'],
+            'hesabro_client_secret' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $effectiveNationalCodeToken = $data['national_code_verification_token'] ?: (string) AppSetting::getValue(AppSetting::NATIONAL_CODE_VERIFICATION_TOKEN, '');
@@ -118,6 +144,63 @@ class SettingController extends Controller
             }
         }
 
+        $mellatEnabled = (bool) ($data['mellat_payment_enabled'] ?? false);
+        $hesabroEnabled = (bool) ($data['hesabro_payment_enabled'] ?? false);
+        $paymentsEnabled = (bool) ($data['payments_enabled'] ?? false);
+        $defaultPaymentGateway = $data['default_payment_gateway'] ?? AppSetting::defaultPaymentGateway();
+        $effectiveMellatPassword = ($data['mellat_password'] ?? '') ?: AppSetting::mellatPassword();
+        $effectiveHesabroClient = ltrim(trim((string) ($data['hesabro_client'] ?? AppSetting::hesabroClient())), '@');
+        $effectiveHesabroSecret = ($data['hesabro_client_secret'] ?? '') ?: AppSetting::hesabroClientSecret();
+
+        if ($mellatEnabled) {
+            $mellatValidator = Validator::make([
+                'mellat_terminal_id' => $data['mellat_terminal_id'] ?? null,
+                'mellat_username' => $data['mellat_username'] ?? null,
+                'mellat_password' => $effectiveMellatPassword,
+            ], [
+                'mellat_terminal_id' => ['required', 'integer', 'min:1'],
+                'mellat_username' => ['required', 'string', 'max:255'],
+                'mellat_password' => ['required', 'string', 'max:255'],
+            ]);
+
+            if ($mellatValidator->fails()) {
+                return back()->withErrors($mellatValidator)->withInput();
+            }
+        }
+
+        if ($hesabroEnabled) {
+            $hesabroValidator = Validator::make([
+                'hesabro_client' => $effectiveHesabroClient,
+                'hesabro_client_id' => $data['hesabro_client_id'] ?? null,
+                'hesabro_client_secret' => $effectiveHesabroSecret,
+            ], [
+                'hesabro_client' => ['required', 'string', 'max:255'],
+                'hesabro_client_id' => ['required', 'string', 'max:255'],
+                'hesabro_client_secret' => ['required', 'string', 'max:2000'],
+            ]);
+
+            if ($hesabroValidator->fails()) {
+                return back()->withErrors($hesabroValidator)->withInput();
+            }
+        }
+
+        if ($paymentsEnabled && ! $mellatEnabled && ! $hesabroEnabled) {
+            return back()
+                ->withErrors(['payments_enabled' => 'برای فعال‌سازی پرداخت آنلاین، حداقل یک درگاه باید فعال باشد.'])
+                ->withInput();
+        }
+
+        $defaultGatewayEnabled = match ($defaultPaymentGateway) {
+            'mellat' => $mellatEnabled,
+            'hesabro' => $hesabroEnabled,
+        };
+
+        if ($paymentsEnabled && ! $defaultGatewayEnabled) {
+            return back()
+                ->withErrors(['default_payment_gateway' => 'درگاه پیش‌فرض باید فعال باشد.'])
+                ->withInput();
+        }
+
         AppSetting::setValue(AppSetting::BILLING_CURRENCY, $data['currency'], 'string', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, $data['customer_verification_mode'], 'string', 'customer');
         AppSetting::setValue(AppSetting::NATIONAL_CODE_VERIFICATION_ENABLED, (bool) $data['national_code_verification_enabled'], 'boolean', 'customer');
@@ -125,7 +208,7 @@ class SettingController extends Controller
         AppSetting::setValue(AppSetting::SMS0098_USERNAME, $data['sms0098_username'] ?? '', 'string', 'sms0098');
         AppSetting::setValue(AppSetting::SMS0098_PANEL_NO, $data['sms0098_panel_no'] ?? '', 'string', 'sms0098');
         AppSetting::setValue(AppSetting::KAVENEGAR_TEMPLATE, $data['kavenegar_template'] ?? '', 'string', 'kavenegar');
-        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_THRESHOLD, (int) $data['customer_wallet_negative_threshold'], 'integer', 'billing');
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_THRESHOLD, (int) ($data['customer_wallet_negative_threshold'] ?? AppSetting::customerWalletNegativeThreshold()), 'integer', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, (bool) ($data['customer_wallet_negative_sms_enabled'] ?? false), 'boolean', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, $data['customer_wallet_negative_sms_template'] ?? '', 'string', 'billing');
         AppSetting::setValue(AppSetting::SMTP_HOST, $data['smtp_host'] ?? '', 'string', 'smtp');
@@ -147,6 +230,17 @@ class SettingController extends Controller
         AppSetting::setValue(AppSetting::CUSTOMER_VERIFIED_VM_LIMIT, (int) $data['verified_customer_vm_limit'], 'integer', 'customer');
         AppSetting::setValue(AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, (int) $data['deleted_vm_cooldown_days'], 'integer', 'customer');
         AppSetting::setValue(AppSetting::VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE, (float) $data['vm_rebuild_fee_multiplier_percentage'], 'float', 'billing');
+        AppSetting::setValue(AppSetting::HETZNER_USD_TO_IRR_RATE, (int) ($data['hetzner_usd_to_irr_rate'] ?? AppSetting::hetznerUsdToIrrRate()), 'integer', 'hetzner');
+        AppSetting::setValue(AppSetting::HETZNER_PRICE_MARKUP_PERCENTAGE, (float) ($data['hetzner_price_markup_percentage'] ?? AppSetting::hetznerPriceMarkupPercentage()), 'float', 'hetzner');
+        AppSetting::setValue(AppSetting::PAYMENTS_ENABLED, $paymentsEnabled, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::DEFAULT_PAYMENT_GATEWAY, $defaultPaymentGateway, 'string', 'payment');
+        AppSetting::setValue(AppSetting::MELLAT_PAYMENT_ENABLED, $mellatEnabled, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::MELLAT_PAYMENT_MODE, $data['mellat_payment_mode'] ?? AppSetting::mellatPaymentMode(), 'string', 'payment');
+        AppSetting::setValue(AppSetting::MELLAT_TERMINAL_ID, (string) ($data['mellat_terminal_id'] ?? ''), 'string', 'payment');
+        AppSetting::setValue(AppSetting::MELLAT_USERNAME, $data['mellat_username'] ?? '', 'string', 'payment');
+        AppSetting::setValue(AppSetting::HESABRO_PAYMENT_ENABLED, $hesabroEnabled, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::HESABRO_CLIENT, $effectiveHesabroClient, 'string', 'payment');
+        AppSetting::setValue(AppSetting::HESABRO_CLIENT_ID, $data['hesabro_client_id'] ?? '', 'string', 'payment');
 
         if (! empty($data['sms0098_password'])) {
             AppSetting::setValue(AppSetting::SMS0098_PASSWORD, $data['sms0098_password'], 'string', 'sms0098');
@@ -158,6 +252,14 @@ class SettingController extends Controller
 
         if (! empty($data['smtp_password'])) {
             AppSetting::setValue(AppSetting::SMTP_PASSWORD, $data['smtp_password'], 'string', 'smtp');
+        }
+
+        if (! empty($data['mellat_password'] ?? '')) {
+            AppSetting::setValue(AppSetting::MELLAT_PASSWORD, $data['mellat_password'], 'string', 'payment');
+        }
+
+        if (! empty($data['hesabro_client_secret'] ?? '')) {
+            AppSetting::setValue(AppSetting::HESABRO_CLIENT_SECRET, $data['hesabro_client_secret'], 'string', 'payment');
         }
 
         if ($effectiveNationalCodeToken !== '') {

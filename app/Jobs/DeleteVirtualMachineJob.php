@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\VirtualMachine;
+use App\Services\HetznerCloudService;
 use App\Services\ProxmoxService;
 use App\Services\VirtualMachineDeletionService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -37,10 +38,10 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
         return 'delete-vm-'.$this->virtualMachineId;
     }
 
-    public function handle(ProxmoxService $proxmox, VirtualMachineDeletionService $deletions): void
+    public function handle(ProxmoxService $proxmox, VirtualMachineDeletionService $deletions, ?HetznerCloudService $hetzner = null): void
     {
         $vm = VirtualMachine::query()
-            ->with(['proxmoxServer', 'reservedIpAddress'])
+            ->with(['proxmoxServer', 'reservedIpAddress', 'infrastructureLocation.hetznerAccount'])
             ->findOrFail($this->virtualMachineId);
 
         Log::info('Cloud VM deletion job started', [
@@ -57,6 +58,12 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             Log::info('Cloud VM deletion job skipped because VM is already deleted', [
                 'virtual_machine_id' => $vm->id,
             ]);
+
+            return;
+        }
+
+        if ($vm->isHetzner()) {
+            $this->handleHetzner($vm, $deletions, $hetzner ?? app(HetznerCloudService::class));
 
             return;
         }
@@ -252,6 +259,78 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             if ($hasAttemptsRemaining) {
                 throw $exception;
             }
+        }
+    }
+
+    private function handleHetzner(VirtualMachine $vm, VirtualMachineDeletionService $deletions, HetznerCloudService $hetzner): void
+    {
+        $history = data_get($vm->remote_state, 'delete_steps', []);
+        $account = $vm->infrastructureLocation?->hetznerAccount;
+
+        try {
+            if (! $account || ! $vm->remote_id) {
+                throw new RuntimeException('VM is missing Hetzner account or remote server ID.');
+            }
+
+            $vm->forceFill([
+                'status' => VirtualMachine::STATUS_DELETING,
+                'delete_started_at' => $vm->delete_started_at ?? now(),
+                'delete_failed_at' => null,
+                'delete_error' => null,
+            ])->save();
+
+            $server = $hetzner->server($account, $vm->remote_id);
+            $history[] = ['step' => 'status', 'result' => $server, 'at' => now()->toISOString()];
+            $this->recordHistory($vm, $history);
+
+            if ($server === null) {
+                $history[] = ['step' => 'remote_missing', 'result' => 'already_deleted', 'at' => now()->toISOString()];
+            } else {
+                if (($server['status'] ?? null) === 'running') {
+                    try {
+                        $shutdown = $hetzner->shutdown($account, $vm->remote_id);
+                        $history[] = ['step' => 'shutdown', 'result' => $shutdown, 'at' => now()->toISOString()];
+                        $vm->forceFill(['delete_task_id' => $shutdown['action']['id'] ?? null])->save();
+                        $hetzner->waitForAction($account, $shutdown['action']['id'] ?? null, 180);
+                    } catch (Throwable $shutdownException) {
+                        $history[] = ['step' => 'shutdown_failed', 'error' => $shutdownException->getMessage(), 'at' => now()->toISOString()];
+                        $powerOff = $hetzner->powerOff($account, $vm->remote_id);
+                        $history[] = ['step' => 'poweroff', 'result' => $powerOff, 'at' => now()->toISOString()];
+                        $vm->forceFill(['delete_task_id' => $powerOff['action']['id'] ?? null])->save();
+                        $hetzner->waitForAction($account, $powerOff['action']['id'] ?? null, 180);
+                    }
+                }
+
+                $delete = $hetzner->deleteServer($account, $vm->remote_id);
+                $history[] = ['step' => 'delete', 'result' => $delete, 'at' => now()->toISOString()];
+            }
+
+            $this->recordHistory($vm, $history);
+            $deletions->finalizeLocalDelete($vm, 'hetzner_remote_deleted', [
+                'step' => 'remote_deleted',
+                'remote_id' => $vm->remote_id,
+            ]);
+        } catch (Throwable $exception) {
+            $hasAttemptsRemaining = $this->hasAttemptsRemaining();
+
+            Log::error('Hetzner VM deletion failed', [
+                'virtual_machine_id' => $vm->id,
+                'remote_id' => $vm->remote_id,
+                'attempt' => $this->attempts(),
+                'will_retry' => $hasAttemptsRemaining,
+                'message' => $exception->getMessage(),
+            ]);
+
+            $vm->forceFill([
+                'delete_failed_at' => $hasAttemptsRemaining ? null : now(),
+                'delete_error' => $exception->getMessage(),
+                'remote_state' => array_merge($vm->remote_state ?? [], [
+                    'delete_steps' => $history,
+                    $hasAttemptsRemaining ? 'delete_retrying_at' : 'delete_failed_at' => now()->toISOString(),
+                ]),
+            ])->save();
+
+            throw $exception;
         }
     }
 

@@ -83,6 +83,10 @@ class ServerConsoleController extends Controller
 
     private function assertConsoleReady(VirtualMachine $server): void
     {
+        if (! $server->isProxmox()) {
+            throw new RuntimeException('کنسول برای این ماشین مجازی در دسترس نیست.');
+        }
+
         if (! $server->proxmoxServer || blank($server->node) || blank($server->vmid)) {
             throw new RuntimeException('کنسول این ماشین مجازی هنوز آماده نیست.');
         }

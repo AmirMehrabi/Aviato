@@ -90,6 +90,8 @@ class UsageBillingService
                     'status' => $vm->status,
                     'bundle_name' => $vm->bundle?->name,
                 ],
+                'provider' => $vm->provider ?: VirtualMachine::PROVIDER_PROXMOX,
+                'provider_price_snapshot' => $vm->isHetzner() ? $this->billing->hetznerPriceSnapshot($vm) : null,
             ],
         );
 

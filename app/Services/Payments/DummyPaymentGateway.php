@@ -6,6 +6,21 @@ use App\Models\Payment;
 
 class DummyPaymentGateway implements PaymentGatewayInterface
 {
+    public function key(): string
+    {
+        return 'dummy';
+    }
+
+    public function label(): string
+    {
+        return 'درگاه آزمایشی';
+    }
+
+    public function isAvailable(): bool
+    {
+        return false;
+    }
+
     public function initiate(Payment $payment): array
     {
         return [

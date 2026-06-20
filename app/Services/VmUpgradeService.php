@@ -159,7 +159,11 @@ class VmUpgradeService
             throw ValidationException::withMessages(['server' => 'ارتقا فقط برای سرور آماده امکان پذیر است.']);
         }
 
-        if (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid) {
+        if ($vm->isProxmox() && (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid)) {
+            throw ValidationException::withMessages(['server' => 'اطلاعات لازم برای ارتقای این ماشین مجازی کامل نیست.']);
+        }
+
+        if ($vm->isHetzner() && (! $vm->remote_id || ! $vm->infrastructure_location_id)) {
             throw ValidationException::withMessages(['server' => 'اطلاعات لازم برای ارتقای این ماشین مجازی کامل نیست.']);
         }
 

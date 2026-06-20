@@ -20,7 +20,7 @@
     $deleteAttemptIsStale = $server->deleteAttemptIsStale();
     $monitoringUrl = route('customer.monitoring.index', ['server' => $server->uuid], false);
     $backupUrl = route('customer.backups.index', [], false);
-    $consoleReady = $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $isLocked;
+    $consoleReady = $server->isProxmox() && $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $isLocked;
     $consoleUrl = route('customer.servers.console.show', $server, false);
     $statusUrl = route('customer.servers.statuses', [], false);
     $isRebuilding = $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING && filled(data_get($server->remote_state, 'rebuild_started_at'));

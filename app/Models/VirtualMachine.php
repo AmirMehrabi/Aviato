@@ -16,11 +16,17 @@ use Illuminate\Support\Str;
     'created_by_customer_id',
     'uuid',
     'proxmox_server_id',
+    'infrastructure_location_id',
+    'provider',
     'vm_bundle_id',
     'cloud_image_id',
     'ip_address_id',
     'vmid',
+    'remote_id',
+    'remote_name',
+    'remote_region',
     'template_vmid',
+    'provider_metadata',
     'name',
     'display_name',
     'hostname',
@@ -58,6 +64,10 @@ use Illuminate\Support\Str;
 ])]
 class VirtualMachine extends Model
 {
+    public const PROVIDER_PROXMOX = 'proxmox';
+
+    public const PROVIDER_HETZNER = 'hetzner';
+
     public const STATUS_RUNNING = 'running';
 
     public const STATUS_STOPPED = 'stopped';
@@ -120,6 +130,11 @@ class VirtualMachine extends Model
     public function proxmoxServer(): BelongsTo
     {
         return $this->belongsTo(ProxmoxServer::class);
+    }
+
+    public function infrastructureLocation(): BelongsTo
+    {
+        return $this->belongsTo(InfrastructureLocation::class);
     }
 
     public function bundle(): BelongsTo
@@ -193,6 +208,16 @@ class VirtualMachine extends Model
         return in_array($this->status, [self::STATUS_DELETING, self::STATUS_DELETED], true);
     }
 
+    public function isProxmox(): bool
+    {
+        return ($this->provider ?: self::PROVIDER_PROXMOX) === self::PROVIDER_PROXMOX;
+    }
+
+    public function isHetzner(): bool
+    {
+        return $this->provider === self::PROVIDER_HETZNER;
+    }
+
     public function deleteAttemptIsStale(int $minutes = 15): bool
     {
         if (! $this->isDeleting() || $this->delete_failed_at) {
@@ -227,7 +252,11 @@ class VirtualMachine extends Model
             'os_template' => $this->os_template,
             'iso_volume' => $this->iso_volume,
             'cloud_image_id' => $this->cloud_image_id,
+            'infrastructure_location_id' => $this->infrastructure_location_id,
+            'provider' => $this->provider,
             'template_vmid' => $this->template_vmid,
+            'remote_id' => $this->remote_id,
+            'remote_region' => $this->remote_region,
             'network_bridge' => $this->network_bridge,
             'mac_address' => $this->mac_address,
             'cpu_cores' => $this->cpu_cores,
@@ -255,6 +284,7 @@ class VirtualMachine extends Model
             'ip_count' => 'integer',
             'desired_state' => 'array',
             'remote_state' => 'array',
+            'provider_metadata' => 'array',
             'login_password' => 'encrypted',
             'last_seen_at' => 'datetime',
             'last_started_at' => 'datetime',

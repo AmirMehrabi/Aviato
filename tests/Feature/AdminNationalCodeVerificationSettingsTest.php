@@ -65,4 +65,88 @@ class AdminNationalCodeVerificationSettingsTest extends TestCase
         $this->assertTrue(AppSetting::nationalCodeVerificationEnabled());
         $this->assertSame('shahkar-secret', AppSetting::nationalCodeVerificationToken());
     }
+
+    public function test_admin_can_save_mellat_payment_settings_and_preserve_password(): void
+    {
+        $admin = User::factory()->create();
+        $this->actingAs($admin, 'admin');
+
+        $payload = [
+            'currency' => 'IRR',
+            'customer_verification_mode' => 'email',
+            'national_code_verification_enabled' => 0,
+            'national_code_verification_token' => '',
+            'sms_gateway' => 'sms0098',
+            'sms0098_username' => 'demo-user',
+            'sms0098_password' => '',
+            'sms0098_panel_no' => '1234',
+            'kavenegar_api_key' => '',
+            'kavenegar_template' => '',
+            'vm_creation_charge_enabled' => 0,
+            'vm_creation_charge_percentage' => 0,
+            'unverified_customer_vm_limit' => 2,
+            'verified_customer_vm_limit' => 0,
+            'deleted_vm_cooldown_days' => 30,
+            'vm_rebuild_fee_multiplier_percentage' => 50,
+            'payments_enabled' => 1,
+            'default_payment_gateway' => 'mellat',
+            'mellat_payment_enabled' => 1,
+            'mellat_payment_mode' => 'test',
+            'mellat_terminal_id' => 1234,
+            'mellat_username' => 'merchant',
+            'mellat_password' => 'mellat-secret',
+        ];
+
+        $this->from($this->adminBaseUrl.'/settings')
+            ->patch($this->adminBaseUrl.'/settings', $payload)
+            ->assertRedirect($this->adminBaseUrl.'/settings')
+            ->assertSessionHas('status');
+
+        $this->assertTrue(AppSetting::mellatPaymentEnabled());
+        $this->assertTrue(AppSetting::paymentsEnabled());
+        $this->assertSame('mellat', AppSetting::defaultPaymentGateway());
+        $this->assertSame('test', AppSetting::mellatPaymentMode());
+        $this->assertSame('1234', AppSetting::mellatTerminalId());
+        $this->assertSame('merchant', AppSetting::mellatUsername());
+        $this->assertSame('mellat-secret', AppSetting::mellatPassword());
+
+        $this->from($this->adminBaseUrl.'/settings')
+            ->patch($this->adminBaseUrl.'/settings', array_merge($payload, [
+                'mellat_payment_mode' => 'production',
+                'mellat_password' => '',
+            ]))
+            ->assertRedirect($this->adminBaseUrl.'/settings')
+            ->assertSessionHas('status');
+
+        $this->assertSame('production', AppSetting::mellatPaymentMode());
+        $this->assertSame('mellat-secret', AppSetting::mellatPassword());
+
+        $hesabroPayload = array_merge($payload, [
+            'default_payment_gateway' => 'hesabro',
+            'mellat_payment_enabled' => 0,
+            'hesabro_payment_enabled' => 1,
+            'hesabro_client' => 'sabz-co',
+            'hesabro_client_id' => 'hesabro-client',
+            'hesabro_client_secret' => 'hesabro-secret',
+        ]);
+
+        $this->from($this->adminBaseUrl.'/settings')
+            ->patch($this->adminBaseUrl.'/settings', $hesabroPayload)
+            ->assertRedirect($this->adminBaseUrl.'/settings')
+            ->assertSessionHas('status');
+
+        $this->assertTrue(AppSetting::hesabroPaymentEnabled());
+        $this->assertSame('hesabro', AppSetting::defaultPaymentGateway());
+        $this->assertSame('hesabro-client', AppSetting::hesabroClientId());
+        $this->assertSame('hesabro-secret', AppSetting::hesabroClientSecret());
+
+        $this->from($this->adminBaseUrl.'/settings')
+            ->patch($this->adminBaseUrl.'/settings', array_merge($hesabroPayload, [
+                'hesabro_client_secret' => '',
+            ]))
+            ->assertRedirect($this->adminBaseUrl.'/settings')
+            ->assertSessionHas('status');
+
+        $this->assertSame('hesabro-secret', AppSetting::hesabroClientSecret());
+    }
 }
