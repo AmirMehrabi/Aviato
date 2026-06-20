@@ -171,7 +171,6 @@
                                 {{ $bundle->disk_gb }}GB NVMe
                             </span>
                         </span>
-                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">{{ $bundle->ip_count }} IP</span>
                     </div>
 
                     <a href="{{ route('customer.register') }}" class="mt-5 inline-flex w-full justify-center rounded-xl bg-[#4C86E8] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#3E76D6]">
@@ -228,7 +227,6 @@
                                                 {{ $bundle->disk_gb }}GB NVMe
                                             </span>
                                         </td>
-                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->ip_count }}</td>
                                         <td class="px-6 py-6 text-center">
                                             <p class="text-lg font-bold text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
                                         </td>
@@ -240,7 +238,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="px-6 py-10 text-center text-slate-500">
+                                        <td colspan="6" class="px-6 py-10 text-center text-slate-500">
                                            فعلا پلنی برای نمایش وجود ندارد.
                                         </td>
                                     </tr>
