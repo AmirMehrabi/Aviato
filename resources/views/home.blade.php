@@ -146,8 +146,8 @@
                     <p class="mt-1 min-h-6 text-sm font-bold text-slate-500">{{ $meta['use'] }}</p>
 
                     <div class="mt-5 border-y border-slate-100 py-4">
-                        <p class="text-3xl text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
-                        <p class="mt-1 text-sm font-bold text-slate-500">ماهانه</p>
+                        <p class="text-3xl text-slate-950">{{ $wallets->format($bundle->monthly_price) }}<span class="text-sm font-bold text-slate-400">/ماهانه</span></p>
+                        <p class="mt-1 text-lg text-slate-950">{{ $wallets->format(round($bundle->monthly_price / 720)) }}<span class="text-sm font-bold text-slate-400">/ساعتی</span></p>
                     </div>
 
                     <p class="mt-4 min-h-10 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'ماشین مجازی آماده برای سایت، فروشگاه، اپلیکیشن و سرویس های آنلاین.' }}</p>
@@ -172,10 +172,6 @@
                             </span>
                         </span>
                     </div>
-
-                    <a href="{{ route('customer.register') }}" class="mt-5 inline-flex w-full justify-center rounded-xl bg-[#4C86E8] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#3E76D6]">
-                        خرید این پلن
-                    </a>
                 </div>
             @empty
                 <div class="mt-10 rounded-[1.75rem] border border-dashed border-slate-200 bg-[#F7FBFF] p-8 text-center">
@@ -228,12 +224,10 @@
                                             </span>
                                         </td>
                                         <td class="px-6 py-6 text-center">
-                                            <p class="text-lg font-bold text-slate-950">{{ $wallets->format($bundle->monthly_price) }}</p>
+                                            <p class="text-lg font-bold text-slate-950">{{ $wallets->format($bundle->monthly_price) }}<span class="text-xs font-bold text-slate-400">/ماهانه</span></p>
                                         </td>
                                         <td class="px-6 py-6 text-center">
-                                            <a href="{{ route('customer.register') }}" class="inline-flex justify-center rounded-xl bg-[#4C86E8] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#3E76D6]">
-                                                خرید
-                                            </a>
+                                            <p class="text-lg font-bold text-slate-950">{{ $wallets->format(round($bundle->monthly_price / 720)) }}<span class="text-xs font-bold text-slate-400">/ساعتی</span></p>
                                         </td>
                                     </tr>
                                 @empty
