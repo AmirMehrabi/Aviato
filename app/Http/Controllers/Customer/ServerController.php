@@ -546,7 +546,7 @@ class ServerController extends Controller
             ]);
         }
 
-        $this->usageBilling->chargeVm($server);
+        $this->usageBilling->accrueVm($server);
 
         if ($billingCustomer && $rebuildFee > 0) {
             $this->wallets->charge($billingCustomer, $rebuildFee, 'هزینه بازسازی ماشین مجازی '.$server->name, $server, [

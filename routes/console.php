@@ -15,10 +15,26 @@ use Illuminate\Support\Facades\Schedule;
 use Symfony\Component\Console\Command\Command;
 
 Artisan::command('billing:charge-usage', function (UsageBillingService $billing) {
-    $transactions = $billing->chargeAllDueUsage();
+    $accruals = $billing->accrueAllDueUsage();
 
-    $this->info(sprintf('Created %d usage charge transaction(s).', $transactions->count()));
-})->purpose('Charge accrued PAYG usage to customer wallets');
+    $this->info(sprintf(
+        'Updated %d usage accrual record(s), totaling %d IRR.',
+        $accruals->count(),
+        $accruals->sum('amount'),
+    ));
+})->purpose('Accrue hourly PAYG usage without creating wallet transactions');
+
+Artisan::command('billing:settle-usage {--date= : Service date to settle in YYYY-MM-DD format}', function (UsageBillingService $billing) {
+    $date = $this->option('date') ?: now()->subDay()->toDateString();
+    $settlements = $billing->settleDate($date);
+
+    $this->info(sprintf(
+        'Settled %d customer/project usage group(s) for %s, totaling %d IRR.',
+        $settlements->count(),
+        $date,
+        $settlements->sum('amount'),
+    ));
+})->purpose('Create daily aggregate wallet charges from hourly usage accruals');
 
 Artisan::command('billing:generate-monthly-invoices', function (InvoiceService $invoices) {
     $generated = $invoices->generateMonthlyInvoices();
@@ -283,6 +299,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('billing:charge-usage')->hourly();
+Schedule::command('billing:settle-usage')->dailyAt('00:05');
 Schedule::command('hetzner:sync-catalog')->hourlyAt(5);
 Schedule::command('billing:generate-monthly-invoices')->monthlyOn(1, '00:15');
 Schedule::command('backup:run-due')->everyFifteenMinutes();

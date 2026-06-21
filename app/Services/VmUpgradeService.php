@@ -66,7 +66,7 @@ class VmUpgradeService
 
             $this->assertVmCanUpgrade($locked);
             $this->assertBundleUpgrade($locked, $bundle);
-            $this->usageBilling->chargeVm($locked);
+            $this->usageBilling->accrueVm($locked);
 
             $preview = $this->previewBundleUpgrade($locked->refresh(), $bundle);
             $this->assertWalletCanStart($billingCustomer, $preview['minimum_wallet_balance']);
@@ -105,7 +105,7 @@ class VmUpgradeService
             $billingCustomer = $locked->project?->owner ?? $locked->customer;
             $this->assertVmCanUpgrade($locked);
             $this->assertExtraDiskSize($sizeGb);
-            $this->usageBilling->chargeVm($locked);
+            $this->usageBilling->accrueVm($locked);
 
             $preview = $this->previewExtraDisk($locked->refresh(), $sizeGb);
             $this->assertWalletCanStart($billingCustomer, $preview['minimum_wallet_balance']);

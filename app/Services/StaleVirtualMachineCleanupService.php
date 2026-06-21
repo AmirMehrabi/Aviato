@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\IpAddress;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
-use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -76,7 +75,7 @@ class StaleVirtualMachineCleanupService
     }
 
     /**
-     * @return array{vm: VirtualMachine, wallet_transaction: WalletTransaction|null, released_ip: string|null, deleted_vmid: int|null}
+     * @return array{vm: VirtualMachine, usage_accrual: \App\Models\UsageAccrual|null, released_ip: string|null, deleted_vmid: int|null}
      */
     public function cleanup(VirtualMachine $vm, string $source = 'manual'): array
     {
@@ -104,14 +103,14 @@ class StaleVirtualMachineCleanupService
             if ($locked->isDeleted()) {
                 return [
                     'vm' => $locked,
-                    'wallet_transaction' => null,
+                    'usage_accrual' => null,
                     'released_ip' => null,
                     'deleted_vmid' => null,
                 ];
             }
 
             $deletedVmid = $locked->vmid ? (int) $locked->vmid : null;
-            $walletTransaction = $locked->customer ? $this->usageBilling->chargeVm($locked) : null;
+            $usageAccrual = $locked->customer ? $this->usageBilling->accrueVm($locked) : null;
             $releasedIp = $this->releaseVmIp($locked);
 
             $locked->forceFill([
@@ -129,7 +128,7 @@ class StaleVirtualMachineCleanupService
                         'source' => $source,
                         'deleted_vmid' => $deletedVmid,
                         'released_ip' => $releasedIp,
-                        'wallet_transaction_id' => $walletTransaction?->id,
+                        'usage_accrual_id' => $usageAccrual?->id,
                         'cleaned_at' => now()->toISOString(),
                     ],
                 ]),
@@ -137,7 +136,7 @@ class StaleVirtualMachineCleanupService
 
             return [
                 'vm' => $locked,
-                'wallet_transaction' => $walletTransaction,
+                'usage_accrual' => $usageAccrual,
                 'released_ip' => $releasedIp,
                 'deleted_vmid' => $deletedVmid,
             ];

@@ -3,18 +3,22 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\UsageAccrual;
+use App\Models\UsageSettlement;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
 use App\Models\VmDisk;
-use App\Models\WalletTransaction;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class UsageBillingService
 {
     public function __construct(
         private readonly BillingService $billing,
         private readonly WalletService $wallets,
+        private readonly UsageBalanceService $usageBalances,
     ) {}
 
     /**
@@ -37,232 +41,426 @@ class UsageBillingService
             ];
         }
 
-        $hours = max(0, $from->floatDiffInHours($until));
+        $seconds = max(0, $from->diffInSeconds($until));
         $hourly = $vm->isRunning()
             ? $this->billing->hourlyWhenRunning($vm)
             : $this->billing->persistentHourly($vm);
-        $baseAmount = (int) ($vm->unbilled_amount ?? 0);
-        $computedAmount = (int) round($hours * $hourly);
 
         return [
             'from' => $from,
             'until' => $until,
-            'hours' => $hours,
+            'hours' => $seconds / 3600,
             'hourly_rate' => $hourly,
-            'amount' => max(0, $baseAmount + $computedAmount),
+            'amount' => max(0, (int) ($vm->unbilled_amount ?? 0) + (int) round($seconds * $hourly / 3600)),
             'status' => $vm->status,
             'is_running' => $vm->isRunning(),
         ];
     }
 
-    public function chargeVm(VirtualMachine $vm, ?CarbonInterface $until = null): ?WalletTransaction
+    public function accrueVm(VirtualMachine $vm, ?CarbonInterface $until = null): ?UsageAccrual
     {
-        $vm->loadMissing(['customer', 'bundle', 'project.owner', 'creator']);
-        $billingCustomer = $vm->project?->owner ?? $vm->customer;
-        $usage = $this->estimateVmUsage($vm, $until);
+        return DB::transaction(function () use ($vm, $until): ?UsageAccrual {
+            $locked = VirtualMachine::query()
+                ->with(['customer', 'bundle', 'project.owner', 'creator'])
+                ->whereKey($vm->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $until ??= now();
+            $usage = $this->estimateVmUsage($locked, $until);
+            $billingCustomer = $locked->project?->owner ?? $locked->customer;
 
-        if ($usage['amount'] <= 0 || ! $billingCustomer) {
-            return null;
-        }
+            if (! $billingCustomer) {
+                return null;
+            }
 
-        $transaction = $this->wallets->charge(
-            $billingCustomer,
-            $usage['amount'],
-            'کسر کارکرد PAYG برای ماشین مجازی '.$vm->name,
-            metadata: [
-                'category' => 'payg_usage',
-                'vm_id' => $vm->id,
-                'vm_name' => $vm->name,
-                'project_id' => $vm->project_id,
-                'project_name' => $vm->project?->name,
-                'project_owner_id' => $billingCustomer->id,
-                'created_by_customer_id' => $vm->created_by_customer_id,
-                'bundle_id' => $vm->vm_bundle_id,
-                'period_start' => $usage['from']->toIso8601String(),
-                'period_end' => $usage['until']->toIso8601String(),
-                'hours' => round($usage['hours'], 4),
-                'hourly_rate' => $usage['hourly_rate'],
-                'resource_snapshot' => [
-                    'cpu_cores' => $vm->cpu_cores,
-                    'ram_gb' => $vm->ram_gb,
-                    'disk_gb' => $vm->disk_gb,
-                    'ip_count' => $vm->ip_count,
-                    'status' => $vm->status,
-                    'bundle_name' => $vm->bundle?->name,
+            if ($usage['amount'] <= 0 && (int) ($locked->unbilled_amount ?? 0) <= 0) {
+                $locked->forceFill(['last_billed_at' => $until])->save();
+
+                return null;
+            }
+
+            $accrual = $this->accrueInterval(
+                customer: $billingCustomer,
+                projectId: $locked->project_id,
+                category: UsageAccrual::CATEGORY_VM,
+                resourceType: 'virtual_machine',
+                resourceId: $locked->id,
+                virtualMachineId: $locked->id,
+                resourceName: $locked->name,
+                from: $usage['from'],
+                until: $usage['until'],
+                hourlyRate: (float) $usage['hourly_rate'],
+                snapshot: [
+                    'project_id' => $locked->project_id,
+                    'project_name' => $locked->project?->name,
+                    'project_owner_id' => $billingCustomer->id,
+                    'created_by_customer_id' => $locked->created_by_customer_id,
+                    'bundle_id' => $locked->vm_bundle_id,
+                    'cpu_cores' => $locked->cpu_cores,
+                    'ram_gb' => $locked->ram_gb,
+                    'disk_gb' => $locked->disk_gb,
+                    'ip_count' => $locked->ip_count,
+                    'status' => $locked->status,
+                    'bundle_name' => $locked->bundle?->name,
+                    'provider' => $locked->provider ?: VirtualMachine::PROVIDER_PROXMOX,
+                    'provider_price_snapshot' => $locked->isHetzner() ? $this->billing->hetznerPriceSnapshot($locked) : null,
                 ],
-                'provider' => $vm->provider ?: VirtualMachine::PROVIDER_PROXMOX,
-                'provider_price_snapshot' => $vm->isHetzner() ? $this->billing->hetznerPriceSnapshot($vm) : null,
-            ],
-        );
+                carryAmount: (int) ($locked->unbilled_amount ?? 0),
+            );
 
-        $vm->forceFill([
-            'last_billed_at' => $usage['until'],
-            'unbilled_amount' => 0,
-        ])->save();
+            $locked->forceFill([
+                'last_billed_at' => $until,
+                'unbilled_amount' => 0,
+            ])->save();
 
-        return $transaction;
+            return $accrual;
+        });
+    }
+
+    public function accrueBackup(VmBackup $backup, ?CarbonInterface $until = null): ?UsageAccrual
+    {
+        return DB::transaction(function () use ($backup, $until): ?UsageAccrual {
+            $locked = VmBackup::query()
+                ->with('virtualMachine.project.owner', 'virtualMachine.customer')
+                ->whereKey($backup->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $until ??= now();
+            $vm = $locked->virtualMachine;
+            $billingCustomer = $vm?->project?->owner ?? $vm?->customer;
+            $from = $locked->last_billed_at ?? $locked->finished_at ?? $locked->created_at ?? $until;
+
+            if (! $billingCustomer || ! $vm || $locked->status !== VmBackup::STATUS_READY || $locked->size_bytes <= 0) {
+                return null;
+            }
+
+            $accrual = $this->accrueInterval(
+                customer: $billingCustomer,
+                projectId: $vm->project_id,
+                category: UsageAccrual::CATEGORY_BACKUP,
+                resourceType: 'vm_backup',
+                resourceId: $locked->id,
+                virtualMachineId: $vm->id,
+                resourceName: $vm->name,
+                from: $from,
+                until: $until,
+                hourlyRate: $this->billing->backupHourly($locked),
+                snapshot: [
+                    'project_id' => $vm->project_id,
+                    'project_name' => $vm->project?->name,
+                    'project_owner_id' => $billingCustomer->id,
+                    'created_by_customer_id' => $vm->created_by_customer_id,
+                    'size_gb' => round($locked->sizeGb(), 4),
+                    'size_bytes' => $locked->size_bytes,
+                    'volid' => $locked->volid,
+                    'storage' => $locked->storage,
+                ],
+            );
+
+            $locked->forceFill(['last_billed_at' => $until])->save();
+
+            return $accrual;
+        });
+    }
+
+    public function accrueExtraDisk(VmDisk $disk, ?CarbonInterface $until = null): ?UsageAccrual
+    {
+        return DB::transaction(function () use ($disk, $until): ?UsageAccrual {
+            $locked = VmDisk::query()
+                ->with('virtualMachine.project.owner', 'virtualMachine.customer')
+                ->whereKey($disk->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $until ??= now();
+            $vm = $locked->virtualMachine;
+            $billingCustomer = $vm?->project?->owner ?? $vm?->customer;
+            $from = $locked->last_billed_at ?? $locked->created_at ?? $until;
+
+            if (! $billingCustomer || ! $vm || $locked->status !== VmDisk::STATUS_READY) {
+                return null;
+            }
+
+            $accrual = $this->accrueInterval(
+                customer: $billingCustomer,
+                projectId: $vm->project_id,
+                category: UsageAccrual::CATEGORY_EXTRA_DISK,
+                resourceType: 'vm_disk',
+                resourceId: $locked->id,
+                virtualMachineId: $vm->id,
+                resourceName: $vm->name,
+                from: $from,
+                until: $until,
+                hourlyRate: $this->billing->extraDiskHourly($locked),
+                snapshot: [
+                    'project_id' => $vm->project_id,
+                    'project_name' => $vm->project?->name,
+                    'project_owner_id' => $billingCustomer->id,
+                    'created_by_customer_id' => $vm->created_by_customer_id,
+                    'disk_device' => $locked->disk_device,
+                    'size_gb' => $locked->size_gb,
+                    'storage' => $locked->storage,
+                ],
+            );
+
+            $locked->forceFill(['last_billed_at' => $until])->save();
+
+            return $accrual;
+        });
     }
 
     /**
-     * @return Collection<int, WalletTransaction>
+     * @return Collection<int, UsageAccrual>
      */
-    public function chargeAllDueUsage(?CarbonInterface $until = null): Collection
+    public function accrueAllDueUsage(?CarbonInterface $until = null): Collection
     {
-        $transactions = new Collection;
+        $accruals = new Collection;
         $until ??= now();
 
         VirtualMachine::query()
             ->notDeleted()
-            ->with(['customer', 'bundle', 'project.owner', 'creator'])
             ->whereNotIn('status', [VirtualMachine::STATUS_DELETING, VirtualMachine::STATUS_DELETED])
-            ->orderBy('project_id')
-            ->chunk(100, function ($vms) use (&$transactions, $until): void {
+            ->orderBy('id')
+            ->chunkById(100, function ($vms) use ($accruals, $until): void {
                 foreach ($vms as $vm) {
-                    $transaction = $this->chargeVm($vm, $until);
-
-                    if ($transaction) {
-                        $transactions->push($transaction);
+                    if ($accrual = $this->accrueVm($vm, $until)) {
+                        $accruals->push($accrual);
                     }
                 }
             });
 
         VmBackup::query()
-            ->with('virtualMachine.project.owner', 'virtualMachine.customer')
             ->where('status', VmBackup::STATUS_READY)
             ->where('size_bytes', '>', 0)
-            ->chunk(100, function ($backups) use (&$transactions, $until): void {
+            ->orderBy('id')
+            ->chunkById(100, function ($backups) use ($accruals, $until): void {
                 foreach ($backups as $backup) {
-                    $transaction = $this->chargeBackup($backup, $until);
-
-                    if ($transaction) {
-                        $transactions->push($transaction);
+                    if ($accrual = $this->accrueBackup($backup, $until)) {
+                        $accruals->push($accrual);
                     }
                 }
             });
 
         VmDisk::query()
-            ->with('virtualMachine.project.owner', 'virtualMachine.customer')
             ->where('status', VmDisk::STATUS_READY)
-            ->chunk(100, function ($disks) use (&$transactions, $until): void {
+            ->orderBy('id')
+            ->chunkById(100, function ($disks) use ($accruals, $until): void {
                 foreach ($disks as $disk) {
-                    $transaction = $this->chargeExtraDisk($disk, $until);
-
-                    if ($transaction) {
-                        $transactions->push($transaction);
+                    if ($accrual = $this->accrueExtraDisk($disk, $until)) {
+                        $accruals->push($accrual);
                     }
                 }
             });
 
-        return $transactions;
+        return $accruals;
     }
 
-    public function chargeBackup(VmBackup $backup, ?CarbonInterface $until = null): ?WalletTransaction
+    /**
+     * @return Collection<int, UsageSettlement>
+     */
+    public function settleDate(CarbonInterface|string $date): Collection
     {
-        $backup->loadMissing('virtualMachine.project.owner', 'virtualMachine.customer');
-        $until ??= now();
-        $vm = $backup->virtualMachine;
-        $billingCustomer = $vm?->project?->owner ?? $vm?->customer;
-        $from = $backup->last_billed_at ?? $backup->finished_at ?? $backup->created_at ?? $until;
-        $hours = max(0, $from->floatDiffInHours($until));
-        $hourly = $this->billing->backupHourly($backup);
-        $amount = (int) round($hours * $hourly);
+        $serviceDate = CarbonImmutable::parse($date)->toDateString();
+        $settlements = new Collection;
 
-        if ($amount <= 0 || ! $billingCustomer || ! $vm) {
-            return null;
-        }
+        UsageAccrual::query()
+            ->whereDate('service_date', $serviceDate)
+            ->whereNull('settled_at')
+            ->select(['customer_id', 'project_id', 'scope_key'])
+            ->distinct()
+            ->orderBy('customer_id')
+            ->get()
+            ->each(function (UsageAccrual $scope) use ($serviceDate, $settlements): void {
+                $settlement = DB::transaction(function () use ($scope, $serviceDate): UsageSettlement {
+                    $settlement = UsageSettlement::query()->firstOrCreate([
+                        'customer_id' => $scope->customer_id,
+                        'scope_key' => $scope->scope_key,
+                        'service_date' => $serviceDate,
+                    ], [
+                        'project_id' => $scope->project_id,
+                    ]);
+                    $settlement = UsageSettlement::query()->whereKey($settlement->id)->lockForUpdate()->firstOrFail();
 
-        $transaction = $this->wallets->charge(
-            $billingCustomer,
-            $amount,
-            'کسر فضای بکاپ برای ماشین مجازی '.$vm->name,
-            metadata: [
-                'category' => 'backup_storage',
-                'vm_id' => $backup->virtual_machine_id,
-                'vm_name' => $vm->name,
-                'project_id' => $vm->project_id,
-                'project_name' => $vm->project?->name,
-                'project_owner_id' => $billingCustomer->id,
-                'created_by_customer_id' => $vm->created_by_customer_id,
-                'backup_id' => $backup->id,
-                'period_start' => $from->toIso8601String(),
-                'period_end' => $until->toIso8601String(),
-                'hours' => round($hours, 4),
-                'hourly_rate' => $hourly,
-                'backup_snapshot' => [
-                    'size_gb' => round($backup->sizeGb(), 4),
-                    'size_bytes' => $backup->size_bytes,
-                    'volid' => $backup->volid,
-                    'storage' => $backup->storage,
-                ],
-            ],
-        );
+                    if ($settlement->settled_at) {
+                        return $settlement;
+                    }
 
-        $backup->forceFill(['last_billed_at' => $until])->save();
+                    $accruals = UsageAccrual::query()
+                        ->where('customer_id', $scope->customer_id)
+                        ->where('scope_key', $scope->scope_key)
+                        ->whereDate('service_date', $serviceDate)
+                        ->whereNull('settled_at')
+                        ->lockForUpdate()
+                        ->get();
+                    $amount = (int) $accruals->sum('amount');
 
-        return $transaction;
-    }
+                    $settlement->forceFill(['amount' => $amount])->save();
 
-    public function chargeExtraDisk(VmDisk $disk, ?CarbonInterface $until = null): ?WalletTransaction
-    {
-        $disk->loadMissing('virtualMachine.project.owner', 'virtualMachine.customer');
-        $until ??= now();
-        $vm = $disk->virtualMachine;
-        $billingCustomer = $vm?->project?->owner ?? $vm?->customer;
-        $from = $disk->last_billed_at ?? $disk->created_at ?? $until;
-        $hours = max(0, $from->floatDiffInHours($until));
-        $hourly = $this->billing->extraDiskHourly($disk);
-        $amount = (int) round($hours * $hourly);
+                    $transaction = $amount > 0
+                        ? $this->wallets->charge(
+                            $settlement->customer,
+                            $amount,
+                            'کسر تجمیعی کارکرد PAYG روزانه',
+                            reference: $settlement,
+                            metadata: [
+                                'category' => 'usage_settlement',
+                                'service_date' => $serviceDate,
+                                'project_id' => $scope->project_id,
+                                'resource_count' => $accruals->count(),
+                                'categories' => $accruals->groupBy('category')->map->count()->all(),
+                            ],
+                        )
+                        : null;
 
-        if ($amount <= 0 || ! $billingCustomer || ! $vm) {
-            return null;
-        }
+                    $settledAt = now();
+                    $settlement->forceFill([
+                        'wallet_transaction_id' => $transaction?->id,
+                        'settled_at' => $settledAt,
+                    ])->save();
+                    $accruals->each->forceFill([
+                        'usage_settlement_id' => $settlement->id,
+                        'settled_at' => $settledAt,
+                    ])->each->save();
 
-        $transaction = $this->wallets->charge(
-            $billingCustomer,
-            $amount,
-            'کسر فضای دیسک اضافه برای ماشین مجازی '.$vm->name,
-            metadata: [
-                'category' => 'extra_disk_storage',
-                'vm_id' => $disk->virtual_machine_id,
-                'vm_name' => $vm->name,
-                'project_id' => $vm->project_id,
-                'project_name' => $vm->project?->name,
-                'project_owner_id' => $billingCustomer->id,
-                'created_by_customer_id' => $vm->created_by_customer_id,
-                'disk_id' => $disk->id,
-                'period_start' => $from->toIso8601String(),
-                'period_end' => $until->toIso8601String(),
-                'hours' => round($hours, 4),
-                'hourly_rate' => $hourly,
-                'disk_snapshot' => [
-                    'disk_device' => $disk->disk_device,
-                    'size_gb' => $disk->size_gb,
-                    'storage' => $disk->storage,
-                ],
-            ],
-        );
+                    return $settlement->refresh();
+                });
 
-        $disk->forceFill(['last_billed_at' => $until])->save();
+                $settlements->push($settlement);
+            });
 
-        return $transaction;
+        return $settlements;
     }
 
     public function customerPendingUsage(Customer $customer): int
     {
-        return $customer->virtualMachines()
-            ->notDeleted()
-            ->with('bundle')
-            ->get()
-            ->sum(fn (VirtualMachine $vm): int => $this->estimateVmUsage($vm)['amount']);
+        return $this->usageBalances->customerPendingUsage($customer);
     }
 
     public function projectPendingUsage(int $projectId): int
     {
-        return VirtualMachine::query()
-            ->where('project_id', $projectId)
-            ->notDeleted()
-            ->with('bundle')
-            ->get()
-            ->sum(fn (VirtualMachine $vm): int => $this->estimateVmUsage($vm)['amount']);
+        return $this->usageBalances->projectPendingUsage($projectId);
+    }
+
+    // Compatibility aliases for lifecycle callers while they transition to accrual terminology.
+    public function chargeVm(VirtualMachine $vm, ?CarbonInterface $until = null): ?UsageAccrual
+    {
+        return $this->accrueVm($vm, $until);
+    }
+
+    public function chargeBackup(VmBackup $backup, ?CarbonInterface $until = null): ?UsageAccrual
+    {
+        return $this->accrueBackup($backup, $until);
+    }
+
+    public function chargeExtraDisk(VmDisk $disk, ?CarbonInterface $until = null): ?UsageAccrual
+    {
+        return $this->accrueExtraDisk($disk, $until);
+    }
+
+    /**
+     * @return Collection<int, UsageAccrual>
+     */
+    public function chargeAllDueUsage(?CarbonInterface $until = null): Collection
+    {
+        return $this->accrueAllDueUsage($until);
+    }
+
+    private function accrueInterval(
+        Customer $customer,
+        ?int $projectId,
+        string $category,
+        string $resourceType,
+        int $resourceId,
+        ?int $virtualMachineId,
+        string $resourceName,
+        CarbonInterface $from,
+        CarbonInterface $until,
+        float $hourlyRate,
+        array $snapshot,
+        int $carryAmount = 0,
+    ): ?UsageAccrual {
+        $cursor = CarbonImmutable::instance($from->toImmutable());
+        $end = CarbonImmutable::instance($until->toImmutable());
+        $lastAccrual = null;
+        $scopeKey = $projectId ? 'project:'.$projectId : 'customer:'.$customer->id;
+
+        if ($carryAmount > 0 && $cursor->greaterThanOrEqualTo($end)) {
+            $end = $cursor->addSecond();
+        }
+
+        while ($cursor->lessThan($end)) {
+            $segmentEnd = min($cursor->endOfDay()->addSecond(), $end);
+            $seconds = max(0, $cursor->diffInSeconds($segmentEnd));
+            $serviceDate = $cursor->toDateString();
+            $accrual = UsageAccrual::query()->firstOrCreate([
+                'customer_id' => $customer->id,
+                'scope_key' => $scopeKey,
+                'category' => $category,
+                'resource_type' => $resourceType,
+                'resource_id' => $resourceId,
+                'service_date' => $serviceDate,
+            ], [
+                'project_id' => $projectId,
+                'virtual_machine_id' => $virtualMachineId,
+                'resource_name' => $resourceName,
+                'period_start' => $cursor,
+                'period_end' => $segmentEnd,
+                'snapshot' => $snapshot,
+                'segments' => [],
+            ]);
+            $accrual = UsageAccrual::query()->whereKey($accrual->id)->lockForUpdate()->firstOrFail();
+
+            if ($accrual->settled_at) {
+                throw new \RuntimeException('Cannot append usage to an already settled accrual period.');
+            }
+
+            $segments = $accrual->segments ?? [];
+            $segment = [
+                'period_start' => $cursor->toIso8601String(),
+                'period_end' => $segmentEnd->toIso8601String(),
+                'seconds' => $seconds,
+                'hourly_rate' => $hourlyRate,
+                'amount' => (int) round($seconds * $hourlyRate / 3600),
+            ];
+            $lastIndex = array_key_last($segments);
+
+            if ($lastIndex !== null
+                && (float) $segments[$lastIndex]['hourly_rate'] === $hourlyRate
+                && ($segments[$lastIndex]['period_end'] ?? null) === $segment['period_start']) {
+                $segments[$lastIndex]['period_end'] = $segment['period_end'];
+                $segments[$lastIndex]['seconds'] += $seconds;
+                $segments[$lastIndex]['amount'] = (int) round($segments[$lastIndex]['seconds'] * $hourlyRate / 3600);
+            } else {
+                $segments[] = $segment;
+            }
+
+            if ($carryAmount > 0) {
+                $segments[] = [
+                    'period_start' => $cursor->toIso8601String(),
+                    'period_end' => $cursor->toIso8601String(),
+                    'seconds' => 0,
+                    'hourly_rate' => 0,
+                    'amount' => $carryAmount,
+                    'type' => 'carry',
+                ];
+                $carryAmount = 0;
+            }
+
+            $accrual->forceFill([
+                'project_id' => $projectId,
+                'virtual_machine_id' => $virtualMachineId,
+                'resource_name' => $resourceName,
+                'period_start' => min($accrual->period_start, $cursor),
+                'period_end' => max($accrual->period_end, $segmentEnd),
+                'accrued_seconds' => collect($segments)->sum('seconds'),
+                'amount' => collect($segments)->sum('amount'),
+                'segments' => $segments,
+                'snapshot' => $snapshot,
+            ])->save();
+
+            $lastAccrual = $accrual;
+            $cursor = $segmentEnd;
+        }
+
+        return $lastAccrual;
     }
 }

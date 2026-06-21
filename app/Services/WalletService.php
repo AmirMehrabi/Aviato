@@ -13,7 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class WalletService
 {
-    public function __construct(private readonly CustomerWalletAlertService $walletAlerts) {}
+    public function __construct(
+        private readonly CustomerWalletAlertService $walletAlerts,
+        private readonly UsageBalanceService $usageBalances,
+    ) {}
 
     public function walletFor(Customer $customer): Wallet
     {
@@ -60,7 +63,7 @@ class WalletService
 
     public function isBelowNegativeThreshold(Customer $customer): bool
     {
-        return $this->walletFor($customer)->balance < $this->customerWalletNegativeThreshold();
+        return $this->usageBalances->effectiveBalance($customer) < $this->customerWalletNegativeThreshold();
     }
 
     private function formattedAmount(int $amount, string $currency): string

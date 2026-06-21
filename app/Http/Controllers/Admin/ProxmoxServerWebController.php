@@ -184,7 +184,7 @@ class ProxmoxServerWebController extends Controller
                 'Stale VM #%d was deleted locally. Released IP: %s. Billing transaction: %s.',
                 $result['vm']->id,
                 $result['released_ip'] ?? 'none',
-                $result['wallet_transaction']?->id ?? 'none',
+                $result['usage_accrual']?->id ?? 'none',
             ));
         } catch (Throwable $exception) {
             return back()->with('error', 'Stale VM cleanup was blocked: '.$exception->getMessage());

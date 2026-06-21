@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Models\IpAddress;
 use App\Models\VirtualMachine;
-use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -66,7 +65,7 @@ class VirtualMachineDeletionService
             }
 
             if ($locked->customer) {
-                $this->usageBilling->chargeVm($locked);
+                $this->usageBilling->accrueVm($locked);
             }
 
             $locked->forceFill([
@@ -136,7 +135,7 @@ class VirtualMachineDeletionService
 
     /**
      * @param  array<string, mixed>  $remoteEvidence
-     * @return array{vm: VirtualMachine, wallet_transaction: WalletTransaction|null, released_ip: string|null, deleted_vmid: int|null}
+     * @return array{vm: VirtualMachine, usage_accrual: \App\Models\UsageAccrual|null, released_ip: string|null, deleted_vmid: int|null}
      */
     public function finalizeLocalDelete(VirtualMachine $vm, string $source, array $remoteEvidence = []): array
     {
@@ -161,14 +160,14 @@ class VirtualMachineDeletionService
 
                 return [
                     'vm' => $locked,
-                    'wallet_transaction' => null,
+                    'usage_accrual' => null,
                     'released_ip' => null,
                     'deleted_vmid' => null,
                 ];
             }
 
             $deletedVmid = $locked->vmid ? (int) $locked->vmid : null;
-            $walletTransaction = $locked->customer ? $this->usageBilling->chargeVm($locked) : null;
+            $usageAccrual = $locked->customer ? $this->usageBilling->accrueVm($locked) : null;
             $releasedIp = $this->releaseVmIp($locked);
             $deleteSteps = data_get($locked->remote_state, 'delete_steps', []);
             $deleteSteps[] = array_merge($remoteEvidence, [
@@ -193,7 +192,7 @@ class VirtualMachineDeletionService
                     'deleted_at' => now()->toISOString(),
                     'delete_finalized_by' => $source,
                     'released_ip' => $releasedIp,
-                    'wallet_transaction_id' => $walletTransaction?->id,
+                    'usage_accrual_id' => $usageAccrual?->id,
                 ]),
             ])->save();
 
@@ -202,12 +201,12 @@ class VirtualMachineDeletionService
                 'source' => $source,
                 'deleted_vmid' => $deletedVmid,
                 'released_ip' => $releasedIp,
-                'wallet_transaction_id' => $walletTransaction?->id,
+                'usage_accrual_id' => $usageAccrual?->id,
             ]);
 
             return [
                 'vm' => $locked,
-                'wallet_transaction' => $walletTransaction,
+                'usage_accrual' => $usageAccrual,
                 'released_ip' => $releasedIp,
                 'deleted_vmid' => $deletedVmid,
             ];
