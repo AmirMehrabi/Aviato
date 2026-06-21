@@ -33,9 +33,6 @@
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <h2 class="text-2xl font-black text-slate-950 sm:text-3xl">افزایش موجودی</h2>
-                        <p class="mt-2 max-w-2xl text-sm font-bold leading-7 text-slate-500">
-                            مبلغ را به تومان انتخاب کنید. موجودی پس از تایید قطعی درگاه به کیف پول اضافه می‌شود.
-                        </p>
                     </div>
                     <span class="inline-flex w-fit items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">
                         <span class="size-2 rounded-full bg-[#00A67E]"></span>
@@ -59,7 +56,7 @@
                         <fieldset>
                             <div class="flex items-center justify-between gap-3">
                                 <legend class="text-sm font-black text-slate-800">مبلغ شارژ</legend>
-                                <span class="text-xs font-bold text-slate-400">تمام مبلغ‌ها به تومان است</span>
+                                {{-- <span class="text-xs font-bold text-slate-400">تمام مبلغ‌ها به تومان است</span> --}}
                             </div>
 
                             <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -122,7 +119,7 @@
                                         </span>
                                         <span class="min-w-0">
                                             <span class="block text-sm font-black text-slate-950">{{ $label }}</span>
-                                            <span class="mt-1 block text-xs font-bold text-slate-500">بازگشت خودکار پس از پرداخت</span>
+                                            {{-- <span class="mt-1 block text-xs font-bold text-slate-500">بازگشت خودکار پس از پرداخت</span> --}}
                                         </span>
                                         <span
                                             class="mr-auto grid size-5 shrink-0 place-items-center rounded-full border"

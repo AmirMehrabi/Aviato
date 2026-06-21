@@ -176,7 +176,7 @@ class CustomerWalletBillingTest extends TestCase
             ->assertSee('300,000')
             ->assertSee('1,000,000')
             ->assertSee('2,500,000')
-            ->assertSee('تمام مبلغ‌ها به تومان است')
+            // ->assertSee('تمام مبلغ‌ها به تومان است')
             ->assertSee('مبلغ دلخواه (تومان)')
             ->assertSee('پرداخت و افزایش موجودی');
     }
