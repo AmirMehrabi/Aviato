@@ -20,6 +20,7 @@ use App\Services\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Mockery;
 use Tests\TestCase;
@@ -353,6 +354,7 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertDatabaseCount('wallet_transactions', 0);
         $this->assertSame(0, $customer->wallet()->firstOrFail()->balance);
         $this->assertSame(3000, app(UsageBillingService::class)->customerPendingUsage($customer));
+        $this->assertTrue(app(WalletService::class)->isBelowNegativeThreshold($customer));
         $this->assertTrue($vm->last_billed_at->equalTo(now()));
 
         Artisan::call('billing:settle-usage', ['--date' => now()->toDateString()]);
@@ -460,7 +462,7 @@ class CustomerWalletBillingTest extends TestCase
         [$periodStart, $periodEnd] = app(InvoiceService::class)->previousMonthPeriod();
         $this->assertSame('2026-06-01', $periodStart->toDateString());
         $this->assertSame('2026-06-30', $periodEnd->toDateString());
-        $this->assertNotNull(\Illuminate\Support\Facades\DB::table('usage_accruals')->value('settled_at'));
+        $this->assertNotNull(DB::table('usage_accruals')->value('settled_at'));
         $invoice = app(InvoiceService::class)->generateForCustomer($customer, $periodStart, $periodEnd);
 
         $this->assertNotNull($invoice);

@@ -181,7 +181,7 @@ class ProxmoxServerWebController extends Controller
             $result = $this->staleCleanup->cleanup($virtualMachine, 'admin-single');
 
             return back()->with('status', sprintf(
-                'Stale VM #%d was deleted locally. Released IP: %s. Billing transaction: %s.',
+                'Stale VM #%d was deleted locally. Released IP: %s. Usage accrual: %s.',
                 $result['vm']->id,
                 $result['released_ip'] ?? 'none',
                 $result['usage_accrual']?->id ?? 'none',
