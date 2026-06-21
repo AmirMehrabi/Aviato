@@ -102,38 +102,42 @@
                             @enderror
                         </div>
 
-                        <fieldset class="mt-7">
-                            <legend class="text-sm font-black text-slate-800">انتخاب درگاه پرداخت</legend>
-                            <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                                @foreach ($availablePaymentGateways as $gatewayKey => $label)
-                                    <label
-                                        class="flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition"
-                                        :class="gateway === @js($gatewayKey) ? 'border-[#0069FF] bg-[#EBF3FF]' : 'border-slate-200 bg-white hover:border-[#B8D6FF]'"
-                                    >
-                                        <input x-model="gateway" type="radio" name="gateway" value="{{ $gatewayKey }}" class="sr-only">
-                                        <span
-                                            class="grid size-10 shrink-0 place-items-center rounded-xl text-sm font-black"
-                                            :class="gateway === @js($gatewayKey) ? 'bg-[#0069FF] text-white' : 'bg-slate-100 text-slate-500'"
+                        @if (count($availablePaymentGateways) === 1)
+                            <input type="hidden" name="gateway" value="{{ array_key_first($availablePaymentGateways) }}">
+                        @else
+                            <fieldset class="mt-7">
+                                <legend class="text-sm font-black text-slate-800">انتخاب درگاه پرداخت</legend>
+                                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                                    @foreach ($availablePaymentGateways as $gatewayKey => $label)
+                                        <label
+                                            class="flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition"
+                                            :class="gateway === @js($gatewayKey) ? 'border-[#0069FF] bg-[#EBF3FF]' : 'border-slate-200 bg-white hover:border-[#B8D6FF]'"
                                         >
-                                            {{ mb_substr($label, 0, 1) }}
-                                        </span>
-                                        <span class="min-w-0">
-                                            <span class="block text-sm font-black text-slate-950">{{ $label }}</span>
-                                            {{-- <span class="mt-1 block text-xs font-bold text-slate-500">بازگشت خودکار پس از پرداخت</span> --}}
-                                        </span>
-                                        <span
-                                            class="mr-auto grid size-5 shrink-0 place-items-center rounded-full border"
-                                            :class="gateway === @js($gatewayKey) ? 'border-[#0069FF] bg-[#0069FF]' : 'border-slate-300 bg-white'"
-                                        >
-                                            <span x-show="gateway === @js($gatewayKey)" class="size-2 rounded-full bg-white"></span>
-                                        </span>
-                                    </label>
-                                @endforeach
-                            </div>
-                            @error('gateway')
-                                <p class="mt-2 text-sm font-bold text-rose-600">{{ $message }}</p>
-                            @enderror
-                        </fieldset>
+                                            <input x-model="gateway" type="radio" name="gateway" value="{{ $gatewayKey }}" class="sr-only">
+                                            <span
+                                                class="grid size-10 shrink-0 place-items-center rounded-xl text-sm font-black"
+                                                :class="gateway === @js($gatewayKey) ? 'bg-[#0069FF] text-white' : 'bg-slate-100 text-slate-500'"
+                                            >
+                                                {{ mb_substr($label, 0, 1) }}
+                                            </span>
+                                            <span class="min-w-0">
+                                                <span class="block text-sm font-black text-slate-950">{{ $label }}</span>
+                                                {{-- <span class="mt-1 block text-xs font-bold text-slate-500">بازگشت خودکار پس از پرداخت</span> --}}
+                                            </span>
+                                            <span
+                                                class="mr-auto grid size-5 shrink-0 place-items-center rounded-full border"
+                                                :class="gateway === @js($gatewayKey) ? 'border-[#0069FF] bg-[#0069FF]' : 'border-slate-300 bg-white'"
+                                            >
+                                                <span x-show="gateway === @js($gatewayKey)" class="size-2 rounded-full bg-white"></span>
+                                            </span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                                @error('gateway')
+                                    <p class="mt-2 text-sm font-bold text-rose-600">{{ $message }}</p>
+                                @enderror
+                            </fieldset>
+                        @endif
 
                         <div class="mt-7 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>

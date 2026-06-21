@@ -178,7 +178,23 @@ class CustomerWalletBillingTest extends TestCase
             ->assertSee('2,500,000')
             // ->assertSee('تمام مبلغ‌ها به تومان است')
             ->assertSee('مبلغ دلخواه (تومان)')
-            ->assertSee('پرداخت و افزایش موجودی');
+            ->assertSee('پرداخت و افزایش موجودی')
+            ->assertDontSee('انتخاب درگاه پرداخت')
+            ->assertSee('type="hidden" name="gateway" value="mellat"', false);
+    }
+
+    public function test_wallet_page_shows_gateway_selector_when_multiple_gateways_are_available(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->enableHesabroGateway();
+
+        $this->actingAs($customer, 'customer')
+            ->get($this->customerBaseUrl.'/wallet')
+            ->assertOk()
+            ->assertSee('انتخاب درگاه پرداخت')
+            ->assertSee('بانک ملت')
+            ->assertSee('حسابرو');
     }
 
     public function test_customer_can_choose_hesabro_and_receive_payment_link(): void
