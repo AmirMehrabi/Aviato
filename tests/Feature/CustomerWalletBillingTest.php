@@ -105,7 +105,48 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertSame(0, $customer->wallet()->firstOrFail()->balance);
     }
 
-    public function test_wallet_top_up_rejects_custom_amount_below_mellat_minimum(): void
+    public function test_wallet_top_up_converts_toman_amount_to_rials(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+
+        $this->actingAs($customer, 'customer')
+            ->post($this->customerBaseUrl.'/wallet/top-ups', [
+                'amount_toman' => 300000,
+                'gateway' => 'mellat',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/wallet/payments/1/gateway');
+
+        $this->assertDatabaseHas('payments', [
+            'customer_id' => $customer->id,
+            'provider' => 'mellat',
+            'status' => Payment::STATUS_PENDING,
+            'amount' => 3000000,
+            'currency' => 'IRR',
+        ]);
+    }
+
+    public function test_wallet_top_up_normalizes_persian_digits_and_separators(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+
+        $this->actingAs($customer, 'customer')
+            ->post($this->customerBaseUrl.'/wallet/top-ups', [
+                'amount_toman' => '۱٬۲۵۰٬۰۰۰',
+                'gateway' => 'mellat',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/wallet/payments/1/gateway');
+
+        $this->assertDatabaseHas('payments', [
+            'customer_id' => $customer->id,
+            'amount' => 12500000,
+        ]);
+    }
+
+    public function test_wallet_top_up_rejects_amount_below_minimum(): void
     {
         $customer = Customer::factory()->create();
         $this->enableMellatGateway();
@@ -114,10 +155,11 @@ class CustomerWalletBillingTest extends TestCase
         $this->actingAs($customer, 'customer')
             ->from($this->customerBaseUrl.'/wallet')
             ->post($this->customerBaseUrl.'/wallet/top-ups', [
-                'custom_amount' => 999999,
+                'amount_toman' => 99999,
+                'gateway' => 'mellat',
             ])
             ->assertRedirect($this->customerBaseUrl.'/wallet')
-            ->assertSessionHasErrors('custom_amount');
+            ->assertSessionHasErrors('amount_toman');
 
         $this->assertDatabaseCount('payments', 0);
     }
@@ -130,10 +172,13 @@ class CustomerWalletBillingTest extends TestCase
         $this->actingAs($customer, 'customer')
             ->get($this->customerBaseUrl.'/wallet')
             ->assertOk()
-            ->assertSee('100,000 تومان')
-            ->assertSee('300,000 تومان')
-            ->assertSee('1,000,000 تومان')
-            ->assertSee('2,500,000 تومان');
+            ->assertSee('100,000')
+            ->assertSee('300,000')
+            ->assertSee('1,000,000')
+            ->assertSee('2,500,000')
+            ->assertSee('تمام مبلغ‌ها به تومان است')
+            ->assertSee('مبلغ دلخواه (تومان)')
+            ->assertSee('پرداخت و افزایش موجودی');
     }
 
     public function test_customer_can_choose_hesabro_and_receive_payment_link(): void

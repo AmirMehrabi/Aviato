@@ -27,13 +27,24 @@ class PaymentController extends Controller
         $customer = $request->user('customer');
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless((int) $activeProject->owner_customer_id === (int) $customer->id, 404);
-        $data = $request->validate([
-            'amount' => ['nullable', 'required_without:custom_amount', 'integer', 'min:1000000', 'max:500000000'],
-            'custom_amount' => ['nullable', 'required_without:amount', 'integer', 'min:1000000', 'max:500000000'],
-            'gateway' => ['required', 'string', 'in:'.implode(',', array_keys($this->gateways->available()))],
+
+        $request->merge([
+            'amount_toman' => $this->normalizeTomanAmount($request->input('amount_toman')),
         ]);
 
-        $amount = (int) ($data['custom_amount'] ?: $data['amount'] ?: 0);
+        $data = $request->validate([
+            'amount_toman' => ['required', 'integer', 'min:100000', 'max:50000000'],
+            'gateway' => ['required', 'string', 'in:'.implode(',', array_keys($this->gateways->available()))],
+        ], [
+            'amount_toman.required' => 'مبلغ شارژ را انتخاب یا وارد کنید.',
+            'amount_toman.integer' => 'مبلغ شارژ باید یک عدد معتبر باشد.',
+            'amount_toman.min' => 'حداقل مبلغ شارژ ۱۰۰٬۰۰۰ تومان است.',
+            'amount_toman.max' => 'حداکثر مبلغ شارژ ۵۰٬۰۰۰٬۰۰۰ تومان است.',
+            'gateway.required' => 'درگاه پرداخت را انتخاب کنید.',
+            'gateway.in' => 'درگاه پرداخت انتخاب‌شده در دسترس نیست.',
+        ]);
+
+        $amount = (int) $data['amount_toman'] * 10;
 
         try {
             $payment = $this->payments->createTopUp(
@@ -122,5 +133,39 @@ class PaymentController extends Controller
         return redirect()->route('customer.wallet.show', [
             'payment_id' => $payment->id,
         ]);
+    }
+
+    private function normalizeTomanAmount(mixed $amount): ?string
+    {
+        if ($amount === null || $amount === '') {
+            return null;
+        }
+
+        $normalized = strtr((string) $amount, [
+            '۰' => '0',
+            '۱' => '1',
+            '۲' => '2',
+            '۳' => '3',
+            '۴' => '4',
+            '۵' => '5',
+            '۶' => '6',
+            '۷' => '7',
+            '۸' => '8',
+            '۹' => '9',
+            '٠' => '0',
+            '١' => '1',
+            '٢' => '2',
+            '٣' => '3',
+            '٤' => '4',
+            '٥' => '5',
+            '٦' => '6',
+            '٧' => '7',
+            '٨' => '8',
+            '٩' => '9',
+        ]);
+
+        $normalized = preg_replace('/[\s,٬،]+/u', '', $normalized);
+
+        return $normalized === '' ? null : $normalized;
     }
 }

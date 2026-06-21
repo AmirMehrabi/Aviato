@@ -70,7 +70,7 @@ class WalletController extends Controller
             'pendingUsage' => $this->usageBilling->projectPendingUsage($activeProject->id),
             'monthlyCredits' => (int) (clone $baseQuery)->where('amount', '>', 0)->sum('amount'),
             'monthlyCharges' => (int) abs((clone $baseQuery)->where('amount', '<', 0)->sum('amount')),
-            'topUpPresets' => [1000000, 3000000, 10000000, 25000000],
+            'topUpPresets' => [100000, 300000, 1000000, 2500000],
             'availablePaymentGateways' => $this->paymentGateways->available(),
             'defaultPaymentGateway' => AppSetting::defaultPaymentGateway(),
             'paymentNotice' => $paymentNotice,
