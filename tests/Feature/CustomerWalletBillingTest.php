@@ -51,7 +51,12 @@ class CustomerWalletBillingTest extends TestCase
             'SaleOrderId' => $payment->id,
             'SaleReferenceId' => '127926981246',
         ])
-            ->assertRedirect($this->customerBaseUrl.'/wallet');
+            ->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id)
+            ->assertCookieMissing(config('session.cookie'));
+
+        $this->get($this->customerBaseUrl.'/wallet?payment_id='.$payment->id)
+            ->assertOk()
+            ->assertSee('پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.');
 
         $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
             'RefId' => $payment->authority,
@@ -59,7 +64,7 @@ class CustomerWalletBillingTest extends TestCase
             'SaleOrderId' => $payment->id,
             'SaleReferenceId' => '127926981246',
         ])
-            ->assertRedirect($this->customerBaseUrl.'/wallet');
+            ->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
 
         $this->assertDatabaseHas('payments', [
             'id' => $payment->id,
@@ -90,7 +95,7 @@ class CustomerWalletBillingTest extends TestCase
             'ResCode' => '0',
             'SaleOrderId' => $payment->id,
             'SaleReferenceId' => '127926981246',
-        ])->assertRedirect($this->customerBaseUrl.'/wallet');
+        ])->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
 
         $this->assertDatabaseHas('payments', [
             'id' => $payment->id,
@@ -205,7 +210,7 @@ class CustomerWalletBillingTest extends TestCase
         $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
             'order_id' => '987',
             'status' => 'success',
-        ])->assertRedirect($this->customerBaseUrl.'/wallet');
+        ])->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
 
         $payment->refresh();
         $this->assertSame(Payment::STATUS_SUCCESSFUL, $payment->status);

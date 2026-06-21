@@ -105,17 +105,22 @@ class PaymentController extends Controller
                     ]);
                 }
 
-                return redirect()->route('customer.wallet.show')
-                    ->with('error', $exception->getMessage());
+                return $this->walletRedirect($payment);
             }
         }
 
-        return redirect()->route('customer.wallet.show')
-            ->with('status', 'پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.');
+        return $this->walletRedirect($payment);
     }
 
     private function ensureOwnership(Request $request, Payment $payment): void
     {
         abort_unless($payment->customer_id === $request->user('customer')->id, 404);
+    }
+
+    private function walletRedirect(Payment $payment): RedirectResponse
+    {
+        return redirect()->route('customer.wallet.show', [
+            'payment_id' => $payment->id,
+        ]);
     }
 }

@@ -41,8 +41,11 @@ use App\Http\Controllers\Customer\VmUpgradeController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
 use App\Models\VmBundle;
 use App\Services\WalletService;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 $adminDomain = config('portals.admin.domain');
 $customerDomain = config('portals.customer.domain');
@@ -230,6 +233,11 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
         ->name('customer.suspension.notice');
 
     Route::match(['GET', 'POST'], 'wallet/payments/{payment}/callback', [PaymentController::class, 'callback'])
+        ->withoutMiddleware([
+            StartSession::class,
+            ShareErrorsFromSession::class,
+            PreventRequestForgery::class,
+        ])
         ->name('customer.wallet.payments.callback');
 
     Route::middleware(['auth:customer', 'customer.wallet.access'])->group(function () use ($customerHome) {

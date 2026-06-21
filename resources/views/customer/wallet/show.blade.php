@@ -9,6 +9,12 @@
 @endphp
 
 @section('content')
+    @if ($paymentNotice)
+        <div class="mb-6 rounded-2xl border px-5 py-4 text-sm font-bold leading-7 {{ $paymentNotice['tone'] === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : ($paymentNotice['tone'] === 'error' ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-amber-200 bg-amber-50 text-amber-800') }}">
+            {{ $paymentNotice['message'] }}
+        </div>
+    @endif
+
     <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @foreach ([
             ['label' => 'موجودی فعلی', 'value' => $wallets->format($wallet->balance), 'tone' => $wallet->balance < 0 ? 'text-red-600' : 'text-slate-950', 'hint' => $wallet->is_locked ? 'کیف پول قفل است' : 'کیف پول فعال است'],
