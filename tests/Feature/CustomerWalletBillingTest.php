@@ -7,7 +7,6 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\ProxmoxServer;
-use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Models\WalletTransaction;
@@ -410,6 +409,64 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertDatabaseCount('usage_settlements', 1);
         $this->assertDatabaseCount('wallet_transactions', 1);
         $this->assertSame(-2000, $customer->wallet()->firstOrFail()->balance);
+
+        CarbonImmutable::setTestNow();
+    }
+
+    public function test_monthly_invoice_uses_accrual_service_date_and_purges_invoiced_detail(): void
+    {
+        CarbonImmutable::setTestNow('2026-06-30 23:00:00');
+        $customer = Customer::factory()->create();
+        $bundle = VmBundle::create([
+            'name' => 'Month End',
+            'slug' => 'month-end',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'monthly_price' => 730000,
+            'hourly_price' => 1000,
+            'is_active' => true,
+        ]);
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'project_id' => $customer->ensureDefaultProject()->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'month-end-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'last_billed_at' => now()->subHour(),
+        ]);
+
+        app(UsageBillingService::class)->accrueVm($vm);
+
+        CarbonImmutable::setTestNow('2026-07-01 00:05:00');
+        app(UsageBillingService::class)->settleDate('2026-06-30');
+        $this->assertDatabaseHas('usage_accruals', [
+            'customer_id' => $customer->id,
+            'service_date' => '2026-06-30 00:00:00',
+            'amount' => 1000,
+        ]);
+        $this->assertDatabaseHas('wallet_transactions', [
+            'customer_id' => $customer->id,
+            'amount' => -1000,
+        ]);
+
+        CarbonImmutable::setTestNow('2026-07-03 10:00:00');
+        [$periodStart, $periodEnd] = app(InvoiceService::class)->previousMonthPeriod();
+        $this->assertSame('2026-06-01', $periodStart->toDateString());
+        $this->assertSame('2026-06-30', $periodEnd->toDateString());
+        $this->assertNotNull(\Illuminate\Support\Facades\DB::table('usage_accruals')->value('settled_at'));
+        $invoice = app(InvoiceService::class)->generateForCustomer($customer, $periodStart, $periodEnd);
+
+        $this->assertNotNull($invoice);
+        $this->assertSame(1000, $invoice->total_amount);
+        $this->assertSame('month-end-vm', $invoice->items()->firstOrFail()->label);
+        $this->assertDatabaseCount('usage_accruals', 0);
 
         CarbonImmutable::setTestNow();
     }

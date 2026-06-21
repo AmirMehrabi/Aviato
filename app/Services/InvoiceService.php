@@ -56,7 +56,8 @@ class InvoiceService
         $accruals = UsageAccrual::query()
             ->where('customer_id', $customer->id)
             ->whereNotNull('settled_at')
-            ->whereBetween('service_date', [$periodStart->toDateString(), $periodEnd->toDateString()])
+            ->whereDate('service_date', '>=', $periodStart->toDateString())
+            ->whereDate('service_date', '<=', $periodEnd->toDateString())
             ->get();
         $legacyTransactions = WalletTransaction::query()
             ->where('customer_id', $customer->id)

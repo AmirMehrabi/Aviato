@@ -14,8 +14,8 @@ use Illuminate\Validation\ValidationException;
 class WalletService
 {
     public function __construct(
-        private readonly CustomerWalletAlertService $walletAlerts,
-        private readonly UsageBalanceService $usageBalances,
+        private readonly ?CustomerWalletAlertService $walletAlerts = null,
+        private readonly ?UsageBalanceService $usageBalances = null,
     ) {}
 
     public function walletFor(Customer $customer): Wallet
@@ -63,7 +63,9 @@ class WalletService
 
     public function isBelowNegativeThreshold(Customer $customer): bool
     {
-        return $this->usageBalances->effectiveBalance($customer) < $this->customerWalletNegativeThreshold();
+        $usageBalances = $this->usageBalances ?? app(UsageBalanceService::class);
+
+        return $usageBalances->effectiveBalance($customer) < $this->customerWalletNegativeThreshold();
     }
 
     private function formattedAmount(int $amount, string $currency): string
@@ -138,7 +140,7 @@ class WalletService
             return $transaction;
         });
 
-        $this->walletAlerts->handleWalletBalanceChange($customer);
+        ($this->walletAlerts ?? app(CustomerWalletAlertService::class))->handleWalletBalanceChange($customer);
 
         return $transaction;
     }

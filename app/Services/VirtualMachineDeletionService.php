@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Models\IpAddress;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -135,7 +136,7 @@ class VirtualMachineDeletionService
 
     /**
      * @param  array<string, mixed>  $remoteEvidence
-     * @return array{vm: VirtualMachine, usage_accrual: \App\Models\UsageAccrual|null, released_ip: string|null, deleted_vmid: int|null}
+     * @return array{vm: VirtualMachine, usage_accrual: UsageAccrual|null, released_ip: string|null, deleted_vmid: int|null}
      */
     public function finalizeLocalDelete(VirtualMachine $vm, string $source, array $remoteEvidence = []): array
     {

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\ProjectMember;
-use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\ProjectAccessService;

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\IpAddress;
 use App\Models\ProxmoxServer;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
@@ -75,7 +76,7 @@ class StaleVirtualMachineCleanupService
     }
 
     /**
-     * @return array{vm: VirtualMachine, usage_accrual: \App\Models\UsageAccrual|null, released_ip: string|null, deleted_vmid: int|null}
+     * @return array{vm: VirtualMachine, usage_accrual: UsageAccrual|null, released_ip: string|null, deleted_vmid: int|null}
      */
     public function cleanup(VirtualMachine $vm, string $source = 'manual'): array
     {
