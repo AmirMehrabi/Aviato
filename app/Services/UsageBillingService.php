@@ -73,7 +73,7 @@ class UsageBillingService
                 return null;
             }
 
-            if ($usage['amount'] <= 0 && (int) ($locked->unbilled_amount ?? 0) <= 0) {
+            if (($usage['hours'] <= 0 || $usage['hourly_rate'] <= 0) && (int) ($locked->unbilled_amount ?? 0) <= 0) {
                 $locked->forceFill(['last_billed_at' => $until])->save();
 
                 return null;
@@ -292,8 +292,13 @@ class UsageBillingService
                         ->lockForUpdate()
                         ->get();
                     $amount = (int) $accruals->sum('amount');
+                    $settledAt = now();
 
                     $settlement->forceFill(['amount' => $amount])->save();
+                    $accruals->each->forceFill([
+                        'usage_settlement_id' => $settlement->id,
+                        'settled_at' => $settledAt,
+                    ])->each->save();
 
                     $transaction = $amount > 0
                         ? $this->wallets->charge(
@@ -311,15 +316,10 @@ class UsageBillingService
                         )
                         : null;
 
-                    $settledAt = now();
                     $settlement->forceFill([
                         'wallet_transaction_id' => $transaction?->id,
                         'settled_at' => $settledAt,
                     ])->save();
-                    $accruals->each->forceFill([
-                        'usage_settlement_id' => $settlement->id,
-                        'settled_at' => $settledAt,
-                    ])->each->save();
 
                     return $settlement->refresh();
                 });

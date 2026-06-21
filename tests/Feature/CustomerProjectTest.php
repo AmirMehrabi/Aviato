@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\ProjectMember;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\ProjectAccessService;
@@ -230,13 +231,17 @@ class CustomerProjectTest extends TestCase
             'last_billed_at' => now()->subHours(3),
         ]);
 
-        app(UsageBillingService::class)->chargeVm($vm);
+        $accrual = app(UsageBillingService::class)->accrueVm($vm);
 
-        $this->assertSame(-3000, $owner->wallet()->firstOrFail()->balance);
+        $this->assertSame(3000, $accrual->amount);
+        $this->assertSame($project->id, $accrual->project_id);
+        $this->assertSame($member->id, $accrual->snapshot['created_by_customer_id']);
+        $this->assertSame(0, $owner->wallet()->firstOrFail()->balance);
         $this->assertSame(0, $member->wallet()->firstOrFail()->balance);
+        app(UsageBillingService::class)->settleDate(now());
         $transaction = $owner->walletTransactions()->firstOrFail();
+        $this->assertSame(-3000, $owner->wallet()->firstOrFail()->balance);
         $this->assertSame($project->id, $transaction->metadata['project_id']);
-        $this->assertSame($member->id, $transaction->metadata['created_by_customer_id']);
 
         CarbonImmutable::setTestNow();
     }

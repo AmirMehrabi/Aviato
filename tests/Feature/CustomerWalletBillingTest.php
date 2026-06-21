@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\ProxmoxServer;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Models\WalletTransaction;
@@ -308,7 +309,7 @@ class CustomerWalletBillingTest extends TestCase
             ->assertDontSee('شارژ اولیه');
     }
 
-    public function test_usage_charge_command_creates_wallet_charge_and_updates_vm_checkpoint(): void
+    public function test_usage_charge_command_accrues_hourly_and_daily_settlement_charges_once(): void
     {
         CarbonImmutable::setTestNow('2026-06-15 12:00:00');
 
@@ -344,15 +345,71 @@ class CustomerWalletBillingTest extends TestCase
         Artisan::call('billing:charge-usage');
 
         $vm->refresh();
-        $transaction = $customer->walletTransactions()->first();
+        $this->assertDatabaseHas('usage_accruals', [
+            'customer_id' => $customer->id,
+            'resource_type' => 'virtual_machine',
+            'resource_id' => $vm->id,
+            'amount' => 3000,
+        ]);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+        $this->assertSame(0, $customer->wallet()->firstOrFail()->balance);
+        $this->assertSame(3000, app(UsageBillingService::class)->customerPendingUsage($customer));
+        $this->assertTrue($vm->last_billed_at->equalTo(now()));
 
-        $this->assertNotNull($transaction);
+        Artisan::call('billing:settle-usage', ['--date' => now()->toDateString()]);
+        Artisan::call('billing:settle-usage', ['--date' => now()->toDateString()]);
+
+        $transaction = $customer->walletTransactions()->firstOrFail();
         $this->assertSame(WalletTransaction::TYPE_CHARGE, $transaction->type);
         $this->assertSame(-3000, $transaction->amount);
         $this->assertSame(-3000, $customer->wallet()->firstOrFail()->balance);
-        $this->assertSame('payg_usage', $transaction->metadata['category']);
-        $this->assertSame('vm-billable', $transaction->metadata['vm_name']);
-        $this->assertTrue($vm->last_billed_at->equalTo(now()));
+        $this->assertSame('usage_settlement', $transaction->metadata['category']);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+        $this->assertSame(0, app(UsageBillingService::class)->customerPendingUsage($customer));
+
+        CarbonImmutable::setTestNow();
+    }
+
+    public function test_daily_settlement_batches_multiple_vms_in_one_project(): void
+    {
+        CarbonImmutable::setTestNow('2026-06-15 12:00:00');
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $bundle = VmBundle::create([
+            'name' => 'Batch',
+            'slug' => 'batch',
+            'cpu_cores' => 1,
+            'ram_gb' => 1,
+            'disk_gb' => 20,
+            'ip_count' => 1,
+            'monthly_price' => 730000,
+            'hourly_price' => 1000,
+            'is_active' => true,
+        ]);
+
+        foreach (['batch-a', 'batch-b'] as $name) {
+            VirtualMachine::create([
+                'customer_id' => $customer->id,
+                'project_id' => $project->id,
+                'vm_bundle_id' => $bundle->id,
+                'name' => $name,
+                'cpu_cores' => 1,
+                'ram_gb' => 1,
+                'disk_gb' => 20,
+                'ip_count' => 1,
+                'status' => VirtualMachine::STATUS_RUNNING,
+                'provisioning_status' => VirtualMachine::PROVISION_READY,
+                'last_billed_at' => now()->subHour(),
+            ]);
+        }
+
+        app(UsageBillingService::class)->accrueAllDueUsage();
+        app(UsageBillingService::class)->settleDate(now());
+
+        $this->assertDatabaseCount('usage_accruals', 2);
+        $this->assertDatabaseCount('usage_settlements', 1);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+        $this->assertSame(-2000, $customer->wallet()->firstOrFail()->balance);
 
         CarbonImmutable::setTestNow();
     }

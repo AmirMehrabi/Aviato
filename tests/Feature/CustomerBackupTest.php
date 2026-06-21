@@ -6,6 +6,7 @@ use App\Jobs\RunVmBackupJob;
 use App\Models\Customer;
 use App\Models\ProxmoxServer;
 use App\Models\ResourceRate;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
 use App\Models\VmBackupPolicy;
@@ -108,12 +109,16 @@ class CustomerBackupTest extends TestCase
             'last_billed_at' => now()->subHour(),
         ]);
 
-        app(UsageBillingService::class)->chargeBackup($backup, now());
+        $accrual = app(UsageBillingService::class)->accrueBackup($backup, now());
 
-        $this->assertDatabaseHas('wallet_transactions', [
+        $this->assertDatabaseHas('usage_accruals', [
             'customer_id' => $customer->id,
-            'amount' => -1000,
+            'category' => UsageAccrual::CATEGORY_BACKUP,
+            'amount' => 1000,
         ]);
+        $this->assertSame(1000, $accrual->amount);
+        $this->assertSame(500000, $customer->wallet()->firstOrFail()->balance);
+        app(UsageBillingService::class)->settleDate(now());
         $this->assertSame(499000, $customer->wallet()->firstOrFail()->balance);
         $this->assertNotNull($backup->fresh()->last_billed_at);
     }

@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\IpAddress;
 use App\Models\IpPool;
 use App\Models\ProxmoxServer;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
 use App\Services\StaleVirtualMachineCleanupService;
@@ -303,10 +304,12 @@ class CustomerServerDeletionTest extends TestCase
             'virtual_machine_id' => null,
             'status' => IpAddress::STATUS_RELEASED,
         ]);
-        $this->assertDatabaseHas('wallet_transactions', [
+        $this->assertDatabaseHas('usage_accruals', [
             'customer_id' => $customer->id,
-            'amount' => -750,
+            'category' => UsageAccrual::CATEGORY_VM,
+            'amount' => 750,
         ]);
+        $this->assertDatabaseCount('wallet_transactions', 0);
     }
 
     public function test_stale_cleanup_blocks_when_remote_vmid_still_exists(): void

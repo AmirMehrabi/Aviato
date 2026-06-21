@@ -6,6 +6,7 @@ use App\Jobs\ApplyVmUpgradeJob;
 use App\Models\Customer;
 use App\Models\ProxmoxServer;
 use App\Models\ResourceRate;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Models\VmDisk;
@@ -43,9 +44,10 @@ class CustomerVmUpgradeTest extends TestCase
             'type' => VmUpgradeOrder::TYPE_BUNDLE,
             'status' => VmUpgradeOrder::STATUS_PENDING,
         ]);
-        $this->assertDatabaseHas('wallet_transactions', [
+        $this->assertDatabaseHas('usage_accruals', [
             'customer_id' => $customer->id,
-            'amount' => -200,
+            'category' => UsageAccrual::CATEGORY_VM,
+            'amount' => 200,
         ]);
         $this->assertTrue($vm->refresh()->last_billed_at->equalTo(now()));
         Bus::assertDispatched(ApplyVmUpgradeJob::class);
@@ -166,9 +168,9 @@ class CustomerVmUpgradeTest extends TestCase
         $this->assertSame(VmUpgradeOrder::STATUS_SUCCEEDED, $order->refresh()->status);
 
         CarbonImmutable::setTestNow('2026-06-20 14:00:00');
-        $transaction = app(UsageBillingService::class)->chargeExtraDisk($disk->refresh());
-        $this->assertSame('extra_disk_storage', $transaction->metadata['category']);
-        $this->assertSame(-20, $transaction->amount);
+        $accrual = app(UsageBillingService::class)->accrueExtraDisk($disk->refresh());
+        $this->assertSame(UsageAccrual::CATEGORY_EXTRA_DISK, $accrual->category);
+        $this->assertSame(20, $accrual->amount);
 
         CarbonImmutable::setTestNow();
     }
@@ -189,6 +191,7 @@ class CustomerVmUpgradeTest extends TestCase
         ]);
 
         $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 1000000]);
         $server = ProxmoxServer::create([
             'name' => 'THR Proxmox',
             'datacenter' => 'THR-1',
