@@ -43,6 +43,15 @@
                 ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm12 3h4v5h-4a2.5 2.5 0 0 1 0-5Zm1 2.5h.01'],
                 ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm8 0v5h5M8 13h8M8 17h6'],
             ],
+            ...(auth('customer')->check() && auth('customer')->user()->isReseller() ? [
+                'فروشندگی' => [
+                    ['key' => 'reseller', 'label' => 'داشبورد فروشندگی', 'route' => route('customer.reseller.dashboard', [], false), 'icon' => 'M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0M19 8v6m3-3h-6'],
+                    ['key' => 'reseller-customers', 'label' => 'مشتریان', 'route' => route('customer.reseller.customers', [], false), 'icon' => 'M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0'],
+                    ['key' => 'reseller-commissions', 'label' => 'کمیسیون‌ها', 'route' => route('customer.reseller.commissions', [], false), 'icon' => 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
+                    ['key' => 'reseller-referral', 'label' => 'لینک معرفی', 'route' => route('customer.reseller.referral', [], false), 'icon' => 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'],
+                    ['key' => 'reseller-withdrawals', 'label' => 'برداشت‌ها', 'route' => route('customer.reseller.withdrawals', [], false), 'icon' => 'M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9'],
+                ],
+            ] : []),
         ];
     @endphp
 

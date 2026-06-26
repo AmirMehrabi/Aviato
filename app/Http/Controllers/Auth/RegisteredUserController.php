@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\ResellerService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,6 +66,11 @@ class RegisteredUserController extends Controller
                     ->withErrors(['verification' => $e->getMessage()]);
             }
 
+            $referralCode = $request->query('ref');
+            if ($referralCode) {
+                $request->session()->put('referral_code', $referralCode);
+            }
+
             $routeParams = $verificationMode === 'sms'
                 ? ['phone' => $account->phone]
                 : ['email' => $account->email];
@@ -72,6 +78,11 @@ class RegisteredUserController extends Controller
             return redirect()
                 ->route('customer.verification.notice', $routeParams)
                 ->with('status', $verificationMode === 'sms' ? 'کد تایید پیامک ارسال شد.' : 'کد تایید برای ایمیل شما ارسال شد.');
+        }
+
+        $referralCode = $request->query('ref');
+        if ($referralCode && $account instanceof Customer) {
+            app(ResellerService::class)->handleReferralRegistration($account, $referralCode);
         }
 
         Auth::guard($portal)->login($account);

@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
+            'password' => 'password1@1@'
         ]);
 
         foreach (ResourceRate::defaults() as $resource => $data) {

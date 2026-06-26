@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
+use App\Http\Controllers\Admin\ResellerController;
 use App\Http\Controllers\Admin\ResourceRateController;
 use App\Http\Controllers\Admin\SearchController;
 use App\Http\Controllers\Admin\SettingController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\Customer\MonitoringController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\ProfileController;
 use App\Http\Controllers\Customer\ProjectController;
+use App\Http\Controllers\Customer\ResellerController as CustomerResellerController;
 use App\Http\Controllers\Customer\ServerConsoleController;
 use App\Http\Controllers\Customer\ServerController;
 use App\Http\Controllers\Customer\TicketAttachmentController;
@@ -180,6 +182,23 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::resource('proxmox-servers', ProxmoxServerWebController::class)
             ->parameters(['proxmox-servers' => 'proxmoxServer'])
             ->names('admin.proxmox-servers');
+
+        Route::prefix('resellers')->name('admin.resellers.')->group(function (): void {
+            Route::get('/', [ResellerController::class, 'index'])->name('index');
+            Route::get('/create', [ResellerController::class, 'create'])->name('create');
+            Route::post('/', [ResellerController::class, 'store'])->name('store');
+            Route::get('/withdrawals', [ResellerController::class, 'withdrawals'])->name('withdrawals');
+            Route::patch('/withdrawals/{withdrawal}/approve', [ResellerController::class, 'approveWithdrawal'])->name('withdrawals.approve');
+            Route::patch('/withdrawals/{withdrawal}/reject', [ResellerController::class, 'rejectWithdrawal'])->name('withdrawals.reject');
+            Route::patch('/withdrawals/{withdrawal}/paid', [ResellerController::class, 'markWithdrawalPaid'])->name('withdrawals.paid');
+            Route::get('/{customer}', [ResellerController::class, 'show'])->name('show');
+            Route::put('/{customer}', [ResellerController::class, 'update'])->name('update');
+            Route::delete('/{customer}', [ResellerController::class, 'destroy'])->name('destroy');
+            Route::patch('/{customer}/suspend', [ResellerController::class, 'suspend'])->name('suspend');
+            Route::patch('/{customer}/activate', [ResellerController::class, 'activate'])->name('activate');
+            Route::post('/{customer}/assign', [ResellerController::class, 'assignCustomer'])->name('assign');
+            Route::delete('/{customer}/assign/{targetCustomer}', [ResellerController::class, 'unassignCustomer'])->name('unassign');
+        });
     });
 });
 
@@ -281,6 +300,15 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
 
         Route::get('invoices', [InvoiceController::class, 'index'])->name('customer.invoices.index');
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('customer.invoices.show');
+
+        Route::prefix('reseller')->name('customer.reseller.')->middleware('reseller.active')->group(function (): void {
+            Route::get('/', [CustomerResellerController::class, 'index'])->name('dashboard');
+            Route::get('/customers', [CustomerResellerController::class, 'customers'])->name('customers');
+            Route::get('/commissions', [CustomerResellerController::class, 'commissions'])->name('commissions');
+            Route::get('/referral', [CustomerResellerController::class, 'referralLink'])->name('referral');
+            Route::get('/withdrawals', [CustomerResellerController::class, 'withdrawals'])->name('withdrawals');
+            Route::post('/withdrawals', [CustomerResellerController::class, 'storeWithdrawal'])->name('withdrawals.store');
+        });
     });
 });
 

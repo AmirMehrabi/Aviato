@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\CustomerVerificationCodeMail;
 use App\Models\AppSetting;
 use App\Models\Customer;
+use App\Services\ResellerService;
 use App\Services\Sms\VerificationSmsSender;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,11 @@ class CustomerEmailVerificationController extends Controller
             'email_verification_code' => null,
             'email_verification_expires_at' => null,
         ])->save();
+
+        $referralCode = $request->session()->pull('referral_code');
+        if ($referralCode) {
+            app(ResellerService::class)->handleReferralRegistration($customer, $referralCode);
+        }
 
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();

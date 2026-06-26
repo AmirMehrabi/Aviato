@@ -19,6 +19,7 @@ class UsageBillingService
         private readonly BillingService $billing,
         private readonly WalletService $wallets,
         private readonly UsageBalanceService $usageBalances,
+        private readonly ?ResellerService $resellerService = null,
     ) {}
 
     /**
@@ -320,6 +321,11 @@ class UsageBillingService
                         'wallet_transaction_id' => $transaction?->id,
                         'settled_at' => $settledAt,
                     ])->save();
+
+                    if ($transaction) {
+                        ($this->resellerService ?? app(ResellerService::class))
+                            ->calculateCommissionForSettlement($settlement->refresh());
+                    }
 
                     return $settlement->refresh();
                 });

@@ -13,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'first_name', 'last_name', 'email', 'phone', 'national_code', 'national_code_hash', 'national_code_verified_at', 'password', 'email_verified_at', 'email_verification_code', 'email_verification_expires_at', 'status', 'suspended_at', 'suspension_reason', 'sms_notifications_enabled'])]
+#[Fillable(['name', 'first_name', 'last_name', 'email', 'phone', 'national_code', 'national_code_hash', 'national_code_verified_at', 'password', 'email_verified_at', 'email_verification_code', 'email_verification_expires_at', 'status', 'suspended_at', 'suspension_reason', 'sms_notifications_enabled', 'is_reseller', 'reseller_commission_pct', 'reseller_payout_method', 'reseller_earnings_balance', 'reseller_code', 'reseller_status', 'reseller_activated_at'])]
 #[Hidden(['password', 'remember_token'])]
 class Customer extends Authenticatable
 {
@@ -95,6 +95,38 @@ class Customer extends Authenticatable
     public function vmUpgradeOrders(): HasMany
     {
         return $this->hasMany(VmUpgradeOrder::class)->latest();
+    }
+
+    // --- Reseller relationships ---
+
+    public function resellerAssignments(): HasMany
+    {
+        return $this->hasMany(ResellerCustomer::class, 'reseller_id');
+    }
+
+    public function assignedToReseller(): HasMany
+    {
+        return $this->hasMany(ResellerCustomer::class, 'customer_id');
+    }
+
+    public function resellerCommissions(): HasMany
+    {
+        return $this->hasMany(ResellerCommission::class, 'reseller_id');
+    }
+
+    public function withdrawalRequests(): HasMany
+    {
+        return $this->hasMany(ResellerWithdrawalRequest::class, 'reseller_id');
+    }
+
+    public function activeResellerAssignments(): HasMany
+    {
+        return $this->resellerAssignments()->whereNull('unassigned_at');
+    }
+
+    public function isReseller(): bool
+    {
+        return (bool) $this->is_reseller && $this->reseller_status === 'active';
     }
 
     public function suspend(?string $reason = null): void
@@ -182,6 +214,10 @@ class Customer extends Authenticatable
             'national_code' => 'encrypted',
             'suspended_at' => 'datetime',
             'sms_notifications_enabled' => 'boolean',
+            'is_reseller' => 'boolean',
+            'reseller_commission_pct' => 'decimal:2',
+            'reseller_earnings_balance' => 'integer',
+            'reseller_activated_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
