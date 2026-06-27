@@ -103,6 +103,7 @@ class CloudVmProvisioningService
                 'ram_gb' => $resources['ram_gb'],
                 'disk_gb' => $resources['disk_gb'],
                 'ip_count' => 1,
+                'tax_exempt' => (bool) ($data['tax_exempt'] ?? true),
                 'status' => VirtualMachine::STATUS_STOPPED,
                 'provisioning_status' => VirtualMachine::PROVISION_PENDING,
                 'last_billed_at' => now(),

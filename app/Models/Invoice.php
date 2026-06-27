@@ -19,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'wallet_charged_amount',
     'adjustment_amount',
     'total_amount',
+    'tax_amount',
+    'tax_rate_percentage',
     'meta',
 ])]
 class Invoice extends Model
@@ -47,6 +49,8 @@ class Invoice extends Model
             'wallet_charged_amount' => 'integer',
             'adjustment_amount' => 'integer',
             'total_amount' => 'integer',
+            'tax_amount' => 'integer',
+            'tax_rate_percentage' => 'float',
             'meta' => 'array',
         ];
     }

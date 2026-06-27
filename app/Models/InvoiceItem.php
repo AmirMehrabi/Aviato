@@ -22,6 +22,8 @@ class InvoiceItem extends Model
 {
     public const TYPE_VM_USAGE = 'vm_usage';
 
+    public const TYPE_TAX = 'tax';
+
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);

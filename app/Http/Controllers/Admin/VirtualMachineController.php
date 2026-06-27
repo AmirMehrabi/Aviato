@@ -602,6 +602,7 @@ class VirtualMachineController extends Controller
             'ostype' => ['nullable', Rule::in(['l26', 'win11', 'win10', 'win8', 'win7', 'w2k22', 'w2k19', 'w2k16', 'other'])],
             'start_after_create' => ['nullable', 'boolean'],
             'onboot' => ['nullable', 'boolean'],
+            'tax_exempt' => ['nullable', 'boolean'],
         ]);
     }
 

@@ -44,6 +44,7 @@ use Illuminate\Support\Str;
     'ram_gb',
     'disk_gb',
     'ip_count',
+    'tax_exempt',
     'status',
     'provisioning_status',
     'desired_state',
@@ -88,6 +89,7 @@ class VirtualMachine extends Model
     {
         static::creating(function (VirtualMachine $virtualMachine): void {
             $virtualMachine->uuid ??= (string) Str::uuid();
+            $virtualMachine->tax_exempt ??= true;
 
             if (! $virtualMachine->project_id && $virtualMachine->customer_id) {
                 $project = Customer::query()->find($virtualMachine->customer_id)?->ensureDefaultProject();
@@ -263,6 +265,7 @@ class VirtualMachine extends Model
             'ram_gb' => $this->ram_gb,
             'disk_gb' => $this->disk_gb,
             'ip_count' => $this->ip_count,
+            'tax_exempt' => $this->tax_exempt,
             'project_id' => $this->project_id,
             'customer_id' => $this->customer_id,
             'created_by_customer_id' => $this->created_by_customer_id,
@@ -282,6 +285,7 @@ class VirtualMachine extends Model
             'ram_gb' => 'integer',
             'disk_gb' => 'integer',
             'ip_count' => 'integer',
+            'tax_exempt' => 'boolean',
             'desired_state' => 'array',
             'remote_state' => 'array',
             'provider_metadata' => 'array',

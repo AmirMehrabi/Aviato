@@ -101,6 +101,10 @@ class AppSetting extends Model
 
     public const HESABRO_CLIENT_SECRET = 'payment.hesabro.client_secret';
 
+    public const TAX_ENABLED = 'tax.enabled';
+
+    public const TAX_RATE_PERCENTAGE = 'tax.rate_percentage';
+
     public static function getValue(string $key, mixed $default = null): mixed
     {
         return Cache::rememberForever("settings.{$key}", function () use ($key, $default): mixed {
@@ -385,5 +389,22 @@ class AppSetting extends Model
     public static function customerWalletNegativeSmsTemplate(): string
     {
         return (string) static::getValue(self::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, '');
+    }
+
+    public static function taxEnabled(): bool
+    {
+        return filter_var(static::getValue(self::TAX_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function taxRatePercentage(): float
+    {
+        $percentage = (float) static::getValue(self::TAX_RATE_PERCENTAGE, 0);
+
+        return max(0, min(100, $percentage));
+    }
+
+    public static function taxMultiplier(): float
+    {
+        return 1 + (static::taxRatePercentage() / 100);
     }
 }

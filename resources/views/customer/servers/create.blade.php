@@ -29,6 +29,8 @@
             profileUrl: @js(route('customer.profile.show', [], false)),
             quota: @js($quota),
             namePeriod: @js(now()->format('ym')),
+            taxEnabled: @js($taxEnabled),
+            taxRatePercentage: @js($taxRatePercentage),
             osFamilies: @js($osFamilies),
             locations: @js($locations->map(fn ($location) => [
                 'id' => $location->id,
@@ -243,6 +245,7 @@
             <input type="hidden" name="cpu_cores" :value="form.cpu_cores">
             <input type="hidden" name="ram_gb" :value="form.ram_gb">
             <input type="hidden" name="disk_gb" :value="form.disk_gb">
+            <input type="hidden" name="requires_invoice" :value="form.requires_invoice ? '1' : '0'">
         </form>
 
         <aside class="space-y-5">
@@ -269,8 +272,16 @@
 
                     <div class="mt-4 rounded-2xl border border-white bg-white p-4 shadow-sm shadow-[#0069FF]/10">
                         <p class="text-xs font-black text-[#0069FF]">هزینه ماهانه تقریبی</p>
-                        <p class="mt-2 text-3xl font-black leading-tight text-slate-950" x-text="selectedBundle?.price || '—'"></p>
+                        <p class="mt-2 text-3xl font-black leading-tight text-slate-950" x-text="displayMonthlyPrice"></p>
+                        <p x-show="showsTax" x-cloak class="mt-1 text-xs font-bold text-slate-500" x-text="`شامل مالیات ${taxRatePercentage}%`"></p>
                         <p class="mt-2 text-xs font-bold leading-6 text-slate-500">پس از ساخت، مصرف PAYG از کیف پول پروژه محاسبه می شود.</p>
+                    </div>
+
+                    <div x-show="taxEnabled" class="mt-4">
+                        <label class="flex items-center gap-3 rounded-xl border border-[#B8D6FF] bg-white/50 p-4 cursor-pointer">
+                            <input type="checkbox" x-model="form.requires_invoice" class="size-4 rounded border-slate-300 text-[#0069FF] focus:ring-[#0069FF]">
+                            <span class="text-xs font-bold text-slate-600">نیاز به صورتحساب رسمی (شامل مالیات)</span>
+                        </label>
                     </div>
 
                     <div class="mt-4 space-y-3 text-sm">
@@ -294,7 +305,7 @@
                                 </p>
                             </div>
                         @endif
-                        <div class="rounded-xl border border-dashed border-[#B8D6FF] bg-white/50 p-4 text-xs leading-6 text-slate-500">برای ساخت ماشین مجازی باید حداقل یک IP آزاد برای نسخه انتخابی وجود داشته باشد.</div>
+
                     </div>
                 </div>
 
@@ -321,6 +332,8 @@
             walletUrl: config.walletUrl,
             profileUrl: config.profileUrl,
             quota: config.quota,
+            taxEnabled: config.taxEnabled || false,
+            taxRatePercentage: Number(config.taxRatePercentage || 0),
             osFamilies: config.osFamilies,
             locations: config.locations || [],
             locationMappings: config.locationMappings || [],
@@ -340,6 +353,7 @@
                 login_password: '',
                 login_password_confirmation: '',
                 ssh_public_key: @js(old('ssh_public_key', '')),
+                requires_invoice: false,
             },
             init() {
                 if (!this.form.infrastructure_location_id && this.locations.length) {
@@ -399,6 +413,24 @@
             },
             get canSubmit() {
                 return !this.submitting && this.canCreate && this.form.infrastructure_location_id && this.form.cloud_image_id && this.form.vm_bundle_id && this.selectedBundle && !this.sshKeyInvalid;
+            },
+            get showsTax() {
+                return this.taxEnabled && this.form.requires_invoice && this.selectedBundle;
+            },
+            get monthlyBasePrice() {
+                return this.selectedBundle?.monthly_price || 0;
+            },
+            get monthlyTaxAmount() {
+                if (!this.showsTax) return 0;
+                return Math.round(this.monthlyBasePrice * this.taxRatePercentage / 100);
+            },
+            get monthlyPriceWithTax() {
+                return this.monthlyBasePrice + this.monthlyTaxAmount;
+            },
+            get displayMonthlyPrice() {
+                if (!this.selectedBundle) return '—';
+                if (!this.showsTax) return this.selectedBundle.price;
+                return new Intl.NumberFormat('fa-IR').format(this.monthlyPriceWithTax) + ' تومان';
             },
             get generatedNamePreview() {
                 return `${this.osPrefix}-${this.namePeriod || 'YYMM'}-${this.bundleSpecsToken()}-XXXXXX`;

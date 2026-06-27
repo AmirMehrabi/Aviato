@@ -45,6 +45,8 @@ class AdminNationalCodeVerificationSettingsTest extends TestCase
             'verified_customer_vm_limit' => 0,
             'deleted_vm_cooldown_days' => 30,
             'vm_rebuild_fee_multiplier_percentage' => 50,
+            'tax_enabled' => 0,
+            'tax_rate_percentage' => 0,
         ];
 
         $this->from($this->adminBaseUrl.'/settings')
@@ -88,6 +90,8 @@ class AdminNationalCodeVerificationSettingsTest extends TestCase
             'verified_customer_vm_limit' => 0,
             'deleted_vm_cooldown_days' => 30,
             'vm_rebuild_fee_multiplier_percentage' => 50,
+            'tax_enabled' => 0,
+            'tax_rate_percentage' => 0,
             'payments_enabled' => 1,
             'default_payment_gateway' => 'mellat',
             'mellat_payment_enabled' => 1,

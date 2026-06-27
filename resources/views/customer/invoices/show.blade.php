@@ -29,13 +29,15 @@
                 <p class="text-xs font-black text-slate-500">جمع کارکرد</p>
                 <p class="mt-3 text-xl font-black text-slate-950">{{ $wallets->format($invoice->subtotal_amount) }}</p>
             </article>
+            @if($invoice->tax_amount > 0)
             <article class="rounded-3xl border border-slate-200 p-5">
-                <p class="text-xs font-black text-slate-500">برداشت از کیف پول</p>
-                <p class="mt-3 text-xl font-black text-rose-600">{{ $wallets->format(-1 * $invoice->wallet_charged_amount) }}</p>
+                <p class="text-xs font-black text-slate-500">مالیات ({{ number_format($invoice->tax_rate_percentage, 0) }}٪)</p>
+                <p class="mt-3 text-xl font-black text-amber-600">{{ $wallets->format($invoice->tax_amount) }}</p>
             </article>
+            @endif
             <article class="rounded-3xl border border-slate-200 p-5">
-                <p class="text-xs font-black text-slate-500">تعداد آیتم ها</p>
-                <p class="mt-3 text-xl font-black text-slate-950">{{ $invoice->items->count() }}</p>
+                <p class="text-xs font-black text-slate-500">جمع کل</p>
+                <p class="mt-3 text-xl font-black text-slate-950">{{ $wallets->format($invoice->total_amount) }}</p>
             </article>
         </div>
 
@@ -51,13 +53,22 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                    @foreach ($invoice->items as $item)
+                    @foreach ($invoice->items->where('type', \App\Models\InvoiceItem::TYPE_VM_USAGE) as $item)
                         <tr>
                             <td class="px-5 py-4 font-black text-slate-950">{{ $item->label }}</td>
                             <td class="px-5 py-4 text-sm leading-7 text-slate-600">{{ $item->description }}</td>
                             <td class="px-5 py-4 font-bold text-slate-700">{{ number_format((float) $item->quantity, 2) }} ساعت</td>
                             <td class="px-5 py-4 font-bold text-slate-700">{{ number_format((float) $item->unit_price, 2) }}</td>
                             <td class="px-5 py-4 font-black text-slate-950">{{ $wallets->format($item->subtotal) }}</td>
+                        </tr>
+                    @endforeach
+                    @foreach ($invoice->items->where('type', \App\Models\InvoiceItem::TYPE_TAX) as $item)
+                        <tr class="bg-amber-50/50">
+                            <td class="px-5 py-4 font-black text-amber-800">{{ $item->label }}</td>
+                            <td class="px-5 py-4 text-sm leading-7 text-amber-700">{{ $item->description }}</td>
+                            <td class="px-5 py-4 font-bold text-amber-700">—</td>
+                            <td class="px-5 py-4 font-bold text-amber-700">—</td>
+                            <td class="px-5 py-4 font-black text-amber-800">{{ $wallets->format($item->subtotal) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

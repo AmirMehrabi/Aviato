@@ -206,7 +206,7 @@
                         [
                             'label' => 'سیستم',
                             'items' => [
-                                ['label' => 'تنظیمات', 'route' => 'admin.settings.edit', 'active' => request()->routeIs('admin.settings.*'), 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 0v6m0-12V3m9 9h-6m-6 0H3m15.364 5.364-4.243-4.243m-6.364 0L3.636 17.364M20.364 6.636l-4.243 4.243m-6.364 0L5.636 6.636'],
+                                ['label' => 'تنظیمات', 'route' => 'admin.settings.edit', 'active' => request()->routeIs('admin.settings.*'), 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z'],
                             ],
                         ],
                     ];
@@ -214,13 +214,13 @@
                 @foreach ($navGroups as $group)
                     @if (isset($group['label']))
                         <div>
-                            <span class="block px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-white/50">{{ $group['label'] }}</span>
+                            <span class="block border-t border-white/15 px-3 pb-1 pt-3 text-[11px] font-black uppercase tracking-wider text-white/60">{{ $group['label'] }}</span>
                             <div class="space-y-0.5">
                                 @foreach ($group['items'] as $item)
                                     <a
                                         href="{{ $item['route'] ? route($item['route']) : '#' }}"
                                         @click="if (window.innerWidth < 1024) sidebarOpen = false"
-                                        class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition {{ $item['active'] ? 'bg-white text-[#0069FF] shadow-sm' : 'text-white/80 hover:bg-white/15 hover:text-white' }}"
+                                        class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition {{ $item['active'] ? 'bg-[#004DB3] text-white shadow-sm' : 'text-white/80 hover:bg-white/15 hover:text-white' }}"
                                     >
                                         <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                             <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
@@ -235,7 +235,7 @@
                             <a
                                 href="{{ $item['route'] ? route($item['route']) : '#' }}"
                                 @click="if (window.innerWidth < 1024) sidebarOpen = false"
-                                class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition {{ $item['active'] ? 'bg-white text-[#0069FF] shadow-sm' : 'text-white/80 hover:bg-white/15 hover:text-white' }}"
+                                class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition {{ $item['active'] ? 'bg-[#004DB3] text-white shadow-sm' : 'text-white/80 hover:bg-white/15 hover:text-white' }}"
                             >
                                 <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                     <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
@@ -247,17 +247,7 @@
                 @endforeach
             </nav>
 
-            <div class="mt-auto rounded-lg border border-white/10 bg-white/[0.07] p-4 shadow-lg shadow-black/10">
-                <div class="flex items-center justify-between">
-                    <p class="text-sm font-bold text-white/90">ریسک عملیاتی</p>
-                    <span class="rounded-md bg-amber-400/15 px-2 py-1 text-xs font-black text-amber-100">۳ هشدار</span>
-                </div>
-                <p class="mt-3 text-2xl font-black text-white">۸۷٪ آماده</p>
-                <p class="mt-2 text-xs leading-6 text-white/70">ظرفیت تهران ۱ نیاز به بازبینی دارد.</p>
-                <a href="{{ route('admin.proxmox-servers.index') }}" class="mt-4 inline-flex w-full justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-[#0069FF] transition hover:bg-white/90">
-                    بررسی زیرساخت
-                </a>
-            </div>
+
         </aside>
 
         <main class="w-full min-w-0 flex-1 overflow-x-hidden">
@@ -478,7 +468,7 @@
                 <div class="p-2">
                     <a href="{{ route('admin.settings.edit') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
                         <svg class="size-[18px] text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 0v6m0-12V3m9 9h-6m-6 0H3m15.364 5.364-4.243-4.243m-6.364 0L3.636 17.364M20.364 6.636l-4.243 4.243m-6.364 0L5.636 6.636" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         تنظیمات
                     </a>

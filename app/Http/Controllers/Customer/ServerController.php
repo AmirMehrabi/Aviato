@@ -272,6 +272,8 @@ class ServerController extends Controller
             'ipAvailability' => $ipAvailability,
             'osFamilies' => $this->osFamilies($cloudImages),
             'invoiceCount' => $customer->invoices()->count(),
+            'taxEnabled' => \App\Models\AppSetting::taxEnabled(),
+            'taxRatePercentage' => \App\Models\AppSetting::taxRatePercentage(),
         ]);
     }
 
@@ -294,11 +296,13 @@ class ServerController extends Controller
             'cpu_cores' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:512'],
             'ram_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
             'disk_gb' => ['required_without:vm_bundle_id', 'integer', 'min:1', 'max:1048576'],
+            'requires_invoice' => ['nullable', 'boolean'],
         ]);
 
         $data['start_after_create'] = true;
         $data['onboot'] = false;
         $data['network_bridge'] = 'vmbr1';
+        $data['tax_exempt'] = !($data['requires_invoice'] ?? false);
 
         $image = CloudImage::query()
             ->where('is_active', true)

@@ -47,38 +47,41 @@ class BillingService
     public function hourlyWhenRunning(VirtualMachine $vm): float
     {
         if ($vm->isHetzner()) {
-            return $this->hetznerHourly($vm);
+            return $this->applyTaxIfApplicable($this->hetznerHourly($vm), $vm);
         }
 
         if ($vm->bundle) {
-            return (float) $vm->bundle->hourly_price;
+            return $this->applyTaxIfApplicable((float) $vm->bundle->hourly_price, $vm);
         }
 
         $rates = $this->rates();
-
-        return ($vm->cpu_cores * $this->rate($rates, ResourceRate::CPU))
+        $base = ($vm->cpu_cores * $this->rate($rates, ResourceRate::CPU))
             + ($vm->ram_gb * $this->rate($rates, ResourceRate::RAM))
             + ($vm->disk_gb * $this->rate($rates, ResourceRate::DISK))
             + ($vm->ip_count * $this->rate($rates, ResourceRate::IP));
+
+        return $this->applyTaxIfApplicable($base, $vm);
     }
 
     public function persistentHourly(VirtualMachine $vm): float
     {
         if ($vm->isHetzner()) {
-            return $this->hetznerHourly($vm);
+            return $this->applyTaxIfApplicable($this->hetznerHourly($vm), $vm);
         }
 
         $rates = $this->rates();
-
-        return ($vm->disk_gb * $this->rate($rates, ResourceRate::DISK))
+        $base = ($vm->disk_gb * $this->rate($rates, ResourceRate::DISK))
             + ($vm->ip_count * $this->rate($rates, ResourceRate::IP));
+
+        return $this->applyTaxIfApplicable($base, $vm);
     }
 
     public function backupHourly(VmBackup $backup): float
     {
         $rates = $this->rates();
+        $base = $backup->sizeGb() * $this->rate($rates, ResourceRate::BACKUP);
 
-        return $backup->sizeGb() * $this->rate($rates, ResourceRate::BACKUP);
+        return $this->applyTaxIfApplicable($base, $backup->virtualMachine);
     }
 
     public function diskHourly(int $sizeGb): float
@@ -88,7 +91,9 @@ class BillingService
 
     public function extraDiskHourly(VmDisk $disk): float
     {
-        return $this->diskHourly($disk->size_gb);
+        $base = $this->diskHourly($disk->size_gb);
+
+        return $this->applyTaxIfApplicable($base, $disk->virtualMachine);
     }
 
     public function customerSummary(int $customerId): array
@@ -131,6 +136,15 @@ class BillingService
                 ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
                 ->sum(fn (VirtualMachine $vm): int => $this->currentAccrued($vm)),
         ];
+    }
+
+    private function applyTaxIfApplicable(float $hourlyRate, ?VirtualMachine $vm): float
+    {
+        if (! $vm || $vm->tax_exempt || ! AppSetting::taxEnabled()) {
+            return $hourlyRate;
+        }
+
+        return $hourlyRate * AppSetting::taxMultiplier();
     }
 
     /** @return Collection<string, ResourceRate> */

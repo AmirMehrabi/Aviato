@@ -374,6 +374,7 @@ class AdminVirtualMachineActionsTest extends TestCase
             'os_template' => $vm->os_template,
             'iso_volume' => $vm->iso_volume,
             'network_bridge' => $vm->network_bridge,
+            'tax_exempt' => $vm->tax_exempt,
         ])
             ->assertRedirect($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid)
             ->assertSessionHas('status');

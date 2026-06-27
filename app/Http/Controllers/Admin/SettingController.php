@@ -62,6 +62,8 @@ class SettingController extends Controller
             'hesabroPaymentEnabled' => AppSetting::hesabroPaymentEnabled(),
             'hesabroClient' => AppSetting::hesabroClient(),
             'hesabroClientId' => AppSetting::hesabroClientId(),
+            'taxEnabled' => AppSetting::taxEnabled(),
+            'taxRatePercentage' => AppSetting::taxRatePercentage(),
         ]);
     }
 
@@ -114,6 +116,8 @@ class SettingController extends Controller
             'hesabro_client' => ['nullable', 'string', 'max:255'],
             'hesabro_client_id' => ['nullable', 'string', 'max:255'],
             'hesabro_client_secret' => ['nullable', 'string', 'max:2000'],
+            'tax_enabled' => ['required', 'boolean'],
+            'tax_rate_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $effectiveNationalCodeToken = $data['national_code_verification_token'] ?: (string) AppSetting::getValue(AppSetting::NATIONAL_CODE_VERIFICATION_TOKEN, '');
@@ -241,6 +245,8 @@ class SettingController extends Controller
         AppSetting::setValue(AppSetting::HESABRO_PAYMENT_ENABLED, $hesabroEnabled, 'boolean', 'payment');
         AppSetting::setValue(AppSetting::HESABRO_CLIENT, $effectiveHesabroClient, 'string', 'payment');
         AppSetting::setValue(AppSetting::HESABRO_CLIENT_ID, $data['hesabro_client_id'] ?? '', 'string', 'payment');
+        AppSetting::setValue(AppSetting::TAX_ENABLED, (bool) $data['tax_enabled'], 'boolean', 'billing');
+        AppSetting::setValue(AppSetting::TAX_RATE_PERCENTAGE, (float) $data['tax_rate_percentage'], 'float', 'billing');
 
         if (! empty($data['sms0098_password'])) {
             AppSetting::setValue(AppSetting::SMS0098_PASSWORD, $data['sms0098_password'], 'string', 'sms0098');

@@ -40,6 +40,7 @@
             <div class="rounded-lg bg-white p-3"><span class="block text-xs font-bold text-slate-500">IP Count</span><span class="font-black" dir="ltr">{{ $vm->ip_count ?? 1 }}</span></div>
         </div>
     </div>
+    <x-form.checkbox name="tax_exempt" label="معاف از مالیات (Tax Exempt)" :checked="old('tax_exempt', $vm->tax_exempt)" help="اگر غیرفعال باشد، مشتری صورتحساب رسمی دریافت می‌کند و شامل مالیات می‌شود." wrapper-class="md:col-span-2" />
     <label>
         <span class="text-sm font-black text-slate-700">IP Pool</span>
         <select name="ip_pool_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">

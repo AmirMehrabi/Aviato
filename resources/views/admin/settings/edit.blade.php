@@ -164,6 +164,15 @@
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h2 class="text-sm font-black text-slate-900">تنظیمات مالیات</h2>
+                <p class="mt-1 text-xs leading-6 text-slate-500">نرخ مالیات برای ماشین‌های مجازی که صورتحساب رسمی دریافت می‌کنند. اگر مشتری هنگام ساخت VM گزینه صورتحساب رسمی را فعال کند، این نرخ روی تمام کارکرد آن VM اعمال می‌شود.</p>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <x-form.checkbox name="tax_enabled" label="فعال‌سازی مالیات" :checked="$taxEnabled" />
+                    <x-form.input name="tax_rate_percentage" type="number" label="درصد مالیات" :value="$taxRatePercentage" min="0" max="100" step="0.01" dir-ltr help="مثلا 9 یعنی ۹٪ مالیات." />
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h2 class="text-sm font-black text-slate-900">سطح حساب و کنترل سوء استفاده</h2>
                 <p class="mt-1 text-xs leading-6 text-slate-500">حساب تایید نشده با کد ملی محدود می‌شود. VM حذف شده تا پایان دوره cooldown همچنان سهمیه حساب تایید نشده را مصرف می‌کند.</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">

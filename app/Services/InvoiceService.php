@@ -74,6 +74,9 @@ class InvoiceService
         return DB::transaction(function () use ($customer, $periodStart, $periodEnd, $accruals, $legacyTransactions): Invoice {
             $lines = $this->invoiceLines($accruals, $legacyTransactions);
             $subtotal = (int) $lines->sum('subtotal');
+            $taxAmount = (int) $lines->sum('tax_amount');
+            $taxRate = AppSetting::taxEnabled() ? AppSetting::taxRatePercentage() : 0;
+            $total = $subtotal;
             $invoice = Invoice::create([
                 'customer_id' => $customer->id,
                 'number' => $this->numberFor($customer, $periodStart),
@@ -82,10 +85,12 @@ class InvoiceService
                 'period_end' => $periodEnd,
                 'issued_at' => now(),
                 'currency' => AppSetting::currency(),
-                'subtotal_amount' => $subtotal,
-                'wallet_charged_amount' => $subtotal,
+                'subtotal_amount' => $subtotal - $taxAmount,
+                'wallet_charged_amount' => $total,
                 'adjustment_amount' => 0,
-                'total_amount' => $subtotal,
+                'total_amount' => $total,
+                'tax_amount' => $taxAmount,
+                'tax_rate_percentage' => $taxRate,
                 'meta' => [
                     'usage_accrual_ids' => $accruals->pluck('id')->all(),
                     'legacy_transaction_ids' => $legacyTransactions->pluck('id')->all(),
@@ -94,6 +99,10 @@ class InvoiceService
             ]);
 
             $lines->each(fn (array $line) => $this->createInvoiceItem($invoice, $line));
+
+            if ($taxAmount > 0) {
+                $this->createTaxInvoiceItem($invoice, $taxAmount, $taxRate);
+            }
 
             if ($accruals->isNotEmpty()) {
                 UsageAccrual::query()->whereKey($accruals->modelKeys())->delete();
@@ -169,14 +178,23 @@ class InvoiceService
             $first = $group->first();
             $seconds = (int) $group->sum('seconds');
             $subtotal = (int) $group->sum('amount');
+            $taxExempt = (bool) ($first['snapshot']['tax_exempt'] ?? true);
+            $taxRate = $taxExempt ? 0 : AppSetting::taxRatePercentage();
+            $taxMultiplier = $taxExempt ? 1 : AppSetting::taxMultiplier();
+            $preTaxSubtotal = $taxMultiplier > 1 ? (int) round($subtotal / $taxMultiplier) : $subtotal;
+            $taxAmount = $subtotal - $preTaxSubtotal;
 
             return [
                 'category' => $first['category'],
                 'virtual_machine_id' => $first['virtual_machine_id'],
                 'resource_name' => $first['resource_name'],
                 'hours' => $seconds / 3600,
-                'unit_price' => $seconds > 0 ? $subtotal / ($seconds / 3600) : 0,
+                'unit_price' => $seconds > 0 ? $preTaxSubtotal / ($seconds / 3600) : 0,
                 'subtotal' => $subtotal,
+                'pre_tax_subtotal' => $preTaxSubtotal,
+                'tax_amount' => $taxAmount,
+                'tax_rate' => $taxRate,
+                'tax_exempt' => $taxExempt,
                 'period_start' => $group->min('period_start'),
                 'period_end' => $group->max('period_end'),
                 'snapshot' => $group->last()['snapshot'],
@@ -244,6 +262,24 @@ class InvoiceService
                 'source_ids' => $line['source_ids'],
                 'period_start' => $line['period_start'],
                 'period_end' => $line['period_end'],
+            ],
+        ]);
+    }
+
+    private function createTaxInvoiceItem(Invoice $invoice, int $taxAmount, float $taxRate): void
+    {
+        InvoiceItem::create([
+            'invoice_id' => $invoice->id,
+            'virtual_machine_id' => null,
+            'type' => 'tax',
+            'label' => sprintf('مالیات (%s٪)', number_format($taxRate, 0)),
+            'description' => 'مالیات صورتحساب رسمی',
+            'quantity' => 1,
+            'unit' => 'fixed',
+            'unit_price' => $taxAmount,
+            'subtotal' => $taxAmount,
+            'meta' => [
+                'tax_rate_percentage' => $taxRate,
             ],
         ]);
     }

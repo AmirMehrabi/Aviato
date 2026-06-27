@@ -101,6 +101,7 @@ class UsageBillingService
                     'ram_gb' => $locked->ram_gb,
                     'disk_gb' => $locked->disk_gb,
                     'ip_count' => $locked->ip_count,
+                    'tax_exempt' => $locked->tax_exempt,
                     'status' => $locked->status,
                     'bundle_name' => $locked->bundle?->name,
                     'provider' => $locked->provider ?: VirtualMachine::PROVIDER_PROXMOX,
