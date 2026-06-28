@@ -20,7 +20,10 @@
                 <h1 class="mt-2 truncate text-2xl font-black md:text-4xl">{{ $project->name }}</h1>
                 <p class="mt-2 text-sm leading-7 text-white/70">مسئول پرداخت: {{ $project->owner?->name }}</p>
             </div>
-            <span class="w-fit rounded-lg bg-white/10 px-4 py-2 text-sm font-black text-white">{{ $project->is_default ? 'فضای کاری پیش‌فرض' : 'فضای کاری' }}</span>
+            <div class="flex items-center gap-3">
+                <a href="{{ route('admin.projects.proforma', $project) }}" class="w-fit rounded-lg bg-white/20 px-4 py-2 text-sm font-black text-white transition hover:bg-white/30">پیش فاکتور</a>
+                <span class="w-fit rounded-lg bg-white/10 px-4 py-2 text-sm font-black text-white">{{ $project->is_default ? 'فضای کاری پیش‌فرض' : 'فضای کاری' }}</span>
+            </div>
         </div>
     </div>
 
@@ -41,9 +44,9 @@
             <p class="mt-1 text-sm font-bold text-slate-500">هزینه با مالک است</p>
         </article>
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-            <p class="text-xs font-black tracking-wide text-slate-500">شناسه داخلی</p>
-            <p class="mt-2 truncate text-xl font-black text-slate-950">{{ $project->slug }}</p>
-            <p class="mt-1 text-sm font-bold text-slate-500">برای آدرس و پشتیبانی</p>
+            <p class="text-xs font-black tracking-wide text-slate-500">هزینه ماهانه</p>
+            <p class="mt-2 text-xl font-black text-[#0069FF]">{{ number_format($totalMonthlyCost / 10) }} تومان</p>
+            <p class="mt-1 text-sm font-bold text-slate-500">جمع تقریبی ماشین‌ها</p>
         </article>
     </section>
 
@@ -59,6 +62,7 @@
                                 <th class="px-4 py-3 text-right">ساخته‌شده توسط</th>
                                 <th class="px-4 py-3 text-right">مسئول پرداخت</th>
                                 <th class="px-4 py-3 text-right">وضعیت</th>
+                                <th class="px-4 py-3 text-left">هزینه ماهانه</th>
                                 <th class="px-4 py-3 text-left">عملیات</th>
                             </tr>
                         </thead>
@@ -73,13 +77,14 @@
                                     <td class="px-4 py-3 text-slate-600">{{ $vm->creator?->name ?: $vm->customer?->name }}</td>
                                     <td class="px-4 py-3 font-bold text-slate-900">{{ $project->owner?->name }}</td>
                                     <td class="px-4 py-3"><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">{{ $vm->status }}</span></td>
+                                    <td class="px-4 py-3 text-left font-black text-slate-950">{{ number_format($vmPrices->get($vm->uuid, 0) / 10) }} <span class="text-xs font-bold text-slate-500">تومان</span></td>
                                     <td class="px-4 py-3 text-left">
                                         <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white">مشاهده</a>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-4 py-10 text-center text-sm font-bold text-slate-500">در این فضای کاری هنوز ماشینی وجود ندارد.</td>
+                                    <td colspan="6" class="px-4 py-10 text-center text-sm font-bold text-slate-500">در این فضای کاری هنوز ماشینی وجود ندارد.</td>
                                 </tr>
                             @endforelse
                         </tbody>

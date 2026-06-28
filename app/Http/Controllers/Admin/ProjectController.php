@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Project;
+use App\Services\BillingService;
+use App\Support\Jalali;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,6 +14,10 @@ use Illuminate\Support\Str;
 
 class ProjectController extends Controller
 {
+    public function __construct(
+        private readonly BillingService $billing,
+    ) {}
+
     public function index(Request $request): View
     {
         $filters = $request->validate([
@@ -57,10 +63,52 @@ class ProjectController extends Controller
             'virtualMachines.creator',
             'virtualMachines.customer',
             'virtualMachines.proxmoxServer',
+            'virtualMachines.bundle',
+            'virtualMachines.disks',
         ])->loadCount(['members', 'virtualMachines']);
+
+        $vmPrices = $project->virtualMachines->mapWithKeys(function ($vm) {
+            return [$vm->uuid => $this->billing->estimateMonthly($vm)];
+        });
+
+        $totalMonthlyCost = $vmPrices->sum();
 
         return view('admin.projects.show', [
             'project' => $project,
+            'vmPrices' => $vmPrices,
+            'totalMonthlyCost' => $totalMonthlyCost,
+        ]);
+    }
+
+    public function proforma(Project $project): View
+    {
+        $project->load([
+            'owner',
+            'virtualMachines.bundle',
+            'virtualMachines.proxmoxServer',
+            'virtualMachines.disks',
+            'virtualMachines.creator',
+            'virtualMachines.customer',
+        ])->loadCount(['members', 'virtualMachines']);
+
+        [$periodStart, $periodEnd] = Jalali::currentJalaliMonthRange();
+
+        [$jYear, $jMonth] = Jalali::nowJalai();
+
+        $vmPrices = $project->virtualMachines->mapWithKeys(function ($vm) {
+            return [$vm->uuid => $this->billing->estimateMonthly($vm)];
+        });
+
+        $totalMonthlyCost = $vmPrices->sum();
+
+        return view('admin.projects.proforma', [
+            'project' => $project,
+            'vmPrices' => $vmPrices,
+            'totalMonthlyCost' => $totalMonthlyCost,
+            'periodStart' => $periodStart,
+            'periodEnd' => $periodEnd,
+            'jalaliYear' => $jYear,
+            'jalaliMonth' => $jMonth,
         ]);
     }
 

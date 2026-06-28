@@ -126,7 +126,21 @@ document.addEventListener('alpine:init', () => {
                                 <td class="px-5 py-4">{{ $vm->creator?->name ?: '—' }}</td>
                                 <td class="px-5 py-4"><a class="font-bold text-[#0069FF]" href="{{ route('admin.customers.show', $vm->customer) }}">{{ $vm->customer?->name ?: '—' }}</a></td>
                                 <td class="px-5 py-4">{{ $vm->cpu_cores }} CPU / {{ $vm->ram_gb }}GB / {{ $vm->disk_gb }}GB</td>
-                                <td class="px-5 py-4"><span class="rounded-md px-2.5 py-1 text-xs font-black {{ $vm->status === 'running' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-600' }}">{{ $vm->status === 'running' ? 'روشن' : ($vm->status === 'stopped' ? 'خاموش' : 'تعلیق') }}</span></td>
+                                <td class="px-5 py-4">
+    @if($vm->status === 'running')
+        <span class="rounded-md bg-[#EBF3FF] px-2.5 py-1 text-xs font-black text-[#0069FF]">روشن</span>
+    @elseif($vm->status === 'stopped')
+        <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">خاموش</span>
+    @elseif($vm->status === 'suspended')
+        <span class="rounded-md bg-red-50 px-2.5 py-1 text-xs font-black text-red-600">تعلیق</span>
+    @elseif($vm->status === 'deleting')
+        <span class="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700">در حال حذف</span>
+    @elseif($vm->status === 'deleted')
+        <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-500">حذف شده</span>
+    @else
+        <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{{ $vm->status ?: '—' }}</span>
+    @endif
+</td>
                                 <td class="px-5 py-4 font-black">{{ $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }}</td>
                                 <td class="px-5 py-4">
                                     <a class="font-black text-[#0069FF]" href="{{ route('admin.virtual-machines.show', $vm) }}">نمایش</a>

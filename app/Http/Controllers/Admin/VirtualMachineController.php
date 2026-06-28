@@ -58,6 +58,7 @@ class VirtualMachineController extends Controller
         ]);
 
         $vms = VirtualMachine::query()
+            ->notDeleted()
             ->with(['customer', 'project.owner', 'creator', 'proxmoxServer', 'infrastructureLocation', 'bundle', 'cloudImage'])
             ->when($filters['customer_id'] ?? null, fn ($query, int $customerId) => $query->where('customer_id', $customerId))
             ->when($filters['project_id'] ?? null, fn ($query, int $projectId) => $query->where('project_id', $projectId))
@@ -359,29 +360,41 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'این VM تا شارژ شدن کیف پول فضای کاری مربوطه قابل روشن کردن نیست.');
         }
 
-        if ($virtualMachine->isProxmox() && (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid)) {
-            return back()->with('error', 'اطلاعات Proxmox، Node یا VMID برای روشن کردن کامل نیست.');
-        }
-
-        if ($virtualMachine->isHetzner() && (! $virtualMachine->infrastructureLocation?->hetznerAccount || ! $virtualMachine->remote_id)) {
-            return back()->with('error', 'اطلاعات Hetzner برای روشن کردن کامل نیست.');
-        }
-
         $accrued = $this->billing->currentAccrued($virtualMachine);
 
-        try {
-            if ($virtualMachine->isHetzner()) {
-                $start = $this->hetzner->powerOn($virtualMachine->infrastructureLocation->hetznerAccount, $virtualMachine->remote_id);
-                $this->hetzner->waitForAction($virtualMachine->infrastructureLocation->hetznerAccount, $start['action']['id'] ?? null, 180);
-            } else {
-                $start = $this->proxmox->startVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
-
-                if (! empty($start['task_id'])) {
-                    $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $start['task_id'], 180);
-                }
+        if (! $virtualMachine->isRunning()) {
+            if ($virtualMachine->isProxmox() && (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid)) {
+                return back()->with('error', 'اطلاعات Proxmox، Node یا VMID برای روشن کردن کامل نیست.');
             }
-        } catch (Throwable $exception) {
-            return back()->with('error', 'روشن کردن VM ناموفق بود: '.$exception->getMessage());
+
+            if ($virtualMachine->isHetzner() && (! $virtualMachine->infrastructureLocation?->hetznerAccount || ! $virtualMachine->remote_id)) {
+                return back()->with('error', 'اطلاعات Hetzner برای روشن کردن کامل نیست.');
+            }
+
+            try {
+                if ($virtualMachine->isHetzner()) {
+                    $serverInfo = $this->hetzner->server($virtualMachine->infrastructureLocation->hetznerAccount, $virtualMachine->remote_id);
+                    $remoteRunning = ($serverInfo['server']['status'] ?? '') === 'running';
+
+                    if (! $remoteRunning) {
+                        $start = $this->hetzner->powerOn($virtualMachine->infrastructureLocation->hetznerAccount, $virtualMachine->remote_id);
+                        $this->hetzner->waitForAction($virtualMachine->infrastructureLocation->hetznerAccount, $start['action']['id'] ?? null, 180);
+                    }
+                } else {
+                    $remoteStatus = $this->proxmox->vmStatus($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+                    $remoteRunning = ($remoteStatus['status'] ?? '') === 'running';
+
+                    if (! $remoteRunning) {
+                        $start = $this->proxmox->startVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+
+                        if (! empty($start['task_id'])) {
+                            $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $start['task_id'], 180);
+                        }
+                    }
+                }
+            } catch (Throwable $exception) {
+                return back()->with('error', 'روشن کردن VM ناموفق بود: '.$exception->getMessage());
+            }
         }
 
         $virtualMachine->forceFill([

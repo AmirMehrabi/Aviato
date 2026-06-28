@@ -206,7 +206,7 @@
                         [
                             'label' => 'سیستم',
                             'items' => [
-                                ['label' => 'تنظیمات', 'route' => 'admin.settings.edit', 'active' => request()->routeIs('admin.settings.*'), 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 0v3m0-9V6m7.07 2.93-2.12 2.12M6.05 14.95l-2.12 2.12m0-12.14 2.12 2.12m8.9 4.9-2.12 2.12'],
+                                ['label' => 'تنظیمات', 'route' => 'admin.settings.edit', 'active' => request()->routeIs('admin.settings.*'), 'icon' => 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z M12 8V5 M12 16v3 M8 12H5 M16 12h3 M9.2 9.2l-1.8-1.8 M14.8 14.8l1.8 1.8 M9.2 14.8l-1.8 1.8 M14.8 9.2l1.8-1.8'],
                             ],
                         ],
                     ];
@@ -467,7 +467,7 @@
                 <div class="p-2">
                     <a href="{{ route('admin.settings.edit') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
                         <svg class="size-[18px] text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 0v3m0-9V6m7.07 2.93-2.12 2.12M6.05 14.95l-2.12 2.12m0-12.14 2.12 2.12m8.9 4.9-2.12 2.12" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z M12 8V5 M12 16v3 M8 12H5 M16 12h3 M9.2 9.2l-1.8-1.8 M14.8 14.8l1.8 1.8 M9.2 14.8l-1.8 1.8 M14.8 9.2l1.8-1.8" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         تنظیمات
                     </a>

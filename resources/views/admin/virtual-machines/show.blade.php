@@ -54,7 +54,20 @@
 </div>
 <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 @foreach([
-['label' => 'وضعیت', 'value' => $vm->status === \App\Models\VirtualMachine::STATUS_SUSPENDED ? 'تعلیق' : ($vm->isRunning() ? 'روشن' : 'خاموش'), 'tone' => $vm->status === \App\Models\VirtualMachine::STATUS_SUSPENDED ? 'text-red-600' : ($vm->isRunning() ? 'text-[#0069FF]' : 'text-slate-700')],
+['label' => 'وضعیت', 'value' => match($vm->status) {
+    \App\Models\VirtualMachine::STATUS_RUNNING => 'روشن',
+    \App\Models\VirtualMachine::STATUS_STOPPED => 'خاموش',
+    \App\Models\VirtualMachine::STATUS_SUSPENDED => 'تعلیق',
+    \App\Models\VirtualMachine::STATUS_DELETING => 'در حال حذف',
+    \App\Models\VirtualMachine::STATUS_DELETED => 'حذف شده',
+    default => $vm->status ?: '—',
+}, 'tone' => match($vm->status) {
+    \App\Models\VirtualMachine::STATUS_RUNNING => 'text-[#0069FF]',
+    \App\Models\VirtualMachine::STATUS_SUSPENDED => 'text-red-600',
+    \App\Models\VirtualMachine::STATUS_DELETING => 'text-amber-700',
+    \App\Models\VirtualMachine::STATUS_DELETED => 'text-slate-500',
+    default => 'text-slate-700',
+}],
 ['label' => 'هزینه ماهانه در وضعیت فعلی', 'value' => $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)), 'tone' => 'text-[#0069FF]'],
 ['label' => 'هزینه ماهانه اگر خاموش باشد', 'value' => $money->format($billing->estimateStoppedMonthly($vm)), 'tone' => 'text-amber-700'],
 ['label' => 'Billing Customer', 'value' => $billingCustomer?->name ?: '—', 'tone' => 'text-slate-950'],

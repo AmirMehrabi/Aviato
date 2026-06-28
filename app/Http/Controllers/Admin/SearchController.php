@@ -71,6 +71,7 @@ class SearchController extends Controller
         }
 
         $vms = VirtualMachine::query()
+            ->notDeleted()
             ->where(fn ($q) => $q->where('name', 'like', $like)
                 ->orWhere('ip_address', 'like', $like)
                 ->orWhere('hostname', 'like', $like)

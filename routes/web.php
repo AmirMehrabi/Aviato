@@ -131,6 +131,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
         Route::get('workspaces', [AdminProjectController::class, 'index'])->name('admin.projects.index');
         Route::get('workspaces/{project}', [AdminProjectController::class, 'show'])->name('admin.projects.show');
+        Route::get('workspaces/{project}/proforma', [AdminProjectController::class, 'proforma'])->name('admin.projects.proforma');
         Route::patch('workspaces/{project}', [AdminProjectController::class, 'update'])->name('admin.projects.update');
 
         Route::get('virtual-machines/proxmox-servers/{proxmoxServer}/options', [VirtualMachineController::class, 'options'])
