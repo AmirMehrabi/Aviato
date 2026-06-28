@@ -93,7 +93,9 @@ class ProjectController extends Controller
 
         [$periodStart, $periodEnd] = Jalali::currentJalaliMonthRange();
 
-        [$jYear, $jMonth] = Jalali::nowJalai();
+        $jalaliNow = Jalali::now();
+        $jYear = $jalaliNow->getYear();
+        $jMonth = $jalaliNow->getMonth();
 
         $vmPrices = $project->virtualMachines->mapWithKeys(function ($vm) {
             return [$vm->uuid => $this->billing->estimateMonthly($vm)];
