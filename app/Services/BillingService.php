@@ -69,6 +69,10 @@ class BillingService
             return $this->applyTaxIfApplicable($this->hetznerHourly($vm), $vm);
         }
 
+        if ($vm->bundle) {
+            return $this->applyTaxIfApplicable((float) $vm->bundle->hourly_price, $vm);
+        }
+
         $rates = $this->rates();
         $base = ($vm->disk_gb * $this->rate($rates, ResourceRate::DISK))
             + ($vm->ip_count * $this->rate($rates, ResourceRate::IP));
