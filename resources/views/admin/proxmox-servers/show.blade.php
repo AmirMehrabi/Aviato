@@ -244,7 +244,9 @@
                 <p class="mt-1 text-sm text-slate-500">ظرفیت و نوع محتوا.</p>
                 <div class="mt-5 space-y-3">
                     @forelse ($storages as $storage)
-                        @php($usedPercent = isset($storage['used'], $storage['total']) && $storage['total'] > 0 ? round($storage['used'] / $storage['total'] * 100) : null)
+                        @php
+                            $usedPercent = isset($storage['used'], $storage['total']) && $storage['total'] > 0 ? round($storage['used'] / $storage['total'] * 100) : null;
+                        @endphp
                         <div class="rounded-xl border border-slate-200 p-4">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
