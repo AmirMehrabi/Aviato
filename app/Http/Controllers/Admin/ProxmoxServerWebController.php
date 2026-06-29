@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProxmoxServerRequest;
 use App\Http\Requests\Admin\UpdateProxmoxServerRequest;
 use App\Models\ProxmoxServer;
+use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
+use App\Models\VmDisk;
+use App\Services\BillingService;
 use App\Services\ProxmoxService;
 use App\Services\StaleVirtualMachineCleanupService;
+use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +26,8 @@ class ProxmoxServerWebController extends Controller
     public function __construct(
         private readonly ProxmoxService $proxmox,
         private readonly StaleVirtualMachineCleanupService $staleCleanup,
+        private readonly BillingService $billing,
+        private readonly WalletService $wallets,
     ) {}
 
     public function index(Request $request): View
@@ -80,12 +86,35 @@ class ProxmoxServerWebController extends Controller
             $this->markOffline($proxmoxServer, $exception);
         }
 
+        $serverVms = VirtualMachine::query()
+            ->where('proxmox_server_id', $proxmoxServer->id)
+            ->notDeleted()
+            ->with(['bundle', 'disks', 'project.owner', 'customer'])
+            ->get();
+
+        $runningVms = $serverVms->where('status', VirtualMachine::STATUS_RUNNING);
+        $stoppedVms = $serverVms->where('status', VirtualMachine::STATUS_STOPPED);
+
+        $runningMonthlyRevenue = $runningVms
+            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+            ->sum(fn (VirtualMachine $vm): int => $this->billing->estimateMonthly($vm)
+                + $vm->disks->where('status', VmDisk::STATUS_READY)->sum(fn (VmDisk $disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth())));
+
+        $stoppedStorageRevenue = $stoppedVms
+            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+            ->sum(fn (VirtualMachine $vm): int => $this->billing->estimateStoppedMonthly($vm)
+                + $vm->disks->where('status', VmDisk::STATUS_READY)->sum(fn (VmDisk $disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth())));
+
         return view('admin.proxmox-servers.show', [
             'server' => $proxmoxServer->refresh(),
             'summary' => $summary,
             'fallback' => $fallback,
             'staleAnomalies' => $this->staleAnomalies($proxmoxServer->refresh(), $summary),
             'staleAnomalySource' => $summary ? 'live' : 'cached',
+            'serverVms' => $serverVms,
+            'runningMonthlyRevenue' => $runningMonthlyRevenue,
+            'stoppedStorageRevenue' => $stoppedStorageRevenue,
+            'wallets' => $this->wallets,
         ]);
     }
 

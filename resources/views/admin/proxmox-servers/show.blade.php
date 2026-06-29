@@ -1,6 +1,7 @@
 @extends('layouts.admin')
+@inject('money', 'App\Services\WalletService')
 
-@section('title', 'نمایش Proxmox')
+@section('title', 'نمایش سرور Proxmox')
 
 @section('content')
 @php
@@ -21,7 +22,9 @@
         url: @js(route('admin.proxmox-servers.metrics', $server)),
         initialNode: @js($nodes[0]['node'] ?? $nodes[0]['name'] ?? null),
         staleIds: @js($staleIds),
+        confirmAction: null,
     })"
+    @keydown.escape.window="confirmAction = null"
 >
     @if (session('status'))
         <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
@@ -30,120 +33,203 @@
         <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{{ session('error') }}</div>
     @endif
 
+    {{-- Hero header --}}
     <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
         <div class="absolute -left-20 top-0 size-56 rounded-full bg-white/10 blur-3xl"></div>
         <div class="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded-md bg-white/10 px-2.5 py-1 text-xs font-black text-white">{{ $server->environment }}</span>
-                    <span class="rounded-md bg-white/10 px-2.5 py-1 text-xs font-black text-white">{{ $server->datacenter ?: 'No DC' }}</span>
-                    <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $server->connection_status === 'online' ? 'bg-[#B8D6FF] text-[#031B4E]' : 'bg-amber-300 text-amber-950' }}">{{ strtoupper($server->connection_status) }}</span>
+                    @php
+                        $envLabels = ['production' => 'تولید', 'staging' => 'آزمایشی', 'development' => 'توسعه'];
+                    @endphp
+                    <span class="rounded-md bg-white/10 px-2.5 py-1 text-xs font-black text-white">{{ $envLabels[$server->environment] ?? $server->environment }}</span>
+                    <span class="rounded-md bg-white/10 px-2.5 py-1 text-xs font-black text-white">{{ $server->datacenter ?: 'بدون DC' }}</span>
+                    @php
+                        $connStatus = match($server->connection_status) {
+                            'online' => 'bg-emerald-400/20 text-emerald-300',
+                            'offline' => 'bg-red-400/20 text-red-300',
+                            default => 'bg-amber-400/20 text-amber-300',
+                        };
+                        $connLabel = match($server->connection_status) {
+                            'online' => 'آنلاین',
+                            'offline' => 'آفلاین',
+                            default => 'ناشناخته',
+                        };
+                    @endphp
+                    <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $connStatus }}">{{ $connLabel }}</span>
                     @if($fallback)
-                        <span class="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-900">Fallback cache</span>
+                        <span class="rounded-md bg-amber-400/20 px-2.5 py-1 text-xs font-black text-amber-300">کش پشتیبان</span>
+                    @endif
+                    @if($server->maintenance_mode)
+                        <span class="rounded-md bg-red-400/20 px-2.5 py-1 text-xs font-black text-red-300">تعمیر و نگهداری</span>
                     @endif
                 </div>
                 <h1 class="mt-3 text-3xl font-black md:text-4xl">{{ $server->name }}</h1>
                 <p class="mt-2 font-mono text-sm text-white/70" dir="ltr">{{ $server->baseUrl() }} · {{ $server->proxmoxUser() }}</p>
+                @if($server->synced_at)
+                    <p class="mt-1 text-xs text-white/50">آخرین همگام‌سازی: {{ $server->synced_at->diffForHumans() }}</p>
+                @endif
             </div>
             <div class="flex flex-wrap gap-2">
-                <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] hover:bg-slate-100">Sync now</button></form>
-                <a href="{{ route('admin.proxmox-servers.edit', $server) }}" class="rounded-lg border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white hover:bg-white/15">ویرایش</a>
-                <form method="POST" action="{{ route('admin.proxmox-servers.destroy', $server) }}" onsubmit="return confirm('حذف شود؟')">@csrf @method('DELETE') <button class="rounded-lg bg-red-400/15 px-5 py-3 text-sm font-black text-red-50 hover:bg-red-400/25">حذف</button></form>
+                <button
+                    type="button"
+                    @click="confirmAction = 'sync'"
+                    class="rounded-lg bg-white px-5 py-3 text-sm font-bold text-[#031B4E] transition hover:bg-slate-100"
+                >همگام‌سازی</button>
+                <a href="{{ route('admin.proxmox-servers.edit', $server) }}" class="rounded-lg bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/20">ویرایش</a>
+                <button
+                    type="button"
+                    @click="confirmAction = 'delete'"
+                    class="rounded-lg bg-red-500/20 px-5 py-3 text-sm font-bold text-red-300 transition hover:bg-red-500/30"
+                >حذف</button>
             </div>
         </div>
 
-        <div class="relative mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+        {{-- Stats cards --}}
+        <div class="relative mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
             <div class="rounded-xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p class="text-sm font-black text-white/65">Nodes</p>
+                <p class="text-sm font-bold text-white/60">نودها</p>
                 <p class="mt-3 text-3xl font-black">{{ $counts['nodes'] ?? count($nodes) }}</p>
-                <div class="mt-3 flex gap-2 text-xs font-black"><span class="rounded bg-[#B8D6FF] px-2 py-1 text-[#031B4E]">Online {{ $counts['online_nodes'] ?? 0 }}</span><span class="rounded bg-red-200 px-2 py-1 text-red-900">Offline {{ $counts['offline_nodes'] ?? 0 }}</span></div>
+                <div class="mt-3 flex gap-2 text-xs font-bold">
+                    <span class="rounded bg-emerald-400/20 px-2 py-1 text-emerald-300">آنلاین {{ $counts['online_nodes'] ?? 0 }}</span>
+                    <span class="rounded bg-red-400/20 px-2 py-1 text-red-300">آفلاین {{ $counts['offline_nodes'] ?? 0 }}</span>
+                </div>
             </div>
             <div class="rounded-xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p class="text-sm font-black text-white/65">Virtual Machines</p>
+                <p class="text-sm font-bold text-white/60">ماشین‌های مجازی</p>
                 <p class="mt-3 text-3xl font-black">{{ $counts['virtual_machines'] ?? count($vms) }}</p>
-                <div class="mt-3 flex gap-2 text-xs font-black"><span class="rounded bg-[#B8D6FF] px-2 py-1 text-[#031B4E]">Online {{ $counts['running_virtual_machines'] ?? 0 }}</span><span class="rounded bg-red-200 px-2 py-1 text-red-900">Offline {{ $counts['offline_virtual_machines'] ?? 0 }}</span></div>
+                <div class="mt-3 flex gap-2 text-xs font-bold">
+                    <span class="rounded bg-emerald-400/20 px-2 py-1 text-emerald-300">روشن {{ $counts['running_virtual_machines'] ?? 0 }}</span>
+                    <span class="rounded bg-slate-400/20 px-2 py-1 text-slate-300">خاموش {{ $counts['offline_virtual_machines'] ?? 0 }}</span>
+                </div>
             </div>
             <div class="rounded-xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p class="text-sm font-black text-white/65">Storage Pools</p>
+                <p class="text-sm font-bold text-white/60">ذخیره‌سازی</p>
                 <p class="mt-3 text-3xl font-black">{{ $counts['storage'] ?? count($storages) }}</p>
-                <p class="mt-3 text-xs font-bold text-white/60">local, directory, LVM, ZFS, NFS...</p>
+                <p class="mt-3 text-xs text-white/50">ZFS, LVM, NFS, directory...</p>
             </div>
             <div class="rounded-xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p class="text-sm font-black text-white/65">Backups</p>
+                <p class="text-sm font-bold text-white/60">پشتیبان‌ها</p>
                 <p class="mt-3 text-3xl font-black">{{ $counts['backups'] ?? count($backups) }}</p>
-                <p class="mt-3 text-xs font-bold text-white/60">Detected from backup-capable storages</p>
+                <p class="mt-3 text-xs text-white/50">از استوریج‌های پشتیبان‌گیر</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                <p class="text-sm font-bold text-white/60">درآمد ماهانه</p>
+                <p class="mt-3 text-2xl font-black text-emerald-300">{{ $money->format($runningMonthlyRevenue) }}</p>
+                <p class="mt-1 text-xs text-white/50">خاموش: {{ $money->format($stoppedStorageRevenue) }}</p>
             </div>
         </div>
     </div>
 
     @if(! empty($endpointErrors))
         <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-800">
-            <span class="font-black">Some Proxmox endpoints were not accessible:</span>
+            <span class="font-black">برخی endpointهای Proxmox در دسترس نبودند:</span>
             {{ collect($endpointErrors)->map(fn($error, $path) => $path.' '.$error)->implode(' · ') }}
         </div>
     @endif
 
+    @if($server->sync_error)
+        <div class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-7 text-red-700">
+            <span class="font-black">خطای آخرین همگام‌سازی:</span> {{ $server->sync_error }}
+        </div>
+    @endif
+
+    {{-- Tabs --}}
     <div class="mt-6 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-        <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'overview' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'overview'">Overview</button>
-        <button type="button" class="rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'performance' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="openPerformance()">Performance graphs</button>
-        <button type="button" class="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-black transition" :class="activeTab === 'anomalies' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'anomalies'">
-            Anomalies
-            <span class="rounded-md px-2 py-0.5 text-xs" :class="activeTab === 'anomalies' ? 'bg-white/20 text-white' : '{{ $staleAnomalies->isNotEmpty() ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-500' }}'">{{ $staleAnomalies->count() }}</span>
+        <button type="button" class="rounded-xl px-5 py-3 text-sm font-bold transition" :class="activeTab === 'overview' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'overview'">نمای کلی</button>
+        <button type="button" class="rounded-xl px-5 py-3 text-sm font-bold transition" :class="activeTab === 'vms' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'vms'">ماشین‌های مجازی</button>
+        <button type="button" class="rounded-xl px-5 py-3 text-sm font-bold transition" :class="activeTab === 'performance' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="openPerformance()">نمودار عملکرد</button>
+        <button type="button" class="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition" :class="activeTab === 'anomalies' ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/20' : 'text-slate-600 hover:bg-slate-50'" @click="activeTab = 'anomalies'">
+            ناهنجاری‌ها
+            <span class="rounded-md px-2 py-0.5 text-xs font-bold" :class="activeTab === 'anomalies' ? 'bg-white/20 text-white' : '{{ $staleAnomalies->isNotEmpty() ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-500' }}'">{{ $staleAnomalies->count() }}</span>
         </button>
     </div>
 
+    {{-- Overview tab --}}
     <div x-show="activeTab === 'overview'" class="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_420px]">
         <div class="space-y-6">
+            {{-- Nodes --}}
             <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div class="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
+                <div class="flex flex-col gap-3 border-b border-slate-100 p-5 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h2 class="text-lg font-black">Nodes</h2>
-                        <p class="mt-1 text-sm text-slate-500">Online/offline state, CPU and memory pressure.</p>
+                        <h2 class="text-lg font-black text-slate-950">نودها</h2>
+                        <p class="mt-1 text-sm text-slate-500">وضعیت آنلاین/آفلاین، فشار CPU و حافظه.</p>
                     </div>
-                    <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50" disabled>Manage selected</button>
                 </div>
                 <div class="overflow-x-auto p-5">
                     <table class="min-w-full text-right text-sm">
-                        <thead class="text-xs font-black text-slate-500"><tr><th class="py-3">Node</th><th class="py-3">Status</th><th class="py-3">CPU</th><th class="py-3">Memory</th><th class="py-3">Uptime</th></tr></thead>
+                        <thead class="text-xs font-bold text-slate-500">
+                            <tr>
+                                <th class="py-3">نود</th>
+                                <th class="py-3">وضعیت</th>
+                                <th class="py-3">CPU</th>
+                                <th class="py-3">حافظه</th>
+                                <th class="py-3">آپتایم</th>
+                            </tr>
+                        </thead>
                         <tbody class="divide-y divide-slate-100">
                             @forelse ($nodes as $node)
                                 <tr>
-                                    <td class="py-3 font-black">{{ $node['node'] ?? $node['name'] ?? '—' }}</td>
-                                    <td class="py-3"><span class="rounded-md px-2.5 py-1 text-xs font-black {{ ($node['status'] ?? null) === 'online' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-red-50 text-red-700' }}">{{ strtoupper($node['status'] ?? 'unknown') }}</span></td>
-                                    <td class="py-3">{{ isset($node['cpu']) ? round($node['cpu'] * 100, 1).'%' : '—' }}</td>
-                                    <td class="py-3">{{ isset($node['mem'], $node['maxmem']) && $node['maxmem'] > 0 ? round($node['mem'] / $node['maxmem'] * 100, 1).'%' : '—' }}</td>
-                                    <td class="py-3">{{ isset($node['uptime']) ? floor($node['uptime'] / 86400).'d' : '—' }}</td>
+                                    <td class="py-3 font-black text-slate-950">{{ $node['node'] ?? $node['name'] ?? '—' }}</td>
+                                    <td class="py-3">
+                                        @php
+                                            $nodeStatus = ($node['status'] ?? null) === 'online'
+                                                ? 'bg-emerald-50 text-emerald-700'
+                                                : 'bg-red-50 text-red-700';
+                                            $nodeStatusLabel = ($node['status'] ?? null) === 'online' ? 'آنلاین' : 'آفلاین';
+                                        @endphp
+                                        <span class="rounded-md px-2.5 py-1 text-xs font-bold {{ $nodeStatus }}">{{ $nodeStatusLabel }}</span>
+                                    </td>
+                                    <td class="py-3 text-slate-700">{{ isset($node['cpu']) ? round($node['cpu'] * 100, 1).'%' : '—' }}</td>
+                                    <td class="py-3 text-slate-700">{{ isset($node['mem'], $node['maxmem']) && $node['maxmem'] > 0 ? round($node['mem'] / $node['maxmem'] * 100, 1).'%' : '—' }}</td>
+                                    <td class="py-3 text-slate-700" dir="ltr">{{ isset($node['uptime']) ? floor($node['uptime'] / 86400).'d' : '—' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="py-8 text-center text-slate-500">No nodes found. Sync when the server is reachable.</td></tr>
+                                <tr><td colspan="5" class="py-8 text-center text-slate-500">نودی یافت نشد. هنگام در دسترس بودن سرور، همگام‌سازی کنید.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
             </section>
 
+            {{-- Remote VMs from inventory --}}
             <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div class="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
+                <div class="flex flex-col gap-3 border-b border-slate-100 p-5 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h2 class="text-lg font-black">Virtual Machines</h2>
-                        <p class="mt-1 text-sm text-slate-500">Running and stopped guests across the cluster.</p>
+                        <h2 class="text-lg font-black text-slate-950">ماشین‌های مجازی Proxmox</h2>
+                        <p class="mt-1 text-sm text-slate-500">VMهای شناسایی شده از موجودی Proxmox.</p>
                     </div>
-                    <div class="flex gap-2"><button class="rounded-lg bg-[#0069FF] px-4 py-2 text-sm font-black text-white" disabled>Start</button><button class="rounded-lg bg-red-50 px-4 py-2 text-sm font-black text-red-700" disabled>Stop</button></div>
                 </div>
                 <div class="overflow-x-auto p-5">
                     <table class="min-w-full text-right text-sm">
-                        <thead class="text-xs font-black text-slate-500"><tr><th class="py-3">VM</th><th class="py-3">Node</th><th class="py-3">Status</th><th class="py-3">CPU</th><th class="py-3">Memory</th></tr></thead>
+                        <thead class="text-xs font-bold text-slate-500">
+                            <tr>
+                                <th class="py-3">VM</th>
+                                <th class="py-3">نود</th>
+                                <th class="py-3">وضعیت</th>
+                                <th class="py-3">CPU</th>
+                                <th class="py-3">حافظه</th>
+                            </tr>
+                        </thead>
                         <tbody class="divide-y divide-slate-100">
                             @forelse ($vms as $vm)
                                 <tr>
-                                    <td class="py-3 font-black">{{ $vm['name'] ?? $vm['vmid'] ?? '—' }}</td>
-                                    <td class="py-3">{{ $vm['node'] ?? '—' }}</td>
-                                    <td class="py-3"><span class="rounded-md px-2.5 py-1 text-xs font-black {{ ($vm['status'] ?? null) === 'running' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-600' }}">{{ strtoupper($vm['status'] ?? 'unknown') }}</span></td>
-                                    <td class="py-3">{{ isset($vm['cpu']) ? round($vm['cpu'] * 100, 1).'%' : '—' }}</td>
-                                    <td class="py-3">{{ isset($vm['mem'], $vm['maxmem']) && $vm['maxmem'] > 0 ? round($vm['mem'] / $vm['maxmem'] * 100, 1).'%' : '—' }}</td>
+                                    <td class="py-3 font-black text-slate-950">{{ $vm['name'] ?? $vm['vmid'] ?? '—' }}</td>
+                                    <td class="py-3 text-slate-700">{{ $vm['node'] ?? '—' }}</td>
+                                    <td class="py-3">
+                                        @php
+                                            $vmInvStatus = ($vm['status'] ?? null) === 'running'
+                                                ? 'bg-emerald-50 text-emerald-700'
+                                                : 'bg-slate-100 text-slate-600';
+                                            $vmInvStatusLabel = ($vm['status'] ?? null) === 'running' ? 'روشن' : 'خاموش';
+                                        @endphp
+                                        <span class="rounded-md px-2.5 py-1 text-xs font-bold {{ $vmInvStatus }}">{{ $vmInvStatusLabel }}</span>
+                                    </td>
+                                    <td class="py-3 text-slate-700">{{ isset($vm['cpu']) ? round($vm['cpu'] * 100, 1).'%' : '—' }}</td>
+                                    <td class="py-3 text-slate-700">{{ isset($vm['mem'], $vm['maxmem']) && $vm['maxmem'] > 0 ? round($vm['mem'] / $vm['maxmem'] * 100, 1).'%' : '—' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="py-8 text-center text-slate-500">No virtual machines found.</td></tr>
+                                <tr><td colspan="5" class="py-8 text-center text-slate-500">ماشین مجازی یافت نشد.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -152,65 +238,169 @@
         </div>
 
         <aside class="space-y-6">
+            {{-- Storage --}}
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <div><h2 class="font-black">Storage</h2><p class="mt-1 text-sm text-slate-500">Capacity and content flags.</p></div>
-                    <button class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-700" disabled>Add storage</button>
-                </div>
+                <h2 class="font-black text-slate-950">ذخیره‌سازی</h2>
+                <p class="mt-1 text-sm text-slate-500">ظرفیت و نوع محتوا.</p>
                 <div class="mt-5 space-y-3">
                     @forelse ($storages as $storage)
                         @php($usedPercent = isset($storage['used'], $storage['total']) && $storage['total'] > 0 ? round($storage['used'] / $storage['total'] * 100) : null)
                         <div class="rounded-xl border border-slate-200 p-4">
-                            <div class="flex items-start justify-between gap-3"><div><p class="font-black">{{ $storage['storage'] ?? '—' }}</p><p class="mt-1 text-xs text-slate-500">{{ $storage['node'] ?? '—' }} · {{ $storage['type'] ?? 'unknown' }}</p></div><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">{{ $storage['content'] ?? '—' }}</span></div>
-                            <div class="mt-3 h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-[#0069FF]" style="width: {{ $usedPercent ?? 0 }}%"></div></div>
-                            <div class="mt-2 flex justify-between text-xs font-bold text-slate-500"><span>{{ $usedPercent !== null ? $usedPercent.'% used' : 'usage unknown' }}</span><span>{{ ($storage['active'] ?? 0) ? 'active' : 'inactive' }}</span></div>
-                            <div class="mt-3 flex gap-2"><button class="rounded-md bg-slate-100 px-3 py-2 text-xs font-black text-slate-700" disabled>Edit</button><button class="rounded-md bg-amber-50 px-3 py-2 text-xs font-black text-amber-700" disabled>Prune</button></div>
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="font-black text-slate-950">{{ $storage['storage'] ?? '—' }}</p>
+                                    <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $storage['node'] ?? '—' }} · {{ $storage['type'] ?? 'unknown' }}</p>
+                                </div>
+                                <span class="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600" dir="ltr">{{ $storage['content'] ?? '—' }}</span>
+                            </div>
+                            <div class="mt-3 h-2 rounded-full bg-slate-100">
+                                <div class="h-2 rounded-full bg-[#0069FF]" style="width: {{ $usedPercent ?? 0 }}%"></div>
+                            </div>
+                            <div class="mt-2 flex justify-between text-xs font-bold text-slate-500">
+                                <span>{{ $usedPercent !== null ? $usedPercent.'% استفاده' : 'ناشناخته' }}</span>
+                                <span>{{ ($storage['active'] ?? 0) ? 'فعال' : 'غیرفعال' }}</span>
+                            </div>
                         </div>
                     @empty
-                        <p class="rounded-xl bg-slate-50 p-5 text-center text-sm text-slate-500">No storage inventory available.</p>
+                        <p class="rounded-xl bg-slate-50 p-5 text-center text-sm text-slate-500">اطلاعات ذخیره‌سازی موجود نیست.</p>
                     @endforelse
                 </div>
             </section>
 
+            {{-- Backups --}}
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <div><h2 class="font-black">Backups</h2><p class="mt-1 text-sm text-slate-500">Backup files found on backup-capable storage.</p></div>
-                    <button class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white" disabled>Run backup</button>
-                </div>
+                <h2 class="font-black text-slate-950">پشتیبان‌ها</h2>
+                <p class="mt-1 text-sm text-slate-500">فایل‌های پشتیبان شناسایی شده.</p>
                 <div class="mt-5 space-y-3">
                     @forelse (array_slice($backups, 0, 10) as $backup)
                         <div class="rounded-xl border border-slate-200 p-4">
-                            <p class="truncate font-mono text-xs font-black text-slate-900" dir="ltr">{{ $backup['volid'] ?? $backup['filename'] ?? 'backup' }}</p>
-                            <div class="mt-2 flex flex-wrap gap-2 text-xs font-bold text-slate-500"><span>{{ $backup['node'] ?? '—' }}</span><span>{{ $backup['storage'] ?? '—' }}</span><span>{{ $backup['format'] ?? $backup['content'] ?? 'backup' }}</span></div>
-                            <div class="mt-3 flex gap-2"><button class="rounded-md bg-slate-100 px-3 py-2 text-xs font-black text-slate-700" disabled>Restore</button><button class="rounded-md bg-red-50 px-3 py-2 text-xs font-black text-red-700" disabled>Delete</button></div>
+                            <p class="truncate font-mono text-xs font-bold text-slate-900" dir="ltr">{{ $backup['volid'] ?? $backup['filename'] ?? 'backup' }}</p>
+                            <div class="mt-2 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+                                <span dir="ltr">{{ $backup['node'] ?? '—' }}</span>
+                                <span dir="ltr">{{ $backup['storage'] ?? '—' }}</span>
+                                <span dir="ltr">{{ $backup['format'] ?? $backup['content'] ?? 'backup' }}</span>
+                            </div>
                         </div>
                     @empty
-                        <p class="rounded-xl bg-slate-50 p-5 text-center text-sm text-slate-500">No backups found or token cannot access backup content.</p>
+                        <p class="rounded-xl bg-slate-50 p-5 text-center text-sm text-slate-500">پشتیبانی یافت نشد.</p>
                     @endforelse
                 </div>
             </section>
 
+            {{-- Desired State --}}
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="font-black">Pending Desired State</h2>
+                <h2 class="font-black text-slate-950">وضعیت مطلوب</h2>
                 <pre class="mt-4 max-h-80 overflow-auto rounded-lg bg-slate-950 p-4 text-left text-xs leading-6 text-white" dir="ltr">{{ json_encode($server->desired_state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
             </section>
-
-            @if($server->sync_error)
-                <div class="rounded-lg border border-red-200 bg-red-50 p-5 text-sm leading-7 text-red-700"><span class="font-black">Last error:</span> {{ $server->sync_error }}</div>
-            @endif
         </aside>
     </div>
 
+    {{-- VMs billing tab --}}
+    <section x-cloak x-show="activeTab === 'vms'" class="mt-6 space-y-6">
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 border-b border-slate-100 p-5 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                    <h2 class="text-lg font-black text-slate-950">ماشین‌های مجازی این سرور</h2>
+                    <p class="mt-1 text-sm leading-7 text-slate-500">لیست VMهای ثبت شده در پنل روی این سرور و درآمد ماهانه آنها.</p>
+                </div>
+                <div class="flex flex-wrap gap-4">
+                    <div class="rounded-xl bg-slate-50 px-4 py-3 text-center">
+                        <p class="text-xs font-bold text-slate-500">درآمد ماهانه (روشن)</p>
+                        <p class="mt-1 text-lg font-black text-emerald-600">{{ $money->format($runningMonthlyRevenue) }}</p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 px-4 py-3 text-center">
+                        <p class="text-xs font-bold text-slate-500">هزینه ذخیره‌سازی (خاموش)</p>
+                        <p class="mt-1 text-lg font-black text-amber-700">{{ $money->format($stoppedStorageRevenue) }}</p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 px-4 py-3 text-center">
+                        <p class="text-xs font-bold text-slate-500">کل</p>
+                        <p class="mt-1 text-lg font-black text-[#0069FF]">{{ $money->format($runningMonthlyRevenue + $stoppedStorageRevenue) }}</p>
+                    </div>
+                </div>
+            </div>
+
+            @if($serverVms->isEmpty())
+                <div class="grid gap-4 p-8 md:grid-cols-[80px_minmax(0,1fr)] md:items-center">
+                    <div class="grid size-16 place-items-center rounded-2xl bg-slate-100 text-2xl font-black text-slate-400">0</div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-950">VMای در این سرور ثبت نشده</h3>
+                        <p class="mt-2 text-sm leading-7 text-slate-500">هیچ ماشین مجازی متصل به این سرور در پنل وجود ندارد.</p>
+                    </div>
+                </div>
+            @else
+                <div class="overflow-x-auto p-5">
+                    <table class="min-w-full text-right text-sm">
+                        <thead class="text-xs font-bold text-slate-500">
+                            <tr>
+                                <th class="py-3">VM</th>
+                                <th class="py-3">مالک</th>
+                                <th class="py-3">وضعیت</th>
+                                <th class="py-3">منابع</th>
+                                <th class="py-3">باندل</th>
+                                <th class="py-3">هزینه ماهانه</th>
+                                <th class="py-3">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach($serverVms as $vm)
+                                @php
+                                    $vmStatusLabel = match($vm->status) {
+                                        \App\Models\VirtualMachine::STATUS_RUNNING => 'روشن',
+                                        \App\Models\VirtualMachine::STATUS_STOPPED => 'خاموش',
+                                        \App\Models\VirtualMachine::STATUS_SUSPENDED => 'تعلیق',
+                                        \App\Models\VirtualMachine::STATUS_DELETING => 'در حال حذف',
+                                        default => $vm->status,
+                                    };
+                                    $vmStatusTone = match($vm->status) {
+                                        \App\Models\VirtualMachine::STATUS_RUNNING => 'bg-emerald-50 text-emerald-700',
+                                        \App\Models\VirtualMachine::STATUS_SUSPENDED => 'bg-red-50 text-red-700',
+                                        \App\Models\VirtualMachine::STATUS_DELETING => 'bg-amber-50 text-amber-700',
+                                        default => 'bg-slate-100 text-slate-600',
+                                    };
+                                    $vmOwner = $vm->project?->owner?->name ?? $vm->customer?->name ?? '—';
+                                    $monthlyCost = $vm->isRunning()
+                                        ? $billing->estimateMonthly($vm) + $vm->disks->where('status', \App\Models\VmDisk::STATUS_READY)->sum(fn (\App\Models\VmDisk $d): int => (int) round($billing->extraDiskHourly($d) * \App\Models\ResourceRate::hoursPerMonth()))
+                                        : $billing->estimateStoppedMonthly($vm) + $vm->disks->where('status', \App\Models\VmDisk::STATUS_READY)->sum(fn (\App\Models\VmDisk $d): int => (int) round($billing->extraDiskHourly($d) * \App\Models\ResourceRate::hoursPerMonth()));
+                                @endphp
+                                <tr class="align-top">
+                                    <td class="py-4">
+                                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-[#0069FF] hover:underline">{{ $vm->display_name }}</a>
+                                        <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
+                                    </td>
+                                    <td class="py-4 text-slate-700">{{ $vmOwner }}</td>
+                                    <td class="py-4">
+                                        <span class="rounded-md px-2.5 py-1 text-xs font-bold {{ $vmStatusTone }}">{{ $vmStatusLabel }}</span>
+                                    </td>
+                                    <td class="py-4 text-slate-700">
+                                        <span dir="ltr">{{ $vm->cpu_cores }}C · {{ $vm->ram_gb }}GB · {{ $vm->disk_gb }}GB</span>
+                                    </td>
+                                    <td class="py-4 text-slate-700">{{ $vm->bundle?->name ?? '—' }}</td>
+                                    <td class="py-4">
+                                        <p class="font-bold text-slate-950">{{ $money->format($monthlyCost) }}</p>
+                                    </td>
+                                    <td class="py-4">
+                                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200">مشاهده</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </section>
+
+    {{-- Anomalies tab --}}
     <section x-cloak x-show="activeTab === 'anomalies'" class="mt-6 space-y-6">
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-col gap-4 border-b border-slate-200 p-5 xl:flex-row xl:items-center xl:justify-between">
+            <div class="flex flex-col gap-4 border-b border-slate-100 p-5 xl:flex-row xl:items-center xl:justify-between">
                 <div>
-                    <h2 class="text-lg font-black">Stale Application Records</h2>
-                    <p class="mt-1 text-sm leading-7 text-slate-500">Local VM records whose VMID was not found on this Proxmox server. Cleanup re-checks Proxmox live before changing billing or IP state.</p>
+                    <h2 class="text-lg font-black text-slate-950">رکوردهای منسوخ</h2>
+                    <p class="mt-1 text-sm leading-7 text-slate-500">رکوردهای محلی VM که VMID آنها در سرور Proxmox یافت نشد. پاکسازی، Proxmox را دوباره بررسی می‌کند قبل از تغییر وضعیت صورتحساب یا IP.</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded-lg px-3 py-2 text-xs font-black {{ $staleAnomalySource === 'live' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-amber-50 text-amber-700' }}">{{ $staleAnomalySource === 'live' ? 'Live scan' : 'Cached inventory' }}</span>
-                    <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">Refresh inventory</button></form>
+                    <span class="rounded-lg px-3 py-2 text-xs font-bold {{ $staleAnomalySource === 'live' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-amber-50 text-amber-700' }}">{{ $staleAnomalySource === 'live' ? 'اسکن زنده' : 'موجودی کش‌شده' }}</span>
+                    <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">بروزرسانی موجودی</button></form>
                 </div>
             </div>
 
@@ -218,40 +408,40 @@
                 <div class="grid gap-4 p-8 md:grid-cols-[80px_minmax(0,1fr)] md:items-center">
                     <div class="grid size-16 place-items-center rounded-2xl bg-[#EBF3FF] text-2xl font-black text-[#0069FF]">0</div>
                     <div>
-                        <h3 class="text-xl font-black text-slate-950">No stale VM records found</h3>
-                        <p class="mt-2 text-sm leading-7 text-slate-500">The local VMIDs on this server match the latest inventory available to the panel.</p>
+                        <h3 class="text-xl font-black text-slate-950">رکورد منسوخی یافت نشد</h3>
+                        <p class="mt-2 text-sm leading-7 text-slate-500">VMIDهای محلی این سرور با آخرین موجودی موجود در پنل مطابقت دارند.</p>
                     </div>
                 </div>
             @else
-                <div class="grid gap-4 border-b border-slate-200 bg-red-50/60 p-5 lg:grid-cols-3">
+                <div class="grid gap-4 border-b border-slate-100 bg-red-50/60 p-5 lg:grid-cols-3">
                     <div class="rounded-xl bg-white p-4 shadow-sm">
-                        <p class="text-xs font-black text-slate-500">Anomalies</p>
+                        <p class="text-xs font-bold text-slate-500">ناهنجاری‌ها</p>
                         <p class="mt-2 text-3xl font-black text-red-700">{{ $staleAnomalies->count() }}</p>
                     </div>
                     <div class="rounded-xl bg-white p-4 shadow-sm">
-                        <p class="text-xs font-black text-slate-500">Reserved or assigned IPs</p>
+                        <p class="text-xs font-bold text-slate-500">IPهای رزرو شده</p>
                         <p class="mt-2 text-3xl font-black text-slate-950">{{ $staleAnomalies->filter(fn($vm) => $vm->reservedIpAddress)->count() }}</p>
                     </div>
                     <div class="rounded-xl bg-white p-4 shadow-sm">
-                        <p class="text-xs font-black text-slate-500">Potential billing closes</p>
+                        <p class="text-xs font-bold text-slate-500">بسته شدن احتمالی صورتحساب</p>
                         <p class="mt-2 text-3xl font-black text-slate-950">{{ $staleAnomalies->filter(fn($vm) => (int) ($vm->unbilled_amount ?? 0) > 0 || $vm->last_billed_at)->count() }}</p>
                     </div>
                 </div>
 
-                <form id="bulk-stale-cleanup" method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy-bulk', $server) }}" onsubmit="return confirm('Delete the selected stale records from the application? This releases their IPs and closes accrued billing.');">
+                <form id="bulk-stale-cleanup" method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy-bulk', $server) }}" class="hidden">
                     @csrf
                     @method('DELETE')
                 </form>
 
-                <div class="flex flex-col gap-3 border-b border-slate-200 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex flex-col gap-3 border-b border-slate-100 p-5 lg:flex-row lg:items-center lg:justify-between">
                     <div class="flex flex-wrap items-center gap-3">
-                        <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700">
+                        <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
                             <input type="checkbox" class="size-4 rounded border-slate-300 text-[#0069FF]" :checked="allStaleSelected()" @change="toggleAllStale($event.target.checked)">
-                            Select all stale records
+                            انتخاب همه
                         </label>
-                        <span class="text-sm font-bold text-slate-500" x-text="`${selectedStale.length} selected`"></span>
+                        <span class="text-sm font-bold text-slate-500" x-text="`${selectedStale.length} انتخاب شده`"></span>
                     </div>
-                    <button type="submit" form="bulk-stale-cleanup" class="rounded-lg bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300" :disabled="selectedStale.length === 0">Delete selected</button>
+                    <button type="submit" form="bulk-stale-cleanup" class="rounded-lg bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300" :disabled="selectedStale.length === 0" onclick="return confirm('آیا رکوردهای انتخاب شده حذف شوند؟ این کار IPها را آزاد و صورتحساب را می‌بندد.')">حذف انتخاب شده</button>
                 </div>
 
                 <template x-for="id in selectedStale" :key="`stale-${id}`">
@@ -260,15 +450,15 @@
 
                 <div class="overflow-x-auto p-5">
                     <table class="min-w-full text-right text-sm">
-                        <thead class="text-xs font-black text-slate-500">
+                        <thead class="text-xs font-bold text-slate-500">
                             <tr>
                                 <th class="py-3"></th>
                                 <th class="py-3">VM</th>
-                                <th class="py-3">Customer</th>
+                                <th class="py-3">مشتری</th>
                                 <th class="py-3">VMID</th>
                                 <th class="py-3">IP</th>
-                                <th class="py-3">Billing state</th>
-                                <th class="py-3">Action</th>
+                                <th class="py-3">وضعیت صورتحساب</th>
+                                <th class="py-3">عملیات</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -280,23 +470,23 @@
                                     <td class="py-4">
                                         <p class="font-black text-slate-950">{{ $vm->display_name }}</p>
                                         <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
-                                        <p class="mt-1 text-xs text-slate-500">{{ $vm->hostname ?: 'No hostname' }} · {{ $vm->status }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">{{ $vm->hostname ?: 'بدون هاست‌نیم' }} · {{ $vm->status }}</p>
                                     </td>
-                                    <td class="py-4">{{ $vm->customer?->name ?? '—' }}</td>
-                                    <td class="py-4"><span class="rounded-md bg-red-50 px-2.5 py-1 font-mono text-xs font-black text-red-700">{{ $vm->vmid }}</span></td>
+                                    <td class="py-4 text-slate-700">{{ $vm->customer?->name ?? '—' }}</td>
+                                    <td class="py-4"><span class="rounded-md bg-red-50 px-2.5 py-1 font-mono text-xs font-bold text-red-700" dir="ltr">{{ $vm->vmid }}</span></td>
                                     <td class="py-4">
                                         <p class="font-mono" dir="ltr">{{ $vm->ip_address ?: '—' }}</p>
-                                        <p class="mt-1 text-xs font-bold text-slate-400">{{ $vm->reservedIpAddress ? 'Will be released' : 'No reserved IP' }}</p>
+                                        <p class="mt-1 text-xs font-bold text-slate-400">{{ $vm->reservedIpAddress ? 'آزاد خواهد شد' : 'IP رزرو نشده' }}</p>
                                     </td>
                                     <td class="py-4">
-                                        <p class="font-bold text-slate-700">Last billed: {{ $vm->last_billed_at?->diffForHumans() ?? 'never' }}</p>
-                                        <p class="mt-1 text-xs text-slate-500">Unbilled: {{ number_format((int) ($vm->unbilled_amount ?? 0)) }}</p>
+                                        <p class="font-bold text-slate-700">آخرین صدور: {{ $vm->last_billed_at?->diffForHumans() ?? 'هرگز' }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">صادر نشده: {{ number_format((int) ($vm->unbilled_amount ?? 0)) }}</p>
                                     </td>
                                     <td class="py-4">
-                                        <form method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy', [$server, $vm]) }}" onsubmit="return confirm('Delete this stale record from the application? Proxmox will be checked again before cleanup.');">
+                                        <form method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy', [$server, $vm]) }}" onsubmit="return confirm('آیا این رکورد محلی حذف شود؟ قبل از پاکسازی، Proxmox دوباره بررسی خواهد شد.');">
                                             @csrf
                                             @method('DELETE')
-                                            <button class="rounded-lg bg-red-50 px-4 py-2 text-sm font-black text-red-700 transition hover:bg-red-100">Delete local record</button>
+                                            <button class="rounded-lg bg-red-50 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100">حذف رکورد محلی</button>
                                         </form>
                                     </td>
                                 </tr>
@@ -308,12 +498,13 @@
         </div>
     </section>
 
+    {{-- Performance tab --}}
     <section x-cloak x-show="activeTab === 'performance'" class="mt-6 space-y-6">
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-col gap-4 border-b border-slate-200 p-5 xl:flex-row xl:items-center xl:justify-between">
+            <div class="flex flex-col gap-4 border-b border-slate-100 p-5 xl:flex-row xl:items-center xl:justify-between">
                 <div>
-                    <h2 class="text-lg font-black">Node Performance</h2>
-                    <p class="mt-1 text-sm leading-7 text-slate-500">CPU Usage, Server Load, Memory Usage, and Network Traffic from Proxmox RRD data.</p>
+                    <h2 class="text-lg font-black text-slate-950">عملکرد نود</h2>
+                    <p class="mt-1 text-sm leading-7 text-slate-500">مصرف CPU، بار سرور، مصرف حافظه و ترافیک شبکه از داده‌های RRD Proxmox.</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <select x-model="node" @change="load()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold focus:border-[#0069FF] focus:bg-white focus:outline-none">
@@ -322,50 +513,50 @@
                         </template>
                     </select>
                     <select x-model="timeframe" @change="load()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold focus:border-[#0069FF] focus:bg-white focus:outline-none">
-                        <option value="hour">Last hour</option>
-                        <option value="day">Last day</option>
-                        <option value="week">Last week</option>
-                        <option value="month">Last month</option>
-                        <option value="year">Last year</option>
+                        <option value="hour">ساعت اخیر</option>
+                        <option value="day">روز اخیر</option>
+                        <option value="week">هفته اخیر</option>
+                        <option value="month">ماه اخیر</option>
+                        <option value="year">سال اخیر</option>
                     </select>
-                    <button type="button" class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]" @click="load()">Refresh</button>
+                    <button type="button" class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#0050D0]" @click="load()">بروزرسانی</button>
                 </div>
             </div>
 
-            <div class="grid gap-4 border-b border-slate-200 bg-slate-50 p-5 md:grid-cols-2 xl:grid-cols-4">
+            <div class="grid gap-4 border-b border-slate-100 bg-slate-50 p-5 md:grid-cols-2 xl:grid-cols-4">
                 <div class="rounded-xl bg-white p-4 shadow-sm">
-                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">CPU</p>
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">CPU</p>
                     <p class="mt-2 text-2xl font-black text-[#0069FF]" x-text="formatPercent(latest.cpu_percent)"></p>
                 </div>
                 <div class="rounded-xl bg-white p-4 shadow-sm">
-                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">Server Load</p>
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">بار سرور</p>
                     <p class="mt-2 text-2xl font-black text-[#0069FF]" x-text="latest.load ?? '—'"></p>
                 </div>
                 <div class="rounded-xl bg-white p-4 shadow-sm">
-                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">Memory</p>
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">حافظه</p>
                     <p class="mt-2 text-2xl font-black text-[#0069FF]" x-text="formatPercent(latest.memory_percent)"></p>
                     <p class="mt-1 text-xs font-bold text-slate-400" x-text="latest.memory_used && latest.memory_total ? `${latest.memory_used} / ${latest.memory_total}` : ''"></p>
                 </div>
                 <div class="rounded-xl bg-white p-4 shadow-sm">
-                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">Network</p>
-                    <p class="mt-2 text-sm font-black text-[#0069FF]">In <span x-text="formatRate(latest.netin_bytes_per_second)"></span></p>
-                    <p class="mt-1 text-sm font-black text-amber-600">Out <span x-text="formatRate(latest.netout_bytes_per_second)"></span></p>
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">شبکه</p>
+                    <p class="mt-2 text-sm font-bold text-[#0069FF]">ورودی <span x-text="formatRate(latest.netin_bytes_per_second)"></span></p>
+                    <p class="mt-1 text-sm font-bold text-amber-600">خروجی <span x-text="formatRate(latest.netout_bytes_per_second)"></span></p>
                 </div>
             </div>
 
-            <div x-show="loading" class="p-8 text-center text-sm font-bold text-slate-500">Loading Proxmox graph data...</div>
+            <div x-show="loading" class="p-8 text-center text-sm font-bold text-slate-500">در حال بارگذاری نمودارها...</div>
             <div x-show="error" class="m-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700" x-text="error"></div>
-            <div x-show="!loading && !error && samples.length === 0" class="p-8 text-center text-sm font-bold text-slate-500">No graph samples were returned by Proxmox for this node/timeframe.</div>
+            <div x-show="!loading && !error && samples.length === 0" class="p-8 text-center text-sm font-bold text-slate-500">داده‌ای از Proxmox برای این نود/بازه زمانی دریافت نشد.</div>
 
             <div x-show="!loading && samples.length > 0" class="grid gap-5 p-5 xl:grid-cols-2">
                 <template x-for="graph in graphs" :key="graph.key">
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <div class="mb-4 flex items-center justify-between gap-3">
                             <div>
-                                <h3 class="font-black" x-text="graph.label"></h3>
+                                <h3 class="font-black text-slate-950" x-text="graph.label"></h3>
                                 <p class="mt-1 text-xs font-bold text-slate-400" x-text="graph.help"></p>
                             </div>
-                            <span class="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-600" x-text="`${samples.length} points`"></span>
+                            <span class="rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600" x-text="`${samples.length} نقطه`"></span>
                         </div>
                         <svg viewBox="0 0 720 260" class="h-72 w-full overflow-visible rounded-xl bg-slate-950 p-2" preserveAspectRatio="none">
                             <defs>
@@ -391,12 +582,44 @@
             </div>
         </div>
     </section>
+
+    {{-- Confirmation modal --}}
+    <div
+        x-show="confirmAction"
+        x-transition.opacity
+        @click.self="confirmAction = null"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm"
+    >
+        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" @click.stop>
+            <template x-if="confirmAction === 'sync'">
+                <div>
+                    <h3 class="text-lg font-black text-slate-950">همگام‌سازی با Proxmox</h3>
+                    <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید موجودی سرور را از Proxmox بروزرسانی کنید؟</p>
+                    <div class="mt-6 flex gap-3">
+                        <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}" class="flex-1">@csrf <button class="w-full rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، همگام‌سازی کن</button></form>
+                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="confirmAction === 'delete'">
+                <div>
+                    <h3 class="text-lg font-black text-red-700">حذف سرور</h3>
+                    <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این سرور Proxmox را از پنل حذف کنید؟ <strong class="text-red-700">این عمل غیرقابل بازگشت است.</strong></p>
+                    <div class="mt-6 flex gap-3">
+                        <form method="POST" action="{{ route('admin.proxmox-servers.destroy', $server) }}" class="flex-1">@csrf @method('DELETE') <button class="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700">بله، حذف کن</button></form>
+                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
 </div>
 
 <script>
     function proxmoxMetrics(config) {
         return {
             activeTab: 'overview',
+            confirmAction: null,
             url: config.url,
             node: config.initialNode,
             nodes: config.initialNode ? [config.initialNode] : [],
@@ -409,10 +632,10 @@
             error: null,
             loaded: false,
             graphs: [
-                { key: 'cpu', label: 'CPU Usage', help: 'Percent used', color: '#34d399', max: 100, maxLabel: '100%' },
-                { key: 'loadavg', label: 'Server Load', help: 'Load average', color: '#f59e0b', max: null, maxLabel: 'auto' },
-                { key: 'memory', label: 'Memory Usage', help: 'Percent used', color: '#38bdf8', max: 100, maxLabel: '100%' },
-                { key: 'network', label: 'Network Traffic', help: 'Total in/out bytes per second', color: '#fb7185', max: null, maxLabel: 'auto' },
+                { key: 'cpu', label: 'مصرف CPU', help: 'درصد استفاده', color: '#34d399', max: 100, maxLabel: '100%' },
+                { key: 'loadavg', label: 'بار سرور', help: 'میانگین بار', color: '#f59e0b', max: null, maxLabel: 'auto' },
+                { key: 'memory', label: 'مصرف حافظه', help: 'درصد استفاده', color: '#38bdf8', max: 100, maxLabel: '100%' },
+                { key: 'network', label: 'ترافیک شبکه', help: 'ترافیک ورودی/خروجی در ثانیه', color: '#fb7185', max: null, maxLabel: 'auto' },
             ],
             openPerformance() {
                 this.activeTab = 'performance';
@@ -446,7 +669,7 @@
                     const payload = await response.json();
 
                     if (!response.ok) {
-                        throw new Error(payload.message || 'Unable to load metrics.');
+                        throw new Error(payload.message || 'امکان بارگذاری نمودارها نیست.');
                     }
 
                     const data = payload.data || {};
@@ -456,7 +679,7 @@
                     this.node = data.node || this.node;
                     this.loaded = true;
                 } catch (error) {
-                    this.error = error.message || 'Unable to load metrics.';
+                    this.error = error.message || 'امکان بارگذاری نمودارها نیست.';
                 } finally {
                     this.loading = false;
                 }
