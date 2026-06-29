@@ -10,6 +10,7 @@ use App\Models\IpAddress;
 use App\Models\IpPool;
 use App\Models\Project;
 use App\Models\ProxmoxServer;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\BillingService;
@@ -177,12 +178,27 @@ class VirtualMachineController extends Controller
         ]);
         $billingCustomer = $virtualMachine->project?->owner ?? $virtualMachine->customer;
 
+        $currentMonthStart = now()->startOfMonth();
+        $currentMonthUsage = UsageAccrual::query()
+            ->where('virtual_machine_id', $virtualMachine->id)
+            ->where('service_date', '>=', $currentMonthStart)
+            ->sum('amount');
+
+        $totalUsage = UsageAccrual::query()
+            ->where('virtual_machine_id', $virtualMachine->id)
+            ->sum('amount');
+
+        $currentAccrued = $this->billing->currentAccrued($virtualMachine);
+
         return view('admin.virtual-machines.show', [
             'vm' => $virtualMachine,
             'billing' => $this->billing,
             'wallet' => $billingCustomer ? $this->wallets->walletFor($billingCustomer) : null,
             'wallets' => $this->wallets,
             'billingCustomer' => $billingCustomer,
+            'currentMonthUsage' => $currentMonthUsage,
+            'totalUsage' => $totalUsage,
+            'currentAccrued' => $currentAccrued,
         ]);
     }
 
