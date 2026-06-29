@@ -165,6 +165,8 @@ class VirtualMachineController extends Controller
 
     public function show(VirtualMachine $virtualMachine): View
     {
+        abort_if($virtualMachine->isDeleted(), 404);
+
         $virtualMachine->load([
             'customer',
             'project.owner',
@@ -295,6 +297,8 @@ class VirtualMachineController extends Controller
 
     public function edit(VirtualMachine $virtualMachine): View
     {
+        abort_if($virtualMachine->isDeleted(), 404);
+
         return view('admin.virtual-machines.edit', $this->formData($virtualMachine));
     }
 
@@ -471,6 +475,8 @@ class VirtualMachineController extends Controller
 
     public function showTransferForm(VirtualMachine $virtualMachine): View
     {
+        abort_if($virtualMachine->isDeleted(), 404);
+
         $virtualMachine->load(['customer', 'project', 'transfers.fromCustomer', 'transfers.toCustomer', 'transfers.initiatedBy']);
 
         return view('admin.virtual-machines.transfer', [

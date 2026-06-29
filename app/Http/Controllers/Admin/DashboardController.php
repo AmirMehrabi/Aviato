@@ -378,6 +378,7 @@ class DashboardController extends Controller
             ]);
 
         $vms = VirtualMachine::query()
+            ->notDeleted()
             ->with('customer')
             ->latest()
             ->limit(4)
