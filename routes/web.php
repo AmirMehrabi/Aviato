@@ -161,6 +161,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.ip-pools.addresses.reserve');
         Route::post('ip-pools/{ipPool}/addresses/{ipAddress}/reserve', [IpPoolController::class, 'reserveAddress'])
             ->name('admin.ip-pools.addresses.reserve-one');
+        Route::post('ip-pools/{ipPool}/addresses/{ipAddress}/release', [IpPoolController::class, 'releaseAddress'])
+            ->name('admin.ip-pools.addresses.release');
         Route::resource('ip-pools', IpPoolController::class)
             ->parameters(['ip-pools' => 'ipPool'])
             ->names('admin.ip-pools');

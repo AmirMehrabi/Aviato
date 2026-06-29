@@ -136,6 +136,19 @@ class IpPoolController extends Controller
             ->with('status', $this->reservationMessage($reserved->pluck('address')->all()));
     }
 
+    public function releaseAddress(IpPool $ipPool, IpAddress $ipAddress): RedirectResponse
+    {
+        if ((int) $ipAddress->ip_pool_id !== (int) $ipPool->id) {
+            abort(404);
+        }
+
+        $this->ipPools->release($ipAddress);
+
+        return redirect()
+            ->route('admin.ip-pools.edit', $ipPool)
+            ->with('status', 'آدرس IP '.$ipAddress->address.' آزاد شد.');
+    }
+
     private function loadInventory(IpPool $ipPool): void
     {
         $this->ipPools->ensurePoolAddresses($ipPool);

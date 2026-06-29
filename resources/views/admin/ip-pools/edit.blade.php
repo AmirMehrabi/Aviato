@@ -209,6 +209,11 @@
                                             @csrf
                                             <button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-black text-white transition hover:bg-[#0050D0]">Reserve</button>
                                         </form>
+                                    @elseif(in_array($address->status, ['reserved', 'assigned'], true))
+                                        <form method="POST" action="{{ route('admin.ip-pools.addresses.release', [$pool, $address]) }}" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این IP را آزاد کنید?');">
+                                            @csrf
+                                            <button class="rounded-lg bg-red-50 px-4 py-2 text-xs font-black text-red-700 transition hover:bg-red-100">Release</button>
+                                        </form>
                                     @else
                                         <span class="text-xs font-black text-slate-400">Locked</span>
                                     @endif
