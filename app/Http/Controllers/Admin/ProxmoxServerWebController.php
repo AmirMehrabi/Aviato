@@ -114,6 +114,7 @@ class ProxmoxServerWebController extends Controller
             'serverVms' => $serverVms,
             'runningMonthlyRevenue' => $runningMonthlyRevenue,
             'stoppedStorageRevenue' => $stoppedStorageRevenue,
+            'billing' => $this->billing,
             'wallets' => $this->wallets,
         ]);
     }
