@@ -20,6 +20,7 @@ use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBalanceService;
 use App\Services\VirtualMachineDeletionService;
+use App\Services\VirtualMachineIpReassignmentService;
 use App\Services\VmTransferService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -42,6 +43,7 @@ class VirtualMachineController extends Controller
         private readonly VmTransferService $vmTransferService,
         private readonly WalletService $wallets,
         private readonly HetznerCloudService $hetzner,
+        private readonly VirtualMachineIpReassignmentService $ipReassignments,
     ) {}
 
     public function index(Request $request): View
@@ -328,22 +330,37 @@ class VirtualMachineController extends Controller
         $virtualMachine->save();
 
         if ($selectedIpAddressId && (int) $selectedIpAddressId !== (int) $previousIpAddressId) {
-            $address = IpAddress::query()->with('pool')->findOrFail($selectedIpAddressId);
-            $this->ipPools->reserveSpecificForVm($address, $virtualMachine);
-            $virtualMachine->refresh();
-        }
-
-        if ((int) $virtualMachine->ip_address_id !== (int) $previousIpAddressId) {
             try {
-                $this->syncCloudInitNetwork($virtualMachine);
+                $this->ipReassignments->reassign(
+                    $virtualMachine,
+                    IpAddress::query()->findOrFail((int) $selectedIpAddressId),
+                );
             } catch (Throwable $exception) {
                 return redirect()
                     ->route('admin.virtual-machines.show', $virtualMachine)
-                    ->with('error', 'IP در پنل تغییر کرد اما اعمال Cloud-init روی Proxmox ناموفق بود: '.$exception->getMessage());
+                    ->with('error', 'تغییر IP کامل نشد و بازگردانی انجام شد: '.$exception->getMessage());
             }
         }
 
         return redirect()->route('admin.virtual-machines.show', $virtualMachine)->with('status', 'VM به‌روزرسانی شد.');
+    }
+
+    public function updateIpAddress(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $data = $request->validate([
+            'ip_address_id' => ['required', 'integer', 'exists:ip_addresses,id'],
+        ]);
+
+        try {
+            $this->ipReassignments->reassign(
+                $virtualMachine,
+                IpAddress::query()->findOrFail($data['ip_address_id']),
+            );
+        } catch (Throwable $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'IP ماشین و تنظیمات Proxmox با موفقیت به‌روزرسانی شد.');
     }
 
     public function destroy(VirtualMachine $virtualMachine): RedirectResponse

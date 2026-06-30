@@ -142,6 +142,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.virtual-machines.start');
         Route::post('virtual-machines/{virtualMachine}/stop', [VirtualMachineController::class, 'stop'])
             ->name('admin.virtual-machines.stop');
+        Route::patch('virtual-machines/{virtualMachine}/ip-address', [VirtualMachineController::class, 'updateIpAddress'])
+            ->name('admin.virtual-machines.ip-address.update');
         Route::post('virtual-machines/{virtualMachine}/retry-provisioning', [VirtualMachineController::class, 'retryProvisioning'])
             ->name('admin.virtual-machines.retry-provisioning');
         Route::get('virtual-machines/{virtualMachine}/transfer', [VirtualMachineController::class, 'showTransferForm'])

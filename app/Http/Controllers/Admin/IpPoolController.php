@@ -142,6 +142,12 @@ class IpPoolController extends Controller
             abort(404);
         }
 
+        if ($ipAddress->virtual_machine_id || $ipAddress->status === IpAddress::STATUS_ASSIGNED) {
+            return back()->withErrors([
+                'reservation' => 'An assigned IP must be changed through the VM IP reassignment action.',
+            ]);
+        }
+
         $this->ipPools->release($ipAddress);
 
         return redirect()
@@ -175,6 +181,12 @@ class IpPoolController extends Controller
             'servers' => ProxmoxServer::query()->orderBy('datacenter')->orderBy('name')->pluck('name', 'id'),
             'rangePreview' => $this->rangePreview($pool),
             'inventory' => $this->inventoryStats($pool),
+            'replacementAddresses' => IpAddress::query()
+                ->with('pool')
+                ->whereIn('status', [IpAddress::STATUS_AVAILABLE, IpAddress::STATUS_RELEASED])
+                ->whereHas('pool', fn ($query) => $query->where('is_active', true))
+                ->orderBy('address')
+                ->get(),
         ];
     }
 

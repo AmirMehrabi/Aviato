@@ -626,6 +626,41 @@ class ProxmoxService
     }
 
     /**
+     * Toggle a QEMU network device without losing its model, MAC, bridge, or firewall options.
+     *
+     * @return array<string, mixed>
+     */
+    public function setVmNetworkLinkState(ProxmoxServer $server, string $node, int $vmid, bool $enabled, string $interface = 'net0'): array
+    {
+        if (! preg_match('/^net\d+$/', $interface)) {
+            throw new RuntimeException('A valid VM network interface id is required.');
+        }
+
+        $device = (string) ($this->vmConfig($server, $node, $vmid)[$interface] ?? '');
+        if ($device === '') {
+            throw new RuntimeException("VM network interface {$interface} does not exist.");
+        }
+
+        $parts = array_values(array_filter(
+            array_map('trim', explode(',', $device)),
+            static fn (string $part): bool => $part !== '' && ! str_starts_with($part, 'link_down='),
+        ));
+
+        if (! $enabled) {
+            $parts[] = 'link_down=1';
+        }
+
+        $payload = [$interface => implode(',', $parts)];
+        $taskId = $this->request($server)
+            ->asForm()
+            ->put("/nodes/{$node}/qemu/{$vmid}/config", $payload)
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function vmConfigOrNull(ProxmoxServer $server, string $node, int $vmid): ?array

@@ -374,6 +374,9 @@ class AdminVirtualMachineActionsTest extends TestCase
         ]);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('setVmNetworkLinkState')
+                ->twice()
+                ->andReturn(['task_id' => 'UPID:pve1:link']);
             $mock->shouldReceive('configureCloudInit')
                 ->once()
                 ->withArgs(fn ($server, array $options): bool => $options['ipconfig0'] === 'ip=10.20.30.10/24,gw=10.20.30.1'
@@ -382,11 +385,14 @@ class AdminVirtualMachineActionsTest extends TestCase
                     && $options['vmid'] === 101)
                 ->andReturn(['task_id' => 'UPID:pve1:config']);
             $mock->shouldReceive('waitForTask')
-                ->twice()
+                ->times(4)
                 ->andReturn(['status' => 'OK']);
             $mock->shouldReceive('regenerateCloudInit')
                 ->once()
                 ->andReturn(['task_id' => 'UPID:pve1:cloudinit']);
+            $mock->shouldReceive('applyVmIpAntiSpoofing')
+                ->once()
+                ->andReturn(['mac_address' => 'BC:24:11:AA:22:33', 'allowed_ip' => '10.20.30.10']);
         });
 
         $this->actingAs($admin, 'admin');
