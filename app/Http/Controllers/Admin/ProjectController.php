@@ -60,11 +60,7 @@ class ProjectController extends Controller
         $project->load([
             'owner',
             'members.customer',
-            'virtualMachines.creator',
-            'virtualMachines.customer',
-            'virtualMachines.proxmoxServer',
-            'virtualMachines.bundle',
-            'virtualMachines.disks',
+            'virtualMachines' => fn ($query) => $query->notDeleted()->with(['creator', 'customer', 'proxmoxServer', 'bundle', 'disks']),
         ])->loadCount(['members', 'virtualMachines']);
 
         $vmPrices = $project->virtualMachines->mapWithKeys(function ($vm) {
@@ -84,11 +80,7 @@ class ProjectController extends Controller
     {
         $project->load([
             'owner',
-            'virtualMachines.bundle',
-            'virtualMachines.proxmoxServer',
-            'virtualMachines.disks',
-            'virtualMachines.creator',
-            'virtualMachines.customer',
+            'virtualMachines' => fn ($query) => $query->notDeleted()->with(['bundle', 'proxmoxServer', 'disks', 'creator', 'customer']),
         ])->loadCount(['members', 'virtualMachines']);
 
         [$periodStart, $periodEnd] = Jalali::currentJalaliMonthRange();

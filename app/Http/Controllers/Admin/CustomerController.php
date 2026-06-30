@@ -77,7 +77,9 @@ class CustomerController extends Controller
     public function show(Customer $customer): View
     {
         $wallet = $this->wallets->walletFor($customer);
-        $customer->load(['virtualMachines.bundle', 'virtualMachines.proxmoxServer']);
+        $customer->load([
+            'virtualMachines' => fn ($query) => $query->notDeleted()->with(['bundle', 'proxmoxServer']),
+        ]);
         $transactions = $wallet->transactions()->with('createdBy')->limit(10)->get();
         $summary = $this->billing->customerSummary($customer->id);
 

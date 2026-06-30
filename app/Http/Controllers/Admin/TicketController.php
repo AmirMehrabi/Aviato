@@ -94,7 +94,7 @@ class TicketController extends Controller
 
     public function show(Ticket $ticket): View
     {
-        $ticket->load(['customer.virtualMachines', 'category', 'supportTeam', 'assignee', 'virtualMachine', 'messages.author', 'messages.attachments', 'events.actor']);
+        $ticket->load(['customer.virtualMachines' => fn ($query) => $query->notDeleted(), 'category', 'supportTeam', 'assignee', 'virtualMachine', 'messages.author', 'messages.attachments', 'events.actor']);
 
         return view('admin.tickets.show', [
             'ticket' => $ticket,

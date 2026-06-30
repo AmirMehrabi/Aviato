@@ -410,6 +410,17 @@ class VirtualMachineController extends Controller
                         if (! empty($start['task_id'])) {
                             $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $start['task_id'], 180);
                         }
+
+                        $postStartStatus = $this->proxmox->vmStatus($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+
+                        if (($postStartStatus['status'] ?? '') !== 'running') {
+                            sleep(3);
+                            $postStartStatus = $this->proxmox->vmStatus($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+                        }
+
+                        if (($postStartStatus['status'] ?? '') !== 'running') {
+                            return back()->with('error', 'VM پس از ارسال فرمان روشن شدن، در Proxmox اجرا نشد. وضعیت فعلی: '.($postStartStatus['status'] ?? 'ناشناخته').'. لطفاً پیکربندی VM را بررسی کنید.');
+                        }
                     }
                 }
             } catch (Throwable $exception) {
