@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -169,6 +170,17 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->names('admin.ip-pools');
 
         Route::prefix('billing')->name('admin.billing.')->group(function (): void {
+            Route::get('/', [BillingController::class, 'overview'])->name('overview');
+            Route::get('payments', [BillingController::class, 'payments'])->name('payments.index');
+            Route::get('payments/{payment}', [BillingController::class, 'payment'])->name('payments.show');
+            Route::get('transactions', [BillingController::class, 'transactions'])->name('transactions.index');
+            Route::get('transactions/{transaction}', [BillingController::class, 'transaction'])->name('transactions.show');
+            Route::get('invoices', [BillingController::class, 'invoices'])->name('invoices.index');
+            Route::get('invoices/{invoice}', [BillingController::class, 'invoice'])->name('invoices.show');
+            Route::get('usage', [BillingController::class, 'usage'])->name('usage.index');
+            Route::get('usage/{settlement}', [BillingController::class, 'settlement'])->name('usage.show');
+            Route::get('wallets', [BillingController::class, 'wallets'])->name('wallets.index');
+            Route::get('exports/{ledger}', [BillingController::class, 'export'])->name('exports');
             Route::resource('rates', ResourceRateController::class)->except(['show']);
             Route::resource('bundles', VmBundleController::class)
                 ->parameters(['bundles' => 'bundle'])

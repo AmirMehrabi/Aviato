@@ -198,6 +198,12 @@
                         [
                             'label' => 'صورتحساب',
                             'items' => [
+                                ['label' => 'نمای کلی مالی', 'route' => 'admin.billing.overview', 'active' => request()->routeIs('admin.billing.overview'), 'icon' => 'M4 19V9 M10 19V5 M16 19v-7 M22 19H2'],
+                                ['label' => 'پرداخت‌ها', 'route' => 'admin.billing.payments.index', 'active' => request()->routeIs('admin.billing.payments.*'), 'icon' => 'M3 6h18v12H3V6Zm0 4h18 M7 15h3'],
+                                ['label' => 'تراکنش‌های کیف پول', 'route' => 'admin.billing.transactions.index', 'active' => request()->routeIs('admin.billing.transactions.*'), 'icon' => 'M4 7h15a2 2 0 0 1 2 2v10H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h13 M16 13h5'],
+                                ['label' => 'صورتحساب‌ها', 'route' => 'admin.billing.invoices.index', 'active' => request()->routeIs('admin.billing.invoices.*'), 'icon' => 'M6 2h12v20l-3-2-3 2-3-2-3 2V2Zm3 6h6M9 12h6'],
+                                ['label' => 'مصرف و تسویه', 'route' => 'admin.billing.usage.index', 'active' => request()->routeIs('admin.billing.usage.*'), 'icon' => 'M4 12a8 8 0 1 0 8-8v8H4Zm8-8a8 8 0 0 1 8 8h-8V4Z'],
+                                ['label' => 'کیف پول‌ها', 'route' => 'admin.billing.wallets.index', 'active' => request()->routeIs('admin.billing.wallets.*'), 'icon' => 'M3 6h16a2 2 0 0 1 2 2v11H3V6Zm0 0V4h14v2 M16 12h5'],
                                 ['label' => 'قیمت منابع', 'route' => 'admin.billing.rates.index', 'active' => request()->routeIs('admin.billing.rates.*'), 'icon' => 'M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z'],
                                 ['label' => 'باندل‌ها', 'route' => 'admin.billing.bundles.index', 'active' => request()->routeIs('admin.billing.bundles.*'), 'icon' => 'M16.5 9.4 12 2 7.5 9.4 M3 9.4h18v12H3V9.4Z M7.5 2v7.4 M16.5 2v7.4'],
                                 ['label' => 'فروشندگان', 'route' => 'admin.resellers.index', 'active' => request()->routeIs('admin.resellers.*'), 'icon' => 'M3 9l1.5-5h15L21 9M3 9v12h18V9M9 21v-6h6v6M9 9V5h6v4'],
