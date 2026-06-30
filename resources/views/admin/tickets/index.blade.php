@@ -129,7 +129,7 @@ document.addEventListener('alpine:init', () => {
                                 </td>
                                 <td class="px-4 py-4 font-bold text-slate-700">{{ $ticket->customer?->name ?? '—' }}</td>
                                 <td class="px-4 py-4 text-slate-600">{{ $ticket->category?->name ?? '—' }}<p class="mt-1 text-xs text-slate-400">{{ $ticket->supportTeam?->name ?? 'بدون تیم' }}</p></td>
-                                <td class="px-4 py-4 font-bold text-slate-700">{{ $ticket->assignee?->name ?? 'Auto / Unassigned' }}</td>
+                                <td class="px-4 py-4 font-bold text-slate-700">{{ $ticket->assignee?->name ?? 'خودکار / بدون مسئول' }}</td>
                                 <td class="px-4 py-4"><span class="rounded-lg bg-[#EBF3FF] px-2.5 py-1 text-xs font-black text-[#0069FF]">{{ $statuses[$ticket->status] ?? $ticket->status }}</span></td>
                                 <td class="px-4 py-4 text-xs font-bold text-slate-400" dir="ltr">{{ $ticket->last_activity_at?->format('Y-m-d H:i') ?? $ticket->created_at?->format('Y-m-d H:i') }}</td>
                             </tr>

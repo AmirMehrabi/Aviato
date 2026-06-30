@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @inject('money', 'App\Services\WalletService')
 
-@section('title', 'Create Cloud Virtual Machine')
+@section('title', 'ساخت ماشین مجازی ابری')
 
 @section('content')
 <div
@@ -160,7 +160,7 @@
         </div>
 
         <div class="mt-6 flex gap-3">
-            <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Queue Provisioning</button>
+            <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ثبت در صف ساخت</button>
             <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a>
         </div>
     </form>

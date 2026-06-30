@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Console')
+@section('title', 'کنسول')
 
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
@@ -21,7 +21,7 @@
     >
         <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60 lg:flex-row lg:items-center lg:justify-between">
             <div class="min-w-0">
-                <p class="text-xs font-black text-[#0069FF]">Admin VM Console · {{ $vm->customer?->name }}</p>
+                <p class="text-xs font-black text-[#0069FF]">کنسول مدیریتی ماشین · {{ $vm->customer?->name }}</p>
                 <h1 class="mt-1 truncate text-xl font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</h1>
                 <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
                 <p class="mt-1 truncate text-sm font-bold text-slate-500" dir="ltr">{{ $vm->node ?: 'node-not-set' }} · VMID {{ $vm->vmid ?: '-' }}</p>

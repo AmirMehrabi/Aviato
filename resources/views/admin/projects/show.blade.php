@@ -76,7 +76,7 @@
                                     </td>
                                     <td class="px-4 py-3 text-slate-600">{{ $vm->creator?->name ?: $vm->customer?->name }}</td>
                                     <td class="px-4 py-3 font-bold text-slate-900">{{ $project->owner?->name }}</td>
-                                    <td class="px-4 py-3"><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">{{ $vm->status }}</span></td>
+                                    <td class="px-4 py-3"><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">{{ \App\Support\AdminUi::status($vm->status) }}</span></td>
                                     <td class="px-4 py-3 text-left font-black text-slate-950">{{ number_format($vmPrices->get($vm->uuid, 0) / 10) }} <span class="text-xs font-bold text-slate-500">تومان</span></td>
                                     <td class="px-4 py-3 text-left">
                                         <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white">مشاهده</a>

@@ -6,6 +6,6 @@
     <x-form.checkbox name="maintenance_mode" label="Maintenance mode" :checked="old('maintenance_mode', $account->maintenance_mode ?? false)" />
 </div>
 <div class="mt-6 flex gap-3">
-    <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Save</button>
+    <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره</button>
     <a href="{{ route('admin.hetzner-accounts.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">Back</a>
 </div>

@@ -137,7 +137,7 @@
                                 <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
                                 <p class="mt-1 text-xs text-slate-500">Node: {{ $vm->node ?: '—' }}</p>
                             </div>
-                            <span class="rounded-md px-2 py-1 text-xs font-black {{ $vm->status === 'running' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-200 text-slate-600' }}">{{ $vm->status === 'running' ? 'running' : 'stopped' }}</span>
+                            <span class="rounded-md px-2 py-1 text-xs font-black {{ $vm->status === 'running' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-200 text-slate-600' }}">{{ \App\Support\AdminUi::status($vm->status) }}</span>
                         </div>
                         <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
                             <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->cpu_cores }}</span><span class="text-slate-500">vCPU</span></div>

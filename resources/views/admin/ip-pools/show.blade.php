@@ -44,19 +44,19 @@
 
         <section class="mt-6 grid gap-3 sm:grid-cols-4">
             <div class="rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] p-4">
-                <p class="text-xs font-black text-[#0069FF]">Used</p>
+                <p class="text-xs font-black text-[#0069FF]">استفاده‌شده</p>
                 <p class="mt-2 text-2xl font-black text-[#031B4E]">{{ $assigned + $reserved }}</p>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white p-4">
-                <p class="text-xs font-black text-slate-500">Available</p>
+                <p class="text-xs font-black text-slate-500">آزاد</p>
                 <p class="mt-2 text-2xl font-black text-slate-950">{{ $available }}</p>
             </div>
             <div class="rounded-lg border border-amber-100 bg-amber-50 p-4">
-                <p class="text-xs font-black text-amber-700">Reserved</p>
+                <p class="text-xs font-black text-amber-700">رزروشده</p>
                 <p class="mt-2 text-2xl font-black text-amber-900">{{ $reserved }}</p>
             </div>
             <div class="rounded-lg bg-slate-950 p-4 text-white">
-                <p class="text-xs font-black text-white/60">Utilization</p>
+                <p class="text-xs font-black text-white/60">نرخ استفاده</p>
                 <p class="mt-2 text-2xl font-black">{{ $usedPercent }}٪</p>
             </div>
         </section>
@@ -64,7 +64,7 @@
         <section class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h2 class="text-lg font-black text-slate-950">IP Addresses</h2>
+                    <h2 class="text-lg font-black text-slate-950">آدرس‌های IP</h2>
                     <p class="mt-1 text-sm text-slate-500">{{ $pool->proxmoxServer?->name ?: 'بدون Proxmox' }} · {{ $pool->node ?: 'all nodes' }}</p>
                 </div>
                 <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $pool->is_active ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-500' }}">{{ $pool->is_active ? 'فعال' : 'غیرفعال' }}</span>
@@ -75,12 +75,12 @@
                     <thead class="bg-slate-50 text-xs font-black text-slate-500">
                         <tr>
                             <th class="px-5 py-4">IP Address</th>
-                            <th class="px-5 py-4">Status</th>
-                            <th class="px-5 py-4">Machine</th>
-                            <th class="px-5 py-4">Customer</th>
-                            <th class="px-5 py-4">Plan</th>
-                            <th class="px-5 py-4">Reserved</th>
-                            <th class="px-5 py-4">Assigned</th>
+                            <th class="px-5 py-4">وضعیت</th>
+                            <th class="px-5 py-4">ماشین</th>
+                            <th class="px-5 py-4">مشتری</th>
+                            <th class="px-5 py-4">پلن</th>
+                            <th class="px-5 py-4">زمان رزرو</th>
+                            <th class="px-5 py-4">زمان تخصیص</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -97,12 +97,12 @@
                             <tr class="transition hover:bg-[#F8FBFF]">
                                 <td class="whitespace-nowrap px-5 py-4 font-mono font-black text-slate-950" dir="ltr">{{ $address->address }}</td>
                                 <td class="whitespace-nowrap px-5 py-4">
-                                    <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $statusClass }}">{{ strtoupper($address->status) }}</span>
+                                    <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $statusClass }}">{{ \App\Support\AdminUi::status($address->status) }}</span>
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-4">
                                     @if ($vm)
                                         <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="block font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $vm->display_name }}</a>
-                                        <span class="mt-1 block text-xs text-slate-500" dir="ltr">{{ $vm->status }} / {{ $vm->provisioning_status }}</span>
+                                        <span class="mt-1 block text-xs text-slate-500">{{ \App\Support\AdminUi::status($vm->status) }} / {{ \App\Support\AdminUi::status($vm->provisioning_status) }}</span>
                                     @else
                                         <span class="text-slate-400">بدون ماشین</span>
                                     @endif

@@ -75,8 +75,8 @@ class AdminIpPoolManagementTest extends TestCase
 
         $this->get($this->adminBaseUrl.'/ip-pools/'.$pool->id.'/edit')
             ->assertOk()
-            ->assertSee('Reserve selected')
-            ->assertSee('Released');
+            ->assertSee('رزرو موارد انتخاب‌شده')
+            ->assertSee('آزادشده');
 
         $addresses = IpAddress::query()
             ->where('ip_pool_id', $pool->id)

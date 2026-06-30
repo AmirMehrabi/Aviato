@@ -175,11 +175,11 @@
                 <div class="mt-5 space-y-3 text-sm">
                     <div class="flex justify-between">
                         <span class="font-bold text-slate-500">وضعیت:</span>
-                        <span class="font-black">{{ $vm->status }}</span>
+                        <span class="font-black">{{ \App\Support\AdminUi::status($vm->status) }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="font-bold text-slate-500">وضعیت ساخت:</span>
-                        <span class="font-black">{{ $vm->provisioning_status }}</span>
+                        <span class="font-black">{{ \App\Support\AdminUi::status($vm->provisioning_status) }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="font-bold text-slate-500">منابع:</span>

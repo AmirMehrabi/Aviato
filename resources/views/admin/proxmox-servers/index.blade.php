@@ -66,15 +66,15 @@
             </select>
             <select x-model="connection" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
                 <option value="">همه اتصال‌ها</option>
-                <option value="online">Online</option>
-                <option value="offline">Offline</option>
-                <option value="unknown">Unknown</option>
+                <option value="online">آنلاین</option>
+                <option value="offline">آفلاین</option>
+                <option value="unknown">نامشخص</option>
             </select>
             <select x-model="sync" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
-                <option value="">همه Sync</option>
-                <option value="synced">Synced</option>
-                <option value="pending">Pending</option>
-                <option value="failed">Failed</option>
+                <option value="">همه وضعیت‌های همگام‌سازی</option>
+                <option value="synced">همگام</option>
+                <option value="pending">در انتظار</option>
+                <option value="failed">ناموفق</option>
             </select>
             <select x-model="active" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
                 <option value="">همه</option>
@@ -113,10 +113,10 @@
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $connectionColor }}">{{ strtoupper($server->connection_status) }}</span>
-                                <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $syncColor }}">{{ strtoupper($server->sync_status) }}</span>
+                                <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $connectionColor }}">{{ \App\Support\AdminUi::status($server->connection_status) }}</span>
+                                <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $syncColor }}">{{ \App\Support\AdminUi::status($server->sync_status) }}</span>
                                 @if($server->maintenance_mode)
-                                    <span class="rounded-md bg-sky-50 px-2.5 py-1 text-xs font-black text-sky-700">Maintenance</span>
+                                    <span class="rounded-md bg-sky-50 px-2.5 py-1 text-xs font-black text-sky-700">حالت نگهداری</span>
                                 @endif
                             </div>
                             <h2 class="mt-4 truncate text-xl font-black text-slate-950">{{ $server->name }}</h2>
@@ -129,11 +129,11 @@
                 <div class="space-y-5 p-5">
                     <div class="grid grid-cols-2 gap-3">
                         <div class="rounded-xl bg-slate-50 p-3">
-                            <p class="text-xs font-bold text-slate-500">Nodes</p>
+                            <p class="text-xs font-bold text-slate-500">نودها</p>
                             <p class="mt-1 text-2xl font-black text-slate-950">{{ $counts['nodes'] ?? '—' }}</p>
                         </div>
                         <div class="rounded-xl bg-slate-50 p-3">
-                            <p class="text-xs font-bold text-slate-500">VMs</p>
+                            <p class="text-xs font-bold text-slate-500">ماشین‌ها</p>
                             <p class="mt-1 text-2xl font-black text-slate-950">{{ $counts['virtual_machines'] ?? '—' }}</p>
                         </div>
                     </div>
@@ -164,7 +164,7 @@
                     <div class="flex flex-wrap gap-2 pt-1">
                         <a href="{{ route('admin.proxmox-servers.show', $server) }}" class="flex-1 rounded-lg bg-[#0069FF] px-4 py-3 text-center text-sm font-black text-white transition hover:bg-[#0050D0]">نمایش</a>
                         <a href="{{ route('admin.proxmox-servers.edit', $server) }}" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">ویرایش</a>
-                        <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 transition hover:bg-amber-100">Sync</button></form>
+                        <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 transition hover:bg-amber-100">همگام‌سازی</button></form>
                     </div>
                 </div>
             </article>

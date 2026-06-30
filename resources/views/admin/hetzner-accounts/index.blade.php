@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Hetzner Accounts')
+@section('title', 'حساب‌های هتزنر')
 
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
@@ -9,8 +9,8 @@
 
     <div class="mb-6 flex items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black">Hetzner Accounts</h1>
-            <p class="mt-1 text-sm text-slate-500">API accounts used as sellable infrastructure locations.</p>
+            <h1 class="text-2xl font-black">حساب‌های هتزنر</h1>
+            <p class="mt-1 text-sm text-slate-500">حساب‌های API برای ارائه موقعیت‌های زیرساخت قابل فروش.</p>
         </div>
         <a href="{{ route('admin.hetzner-accounts.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">New account</a>
     </div>
@@ -21,7 +21,7 @@
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <h2 class="text-lg font-black">{{ $account->name }}</h2>
-                        <p class="mt-1 text-xs text-slate-500">Status: {{ $account->connection_status }} / Sync: {{ $account->sync_status }}</p>
+                        <p class="mt-1 text-xs text-slate-500">اتصال: {{ \App\Support\AdminUi::status($account->connection_status) }} / همگام‌سازی: {{ \App\Support\AdminUi::status($account->sync_status) }}</p>
                     </div>
                     <span class="rounded-md px-2 py-1 text-xs font-black {{ $account->is_active ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-500' }}">{{ $account->is_active ? 'Active' : 'Inactive' }}</span>
                 </div>
@@ -35,8 +35,8 @@
                 @endif
                 <div class="mt-5 flex flex-wrap gap-2">
                     <a href="{{ route('admin.hetzner-accounts.show', $account) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700">Open</a>
-                    <form method="POST" action="{{ route('admin.hetzner-accounts.sync', $account) }}">@csrf<button class="rounded-lg border border-[#B8D6FF] px-4 py-2 text-sm font-black text-[#0069FF]">Sync</button></form>
-                    <form method="POST" action="{{ route('admin.hetzner-accounts.test', $account) }}">@csrf<button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700">Test</button></form>
+                    <form method="POST" action="{{ route('admin.hetzner-accounts.sync', $account) }}">@csrf<button class="rounded-lg border border-[#B8D6FF] px-4 py-2 text-sm font-black text-[#0069FF]">همگام‌سازی</button></form>
+                    <form method="POST" action="{{ route('admin.hetzner-accounts.test', $account) }}">@csrf<button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700">آزمایش اتصال</button></form>
                 </div>
             </div>
         @empty

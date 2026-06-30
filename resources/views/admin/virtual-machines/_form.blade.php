@@ -59,7 +59,7 @@
             <option value="">بدون تغییر IP Address</option>
             @foreach($ipAddresses as $address)
                 <option value="{{ $address->id }}" @selected((string) $selectedIpAddressId === (string) $address->id)>
-                    {{ $address->address }} - {{ $address->pool?->name ?: 'pool' }} - {{ $address->status }}
+                    {{ $address->address }} - {{ $address->pool?->name ?: 'مخزن' }} - {{ \App\Support\AdminUi::status($address->status) }}
                 </option>
             @endforeach
         </select>

@@ -1,11 +1,11 @@
 @extends('layouts.admin')
 
-@section('title', 'Infrastructure Locations')
+@section('title', 'موقعیت‌های زیرساخت')
 
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
     @if (session('status'))<div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>@endif
-    <h1 class="text-2xl font-black">Infrastructure Locations</h1>
+    <h1 class="text-2xl font-black">موقعیت‌های زیرساخت</h1>
     <p class="mt-1 text-sm text-slate-500">Customer-selectable locations backed by Proxmox servers or Hetzner accounts.</p>
     <div class="mt-6 grid gap-4 lg:grid-cols-2">
         @foreach ($locations as $location)

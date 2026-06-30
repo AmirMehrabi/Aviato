@@ -104,10 +104,10 @@ document.addEventListener('alpine:init', () => {
                     <thead class="bg-slate-50 text-xs font-black text-slate-500">
                         <tr>
                             <th class="px-5 py-4">VM</th>
-                            <th class="px-5 py-4">Project</th>
-                            <th class="px-5 py-4">Project Owner</th>
-                            <th class="px-5 py-4">Created By</th>
-                            <th class="px-5 py-4">Billing Customer</th>
+                            <th class="px-5 py-4">فضای کاری</th>
+                            <th class="px-5 py-4">مالک فضای کاری</th>
+                            <th class="px-5 py-4">ایجادکننده</th>
+                            <th class="px-5 py-4">مشتری صورتحساب</th>
                             <th class="px-5 py-4">منابع</th>
                             <th class="px-5 py-4">وضعیت</th>
                             <th class="px-5 py-4">هزینه ماهانه فعلی</th>
@@ -138,14 +138,14 @@ document.addEventListener('alpine:init', () => {
     @elseif($vm->status === 'deleted')
         <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-500">حذف شده</span>
     @else
-        <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{{ $vm->status ?: '—' }}</span>
+        <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{{ \App\Support\AdminUi::status($vm->status) }}</span>
     @endif
 </td>
                                 <td class="px-5 py-4 font-black">{{ $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }}</td>
                                 <td class="px-5 py-4">
                                     <a class="font-black text-[#0069FF]" href="{{ route('admin.virtual-machines.show', $vm) }}">نمایش</a>
                                     <span class="mx-1 text-slate-300">·</span>
-                                    <a class="font-black text-purple-600" href="{{ route('admin.virtual-machines.transfer.show', $vm) }}">Transfer</a>
+                                    <a class="font-black text-purple-600" href="{{ route('admin.virtual-machines.transfer.show', $vm) }}">انتقال</a>
                                 </td>
                             </tr>
                         @empty

@@ -46,7 +46,7 @@
 
             <aside class="space-y-4">
                 <div class="rounded-2xl border border-[#B8D6FF] bg-[#031B4E] p-5 text-white shadow-sm">
-                    <p class="text-xs font-black text-white/60">Range</p>
+                    <p class="text-xs font-black text-white/60">بازه</p>
                     <p class="mt-2 text-xl font-black">{{ $pool->start_ip }}{{ $pool->end_ip ? ' - '.$pool->end_ip : '' }}</p>
                     <p class="mt-2 font-mono text-sm text-white/75" dir="ltr">gw {{ $pool->gateway }} /{{ $pool->prefix_length }}</p>
                     <p class="mt-3 text-xs leading-6 text-white/65">
@@ -55,7 +55,7 @@
                 </div>
 
                 <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs font-black text-slate-500">Reservation note</p>
+                    <p class="text-xs font-black text-slate-500">راهنمای رزرو</p>
                     <p class="mt-2 text-sm leading-7 text-slate-600">
                         Only <span class="font-black text-slate-900">available</span> and <span class="font-black text-slate-900">released</span> rows can be reserved. Assigned and already reserved rows stay locked.
                     </p>
@@ -65,23 +65,23 @@
 
         <section class="mt-6 grid gap-3 lg:grid-cols-5">
             <div class="rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] p-4">
-                <p class="text-xs font-black text-[#0069FF]">Used now</p>
+                <p class="text-xs font-black text-[#0069FF]">در حال استفاده</p>
                 <p class="mt-2 text-2xl font-black text-[#031B4E]">{{ $usedNow }}</p>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white p-4">
-                <p class="text-xs font-black text-slate-500">Available</p>
+                <p class="text-xs font-black text-slate-500">آزاد</p>
                 <p class="mt-2 text-2xl font-black text-slate-950">{{ $inventory['available'] }}</p>
             </div>
             <div class="rounded-lg border border-amber-100 bg-amber-50 p-4">
-                <p class="text-xs font-black text-amber-700">Released</p>
+                <p class="text-xs font-black text-amber-700">آزادشده</p>
                 <p class="mt-2 text-2xl font-black text-amber-900">{{ $inventory['released'] }}</p>
             </div>
             <div class="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
-                <p class="text-xs font-black text-emerald-700">Reserved</p>
+                <p class="text-xs font-black text-emerald-700">رزروشده</p>
                 <p class="mt-2 text-2xl font-black text-emerald-900">{{ $inventory['reserved'] }}</p>
             </div>
             <div class="rounded-lg bg-slate-950 p-4 text-white">
-                <p class="text-xs font-black text-white/60">Assigned</p>
+                <p class="text-xs font-black text-white/60">تخصیص‌یافته</p>
                 <p class="mt-2 text-2xl font-black">{{ $inventory['assigned'] }}</p>
             </div>
         </section>
@@ -112,7 +112,7 @@
         >
             <div class="flex flex-col gap-4 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h2 class="text-lg font-black text-slate-950">IP Addresses</h2>
+                    <h2 class="text-lg font-black text-slate-950">آدرس‌های IP</h2>
                     <p class="mt-1 text-sm text-slate-500">{{ $pool->proxmoxServer?->name ?: 'بدون Proxmox' }} · {{ $pool->node ?: 'all nodes' }}</p>
                 </div>
                 <form method="POST" action="{{ route('admin.ip-pools.addresses.reserve', $pool) }}" id="bulk-reserve-form" class="flex items-center gap-3">
@@ -125,7 +125,7 @@
                         class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:bg-slate-300"
                         :disabled="selectedAddresses.length === 0"
                     >
-                        Reserve selected
+                        رزرو موارد انتخاب‌شده
                     </button>
                 </form>
             </div>
@@ -150,13 +150,13 @@
                                 >
                             </th>
                             <th class="px-5 py-4">IP Address</th>
-                            <th class="px-5 py-4">Status</th>
-                            <th class="px-5 py-4">Machine</th>
-                            <th class="px-5 py-4">Customer</th>
-                            <th class="px-5 py-4">Reserved</th>
-                            <th class="px-5 py-4">Assigned</th>
-                            <th class="px-5 py-4">Released</th>
-                            <th class="px-5 py-4">Action</th>
+                            <th class="px-5 py-4">وضعیت</th>
+                            <th class="px-5 py-4">ماشین</th>
+                            <th class="px-5 py-4">مشتری</th>
+                            <th class="px-5 py-4">زمان رزرو</th>
+                            <th class="px-5 py-4">زمان تخصیص</th>
+                            <th class="px-5 py-4">زمان آزادسازی</th>
+                            <th class="px-5 py-4">عملیات</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -183,12 +183,12 @@
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-4 font-mono font-black text-slate-950" dir="ltr">{{ $address->address }}</td>
                                 <td class="whitespace-nowrap px-5 py-4">
-                                    <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $statusClass }}">{{ strtoupper($address->status) }}</span>
+                                    <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $statusClass }}">{{ \App\Support\AdminUi::status($address->status) }}</span>
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-4">
                                     @if ($vm)
                                         <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="block font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $vm->display_name }}</a>
-                                        <span class="mt-1 block text-xs text-slate-500" dir="ltr">{{ $vm->status }} / {{ $vm->provisioning_status }}</span>
+                                        <span class="mt-1 block text-xs text-slate-500">{{ \App\Support\AdminUi::status($vm->status) }} / {{ \App\Support\AdminUi::status($vm->provisioning_status) }}</span>
                                     @else
                                         <span class="text-slate-400">بدون ماشین</span>
                                     @endif
@@ -207,7 +207,7 @@
                                     @if ($selectable)
                                         <form method="POST" action="{{ route('admin.ip-pools.addresses.reserve-one', [$pool, $address]) }}">
                                             @csrf
-                                            <button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-black text-white transition hover:bg-[#0050D0]">Reserve</button>
+                                            <button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-black text-white transition hover:bg-[#0050D0]">رزرو</button>
                                         </form>
                                     @elseif($address->status === 'assigned' && $vm)
                                         <form method="POST" action="{{ route('admin.virtual-machines.ip-address.update', $vm) }}" class="flex min-w-72 items-center gap-2">
@@ -219,15 +219,15 @@
                                                     <option value="{{ $candidate->id }}">{{ $candidate->address }} · {{ $candidate->pool?->name }}</option>
                                                 @endforeach
                                             </select>
-                                            <button class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 transition hover:bg-amber-100">Change IP</button>
+                                            <button class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 transition hover:bg-amber-100">تغییر IP</button>
                                         </form>
                                     @elseif($address->status === 'reserved')
                                         <form method="POST" action="{{ route('admin.ip-pools.addresses.release', [$pool, $address]) }}" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این IP را آزاد کنید?');">
                                             @csrf
-                                            <button class="rounded-lg bg-red-50 px-4 py-2 text-xs font-black text-red-700 transition hover:bg-red-100">Release</button>
+                                            <button class="rounded-lg bg-red-50 px-4 py-2 text-xs font-black text-red-700 transition hover:bg-red-100">آزادسازی</button>
                                         </form>
                                     @else
-                                        <span class="text-xs font-black text-slate-400">Locked</span>
+                                        <span class="text-xs font-black text-slate-400">قفل‌شده</span>
                                     @endif
                                 </td>
                             </tr>

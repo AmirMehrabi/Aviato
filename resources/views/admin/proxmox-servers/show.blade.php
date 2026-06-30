@@ -472,7 +472,7 @@
                                     <td class="py-4">
                                         <p class="font-black text-slate-950">{{ $vm->display_name }}</p>
                                         <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
-                                        <p class="mt-1 text-xs text-slate-500">{{ $vm->hostname ?: 'بدون هاست‌نیم' }} · {{ $vm->status }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">{{ $vm->hostname ?: 'بدون هاست‌نیم' }} · {{ \App\Support\AdminUi::status($vm->status) }}</p>
                                     </td>
                                     <td class="py-4 text-slate-700">{{ $vm->customer?->name ?? '—' }}</td>
                                     <td class="py-4"><span class="rounded-md bg-red-50 px-2.5 py-1 font-mono text-xs font-bold text-red-700" dir="ltr">{{ $vm->vmid }}</span></td>

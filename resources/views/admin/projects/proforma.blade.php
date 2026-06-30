@@ -101,7 +101,7 @@
                             @elseif($vm->status === 'stopped')
                                 <span style="color: #d97706; font-weight: bold">متوقف</span>
                             @else
-                                <span style="color: #6b7280">{{ $vm->status }}</span>
+                                <span style="color: #6b7280">{{ \App\Support\AdminUi::status($vm->status) }}</span>
                             @endif
                         </td>
                         <td style="text-align: left; font-weight: bold">{{ number_format($priceToman) }}</td>

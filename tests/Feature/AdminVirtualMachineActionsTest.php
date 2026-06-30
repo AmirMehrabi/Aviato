@@ -44,7 +44,7 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->get($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/console')
             ->assertOk()
-            ->assertSee('Admin VM Console')
+            ->assertSee('کنسول مدیریتی ماشین')
             ->assertSee($vm->name);
     }
 

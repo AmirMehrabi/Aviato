@@ -146,7 +146,7 @@ document.addEventListener('alpine:init', () => {
                             <a href="{{ route('admin.customers.edit', $customer) }}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-700">ویرایش</a>
                             <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}" target="_blank">
                                 @csrf
-                                <button class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-black text-sky-700">Impersonate</button>
+                                <button class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-black text-sky-700">ورود به‌جای مشتری</button>
                             </form>
                             @if($customer->status === 'suspended')
                                 <form method="POST" action="{{ route('admin.customers.activate', $customer) }}">@csrf @method('PATCH') <button class="rounded-lg bg-[#EBF3FF] px-3 py-2 text-xs font-black text-[#0069FF]">فعال‌سازی</button></form>
