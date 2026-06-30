@@ -11,7 +11,8 @@ use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -151,13 +152,18 @@ class CustomerController extends Controller
 
     public function impersonate(Request $request, Customer $customer): RedirectResponse
     {
-        Auth::guard('customer')->login($customer);
+        $token = Str::random(64);
 
-        $request->session()->put('impersonated_by_admin_id', $request->user('admin')?->id);
-        $request->session()->put('impersonated_customer_id', $customer->id);
+        Cache::put(
+            'customer-impersonation:'.hash('sha256', $token),
+            [
+                'admin_id' => $request->user('admin')->getAuthIdentifier(),
+                'customer_id' => $customer->getKey(),
+            ],
+            now()->addMinute(),
+        );
 
-        return redirect()->route('dashboard')
-            ->with('status', 'شما اکنون به عنوان '.$customer->name.' وارد پورتال مشتری شده‌اید.');
+        return redirect()->route('customer.impersonation.accept', ['token' => $token]);
     }
 
     /**

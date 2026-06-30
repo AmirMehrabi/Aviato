@@ -66,14 +66,17 @@ class AuthenticatedSessionController extends Controller
     {
         $routeName = (string) $request->route()?->getName();
         $portal = str_starts_with($routeName, 'customer.') ? 'customer' : 'admin';
+        $wasImpersonating = $portal === 'customer'
+            && $request->session()->has('impersonated_by_admin_id');
 
         Auth::guard($portal)->logout();
 
-        if ($portal === 'customer' && Auth::guard('admin')->check()) {
+        if ($wasImpersonating) {
             $request->session()->forget(['impersonated_by_admin_id', 'impersonated_customer_id']);
+            $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect($this->portalPath('admin', 'home_path'));
+            return redirect()->route('admin.dashboard');
         }
 
         $request->session()->invalidate();

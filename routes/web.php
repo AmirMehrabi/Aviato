@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\VmBundleController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\CustomerEmailVerificationController;
+use App\Http\Controllers\Auth\CustomerImpersonationController;
 use App\Http\Controllers\Auth\CustomerPasswordResetController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BlogController;
@@ -206,6 +207,11 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 });
 
 Route::domain($customerDomain)->middleware('portal.host:customer')->group(function () use ($customerLogin, $customerRegister, $customerHome) {
+    Route::get('impersonate/{token}', CustomerImpersonationController::class)
+        ->where('token', '[A-Za-z0-9]{64}')
+        ->middleware('throttle:20,1')
+        ->name('customer.impersonation.accept');
+
     Route::get('/', fn () => redirect('/'.trim($customerHome, '/')))
         ->middleware('auth:customer')
         ->name('customer.home');
