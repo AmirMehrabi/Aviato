@@ -658,10 +658,17 @@ class CustomerWalletBillingTest extends TestCase
             'provisioning_status' => VirtualMachine::PROVISION_READY,
         ]);
 
-        $this->mock(ProxmoxService::class, function ($mock) use ($server): void {
+        $this->mock(ProxmoxService::class, function ($mock) use ($customer, $server, $vm): void {
             $mock->shouldReceive('stopVm')
                 ->once()
-                ->with(Mockery::on(fn ($value) => $value instanceof ProxmoxServer && $value->is($server)), 'pve1', 101)
+                ->with(
+                    Mockery::on(fn ($value) => $value instanceof ProxmoxServer && $value->is($server)),
+                    'pve1',
+                    101,
+                    Mockery::on(fn (array $context): bool => $context['source'] === 'wallet_suspension'
+                        && $context['virtual_machine_id'] === $vm->id
+                        && $context['customer_id'] === $customer->id),
+                )
                 ->andReturn(['task_id' => 'UPID:stop']);
         });
 

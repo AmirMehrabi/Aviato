@@ -190,6 +190,29 @@ class CustomerServerDeletionTest extends TestCase
         ]);
     }
 
+    public function test_stale_delete_job_cannot_shutdown_a_vm_after_delete_intent_was_cancelled(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, [
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'delete_requested_at' => now()->subMinute(),
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('vmConfigOrNull');
+            $mock->shouldNotReceive('vmStatus');
+            $mock->shouldNotReceive('shutdownVm');
+            $mock->shouldNotReceive('deleteVm');
+        });
+
+        (new DeleteVirtualMachineJob($vm->id))->handle(
+            app(ProxmoxService::class),
+            app(VirtualMachineDeletionService::class),
+        );
+
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->fresh()->status);
+    }
+
     public function test_delete_job_completes_when_remote_vm_is_already_missing(): void
     {
         $customer = Customer::factory()->create();

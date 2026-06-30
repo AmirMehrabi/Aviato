@@ -973,6 +973,45 @@ class CloudVmProvisioningTest extends TestCase
         Bus::assertNotDispatched(RebuildCloudVirtualMachine::class);
     }
 
+    public function test_stale_rebuild_job_cannot_shutdown_a_ready_running_vm(): void
+    {
+        [$image, $bundle] = $this->catalog();
+        $customer = Customer::factory()->create();
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'vmid' => 109,
+            'template_vmid' => $image->template_vmid,
+            'name' => 'ready-running-vm',
+            'hostname' => 'ready-running-vm',
+            'node' => $image->node,
+            'storage' => $image->storage,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'remote_state' => ['rebuild_requested_at' => now()->subMinute()->toISOString()],
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('vmConfigOrNull');
+            $mock->shouldNotReceive('vmStatus');
+            $mock->shouldNotReceive('shutdownVm');
+            $mock->shouldNotReceive('deleteVm');
+        });
+
+        (new RebuildCloudVirtualMachine($vm->id))->handle(
+            app(ProxmoxService::class),
+            app(IpPoolService::class),
+        );
+
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->fresh()->status);
+    }
+
     public function test_rebuild_job_refuses_to_delete_reused_remote_vmid(): void
     {
         [$image, $bundle] = $this->catalog();

@@ -144,7 +144,11 @@ class ApplyVmUpgradeJob implements ShouldQueue
         $result['status_before_shutdown'] = $remoteStatus;
 
         if (($remoteStatus['status'] ?? null) !== 'stopped') {
-            $shutdown = $proxmox->shutdownVm($server, $node, $vmid);
+            $shutdown = $proxmox->shutdownVm($server, $node, $vmid, context: [
+                'source' => 'upgrade_job',
+                'virtual_machine_id' => $vm->id,
+                'upgrade_order_id' => $order->id,
+            ]);
             $result['shutdown'] = $shutdown;
             $this->waitForTaskResult($proxmox, $vm, $shutdown, 180);
             $result['status_after_shutdown'] = $proxmox->waitForVmStopped($server, $node, $vmid, 60);

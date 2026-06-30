@@ -62,6 +62,17 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        if (! $vm->isDeleting()) {
+            Log::warning('Cloud VM deletion job skipped because delete intent is no longer active', [
+                'virtual_machine_id' => $vm->id,
+                'status' => $vm->status,
+                'delete_requested_at' => $vm->delete_requested_at?->toISOString(),
+                'attempt' => $this->attempts(),
+            ]);
+
+            return;
+        }
+
         if ($vm->isHetzner()) {
             $this->handleHetzner($vm, $deletions, $hetzner ?? app(HetznerCloudService::class));
 
@@ -153,7 +164,11 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
                             'vmid' => $vmid,
                         ]);
 
-                        $shutdown = $proxmox->shutdownVm($server, $node, $vmid, false);
+                        $shutdown = $proxmox->shutdownVm($server, $node, $vmid, false, [
+                            'source' => 'delete_job',
+                            'virtual_machine_id' => $vm->id,
+                            'attempt' => $this->attempts(),
+                        ]);
                         $history[] = ['step' => 'shutdown', 'result' => $shutdown, 'at' => now()->toISOString()];
                         $vm->forceFill(['delete_task_id' => $shutdown['task_id'] ?? null])->save();
                         $proxmox->waitForTask($server, $node, (string) $shutdown['task_id'], 180);

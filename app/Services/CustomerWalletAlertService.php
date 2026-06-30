@@ -108,7 +108,16 @@ class CustomerWalletAlertService
             ->each(function ($vm) use ($customer): void {
                 if ($vm->proxmoxServer && $vm->status === VirtualMachine::STATUS_RUNNING) {
                     try {
-                        $this->proxmox->stopVm($vm->proxmoxServer, (string) $vm->node, (int) $vm->vmid);
+                        $this->proxmox->stopVm(
+                            $vm->proxmoxServer,
+                            (string) $vm->node,
+                            (int) $vm->vmid,
+                            [
+                                'source' => 'wallet_suspension',
+                                'virtual_machine_id' => $vm->id,
+                                'customer_id' => $customer->id,
+                            ],
+                        );
                     } catch (Throwable $exception) {
                         Log::warning('Failed to stop VM after customer wallet lock.', [
                             'customer_id' => $customer->id,

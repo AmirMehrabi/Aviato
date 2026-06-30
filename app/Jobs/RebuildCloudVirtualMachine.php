@@ -46,6 +46,22 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
             ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool', 'project.owner', 'customer', 'infrastructureLocation.hetznerAccount'])
             ->findOrFail($this->virtualMachineId);
 
+        if ($vm->provisioning_status !== VirtualMachine::PROVISION_PENDING
+            || (blank(data_get($vm->remote_state, 'rebuild_requested_at'))
+                && blank(data_get($vm->remote_state, 'rebuild_started_at')))
+            || filled(data_get($vm->remote_state, 'rebuild_finished_at'))) {
+            Log::warning('Cloud VM rebuild job skipped because rebuild intent is no longer active', [
+                'virtual_machine_id' => $vm->id,
+                'status' => $vm->status,
+                'provisioning_status' => $vm->provisioning_status,
+                'rebuild_requested_at' => data_get($vm->remote_state, 'rebuild_requested_at'),
+                'rebuild_finished_at' => data_get($vm->remote_state, 'rebuild_finished_at'),
+                'attempt' => $this->attempts(),
+            ]);
+
+            return;
+        }
+
         if ($vm->isHetzner()) {
             $this->handleHetzner($vm, $wallets, $hetzner ?? app(HetznerCloudService::class));
 
@@ -103,7 +119,11 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                 $this->recordHistory($vm, $history);
 
                 if (($remoteStatus['status'] ?? null) === 'running') {
-                    $shutdown = $proxmox->shutdownVm($server, $node, $vmid);
+                    $shutdown = $proxmox->shutdownVm($server, $node, $vmid, context: [
+                        'source' => 'rebuild_job',
+                        'virtual_machine_id' => $vm->id,
+                        'attempt' => $this->attempts(),
+                    ]);
                     $history[] = ['step' => 'shutdown', 'result' => $shutdown, 'at' => now()->toISOString()];
                     $vm->forceFill(['provisioning_task_id' => $shutdown['task_id'] ?? null])->save();
                     if (! empty($shutdown['task_id'])) {

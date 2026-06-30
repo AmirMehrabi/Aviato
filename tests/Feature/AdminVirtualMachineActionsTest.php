@@ -139,7 +139,9 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->post($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/stop')
+        $this->post($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/stop', [
+            'power_generation' => 0,
+        ])
             ->assertRedirect()
             ->assertSessionHas('status');
 
@@ -147,6 +149,36 @@ class AdminVirtualMachineActionsTest extends TestCase
 
         $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
         $this->assertNotNull($vm->last_stopped_at);
+        $this->assertSame(1, data_get($vm->desired_state, 'power_generation'));
+        $this->assertSame('admin_stop', data_get($vm->desired_state, 'power_intent_source'));
+    }
+
+    public function test_admin_stale_stop_request_cannot_override_a_newer_start_intent(): void
+    {
+        $admin = User::factory()->create();
+        $vm = $this->readyVm(Customer::factory()->create(), [
+            'desired_state' => [
+                'status' => VirtualMachine::STATUS_RUNNING,
+                'power_generation' => 4,
+            ],
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('shutdownVm');
+        });
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/stop', [
+            'power_generation' => 3,
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $vm->refresh();
+
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
+        $this->assertSame(4, data_get($vm->desired_state, 'power_generation'));
     }
 
     public function test_admin_cannot_start_vm_when_billing_owner_wallet_is_negative(): void

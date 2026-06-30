@@ -732,13 +732,26 @@ class ProxmoxService
     /**
      * @return array<string, mixed>
      */
-    public function startVm(ProxmoxServer $server, string $node, int $vmid): array
+    public function startVm(ProxmoxServer $server, string $node, int $vmid, array $context = []): array
     {
+        $this->logInfo('Proxmox VM start command requested', $server, [
+            'node' => $node,
+            'vmid' => $vmid,
+            'context' => $context,
+        ]);
+
         $taskId = $this->request($server)
             ->asForm()
             ->post("/nodes/{$node}/qemu/{$vmid}/status/start")
             ->throw()
             ->json('data');
+
+        $this->logInfo('Proxmox VM start command accepted', $server, [
+            'node' => $node,
+            'vmid' => $vmid,
+            'task_id' => $taskId,
+            'context' => $context,
+        ]);
 
         return ['task_id' => $taskId];
     }
@@ -762,12 +775,24 @@ class ProxmoxService
     /**
      * @return array<string, mixed>
      */
-    public function shutdownVm(ProxmoxServer $server, string $node, int $vmid, bool $forceStopFallback = true): array
-    {
+    public function shutdownVm(
+        ProxmoxServer $server,
+        string $node,
+        int $vmid,
+        bool $forceStopFallback = true,
+        array $context = [],
+    ): array {
         $payload = [
             'timeout' => 60,
             'forceStop' => 1,
         ];
+
+        $this->logInfo('Proxmox VM shutdown command requested', $server, [
+            'node' => $node,
+            'vmid' => $vmid,
+            'force_stop_fallback' => $forceStopFallback,
+            'context' => $context,
+        ]);
 
         try {
             $taskId = $this->request($server)
@@ -775,6 +800,13 @@ class ProxmoxService
                 ->post("/nodes/{$node}/qemu/{$vmid}/status/shutdown", $payload)
                 ->throw()
                 ->json('data');
+
+            $this->logInfo('Proxmox VM shutdown command accepted', $server, [
+                'node' => $node,
+                'vmid' => $vmid,
+                'task_id' => $taskId,
+                'context' => $context,
+            ]);
 
             return ['task_id' => $taskId, 'payload' => $payload];
         } catch (RequestException $exception) {
@@ -795,13 +827,26 @@ class ProxmoxService
     /**
      * @return array<string, mixed>
      */
-    public function stopVm(ProxmoxServer $server, string $node, int $vmid): array
+    public function stopVm(ProxmoxServer $server, string $node, int $vmid, array $context = []): array
     {
+        $this->logInfo('Proxmox VM force-stop command requested', $server, [
+            'node' => $node,
+            'vmid' => $vmid,
+            'context' => $context,
+        ]);
+
         $taskId = $this->request($server)
             ->asForm()
             ->post("/nodes/{$node}/qemu/{$vmid}/status/stop")
             ->throw()
             ->json('data');
+
+        $this->logInfo('Proxmox VM force-stop command accepted', $server, [
+            'node' => $node,
+            'vmid' => $vmid,
+            'task_id' => $taskId,
+            'context' => $context,
+        ]);
 
         return ['task_id' => $taskId, 'fallback' => 'force_stop'];
     }

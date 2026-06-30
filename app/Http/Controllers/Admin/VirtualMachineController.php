@@ -18,6 +18,7 @@ use App\Services\CloudVmProvisioningService;
 use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
+use App\Services\UsageBalanceService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmTransferService;
 use App\Services\WalletService;
@@ -196,6 +197,9 @@ class VirtualMachineController extends Controller
             'vm' => $virtualMachine,
             'billing' => $this->billing,
             'wallet' => $billingCustomer ? $this->wallets->walletFor($billingCustomer) : null,
+            'effectiveWalletBalance' => $billingCustomer
+                ? app(UsageBalanceService::class)->effectiveBalance($billingCustomer)
+                : null,
             'wallets' => $this->wallets,
             'billingCustomer' => $billingCustomer,
             'currentMonthUsage' => $currentMonthUsage,
@@ -405,7 +409,17 @@ class VirtualMachineController extends Controller
                     $remoteRunning = ($remoteStatus['status'] ?? '') === 'running';
 
                     if (! $remoteRunning) {
-                        $start = $this->proxmox->startVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+                        $start = $this->proxmox->startVm(
+                            $virtualMachine->proxmoxServer,
+                            $virtualMachine->node,
+                            (int) $virtualMachine->vmid,
+                            [
+                                'source' => 'admin_start',
+                                'virtual_machine_id' => $virtualMachine->id,
+                                'admin_id' => request()->user('admin')?->getAuthIdentifier(),
+                                'ip' => request()->ip(),
+                            ],
+                        );
 
                         if (! empty($start['task_id'])) {
                             $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $start['task_id'], 180);
@@ -434,7 +448,12 @@ class VirtualMachineController extends Controller
             'last_started_at' => now(),
             'last_billed_at' => now(),
             'unbilled_amount' => $accrued,
-            'desired_state' => array_merge($virtualMachine->desired_state ?? [], ['status' => VirtualMachine::STATUS_RUNNING]),
+            'desired_state' => array_merge($virtualMachine->desired_state ?? [], [
+                'status' => VirtualMachine::STATUS_RUNNING,
+                'power_generation' => (int) data_get($virtualMachine->desired_state, 'power_generation', 0) + 1,
+                'power_intent_at' => now()->toISOString(),
+                'power_intent_source' => 'admin_start',
+            ]),
         ])->save();
 
         return back()->with('status', 'VM روشن شد. از این لحظه CPU و RAM هم محاسبه می‌شوند.');
@@ -442,6 +461,23 @@ class VirtualMachineController extends Controller
 
     public function stop(VirtualMachine $virtualMachine): RedirectResponse
     {
+        $expectedGeneration = request()->integer('power_generation');
+        $currentGeneration = (int) data_get($virtualMachine->desired_state, 'power_generation', 0);
+
+        if (! request()->has('power_generation') || $expectedGeneration !== $currentGeneration) {
+            Log::warning('Stale admin VM stop request rejected', [
+                'virtual_machine_id' => $virtualMachine->id,
+                'vmid' => $virtualMachine->vmid,
+                'admin_id' => request()->user('admin')?->getAuthIdentifier(),
+                'expected_power_generation' => $expectedGeneration,
+                'current_power_generation' => $currentGeneration,
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+
+            return back()->with('error', 'این درخواست خاموش کردن قدیمی است و اجرا نشد. وضعیت سرور دوباره بررسی شد.');
+        }
+
         if ($virtualMachine->isActionLocked()) {
             return back()->with('error', 'این VM در وضعیت حذف است و امکان خاموش کردن ندارد.');
         }
@@ -461,7 +497,27 @@ class VirtualMachineController extends Controller
                 $shutdown = $this->hetzner->shutdown($virtualMachine->infrastructureLocation->hetznerAccount, $virtualMachine->remote_id);
                 $this->hetzner->waitForAction($virtualMachine->infrastructureLocation->hetznerAccount, $shutdown['action']['id'] ?? null, 180);
             } else {
-                $shutdown = $this->proxmox->shutdownVm($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
+                Log::info('Admin VM shutdown requested', [
+                    'virtual_machine_id' => $virtualMachine->id,
+                    'uuid' => $virtualMachine->uuid,
+                    'vmid' => $virtualMachine->vmid,
+                    'node' => $virtualMachine->node,
+                    'admin_id' => request()->user('admin')?->getAuthIdentifier(),
+                    'power_generation' => $currentGeneration,
+                    'ip' => request()->ip(),
+                    'user_agent' => request()->userAgent(),
+                ]);
+                $shutdown = $this->proxmox->shutdownVm(
+                    $virtualMachine->proxmoxServer,
+                    $virtualMachine->node,
+                    (int) $virtualMachine->vmid,
+                    context: [
+                        'source' => 'admin_stop',
+                        'virtual_machine_id' => $virtualMachine->id,
+                        'admin_id' => request()->user('admin')?->getAuthIdentifier(),
+                        'ip' => request()->ip(),
+                    ],
+                );
 
                 if (! empty($shutdown['task_id'])) {
                     $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $shutdown['task_id'], 180);
@@ -478,7 +534,12 @@ class VirtualMachineController extends Controller
             'last_stopped_at' => now(),
             'last_billed_at' => now(),
             'unbilled_amount' => $accrued,
-            'desired_state' => array_merge($virtualMachine->desired_state ?? [], ['status' => VirtualMachine::STATUS_STOPPED]),
+            'desired_state' => array_merge($virtualMachine->desired_state ?? [], [
+                'status' => VirtualMachine::STATUS_STOPPED,
+                'power_generation' => $currentGeneration + 1,
+                'power_intent_at' => now()->toISOString(),
+                'power_intent_source' => 'admin_stop',
+            ]),
         ])->save();
 
         return back()->with('status', 'VM خاموش شد. فقط IP و Disk محاسبه می‌شوند.');

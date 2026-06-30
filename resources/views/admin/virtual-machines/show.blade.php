@@ -17,7 +17,7 @@
     @endif
 
     @php
-        $walletBlocked = ($wallet?->balance ?? 0) < \App\Models\AppSetting::customerWalletNegativeThreshold();
+        $walletBlocked = ($effectiveWalletBalance ?? 0) < \App\Models\AppSetting::customerWalletNegativeThreshold();
     @endphp
 
     {{-- Hero header --}}
@@ -356,7 +356,10 @@
     @if($vm->provisioning_status === 'failed' && $vm->cloud_image_id)
         <form id="form-retry-provisioning" method="POST" action="{{ route('admin.virtual-machines.retry-provisioning', $vm) }}" class="hidden">@csrf</form>
     @elseif($vm->isRunning())
-        <form id="form-stop" method="POST" action="{{ route('admin.virtual-machines.stop', $vm) }}" class="hidden">@csrf</form>
+        <form id="form-stop" method="POST" action="{{ route('admin.virtual-machines.stop', $vm) }}" class="hidden">
+            @csrf
+            <input type="hidden" name="power_generation" value="{{ (int) data_get($vm->desired_state, 'power_generation', 0) }}">
+        </form>
     @else
         <form id="form-start" method="POST" action="{{ route('admin.virtual-machines.start', $vm) }}" class="hidden">@csrf</form>
     @endif
