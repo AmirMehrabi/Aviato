@@ -26,7 +26,14 @@
                     <p dir="ltr"><span class="font-black text-slate-800">Disk:</span> {{ $image->disk_device }} · {{ $image->storage ?: 'template storage' }}</p>
                     <p><span class="font-black text-slate-800">Minimum:</span> {{ $image->min_cpu_cores }} CPU / {{ $image->min_ram_gb }}GB RAM / {{ $image->min_disk_gb }}GB Disk</p>
                 </div>
-                <a class="mt-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700" href="{{ route('admin.cloud-images.edit', $image) }}">ویرایش</a>
+                <div class="mt-4 flex items-center gap-2">
+                    <a class="inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700" href="{{ route('admin.cloud-images.edit', $image) }}">ویرایش</a>
+                    <form method="POST" action="{{ route('admin.cloud-images.destroy', $image) }}" onsubmit="return confirm('آیا از حذف این Cloud Image مطمئن هستید؟ این عمل قابل بازگشت نیست.');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="inline-flex rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-black text-red-700 transition hover:bg-red-100">حذف</button>
+                    </form>
+                </div>
             </article>
         @empty
             <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 md:col-span-2 xl:col-span-3">Cloud image ثبت نشده است.</div>

@@ -89,6 +89,56 @@ class CloudImageBundleWhitelistTest extends TestCase
         ]);
     }
 
+    public function test_admin_cloud_image_index_has_delete_option(): void
+    {
+        $admin = User::factory()->create();
+        $image = $this->image();
+
+        $this->actingAs($admin, 'admin');
+        $this->get($this->adminBaseUrl.'/cloud-images')
+            ->assertOk()
+            ->assertSee($this->adminBaseUrl.'/cloud-images/'.$image->id, false)
+            ->assertSee('حذف');
+    }
+
+    public function test_admin_can_delete_cloud_image(): void
+    {
+        $admin = User::factory()->create();
+        $image = $this->image();
+
+        $this->actingAs($admin, 'admin');
+        $this->delete($this->adminBaseUrl.'/cloud-images/'.$image->id)
+            ->assertRedirect($this->adminBaseUrl.'/cloud-images')
+            ->assertSessionHas('status', 'Cloud image deleted.');
+
+        $this->assertDatabaseMissing('cloud_images', [
+            'id' => $image->id,
+        ]);
+    }
+
+    private function image(): CloudImage
+    {
+        return CloudImage::create([
+            'proxmox_server_id' => $this->server()->id,
+            'name' => 'Ubuntu 24.04',
+            'slug' => 'ubuntu-2404',
+            'os_family' => 'ubuntu',
+            'os_version' => '24.04 LTS',
+            'logo_key' => 'ubuntu',
+            'node' => 'pve1',
+            'template_vmid' => 9000,
+            'default_username' => 'ubuntu',
+            'disk_device' => 'scsi0',
+            'network_bridge' => 'vmbr1',
+            'ostype' => 'l26',
+            'cloud_init_enabled' => true,
+            'min_cpu_cores' => 1,
+            'min_ram_gb' => 1,
+            'min_disk_gb' => 10,
+            'is_active' => true,
+        ]);
+    }
+
     private function server(): ProxmoxServer
     {
         return ProxmoxServer::create([
