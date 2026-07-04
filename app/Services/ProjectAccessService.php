@@ -92,7 +92,11 @@ class ProjectAccessService
 
         $query = $project->virtualMachines()->notDeleted();
 
-        if ($membership->role === ProjectMember::ROLE_MEMBER) {
+        if ($membership->canAccessAllVms()) {
+            return $query;
+        }
+
+        if ($membership->canAccessOwnVms()) {
             $query->where(function (Builder $query) use ($customer): void {
                 $query->where('created_by_customer_id', $customer->id)
                     ->orWhere(function (Builder $query) use ($customer): void {
@@ -100,7 +104,16 @@ class ProjectAccessService
                             ->where('customer_id', $customer->id);
                     });
             });
+
+            return $query;
         }
+
+        $query->whereExists(function (Builder $query) use ($membership): void {
+            $query->selectRaw('1')
+                ->from('project_member_virtual_machines')
+                ->whereColumn('project_member_virtual_machines.virtual_machine_id', 'virtual_machines.id')
+                ->where('project_member_virtual_machines.project_member_id', $membership->id);
+        });
 
         return $query;
     }
@@ -121,10 +134,23 @@ class ProjectAccessService
 
         abort_unless($allowed, 404);
 
-        if ($membership->role === ProjectMember::ROLE_MEMBER) {
+        if ($membership->canAccessAllVms()) {
+            return $vm;
+        }
+
+        if ($membership->canAccessOwnVms()) {
             $createdByCustomerId = $vm->created_by_customer_id ?? $vm->customer_id;
             abort_unless((int) $createdByCustomerId === (int) $customer->id, 404);
+
+            return $vm;
         }
+
+        abort_unless(
+            $membership->specificVirtualMachines()
+                ->whereKey($vm->getKey())
+                ->exists(),
+            404
+        );
 
         return $vm;
     }

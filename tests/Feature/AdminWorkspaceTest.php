@@ -85,6 +85,81 @@ class AdminWorkspaceTest extends TestCase
             ->assertSee('John Owner')
             ->assertSee('Sarah Member')
             ->assertSee('project-vm')
-            ->assertSee('مسئول پرداخت');
+            ->assertSee('مسئول پرداخت')
+            ->assertSee('اعضا و دسترسی‌ها');
+    }
+
+    public function test_admin_can_add_update_and_remove_workspace_member_access(): void
+    {
+        $admin = User::factory()->create();
+        $owner = Customer::factory()->create(['name' => 'John Owner']);
+        $member = Customer::factory()->create([
+            'name' => 'Sarah Member',
+            'email' => 'sarah.member@example.test',
+            'phone' => '+989121111111',
+        ]);
+        $project = $owner->ensureDefaultProject();
+        $allowedVm = VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'project_id' => $project->id,
+            'name' => 'allowed-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+        $blockedVm = VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'project_id' => $project->id,
+            'name' => 'blocked-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post($this->adminBaseUrl.'/workspaces/'.$project->uuid.'/members', [
+            'identifier' => 'sarah.member@example.test',
+            'role' => ProjectMember::ROLE_MEMBER,
+            'vm_access_scope' => ProjectMember::VM_ACCESS_SPECIFIC,
+            'vm_ids' => [$allowedVm->id],
+        ])->assertSessionHas('status');
+
+        $memberRow = $project->fresh()->members()->where('customer_id', $member->id)->firstOrFail();
+
+        $this->assertSame(ProjectMember::VM_ACCESS_SPECIFIC, $memberRow->vm_access_scope);
+        $this->assertDatabaseHas('project_member_virtual_machines', [
+            'project_member_id' => $memberRow->id,
+            'virtual_machine_id' => $allowedVm->id,
+        ]);
+        $this->assertDatabaseMissing('project_member_virtual_machines', [
+            'project_member_id' => $memberRow->id,
+            'virtual_machine_id' => $blockedVm->id,
+        ]);
+
+        $this->patch($this->adminBaseUrl.'/workspaces/'.$project->uuid.'/members/'.$memberRow->id, [
+            'role' => ProjectMember::ROLE_VIEWER,
+            'vm_access_scope' => ProjectMember::VM_ACCESS_OWN,
+        ])->assertSessionHas('status');
+
+        $memberRow = $memberRow->fresh();
+        $this->assertSame(ProjectMember::VM_ACCESS_OWN, $memberRow->vm_access_scope);
+        $this->assertDatabaseMissing('project_member_virtual_machines', [
+            'project_member_id' => $memberRow->id,
+            'virtual_machine_id' => $allowedVm->id,
+        ]);
+
+        $this->delete($this->adminBaseUrl.'/workspaces/'.$project->uuid.'/members/'.$memberRow->id)
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseMissing('project_members', [
+            'id' => $memberRow->id,
+        ]);
     }
 }

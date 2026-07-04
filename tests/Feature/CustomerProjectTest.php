@@ -192,6 +192,46 @@ class CustomerProjectTest extends TestCase
         $this->get($this->customerBaseUrl.'/servers/'.$ownerVm->uuid)->assertNotFound();
     }
 
+    public function test_customer_role_update_keeps_existing_vm_scope(): void
+    {
+        $owner = Customer::factory()->create();
+        $member = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $vm = VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'project_id' => $project->id,
+            'created_by_customer_id' => $member->id,
+            'name' => 'member-specific-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+        $membership = $project->members()->create([
+            'customer_id' => $member->id,
+            'role' => ProjectMember::ROLE_ADMIN,
+            'vm_access_scope' => ProjectMember::VM_ACCESS_SPECIFIC,
+        ]);
+        $membership->specificVirtualMachines()->attach($vm->id);
+
+        $this->actingAs($member, 'customer');
+
+        $this->patch($this->customerBaseUrl.'/projects/'.$project->uuid.'/members/'.$membership->id, [
+            'role' => ProjectMember::ROLE_VIEWER,
+        ])->assertSessionHas('status');
+
+        $membership = $membership->fresh();
+
+        $this->assertSame(ProjectMember::VM_ACCESS_SPECIFIC, $membership->vm_access_scope);
+        $this->assertSame(ProjectMember::ROLE_VIEWER, $membership->role);
+        $this->assertDatabaseHas('project_member_virtual_machines', [
+            'project_member_id' => $membership->id,
+            'virtual_machine_id' => $vm->id,
+        ]);
+    }
+
     public function test_project_owner_is_charged_for_member_created_vm_usage(): void
     {
         CarbonImmutable::setTestNow('2026-06-15 12:00:00');

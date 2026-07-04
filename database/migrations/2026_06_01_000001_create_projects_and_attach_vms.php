@@ -29,6 +29,7 @@ return new class extends Migration
             $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
             $table->foreignId('invited_by_customer_id')->nullable()->constrained('customers')->nullOnDelete();
             $table->string('role', 30)->default('member');
+            $table->string('vm_access_scope', 20)->default('all');
             $table->timestamps();
 
             $table->unique(['project_id', 'customer_id']);
@@ -40,6 +41,15 @@ return new class extends Migration
             $table->foreignId('created_by_customer_id')->nullable()->after('project_id')->constrained('customers')->nullOnDelete();
             $table->index(['project_id', 'status']);
             $table->index(['created_by_customer_id', 'created_at']);
+        });
+
+        Schema::create('project_member_virtual_machines', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('project_member_id')->constrained('project_members')->cascadeOnDelete();
+            $table->foreignId('virtual_machine_id')->constrained('virtual_machines')->cascadeOnDelete();
+            $table->timestamps();
+
+            $table->unique(['project_member_id', 'virtual_machine_id']);
         });
 
         DB::table('customers')->orderBy('id')->select('id', 'name')->chunk(500, function ($customers): void {
@@ -58,6 +68,7 @@ return new class extends Migration
                     'project_id' => $projectId,
                     'customer_id' => $customer->id,
                     'role' => 'owner',
+                    'vm_access_scope' => 'all',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -72,10 +83,14 @@ return new class extends Migration
                     ]);
             }
         });
+
+        DB::table('project_members')->where('role', 'member')->update(['vm_access_scope' => 'own']);
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('project_member_virtual_machines');
+
         Schema::table('virtual_machines', function (Blueprint $table) {
             $table->dropIndex(['project_id', 'status']);
             $table->dropIndex(['created_by_customer_id', 'created_at']);

@@ -135,6 +135,9 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::get('workspaces/{project}', [AdminProjectController::class, 'show'])->name('admin.projects.show');
         Route::get('workspaces/{project}/proforma', [AdminProjectController::class, 'proforma'])->name('admin.projects.proforma');
         Route::patch('workspaces/{project}', [AdminProjectController::class, 'update'])->name('admin.projects.update');
+        Route::post('workspaces/{project}/members', [AdminProjectController::class, 'storeMember'])->name('admin.projects.members.store');
+        Route::patch('workspaces/{project}/members/{member}', [AdminProjectController::class, 'updateMember'])->name('admin.projects.members.update');
+        Route::delete('workspaces/{project}/members/{member}', [AdminProjectController::class, 'destroyMember'])->name('admin.projects.members.destroy');
 
         Route::get('virtual-machines/proxmox-servers/{proxmoxServer}/options', [VirtualMachineController::class, 'options'])
             ->name('admin.virtual-machines.options');

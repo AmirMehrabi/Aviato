@@ -143,6 +143,9 @@ class ProjectController extends Controller
             ['customer_id' => $member->id],
             [
                 'role' => $member->id === $project->owner_customer_id ? ProjectMember::ROLE_OWNER : $data['role'],
+                'vm_access_scope' => $member->id === $project->owner_customer_id
+                    ? ProjectMember::VM_ACCESS_ALL
+                    : ProjectMember::defaultVmAccessScopeForRole($data['role']),
                 'invited_by_customer_id' => $customer->id,
             ],
         );
