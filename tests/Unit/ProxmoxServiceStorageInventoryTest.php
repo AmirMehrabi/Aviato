@@ -95,6 +95,37 @@ class ProxmoxServiceStorageInventoryTest extends TestCase
             && $request->header('Authorization')[0] === 'PVEAPIToken=root@pam!srv2=srv2-secret');
     }
 
+    public function test_cluster_endpoint_uses_credentials_mapped_to_its_api_address(): void
+    {
+        Http::fake(function (Request $request) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+
+            return match (true) {
+                str_ends_with($path, '/nodes') => Http::response(['data' => [
+                    ['node' => 'srv1', 'status' => 'online'],
+                    ['node' => 'srv2', 'status' => 'online'],
+                ]]),
+                default => Http::response(['data' => []]),
+            };
+        });
+
+        app(ProxmoxService::class)->summary($this->server(
+            [
+                'srv1' => 'https://pve.local:8006',
+                'srv2' => 'https://10.0.0.12:8006',
+            ],
+            [
+                'srv1' => ['token_id' => 'root@pam!srv1', 'token_secret' => 'srv1-secret'],
+                'srv2' => ['token_id' => 'root@pam!srv2', 'token_secret' => 'srv2-secret'],
+            ],
+        ));
+
+        Http::assertSent(fn (Request $request): bool => str_ends_with(
+            parse_url($request->url(), PHP_URL_PATH),
+            '/nodes'
+        ) && $request->header('Authorization')[0] === 'PVEAPIToken=root@pam!srv1=srv1-secret');
+    }
+
     /**
      * @param  array<array-key, string>  $apiEndpoints
      * @param  array<string, array{token_id: string, token_secret: string}>  $nodeCredentials

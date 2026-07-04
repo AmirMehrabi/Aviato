@@ -1302,7 +1302,7 @@ class ProxmoxService
                 try {
                     $authNode = isset($nodeBaseUrl) && $nodeBaseUrl === $baseUrl
                         ? rawurldecode($matches[1])
-                        : null;
+                        : $server->nodeForApiBaseUrl($baseUrl);
                     $response = $this->request($server, $baseUrl, $authNode)->get($path, $query);
 
                     if ($response->status() === 595) {

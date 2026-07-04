@@ -134,6 +134,17 @@ class ProxmoxServer extends Model
             : 'https://'.rtrim($endpoint, '/').':'.$this->port;
     }
 
+    public function nodeForApiBaseUrl(string $baseUrl): ?string
+    {
+        foreach (array_keys($this->api_endpoints ?? []) as $node) {
+            if (is_string($node) && $this->apiBaseUrlForNode($node) === rtrim($baseUrl, '/')) {
+                return $node;
+            }
+        }
+
+        return null;
+    }
+
     /** @return array{token_id?: string, token_secret?: string} */
     public function apiCredentialsForNode(string $node): array
     {
