@@ -7,6 +7,7 @@ use App\Models\ProxmoxServer;
 use App\Models\User;
 use App\Models\VmBundle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class CloudImageBundleWhitelistTest extends TestCase
@@ -99,6 +100,86 @@ class CloudImageBundleWhitelistTest extends TestCase
             ->assertOk()
             ->assertSee($this->adminBaseUrl.'/cloud-images/'.$image->id, false)
             ->assertSee('حذف');
+    }
+
+    public function test_admin_can_map_one_cloud_image_to_multiple_proxmox_nodes(): void
+    {
+        Http::fake(function ($request) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+
+            return match (true) {
+                str_ends_with($path, '/nodes') => Http::response(['data' => [
+                    ['node' => 'srv1', 'status' => 'online', 'cpu' => 0.2, 'maxcpu' => 16, 'mem' => 8_000_000_000, 'maxmem' => 32_000_000_000],
+                    ['node' => 'srv2', 'status' => 'online', 'cpu' => 0.1, 'maxcpu' => 16, 'mem' => 4_000_000_000, 'maxmem' => 32_000_000_000],
+                ]]),
+                str_ends_with($path, '/cluster/nextid') => Http::response(['data' => 101]),
+                str_ends_with($path, '/cluster/resources') => Http::response(['data' => [
+                    ['type' => 'qemu', 'node' => 'srv1', 'vmid' => 9000, 'name' => 'ubuntu-2404', 'template' => 1],
+                    ['type' => 'qemu', 'node' => 'srv2', 'vmid' => 9100, 'name' => 'ubuntu-2404', 'template' => 1],
+                ]]),
+                str_ends_with($path, '/nodes/srv1/qemu') => Http::response(['data' => [
+                    ['vmid' => 9000, 'name' => 'ubuntu-2404', 'template' => 1],
+                ]]),
+                str_ends_with($path, '/nodes/srv2/qemu') => Http::response(['data' => [
+                    ['vmid' => 9100, 'name' => 'ubuntu-2404', 'template' => 1],
+                ]]),
+                str_ends_with($path, '/nodes/srv1/storage'), str_ends_with($path, '/nodes/srv2/storage') => Http::response(['data' => [
+                    ['storage' => 'local-lvm', 'content' => 'images', 'active' => 1, 'avail' => 500_000_000_000, 'total' => 1_000_000_000_000],
+                ]]),
+                str_ends_with($path, '/nodes/srv1/network'), str_ends_with($path, '/nodes/srv2/network') => Http::response(['data' => [
+                    ['iface' => 'vmbr1', 'type' => 'bridge', 'active' => 1],
+                ]]),
+                default => Http::response(['data' => []]),
+            };
+        });
+
+        $admin = User::factory()->create();
+        $server = $this->server();
+        $bundle = VmBundle::create([
+            'name' => 'Mapped',
+            'slug' => 'mapped',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'monthly_price' => 790000,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->post($this->adminBaseUrl.'/cloud-images', [
+                'proxmox_server_id' => $server->id,
+                'name' => 'Ubuntu Multi-node',
+                'slug' => 'ubuntu-multi-node',
+                'os_family' => 'ubuntu',
+                'os_version' => '24.04',
+                'logo_key' => 'ubuntu',
+                'default_username' => 'ubuntu',
+                'disk_device' => 'scsi0',
+                'ostype' => 'l26',
+                'cloud_init_enabled' => 1,
+                'min_cpu_cores' => 2,
+                'min_ram_gb' => 4,
+                'min_disk_gb' => 40,
+                'is_active' => 1,
+                'bundle_ids' => [$bundle->id],
+                'node_mappings' => [
+                    ['node' => 'srv1', 'template_vmid' => 9000, 'storage' => 'local-lvm', 'network_bridge' => 'vmbr1', 'is_enabled' => 1],
+                    ['node' => 'srv2', 'template_vmid' => 9100, 'storage' => 'local-lvm', 'network_bridge' => 'vmbr1', 'is_enabled' => 1],
+                ],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect($this->adminBaseUrl.'/cloud-images');
+
+        $image = CloudImage::query()->where('slug', 'ubuntu-multi-node')->firstOrFail();
+        $this->assertSame(2, $image->nodeMappings()->where('is_enabled', true)->count());
+        $this->assertDatabaseHas('cloud_image_node_mappings', [
+            'cloud_image_id' => $image->id,
+            'node' => 'srv2',
+            'template_vmid' => 9100,
+            'storage' => 'local-lvm',
+            'network_bridge' => 'vmbr1',
+        ]);
     }
 
     public function test_admin_can_delete_cloud_image(): void

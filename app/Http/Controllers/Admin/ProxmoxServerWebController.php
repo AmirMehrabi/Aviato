@@ -56,6 +56,9 @@ class ProxmoxServerWebController extends Controller
                 'environment' => 'production',
                 'verify_tls' => true,
                 'is_active' => true,
+                'cpu_threshold_percent' => 80,
+                'ram_threshold_percent' => 85,
+                'disk_threshold_percent' => 80,
             ]),
         ]);
     }
@@ -272,6 +275,15 @@ class ProxmoxServerWebController extends Controller
             $data['tags'] = collect(explode(',', $data['tags']))
                 ->map(fn (string $tag): string => trim($tag))
                 ->filter()
+                ->values()
+                ->all();
+        }
+
+        if (isset($data['api_endpoints']) && is_string($data['api_endpoints'])) {
+            $data['api_endpoints'] = collect(preg_split('/[\r\n,]+/', $data['api_endpoints']) ?: [])
+                ->map(fn (string $endpoint): string => trim($endpoint))
+                ->filter()
+                ->unique()
                 ->values()
                 ->all();
         }

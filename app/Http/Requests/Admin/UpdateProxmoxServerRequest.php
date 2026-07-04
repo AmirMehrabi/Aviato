@@ -30,6 +30,10 @@ class UpdateProxmoxServerRequest extends FormRequest
             'is_active' => ['sometimes', 'boolean'],
             'maintenance_mode' => ['sometimes', 'boolean'],
             'tags' => ['nullable', 'string', 'max:1000'],
+            'cpu_threshold_percent' => ['sometimes', 'required', 'integer', 'between:1,100'],
+            'ram_threshold_percent' => ['sometimes', 'required', 'integer', 'between:1,100'],
+            'disk_threshold_percent' => ['sometimes', 'required', 'integer', 'between:1,100'],
+            'api_endpoints' => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

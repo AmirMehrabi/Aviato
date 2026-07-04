@@ -242,12 +242,12 @@ class ServerController extends Controller
             ->orderBy('name')
             ->get();
         $cloudImages = CloudImage::query()
-            ->with(['proxmoxServer', 'allowedBundles', 'infrastructureLocation'])
+            ->with(['proxmoxServer', 'allowedBundles', 'infrastructureLocation', 'nodeMappings'])
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->get();
         $ipAvailability = $cloudImages->mapWithKeys(fn (CloudImage $image): array => [
-            $image->id => $image->isProxmox() ? $this->ipPools->availableCountFor((int) $image->proxmox_server_id, $image->node) : 999999,
+            $image->id => $image->isProxmox() ? $this->availableImageIpCount($image) : 999999,
         ]);
 
         return view('customer.servers.create', [
@@ -272,8 +272,8 @@ class ServerController extends Controller
             'ipAvailability' => $ipAvailability,
             'osFamilies' => $this->osFamilies($cloudImages),
             'invoiceCount' => $customer->invoices()->count(),
-            'taxEnabled' => \App\Models\AppSetting::taxEnabled(),
-            'taxRatePercentage' => \App\Models\AppSetting::taxRatePercentage(),
+            'taxEnabled' => AppSetting::taxEnabled(),
+            'taxRatePercentage' => AppSetting::taxRatePercentage(),
         ]);
     }
 
@@ -302,7 +302,7 @@ class ServerController extends Controller
         $data['start_after_create'] = true;
         $data['onboot'] = false;
         $data['network_bridge'] = 'vmbr1';
-        $data['tax_exempt'] = !($data['requires_invoice'] ?? false);
+        $data['tax_exempt'] = ! ($data['requires_invoice'] ?? false);
 
         $image = CloudImage::query()
             ->where('is_active', true)
@@ -355,7 +355,8 @@ class ServerController extends Controller
                 ->with('error', 'برای ساخت ماشین مجازی موجودی کیف پول باید حداقل '.$this->wallets->format($minimumCreateBalance).' باشد.');
         }
 
-        if ($location->isProxmox() && $this->ipPools->availableCountFor((int) $image->proxmox_server_id, $image->node) < 1) {
+        $image->loadMissing('nodeMappings');
+        if ($location->isProxmox() && $this->availableImageIpCount($image) < 1) {
             return back()
                 ->withErrors([
                     'cloud_image_id' => 'در حال حاضر IP آزاد برای این نسخه وجود ندارد.',
@@ -394,6 +395,24 @@ class ServerController extends Controller
                 ->withInput($this->safeCreateInput($request))
                 ->with('error', 'ساخت ماشین مجازی ممکن نیست: '.$exception->getMessage());
         }
+    }
+
+    private function availableImageIpCount(CloudImage $image): int
+    {
+        $nodes = $image->nodeMappings
+            ->where('is_enabled', true)
+            ->pluck('node')
+            ->filter()
+            ->unique();
+
+        if ($nodes->isEmpty() && filled($image->node)) {
+            $nodes = collect([$image->node]);
+        }
+
+        return $nodes->sum(fn (string $node): int => $this->ipPools->availableCountFor(
+            (int) $image->proxmox_server_id,
+            $node,
+        ));
     }
 
     public function show(Request $request, VirtualMachine $virtualMachine): View

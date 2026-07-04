@@ -151,6 +151,10 @@
                             <span class="font-bold text-slate-500">Last seen</span>
                             <span class="text-slate-600">{{ $server->last_seen_at?->diffForHumans() ?? 'Never' }}</span>
                         </div>
+                        <div class="mt-3 flex items-center justify-between gap-3 text-sm">
+                            <span class="font-bold text-slate-500">Placement limits</span>
+                            <span class="font-mono text-xs text-slate-700" dir="ltr">CPU {{ $server->cpu_threshold_percent }}% · RAM {{ $server->ram_threshold_percent }}% · Disk {{ $server->disk_threshold_percent }}%</span>
+                        </div>
                     </div>
 
                     @if(! empty($server->tags))

@@ -31,6 +31,7 @@ class CloudVmProvisioningService
         private readonly IpPoolService $ipPools,
         private readonly BillingService $billing,
         private readonly ProxmoxService $proxmox,
+        private readonly ProxmoxPlacementService $placement,
     ) {}
 
     /**
@@ -69,12 +70,16 @@ class CloudVmProvisioningService
         $password = $cloudInitEnabled ? $this->resolvePassword($data) : null;
         $username = $cloudInitEnabled ? (trim((string) ($data['login_username'] ?? '')) ?: $image->default_username) : null;
         $sshPublicKey = $cloudInitEnabled ? $this->normalizeSshPublicKeys((string) ($data['ssh_public_key'] ?? '')) : null;
-        $node = trim((string) ($data['node'] ?? '')) ?: $image->node;
-        $storage = trim((string) ($data['storage'] ?? '')) ?: $image->storage;
+        $placement = $provider === InfrastructureLocation::PROVIDER_PROXMOX
+            ? $this->placement->select($image, $resources, trim((string) ($data['node'] ?? '')) ?: null)
+            : null;
+        $mapping = $placement['mapping'] ?? null;
+        $node = $mapping?->node ?: (trim((string) ($data['node'] ?? '')) ?: $image->node);
+        $storage = $mapping?->storage ?: (trim((string) ($data['storage'] ?? '')) ?: $image->storage);
         $osTemplate = trim((string) ($data['os_template'] ?? '')) ?: $image->name;
-        $networkBridge = trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge;
+        $networkBridge = $mapping?->network_bridge ?: (trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge);
 
-        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $location, $provider, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge): VirtualMachine {
+        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $location, $provider, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge, $mapping, $placement): VirtualMachine {
             $osPrefix = self::OS_PREFIXES[$image->os_family] ?? 'VM';
             $requestedName = trim((string) ($data['name'] ?? ''));
             $name = $requestedName !== '' ? $requestedName : $this->generateUniqueVmName($bundle, $resources, $osPrefix);
@@ -87,7 +92,8 @@ class CloudVmProvisioningService
                 'provider' => $provider,
                 'vm_bundle_id' => $data['vm_bundle_id'] ?? null,
                 'cloud_image_id' => $image->id,
-                'template_vmid' => $image->template_vmid,
+                'cloud_image_node_mapping_id' => $mapping?->id,
+                'template_vmid' => $mapping?->template_vmid ?: $image->template_vmid,
                 'remote_region' => $location->remote_name ?: $location->region,
                 'name' => $name,
                 'display_name' => $data['display_name'] ?? null,
@@ -114,6 +120,7 @@ class CloudVmProvisioningService
                         'infrastructure_location_id' => $location->id,
                     ]))]
                     : null,
+                'placement_snapshot' => $placement['snapshot'] ?? null,
             ]);
 
             $vm->desired_state = $vm->desiredStateSnapshot() + [

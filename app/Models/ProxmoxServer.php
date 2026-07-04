@@ -32,6 +32,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'synced_at',
     'last_seen_at',
     'last_status',
+    'cpu_threshold_percent',
+    'ram_threshold_percent',
+    'disk_threshold_percent',
+    'api_endpoints',
 ])]
 #[Hidden(['password', 'api_token_secret'])]
 class ProxmoxServer extends Model
@@ -63,6 +67,11 @@ class ProxmoxServer extends Model
         return $this->hasMany(IpPool::class);
     }
 
+    public function cloudImageNodeMappings(): HasMany
+    {
+        return $this->hasMany(CloudImageNodeMapping::class);
+    }
+
     protected function casts(): array
     {
         return [
@@ -78,12 +87,34 @@ class ProxmoxServer extends Model
             'last_status' => 'array',
             'sync_pending_since' => 'datetime',
             'synced_at' => 'datetime',
+            'cpu_threshold_percent' => 'integer',
+            'ram_threshold_percent' => 'integer',
+            'disk_threshold_percent' => 'integer',
+            'api_endpoints' => 'array',
         ];
     }
 
     public function baseUrl(): string
     {
         return 'https://'.rtrim($this->host, '/').':'.$this->port;
+    }
+
+    /** @return array<int, string> */
+    public function apiBaseUrls(): array
+    {
+        return collect([$this->host, ...($this->api_endpoints ?? [])])
+            ->map(function (string $endpoint): string {
+                $endpoint = trim($endpoint);
+                if (str_starts_with($endpoint, 'http://') || str_starts_with($endpoint, 'https://')) {
+                    return rtrim($endpoint, '/');
+                }
+
+                return 'https://'.rtrim($endpoint, '/').':'.$this->port;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function usesApiToken(): bool
@@ -138,6 +169,10 @@ class ProxmoxServer extends Model
             'is_active' => $this->is_active,
             'maintenance_mode' => $this->maintenance_mode,
             'tags' => $this->tags ?? [],
+            'cpu_threshold_percent' => $this->cpu_threshold_percent,
+            'ram_threshold_percent' => $this->ram_threshold_percent,
+            'disk_threshold_percent' => $this->disk_threshold_percent,
+            'api_endpoints' => $this->api_endpoints ?? [],
         ];
     }
 

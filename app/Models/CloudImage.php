@@ -62,6 +62,16 @@ class CloudImage extends Model
         return $this->hasMany(VirtualMachine::class);
     }
 
+    public function nodeMappings(): HasMany
+    {
+        return $this->hasMany(CloudImageNodeMapping::class);
+    }
+
+    public function enabledNodeMappings(): HasMany
+    {
+        return $this->nodeMappings()->where('is_enabled', true);
+    }
+
     public function allowedBundles(): BelongsToMany
     {
         return $this->belongsToMany(VmBundle::class)

@@ -82,6 +82,15 @@
                 wrapper-class="block md:col-span-2"
                 dir-ltr
             />
+
+            <x-form.input name="cpu_threshold_percent" type="number" label="حد CPU (%)" :value="$server->cpu_threshold_percent ?: 80" min="1" max="100" />
+            <x-form.input name="ram_threshold_percent" type="number" label="حد RAM (%)" :value="$server->ram_threshold_percent ?: 85" min="1" max="100" />
+            <x-form.input name="disk_threshold_percent" type="number" label="حد Storage (%)" :value="$server->disk_threshold_percent ?: 80" min="1" max="100" />
+            <label class="block md:col-span-2">
+                <span class="text-sm font-black text-slate-700">Endpointهای جایگزین API</span>
+                <textarea name="api_endpoints" rows="3" dir="ltr" placeholder="srv2.example.com&#10;srv3.example.com" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">{{ old('api_endpoints', implode("\n", $server->api_endpoints ?? [])) }}</textarea>
+                <span class="mt-1 block text-xs text-slate-500">یک hostname در هر خط؛ endpoint اصلی همان آدرس API بالاست.</span>
+            </label>
         </div>
     </div>
 

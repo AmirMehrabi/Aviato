@@ -1285,7 +1285,26 @@ class ProxmoxService
         ]);
 
         try {
-            $response = $this->request($server)->get($path, $query);
+            $response = null;
+            $lastConnectionException = null;
+
+            foreach ($server->apiBaseUrls() as $baseUrl) {
+                try {
+                    $response = $this->request($server, $baseUrl)->get($path, $query);
+                    break;
+                } catch (ConnectionException $exception) {
+                    $lastConnectionException = $exception;
+                    $this->logError('Proxmox read endpoint unavailable; trying next endpoint', $server, [
+                        'method' => 'GET',
+                        'path' => $path,
+                        'base_url' => $baseUrl,
+                    ]);
+                }
+            }
+
+            if (! $response) {
+                throw $lastConnectionException ?? new ConnectionException('No Proxmox API endpoint is configured.');
+            }
             $durationMs = $this->durationMs($startedAt);
 
             $this->logInfo('Proxmox API response received', $server, [
@@ -1661,6 +1680,8 @@ class ProxmoxService
                     'storage' => $storage['storage'],
                     'type' => $storage['type'] ?? null,
                     'avail' => $storage['avail'] ?? null,
+                    'used' => $storage['used'] ?? null,
+                    'total' => $storage['total'] ?? null,
                     'display' => $nodeName.' / '.$storage['storage'].' ('.$this->humanBytes((int) ($storage['avail'] ?? 0)).' free)',
                 ];
             }
@@ -2010,10 +2031,11 @@ class ProxmoxService
         return $authorization;
     }
 
-    protected function request(ProxmoxServer $server): PendingRequest
+    protected function request(ProxmoxServer $server, ?string $baseUrl = null): PendingRequest
     {
+        $baseUrl ??= $server->baseUrl();
         $this->logInfo('Preparing Proxmox HTTP client', $server, [
-            'base_url' => $server->baseUrl().'/api2/json',
+            'base_url' => $baseUrl.'/api2/json',
             'connect_timeout_seconds' => 5,
             'timeout_seconds' => 10,
             'verify_tls' => $server->verify_tls,
@@ -2022,7 +2044,7 @@ class ProxmoxService
             'php_curl_loaded' => extension_loaded('curl'),
         ]);
 
-        $request = Http::baseUrl($server->baseUrl().'/api2/json')
+        $request = Http::baseUrl($baseUrl.'/api2/json')
             ->acceptJson()
             ->timeout(10)
             ->connectTimeout(5)

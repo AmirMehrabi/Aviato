@@ -22,9 +22,19 @@
                 </div>
                 <div class="mt-5 space-y-2 text-sm text-slate-600">
                     <p><span class="font-black text-slate-800">Proxmox:</span> {{ $image->proxmoxServer?->name }}</p>
-                    <p dir="ltr"><span class="font-black text-slate-800">Node:</span> {{ $image->node }} · Template {{ $image->template_vmid }}</p>
-                    <p dir="ltr"><span class="font-black text-slate-800">Disk:</span> {{ $image->disk_device }} · {{ $image->storage ?: 'template storage' }}</p>
+                    <p><span class="font-black text-slate-800">Mappings:</span> {{ $image->nodeMappings->where('is_enabled', true)->count() }} node فعال</p>
                     <p><span class="font-black text-slate-800">Minimum:</span> {{ $image->min_cpu_cores }} CPU / {{ $image->min_ram_gb }}GB RAM / {{ $image->min_disk_gb }}GB Disk</p>
+                </div>
+                <div class="mt-4 space-y-2">
+                    @foreach($image->nodeMappings as $mapping)
+                        <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs" dir="ltr">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-black">{{ $mapping->node }} · VMID {{ $mapping->template_vmid }}</span>
+                                <span class="{{ $mapping->is_enabled ? 'text-emerald-700' : 'text-slate-400' }}">{{ $mapping->is_enabled ? 'enabled' : 'disabled' }}</span>
+                            </div>
+                            <p class="mt-1 text-slate-500">{{ $mapping->storage ?: 'default storage' }} · {{ $mapping->network_bridge }} · {{ $mapping->verified_at ? 'verified '.$mapping->verified_at->diffForHumans() : 'not verified' }}</p>
+                        </div>
+                    @endforeach
                 </div>
                 <div class="mt-4 flex items-center gap-2">
                     <a class="inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700" href="{{ route('admin.cloud-images.edit', $image) }}">ویرایش</a>

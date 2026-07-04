@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
     'provider',
     'vm_bundle_id',
     'cloud_image_id',
+    'cloud_image_node_mapping_id',
     'ip_address_id',
     'vmid',
     'remote_id',
@@ -27,6 +28,7 @@ use Illuminate\Support\Str;
     'remote_region',
     'template_vmid',
     'provider_metadata',
+    'placement_snapshot',
     'name',
     'display_name',
     'hostname',
@@ -147,6 +149,11 @@ class VirtualMachine extends Model
     public function cloudImage(): BelongsTo
     {
         return $this->belongsTo(CloudImage::class);
+    }
+
+    public function cloudImageNodeMapping(): BelongsTo
+    {
+        return $this->belongsTo(CloudImageNodeMapping::class);
     }
 
     public function reservedIpAddress(): BelongsTo
@@ -289,6 +296,7 @@ class VirtualMachine extends Model
             'desired_state' => 'array',
             'remote_state' => 'array',
             'provider_metadata' => 'array',
+            'placement_snapshot' => 'array',
             'login_password' => 'encrypted',
             'last_seen_at' => 'datetime',
             'last_started_at' => 'datetime',
