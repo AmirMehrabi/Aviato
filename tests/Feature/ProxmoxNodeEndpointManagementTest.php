@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ProxmoxServer;
 use App\Models\User;
+use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -49,6 +50,25 @@ class ProxmoxNodeEndpointManagementTest extends TestCase
             'srv1' => 'https://172.19.19.2:8006',
             'srv2' => 'https://172.19.19.3:8006',
         ], $server->refresh()->api_endpoints);
+    }
+
+    public function test_opening_server_page_does_not_trigger_or_persist_a_live_sync(): void
+    {
+        $admin = User::factory()->create();
+        $server = $this->server();
+        $savedInventory = $server->remote_inventory;
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('syncDesiredState');
+        });
+
+        $this->actingAs($admin, 'admin');
+        $this->get($this->adminBaseUrl.'/proxmox-servers/'.$server->id)
+            ->assertOk()
+            ->assertSee('srv1')
+            ->assertSee('srv2');
+
+        $this->assertSame($savedInventory, $server->refresh()->remote_inventory);
     }
 
     private function server(): ProxmoxServer

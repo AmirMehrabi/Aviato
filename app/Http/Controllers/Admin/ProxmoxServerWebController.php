@@ -79,15 +79,7 @@ class ProxmoxServerWebController extends Controller
 
     public function show(ProxmoxServer $proxmoxServer): View
     {
-        $summary = null;
-        $fallback = false;
-
-        try {
-            $summary = $this->proxmox->syncDesiredState($proxmoxServer);
-        } catch (Throwable $exception) {
-            $fallback = true;
-            $this->markOffline($proxmoxServer, $exception);
-        }
+        $summary = $proxmoxServer->remote_inventory;
 
         $serverVms = VirtualMachine::query()
             ->where('proxmox_server_id', $proxmoxServer->id)
@@ -111,7 +103,7 @@ class ProxmoxServerWebController extends Controller
         return view('admin.proxmox-servers.show', [
             'server' => $proxmoxServer->refresh(),
             'summary' => $summary,
-            'fallback' => $fallback,
+            'fallback' => false,
             'staleAnomalies' => $this->staleAnomalies($proxmoxServer->refresh(), $summary),
             'staleAnomalySource' => $summary ? 'live' : 'cached',
             'serverVms' => $serverVms,
