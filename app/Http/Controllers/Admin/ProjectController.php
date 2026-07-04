@@ -100,6 +100,11 @@ class ProjectController extends Controller
                 ProjectMember::VM_ACCESS_SPECIFIC => 'VMهای مشخص',
             ]),
             'hasSpecificVmPivot' => $hasSpecificVmPivot,
+            'availableCustomers' => Customer::query()
+                ->where('status', 'active')
+                ->whereDoesntHave('projectMemberships', fn ($query) => $query->where('project_id', $project->id))
+                ->orderBy('name')
+                ->get(['id', 'name', 'email', 'phone']),
         ]);
     }
 
@@ -153,30 +158,61 @@ class ProjectController extends Controller
         $this->assertManageMembers($request, $project);
 
         $data = $this->validateMemberStoreData($request, $project);
-        $member = $this->findMember($data['identifier']);
 
-        if (! $member) {
+        $customerIds = collect($data['customer_ids'])
+            ->map(fn ($value): int => (int) $value)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $customers = Customer::query()
+            ->whereIn('id', $customerIds)
+            ->where('status', 'active')
+            ->get()
+            ->keyBy('id');
+
+        if ($customers->count() !== count($customerIds)) {
             return back()
                 ->withInput()
-                ->withErrors(['identifier' => 'مشتری با این ایمیل یا موبایل پیدا نشد.']);
+                ->withErrors(['customer_ids' => 'یک یا چند مشتری انتخاب‌شده معتبر نیستند.']);
         }
 
-        DB::transaction(function () use ($project, $member, $request, $data): void {
-            $projectMember = $project->members()->updateOrCreate(
-                ['customer_id' => $member->id],
-                [
-                    'role' => $member->id === $project->owner_customer_id ? ProjectMember::ROLE_OWNER : $data['role'],
-                    'vm_access_scope' => $member->id === $project->owner_customer_id
-                        ? ProjectMember::VM_ACCESS_ALL
-                        : $data['vm_access_scope'],
-                    'invited_by_customer_id' => $request->user('admin')->id,
-                ],
-            );
+        $existingMemberIds = $project->members()->pluck('customer_id')->all();
+        $selectedMemberIds = array_values(array_intersect($customerIds, $existingMemberIds));
+        $newCustomerIds = array_values(array_diff($customerIds, $existingMemberIds));
 
-            $this->syncProjectMemberVms($projectMember, $project, $data);
+        if ($selectedMemberIds === [] && $newCustomerIds === []) {
+            return back()
+                ->withInput()
+                ->withErrors(['customer_ids' => 'حداقل یک مشتری برای افزودن انتخاب کنید.']);
+        }
+
+        DB::transaction(function () use ($project, $customers, $request, $data, $customerIds): void {
+            foreach ($customerIds as $customerId) {
+                /** @var \App\Models\Customer $customer */
+                $customer = $customers->get($customerId);
+
+                if (! $customer) {
+                    continue;
+                }
+
+                $projectMember = $project->members()->updateOrCreate(
+                    ['customer_id' => $customer->id],
+                    [
+                        'role' => $customer->id === $project->owner_customer_id ? ProjectMember::ROLE_OWNER : $data['role'],
+                        'vm_access_scope' => $customer->id === $project->owner_customer_id
+                            ? ProjectMember::VM_ACCESS_ALL
+                            : $data['vm_access_scope'],
+                        'invited_by_customer_id' => $request->user('admin')->id,
+                    ],
+                );
+
+                $this->syncProjectMemberVms($projectMember, $project, $data);
+            }
         });
 
-        return back()->with('status', 'عضو جدید به فضای کاری اضافه شد.');
+        return back()->with('status', 'اعضای انتخاب‌شده به فضای کاری اضافه شدند.');
     }
 
     public function updateMember(Request $request, Project $project, ProjectMember $member): RedirectResponse
@@ -245,7 +281,12 @@ class ProjectController extends Controller
     private function validateMemberStoreData(Request $request, Project $project): array
     {
         return $request->validate([
-            'identifier' => ['required', 'string', 'max:255'],
+            'customer_ids' => ['required', 'array', 'min:1'],
+            'customer_ids.*' => [
+                'integer',
+                Rule::exists('customers', 'id')->where('status', 'active'),
+                Rule::notIn($project->members()->pluck('customer_id')->all()),
+            ],
             ...$this->validateMemberFields($project),
         ], $this->memberValidationMessages());
     }
@@ -273,6 +314,7 @@ class ProjectController extends Controller
     private function memberValidationMessages(): array
     {
         return [
+            'customer_ids.required' => 'حداقل یک مشتری را انتخاب کنید.',
             'vm_ids.required_if' => 'در حالت VMهای مشخص، باید حداقل یک ماشین انتخاب شود.',
         ];
     }

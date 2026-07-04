@@ -25,6 +25,7 @@
 
     $defaultMemberRole = old('role', \App\Models\ProjectMember::ROLE_MEMBER);
     $defaultMemberScope = old('vm_access_scope', \App\Models\ProjectMember::defaultVmAccessScopeForRole($defaultMemberRole));
+    $selectedCustomerIds = collect(old('customer_ids', []))->map(fn ($id): int => (int) $id)->all();
     $oldMemberVmIds = collect(old('vm_ids', []))->map(fn ($id): int => (int) $id)->all();
 @endphp
 
@@ -127,11 +128,23 @@
 
                 <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4" x-data="{ role: @js($defaultMemberRole), scope: @js($defaultMemberScope), scopeTouched: @js(old('vm_access_scope') !== null), syncScope() { if (! this.scopeTouched) { this.scope = this.role === 'member' ? 'own' : 'all'; } } }">
                     <h3 class="text-sm font-black text-slate-900">افزودن عضو جدید</h3>
-                    <p class="mt-1 text-xs leading-6 text-slate-500">ایمیل یا موبایل باید دقیقا با مشتری موجود مطابقت داشته باشد.</p>
+                    <p class="mt-1 text-xs leading-6 text-slate-500">یک یا چند مشتری خارج از این workspace را انتخاب کنید.</p>
                     <form method="POST" action="{{ route('admin.projects.members.store', $project) }}" class="mt-4 space-y-4">
                         @csrf
                         <div class="grid gap-4 md:grid-cols-2">
-                            <x-form.input name="identifier" label="ایمیل یا موبایل مشتری" :value="old('identifier')" dir-ltr wrapper-class="block md:col-span-2" placeholder="name@example.com یا +98912..." />
+                            <label class="block md:col-span-2">
+                                <span class="text-sm font-black text-slate-700">مشتریان خارج از workspace</span>
+                                <select name="customer_ids[]" multiple size="8" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                                    @forelse($availableCustomers as $customer)
+                                        <option value="{{ $customer->id }}" @selected(in_array($customer->id, $selectedCustomerIds, true))>
+                                            {{ $customer->name }}{{ $customer->email ? ' - '.$customer->email : '' }}{{ $customer->phone ? ' - '.$customer->phone : '' }}
+                                        </option>
+                                    @empty
+                                        <option value="" disabled>همه مشتری‌ها قبلا در این workspace عضو هستند.</option>
+                                    @endforelse
+                                </select>
+                                @error('customer_ids') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+                            </label>
                             <x-form.select name="role" label="نقش" :selected="$defaultMemberRole" :options="$roleLabels" x-model="role" @change="syncScope()" />
                             <x-form.select name="vm_access_scope" label="دسترسی VM" :selected="$defaultMemberScope" :options="$scopeLabels" x-model="scope" @change="scopeTouched = true" />
                         </div>

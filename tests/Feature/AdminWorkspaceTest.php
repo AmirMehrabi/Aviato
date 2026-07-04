@@ -94,10 +94,15 @@ class AdminWorkspaceTest extends TestCase
     {
         $admin = User::factory()->create();
         $owner = Customer::factory()->create(['name' => 'John Owner']);
-        $member = Customer::factory()->create([
+        $memberOne = Customer::factory()->create([
             'name' => 'Sarah Member',
             'email' => 'sarah.member@example.test',
             'phone' => '+989121111111',
+        ]);
+        $memberTwo = Customer::factory()->create([
+            'name' => 'Ali Member',
+            'email' => 'ali.member@example.test',
+            'phone' => '+989121111112',
         ]);
         $project = $owner->ensureDefaultProject();
         $allowedVm = VirtualMachine::create([
@@ -126,17 +131,23 @@ class AdminWorkspaceTest extends TestCase
         $this->actingAs($admin, 'admin');
 
         $this->post($this->adminBaseUrl.'/workspaces/'.$project->uuid.'/members', [
-            'identifier' => 'sarah.member@example.test',
+            'customer_ids' => [$memberOne->id, $memberTwo->id],
             'role' => ProjectMember::ROLE_MEMBER,
             'vm_access_scope' => ProjectMember::VM_ACCESS_SPECIFIC,
             'vm_ids' => [$allowedVm->id],
         ])->assertSessionHas('status');
 
-        $memberRow = $project->fresh()->members()->where('customer_id', $member->id)->firstOrFail();
+        $memberRow = $project->fresh()->members()->where('customer_id', $memberOne->id)->firstOrFail();
+        $secondMemberRow = $project->fresh()->members()->where('customer_id', $memberTwo->id)->firstOrFail();
 
         $this->assertSame(ProjectMember::VM_ACCESS_SPECIFIC, $memberRow->vm_access_scope);
+        $this->assertSame(ProjectMember::VM_ACCESS_SPECIFIC, $secondMemberRow->vm_access_scope);
         $this->assertDatabaseHas('project_member_virtual_machines', [
             'project_member_id' => $memberRow->id,
+            'virtual_machine_id' => $allowedVm->id,
+        ]);
+        $this->assertDatabaseHas('project_member_virtual_machines', [
+            'project_member_id' => $secondMemberRow->id,
             'virtual_machine_id' => $allowedVm->id,
         ]);
         $this->assertDatabaseMissing('project_member_virtual_machines', [
@@ -161,6 +172,9 @@ class AdminWorkspaceTest extends TestCase
 
         $this->assertDatabaseMissing('project_members', [
             'id' => $memberRow->id,
+        ]);
+        $this->assertDatabaseHas('project_members', [
+            'id' => $secondMemberRow->id,
         ]);
     }
 
