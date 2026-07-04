@@ -158,6 +158,14 @@ class ProxmoxServerController extends Controller
                 ->all();
         }
 
+        if (array_key_exists('node_api_endpoints', $data)) {
+            $data['api_endpoints'] = collect($data['node_api_endpoints'] ?? [])
+                ->map(fn (mixed $endpoint): string => trim((string) $endpoint))
+                ->filter()
+                ->all();
+            unset($data['node_api_endpoints']);
+        }
+
         foreach (['verify_tls', 'is_active', 'maintenance_mode'] as $booleanField) {
             if (array_key_exists($booleanField, $data)) {
                 $data[$booleanField] = filter_var($data[$booleanField], FILTER_VALIDATE_BOOL);

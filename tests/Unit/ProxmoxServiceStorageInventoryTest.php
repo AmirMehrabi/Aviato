@@ -55,7 +55,7 @@ class ProxmoxServiceStorageInventoryTest extends TestCase
         ));
     }
 
-    public function test_node_storage_request_fails_over_to_direct_api_endpoint_after_proxy_595(): void
+    public function test_node_storage_request_uses_its_dedicated_api_endpoint(): void
     {
         Http::fake(function (Request $request) {
             $host = parse_url($request->url(), PHP_URL_HOST);
@@ -66,13 +66,13 @@ class ProxmoxServiceStorageInventoryTest extends TestCase
                     ['node' => 'srv1', 'status' => 'online'],
                 ]]),
                 str_ends_with($path, '/nodes/srv1/storage') => Http::response(['data' => []]),
+                $host === '10.0.0.12' && str_ends_with($path, '/nodes/srv2/storage') => Http::response(['data' => [
+                    ['storage' => 'SSD-SAS', 'type' => 'zfspool', 'content' => 'images,rootdir', 'active' => 1, 'used' => 25, 'total' => 100],
+                ]]),
                 $host === 'pve.local' && str_ends_with($path, '/nodes/srv2/storage') => Http::response([
                     'data' => null,
                     'message' => 'proxy connection failed',
                 ], 595),
-                $host === '10.0.0.12' && str_ends_with($path, '/nodes/srv2/storage') => Http::response(['data' => [
-                    ['storage' => 'SSD-SAS', 'type' => 'zfspool', 'content' => 'images,rootdir', 'active' => 1, 'used' => 25, 'total' => 100],
-                ]]),
                 str_ends_with($path, '/storage') => Http::response(['data' => [
                     ['storage' => 'SSD-SAS', 'type' => 'zfspool', 'content' => 'images,rootdir', 'nodes' => 'srv2'],
                 ]]),
@@ -81,18 +81,17 @@ class ProxmoxServiceStorageInventoryTest extends TestCase
         });
 
         $storage = collect(app(ProxmoxService::class)->summary(
-            $this->server(['https://10.0.0.12:8006'])
+            $this->server(['srv2' => 'https://10.0.0.12:8006'])
         )['storage']);
 
         $this->assertSame('srv2', $storage->firstWhere('storage', 'SSD-SAS')['node']);
         $this->assertSame(1, $storage->firstWhere('storage', 'SSD-SAS')['active']);
-        $this->assertArrayNotHasKey('/nodes/srv2/storage', app(ProxmoxService::class)->summary(
-            $this->server(['https://10.0.0.12:8006'])
-        )['endpoint_errors']);
+        Http::assertNotSent(fn (Request $request): bool => parse_url($request->url(), PHP_URL_HOST) === 'pve.local'
+            && str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/nodes/srv2/storage'));
     }
 
     /**
-     * @param  array<int, string>  $apiEndpoints
+     * @param  array<array-key, string>  $apiEndpoints
      */
     private function server(array $apiEndpoints = []): ProxmoxServer
     {

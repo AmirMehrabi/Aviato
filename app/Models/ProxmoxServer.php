@@ -102,7 +102,7 @@ class ProxmoxServer extends Model
     /** @return array<int, string> */
     public function apiBaseUrls(): array
     {
-        return collect([$this->host, ...($this->api_endpoints ?? [])])
+        return collect([$this->host, ...array_values($this->api_endpoints ?? [])])
             ->map(function (string $endpoint): string {
                 $endpoint = trim($endpoint);
                 if (str_starts_with($endpoint, 'http://') || str_starts_with($endpoint, 'https://')) {
@@ -115,6 +115,21 @@ class ProxmoxServer extends Model
             ->unique()
             ->values()
             ->all();
+    }
+
+    public function apiBaseUrlForNode(string $node): ?string
+    {
+        $endpoint = $this->api_endpoints[$node] ?? null;
+
+        if (! is_string($endpoint) || blank($endpoint)) {
+            return null;
+        }
+
+        $endpoint = trim($endpoint);
+
+        return str_starts_with($endpoint, 'http://') || str_starts_with($endpoint, 'https://')
+            ? rtrim($endpoint, '/')
+            : 'https://'.rtrim($endpoint, '/').':'.$this->port;
     }
 
     public function usesApiToken(): bool

@@ -1288,7 +1288,17 @@ class ProxmoxService
             $response = null;
             $lastConnectionException = null;
 
-            foreach ($server->apiBaseUrls() as $baseUrl) {
+            $baseUrls = collect($server->apiBaseUrls());
+
+            if (preg_match('#^/nodes/([^/]+)(?:/|$)#', $path, $matches) === 1) {
+                $nodeBaseUrl = $server->apiBaseUrlForNode(rawurldecode($matches[1]));
+
+                if ($nodeBaseUrl) {
+                    $baseUrls->prepend($nodeBaseUrl);
+                }
+            }
+
+            foreach ($baseUrls->unique()->values() as $baseUrl) {
                 try {
                     $response = $this->request($server, $baseUrl)->get($path, $query);
 

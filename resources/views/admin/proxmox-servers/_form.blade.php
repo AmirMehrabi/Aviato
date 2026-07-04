@@ -1,5 +1,18 @@
 @csrf
 
+@php
+    $configuredNodeEndpoints = collect($server->api_endpoints ?? [])
+        ->filter(fn (mixed $endpoint, mixed $node): bool => is_string($node) && is_string($endpoint));
+    $discoveredNodeNames = collect(data_get($server->remote_inventory, 'nodes', []))
+        ->map(fn (array $node): mixed => $node['node'] ?? $node['name'] ?? null)
+        ->filter()
+        ->merge($configuredNodeEndpoints->keys())
+        ->unique()
+        ->sort()
+        ->values();
+    $oldNodeEndpoints = old('node_api_endpoints', []);
+@endphp
+
 <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div class="grid gap-4 md:grid-cols-2">
@@ -86,11 +99,29 @@
             <x-form.input name="cpu_threshold_percent" type="number" label="حد CPU (%)" :value="$server->cpu_threshold_percent ?: 80" min="1" max="100" />
             <x-form.input name="ram_threshold_percent" type="number" label="حد RAM (%)" :value="$server->ram_threshold_percent ?: 85" min="1" max="100" />
             <x-form.input name="disk_threshold_percent" type="number" label="حد Storage (%)" :value="$server->disk_threshold_percent ?: 80" min="1" max="100" />
-            <label class="block md:col-span-2">
-                <span class="text-sm font-black text-slate-700">Endpointهای جایگزین API</span>
-                <textarea name="api_endpoints" rows="3" dir="ltr" placeholder="srv2.example.com&#10;srv3.example.com" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">{{ old('api_endpoints', implode("\n", $server->api_endpoints ?? [])) }}</textarea>
-                <span class="mt-1 block text-xs text-slate-500">آدرس مدیریت یا IP هر node در یک خط، مانند <span dir="ltr">https://10.0.0.12:8006</span>. در خطای proxy 595، پنل مستقیماً endpoint بعدی را امتحان می‌کند.</span>
-            </label>
+            <div class="md:col-span-2">
+                <span class="text-sm font-black text-slate-700">آدرس API اختصاصی nodeها</span>
+                <p class="mt-1 text-xs leading-6 text-slate-500">پس از شناسایی nodeها، آدرس مدیریت هرکدام را وارد کنید. درخواست‌های همان node مستقیماً به این آدرس ارسال می‌شوند.</p>
+                @if ($discoveredNodeNames->isEmpty())
+                    <p class="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">ابتدا سرور را ذخیره و Sync کنید تا nodeها شناسایی شوند.</p>
+                @else
+                    <div class="mt-3 grid gap-3">
+                        @foreach ($discoveredNodeNames as $nodeName)
+                            <label class="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-[120px_minmax(0,1fr)] sm:items-center">
+                                <span class="font-mono text-sm font-bold text-slate-700" dir="ltr">{{ $nodeName }}</span>
+                                <input
+                                    type="url"
+                                    name="node_api_endpoints[{{ $nodeName }}]"
+                                    value="{{ $oldNodeEndpoints[$nodeName] ?? $configuredNodeEndpoints->get($nodeName) }}"
+                                    placeholder="https://172.19.19.3:8006"
+                                    dir="ltr"
+                                    class="w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm focus:border-[#0069FF] focus:outline-none"
+                                >
+                            </label>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
 

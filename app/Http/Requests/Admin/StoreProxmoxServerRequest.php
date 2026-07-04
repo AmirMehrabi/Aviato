@@ -34,6 +34,8 @@ class StoreProxmoxServerRequest extends FormRequest
             'ram_threshold_percent' => ['sometimes', 'integer', 'between:1,100'],
             'disk_threshold_percent' => ['sometimes', 'integer', 'between:1,100'],
             'api_endpoints' => ['nullable', 'string', 'max:2000'],
+            'node_api_endpoints' => ['nullable', 'array'],
+            'node_api_endpoints.*' => ['nullable', 'url:http,https', 'max:500'],
         ];
     }
 }
