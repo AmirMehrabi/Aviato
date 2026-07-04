@@ -36,6 +36,9 @@ class UpdateProxmoxServerRequest extends FormRequest
             'api_endpoints' => ['nullable', 'string', 'max:2000'],
             'node_api_endpoints' => ['nullable', 'array'],
             'node_api_endpoints.*' => ['nullable', 'url:http,https', 'max:500'],
+            'node_api_credentials' => ['nullable', 'array'],
+            'node_api_credentials.*.token_id' => ['nullable', 'string', 'max:255'],
+            'node_api_credentials.*.token_secret' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

@@ -44,12 +44,22 @@ class ProxmoxNodeEndpointManagementTest extends TestCase
                 'srv1' => 'https://172.19.19.2:8006',
                 'srv2' => 'https://172.19.19.3:8006',
             ],
+            'node_api_credentials' => [
+                'srv1' => ['token_id' => 'root@pam!srv1', 'token_secret' => 'srv1-secret'],
+                'srv2' => ['token_id' => 'root@pam!srv2', 'token_secret' => 'srv2-secret'],
+            ],
         ])->assertRedirect($this->adminBaseUrl.'/proxmox-servers/'.$server->id);
 
         $this->assertSame([
             'srv1' => 'https://172.19.19.2:8006',
             'srv2' => 'https://172.19.19.3:8006',
         ], $server->refresh()->api_endpoints);
+        $this->assertSame('root@pam!srv2', $server->node_api_credentials['srv2']['token_id']);
+        $this->assertSame('srv2-secret', $server->node_api_credentials['srv2']['token_secret']);
+        $this->assertStringNotContainsString(
+            'srv2-secret',
+            (string) $server->getRawOriginal('node_api_credentials')
+        );
     }
 
     public function test_opening_server_page_does_not_trigger_or_persist_a_live_sync(): void

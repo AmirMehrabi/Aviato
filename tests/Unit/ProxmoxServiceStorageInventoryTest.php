@@ -81,19 +81,25 @@ class ProxmoxServiceStorageInventoryTest extends TestCase
         });
 
         $storage = collect(app(ProxmoxService::class)->summary(
-            $this->server(['srv2' => 'https://10.0.0.12:8006'])
+            $this->server(
+                ['srv2' => 'https://10.0.0.12:8006'],
+                ['srv2' => ['token_id' => 'root@pam!srv2', 'token_secret' => 'srv2-secret']]
+            )
         )['storage']);
 
         $this->assertSame('srv2', $storage->firstWhere('storage', 'SSD-SAS')['node']);
         $this->assertSame(1, $storage->firstWhere('storage', 'SSD-SAS')['active']);
         Http::assertNotSent(fn (Request $request): bool => parse_url($request->url(), PHP_URL_HOST) === 'pve.local'
             && str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/nodes/srv2/storage'));
+        Http::assertSent(fn (Request $request): bool => parse_url($request->url(), PHP_URL_HOST) === '10.0.0.12'
+            && $request->header('Authorization')[0] === 'PVEAPIToken=root@pam!srv2=srv2-secret');
     }
 
     /**
      * @param  array<array-key, string>  $apiEndpoints
+     * @param  array<string, array{token_id: string, token_secret: string}>  $nodeCredentials
      */
-    private function server(array $apiEndpoints = []): ProxmoxServer
+    private function server(array $apiEndpoints = [], array $nodeCredentials = []): ProxmoxServer
     {
         return new ProxmoxServer([
             'name' => 'Cluster',
@@ -106,6 +112,7 @@ class ProxmoxServiceStorageInventoryTest extends TestCase
             'api_token_secret' => 'secret',
             'verify_tls' => false,
             'api_endpoints' => $apiEndpoints,
+            'node_api_credentials' => $nodeCredentials,
         ]);
     }
 }

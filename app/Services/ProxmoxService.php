@@ -1300,7 +1300,10 @@ class ProxmoxService
 
             foreach ($baseUrls->unique()->values() as $baseUrl) {
                 try {
-                    $response = $this->request($server, $baseUrl)->get($path, $query);
+                    $authNode = isset($nodeBaseUrl) && $nodeBaseUrl === $baseUrl
+                        ? rawurldecode($matches[1])
+                        : null;
+                    $response = $this->request($server, $baseUrl, $authNode)->get($path, $query);
 
                     if ($response->status() === 595) {
                         $this->logError('Proxmox node proxy failed; trying next API endpoint', $server, [
@@ -2085,24 +2088,39 @@ class ProxmoxService
         return $authorization;
     }
 
-    protected function request(ProxmoxServer $server, ?string $baseUrl = null): PendingRequest
+    protected function request(ProxmoxServer $server, ?string $baseUrl = null, ?string $authNode = null): PendingRequest
     {
         $baseUrl ??= $server->baseUrl();
+        $connectTimeout = max(1, (int) config('proxmox.connect_timeout', 15));
+        $requestTimeout = max($connectTimeout, (int) config('proxmox.request_timeout', 30));
+
         $this->logInfo('Preparing Proxmox HTTP client', $server, [
             'base_url' => $baseUrl.'/api2/json',
-            'connect_timeout_seconds' => 5,
-            'timeout_seconds' => 10,
+            'connect_timeout_seconds' => $connectTimeout,
+            'timeout_seconds' => $requestTimeout,
             'verify_tls' => $server->verify_tls,
-            'auth_method' => $server->usesApiToken() ? 'api_token' : 'ticket',
+            'auth_method' => $authNode ? 'node_api_token' : ($server->usesApiToken() ? 'api_token' : 'ticket'),
+            'auth_node' => $authNode,
             'php_openssl_loaded' => extension_loaded('openssl'),
             'php_curl_loaded' => extension_loaded('curl'),
         ]);
 
         $request = Http::baseUrl($baseUrl.'/api2/json')
             ->acceptJson()
-            ->timeout(10)
-            ->connectTimeout(5)
+            ->timeout($requestTimeout)
+            ->connectTimeout($connectTimeout)
             ->withOptions(['verify' => $server->verify_tls]);
+
+        if ($authNode && ($credentials = $server->apiCredentialsForNode($authNode))) {
+            $tokenId = trim((string) ($credentials['token_id'] ?? ''));
+            $tokenSecret = trim((string) ($credentials['token_secret'] ?? ''));
+
+            if ($tokenId !== '' && $tokenSecret !== '') {
+                return $request->withHeaders([
+                    'Authorization' => 'PVEAPIToken='.$tokenId.'='.$tokenSecret,
+                ]);
+            }
+        }
 
         if ($server->usesApiToken()) {
             return $request->withHeaders([

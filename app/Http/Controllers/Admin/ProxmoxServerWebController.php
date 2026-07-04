@@ -121,7 +121,7 @@ class ProxmoxServerWebController extends Controller
 
     public function update(UpdateProxmoxServerRequest $request, ProxmoxServer $proxmoxServer): RedirectResponse
     {
-        $proxmoxServer->fill($this->normalizedInput($request->validated(), true));
+        $proxmoxServer->fill($this->normalizedInput($request->validated(), true, $proxmoxServer));
         $proxmoxServer->markPendingSync();
         $proxmoxServer->save();
 
@@ -255,7 +255,7 @@ class ProxmoxServerWebController extends Controller
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    private function normalizedInput(array $data, bool $isUpdate = false): array
+    private function normalizedInput(array $data, bool $isUpdate = false, ?ProxmoxServer $server = null): array
     {
         foreach (['host', 'realm', 'username', 'api_token_id', 'api_token_secret'] as $field) {
             if (array_key_exists($field, $data) && is_string($data[$field])) {
@@ -286,6 +286,21 @@ class ProxmoxServerWebController extends Controller
                 ->filter()
                 ->all();
             unset($data['node_api_endpoints']);
+        }
+
+        if (array_key_exists('node_api_credentials', $data)) {
+            $existing = $server?->node_api_credentials ?? [];
+            $data['node_api_credentials'] = collect($data['node_api_credentials'] ?? [])
+                ->map(function (array $credentials, string $node) use ($existing): array {
+                    return [
+                        'token_id' => trim((string) ($credentials['token_id'] ?? '')),
+                        'token_secret' => filled($credentials['token_secret'] ?? null)
+                            ? trim((string) $credentials['token_secret'])
+                            : (string) data_get($existing, $node.'.token_secret', ''),
+                    ];
+                })
+                ->filter(fn (array $credentials): bool => $credentials['token_id'] !== '')
+                ->all();
         }
 
         foreach (['verify_tls', 'is_active', 'maintenance_mode'] as $booleanField) {

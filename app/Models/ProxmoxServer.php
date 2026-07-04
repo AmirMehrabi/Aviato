@@ -36,8 +36,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'ram_threshold_percent',
     'disk_threshold_percent',
     'api_endpoints',
+    'node_api_credentials',
 ])]
-#[Hidden(['password', 'api_token_secret'])]
+#[Hidden(['password', 'api_token_secret', 'node_api_credentials'])]
 class ProxmoxServer extends Model
 {
     public const CONNECTION_ONLINE = 'online';
@@ -91,6 +92,7 @@ class ProxmoxServer extends Model
             'ram_threshold_percent' => 'integer',
             'disk_threshold_percent' => 'integer',
             'api_endpoints' => 'array',
+            'node_api_credentials' => 'encrypted:array',
         ];
     }
 
@@ -130,6 +132,14 @@ class ProxmoxServer extends Model
         return str_starts_with($endpoint, 'http://') || str_starts_with($endpoint, 'https://')
             ? rtrim($endpoint, '/')
             : 'https://'.rtrim($endpoint, '/').':'.$this->port;
+    }
+
+    /** @return array{token_id?: string, token_secret?: string} */
+    public function apiCredentialsForNode(string $node): array
+    {
+        $credentials = $this->node_api_credentials[$node] ?? [];
+
+        return is_array($credentials) ? $credentials : [];
     }
 
     public function usesApiToken(): bool

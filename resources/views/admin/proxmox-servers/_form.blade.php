@@ -11,6 +11,8 @@
         ->sort()
         ->values();
     $oldNodeEndpoints = old('node_api_endpoints', []);
+    $configuredNodeCredentials = collect($server->node_api_credentials ?? []);
+    $oldNodeCredentials = old('node_api_credentials', []);
 @endphp
 
 <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -118,6 +120,26 @@
                                     class="w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm focus:border-[#0069FF] focus:outline-none"
                                 >
                             </label>
+                            <div class="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-[120px_minmax(0,1fr)_minmax(0,1fr)] sm:items-center">
+                                <span class="font-mono text-sm font-bold text-slate-700" dir="ltr">{{ $nodeName }} Auth</span>
+                                <input
+                                    type="text"
+                                    name="node_api_credentials[{{ $nodeName }}][token_id]"
+                                    value="{{ data_get($oldNodeCredentials, $nodeName.'.token_id', data_get($configuredNodeCredentials, $nodeName.'.token_id')) }}"
+                                    placeholder="root@pam!panel"
+                                    dir="ltr"
+                                    autocomplete="off"
+                                    class="w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm focus:border-[#0069FF] focus:outline-none"
+                                >
+                                <input
+                                    type="password"
+                                    name="node_api_credentials[{{ $nodeName }}][token_secret]"
+                                    placeholder="{{ data_get($configuredNodeCredentials, $nodeName.'.token_secret') ? 'برای حفظ مقدار فعلی خالی بگذارید' : 'API Token Secret' }}"
+                                    dir="ltr"
+                                    autocomplete="new-password"
+                                    class="w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm focus:border-[#0069FF] focus:outline-none"
+                                >
+                            </div>
                         @endforeach
                     </div>
                 @endif
