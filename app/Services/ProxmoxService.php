@@ -769,17 +769,58 @@ class ProxmoxService
      */
     public function startVm(ProxmoxServer $server, string $node, int $vmid, array $context = []): array
     {
+        $currentStatus = $this->vmStatus($server, $node, $vmid);
+
+        if (($currentStatus['status'] ?? null) === 'running') {
+            $this->logInfo('Proxmox VM start skipped because the VM is already running', $server, [
+                'node' => $node,
+                'vmid' => $vmid,
+                'context' => $context,
+            ]);
+
+            return [
+                'task_id' => null,
+                'already_running' => true,
+                'status' => 'running',
+                'current_status' => $currentStatus,
+            ];
+        }
+
         $this->logInfo('Proxmox VM start command requested', $server, [
             'node' => $node,
             'vmid' => $vmid,
             'context' => $context,
         ]);
 
-        $taskId = $this->request($server)
-            ->asForm()
-            ->post("/nodes/{$node}/qemu/{$vmid}/status/start")
-            ->throw()
-            ->json('data');
+        try {
+            $taskId = $this->request($server)
+                ->asForm()
+                ->post("/nodes/{$node}/qemu/{$vmid}/status/start")
+                ->throw()
+                ->json('data');
+        } catch (RequestException $exception) {
+            if ($this->responseSuggestsAlreadyRunning($exception)) {
+                $currentStatus = $this->vmStatus($server, $node, $vmid);
+
+                if (($currentStatus['status'] ?? null) === 'running') {
+                    $this->logInfo('Proxmox VM start treated as success because the VM was already running', $server, [
+                        'node' => $node,
+                        'vmid' => $vmid,
+                        'context' => $context,
+                        'response_body_preview' => $this->bodyPreview($exception->response->body()),
+                    ]);
+
+                    return [
+                        'task_id' => null,
+                        'already_running' => true,
+                        'status' => 'running',
+                        'current_status' => $currentStatus,
+                    ];
+                }
+            }
+
+            throw $exception;
+        }
 
         $this->logInfo('Proxmox VM start command accepted', $server, [
             'node' => $node,
@@ -1953,6 +1994,13 @@ class ProxmoxService
             'body_preview' => $this->bodyPreview($response->body()),
             'exception_message' => $exception->getMessage(),
         ]));
+    }
+
+    private function responseSuggestsAlreadyRunning(RequestException $exception): bool
+    {
+        $body = strtolower((string) $exception->response->body());
+
+        return str_contains($body, 'already running');
     }
 
     private function logConnectionDiagnostics(ProxmoxServer $server, \Throwable $exception): void
