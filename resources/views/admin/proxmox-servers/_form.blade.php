@@ -89,7 +89,7 @@
             <label class="block md:col-span-2">
                 <span class="text-sm font-black text-slate-700">Endpointهای جایگزین API</span>
                 <textarea name="api_endpoints" rows="3" dir="ltr" placeholder="srv2.example.com&#10;srv3.example.com" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">{{ old('api_endpoints', implode("\n", $server->api_endpoints ?? [])) }}</textarea>
-                <span class="mt-1 block text-xs text-slate-500">یک hostname در هر خط؛ endpoint اصلی همان آدرس API بالاست.</span>
+                <span class="mt-1 block text-xs text-slate-500">آدرس مدیریت یا IP هر node در یک خط، مانند <span dir="ltr">https://10.0.0.12:8006</span>. در خطای proxy 595، پنل مستقیماً endpoint بعدی را امتحان می‌کند.</span>
             </label>
         </div>
     </div>

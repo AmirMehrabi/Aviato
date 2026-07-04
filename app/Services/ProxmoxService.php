@@ -1291,6 +1291,19 @@ class ProxmoxService
             foreach ($server->apiBaseUrls() as $baseUrl) {
                 try {
                     $response = $this->request($server, $baseUrl)->get($path, $query);
+
+                    if ($response->status() === 595) {
+                        $this->logError('Proxmox node proxy failed; trying next API endpoint', $server, [
+                            'method' => 'GET',
+                            'path' => $path,
+                            'base_url' => $baseUrl,
+                            'status' => $response->status(),
+                            'body_preview' => $this->bodyPreview($response->body()),
+                        ]);
+
+                        continue;
+                    }
+
                     break;
                 } catch (ConnectionException $exception) {
                     $lastConnectionException = $exception;
@@ -1524,17 +1537,29 @@ class ProxmoxService
     protected function storageInventory(ProxmoxServer $server, array $nodes, array &$errors): array
     {
         $inventory = [];
+        $storageDefinitions = $this->getOptionalData($server, '/storage', $errors, []);
+        $definitionsById = collect($storageDefinitions)
+            ->filter(fn (mixed $storage): bool => is_array($storage) && filled($storage['storage'] ?? null))
+            ->keyBy('storage');
+        $nodeNames = collect($nodes)
+            ->map(fn (array $node): mixed => $node['node'] ?? $node['name'] ?? null)
+            ->filter();
 
-        foreach ($nodes as $node) {
-            $nodeName = $node['node'] ?? $node['name'] ?? null;
+        foreach ($storageDefinitions as $storage) {
+            $nodeNames->push(...$this->storageNodeNames($storage['nodes'] ?? null));
+        }
 
-            if (! $nodeName) {
-                continue;
-            }
-
+        foreach ($nodeNames->unique()->values() as $nodeName) {
             $storages = $this->getOptionalData($server, "/nodes/{$nodeName}/storage", $errors, []);
 
             foreach ($storages as $storage) {
+                $definition = $definitionsById->get($storage['storage'] ?? null, []);
+                $configuredNodes = $this->storageNodeNames($definition['nodes'] ?? $storage['nodes'] ?? null);
+
+                if ($configuredNodes !== [] && ! in_array($nodeName, $configuredNodes, true)) {
+                    continue;
+                }
+
                 $storage['node'] = $nodeName;
                 $inventory[] = $storage;
             }
@@ -1548,13 +1573,17 @@ class ProxmoxService
             'node_count' => count($nodes),
         ]);
 
-        $storages = $this->getOptionalData($server, '/storage', $errors, []);
         $fallbackNode = count($nodes) === 1 ? ($nodes[0]['node'] ?? $nodes[0]['name'] ?? null) : null;
 
-        foreach ($storages as $storage) {
-            $storage['node'] = $fallbackNode;
-            $storage['active'] = $storage['active'] ?? null;
-            $inventory[] = $storage;
+        foreach ($storageDefinitions as $storage) {
+            $configuredNodes = $this->storageNodeNames($storage['nodes'] ?? null);
+            $targetNodes = $configuredNodes !== [] ? $configuredNodes : [$fallbackNode];
+
+            foreach (array_filter($targetNodes) as $nodeName) {
+                $storage['node'] = $nodeName;
+                $storage['active'] = $storage['active'] ?? null;
+                $inventory[] = $storage;
+            }
         }
 
         $this->logInfo('Proxmox datacenter storage inventory loaded', $server, [
@@ -1562,6 +1591,21 @@ class ProxmoxService
         ]);
 
         return $inventory;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function storageNodeNames(mixed $nodes): array
+    {
+        $nodes = is_array($nodes) ? $nodes : explode(',', (string) $nodes);
+
+        return collect($nodes)
+            ->map(fn (mixed $node): string => trim((string) $node))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
