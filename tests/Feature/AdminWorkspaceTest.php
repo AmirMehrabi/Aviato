@@ -7,6 +7,7 @@ use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\VirtualMachine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AdminWorkspaceTest extends TestCase
@@ -161,5 +162,20 @@ class AdminWorkspaceTest extends TestCase
         $this->assertDatabaseMissing('project_members', [
             'id' => $memberRow->id,
         ]);
+    }
+
+    public function test_admin_workspace_show_does_not_crash_if_specific_vm_pivot_is_missing(): void
+    {
+        $admin = User::factory()->create();
+        $owner = Customer::factory()->create(['name' => 'John Owner']);
+        $project = $owner->ensureDefaultProject();
+
+        Schema::dropIfExists('project_member_virtual_machines');
+
+        $this->actingAs($admin, 'admin');
+
+        $this->get($this->adminBaseUrl.'/workspaces/'.$project->uuid)
+            ->assertOk()
+            ->assertSee('اعضا و دسترسی‌ها');
     }
 }

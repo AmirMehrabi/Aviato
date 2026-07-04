@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class ProjectAccessService
 {
@@ -108,6 +109,10 @@ class ProjectAccessService
             return $query;
         }
 
+        if (! Schema::hasTable('project_member_virtual_machines')) {
+            return $query->whereRaw('1 = 0');
+        }
+
         $query->whereExists(function (Builder $query) use ($membership): void {
             $query->selectRaw('1')
                 ->from('project_member_virtual_machines')
@@ -143,6 +148,10 @@ class ProjectAccessService
             abort_unless((int) $createdByCustomerId === (int) $customer->id, 404);
 
             return $vm;
+        }
+
+        if (! Schema::hasTable('project_member_virtual_machines')) {
+            abort(404);
         }
 
         abort_unless(

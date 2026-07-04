@@ -12,6 +12,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -60,12 +61,21 @@ class ProjectController extends Controller
 
     public function show(Project $project): View
     {
+        $hasSpecificVmPivot = Schema::hasTable('project_member_virtual_machines');
+
         $project->load([
             'owner',
             'members.customer',
-            'members.specificVirtualMachines' => fn ($query) => $query->notDeleted()->orderBy('display_name'),
             'virtualMachines' => fn ($query) => $query->notDeleted()->with(['creator', 'customer', 'proxmoxServer', 'bundle', 'disks']),
         ])->loadCount(['members', 'virtualMachines']);
+
+        if ($hasSpecificVmPivot) {
+            $project->members->load([
+                'specificVirtualMachines' => fn ($query) => $query->notDeleted()->orderBy('display_name'),
+            ]);
+        } else {
+            $project->members->each->setRelation('specificVirtualMachines', collect());
+        }
 
         $vmPrices = $project->virtualMachines->mapWithKeys(function ($vm) {
             return [$vm->uuid => $this->billing->estimateMonthly($vm)];
@@ -89,6 +99,7 @@ class ProjectController extends Controller
                 ProjectMember::VM_ACCESS_OWN => 'VMهای خود عضو',
                 ProjectMember::VM_ACCESS_SPECIFIC => 'VMهای مشخص',
             ]),
+            'hasSpecificVmPivot' => $hasSpecificVmPivot,
         ]);
     }
 
