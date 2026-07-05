@@ -7,6 +7,7 @@ use App\Models\VmBundleLocationMapping;
 use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
+use App\Services\RouterOsPostInstallationService;
 use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
@@ -37,7 +38,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
         public readonly array $options = [],
     ) {}
 
-    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, ?WalletService $wallets = null, ?HetznerCloudService $hetzner = null): void
+    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, ?WalletService $wallets = null, ?HetznerCloudService $hetzner = null, ?RouterOsPostInstallationService $routerOsPostInstallation = null): void
     {
         $wallets ??= app(WalletService::class);
 
@@ -136,6 +137,15 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
                 $verifiedConfig = $proxmox->vmConfig($server, $vm->node, $vmid);
                 $history[] = ['step' => 'config_verify', 'result' => $verifiedConfig];
+
+                if ($shouldStartAfterCreate && $canAutoStart && $image->os_family === 'router_os' && filled($image->post_installation_script)) {
+                    $result = ($routerOsPostInstallation ?? app(RouterOsPostInstallationService::class))->execute($vm);
+                    $history[] = ['step' => 'post_installation', 'result' => $result, 'at' => now()->toISOString()];
+                }
+
+                if ($address) {
+                    $ipPools->assign($address, $vm);
+                }
 
                 $vm->forceFill([
                     'status' => $shouldStartAfterCreate && $canAutoStart ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,

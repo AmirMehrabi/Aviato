@@ -152,6 +152,7 @@ class CloudImageController extends Controller
             'node' => ['nullable', 'string', 'max:255'],
             'template_vmid' => ['nullable', 'integer', 'min:1'],
             'default_username' => ['required', 'string', 'max:64'],
+            'post_installation_script' => ['nullable', 'string', 'max:20000'],
             'storage' => ['nullable', 'string', 'max:255'],
             'disk_device' => ['required', 'string', 'max:32'],
             'network_bridge' => ['nullable', 'string', 'max:64'],
@@ -175,6 +176,9 @@ class CloudImageController extends Controller
 
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
         $data['logo_key'] = $data['logo_key'] ?: $data['os_family'];
+        $data['post_installation_script'] = $data['os_family'] === 'router_os'
+            ? (trim((string) ($data['post_installation_script'] ?? '')) ?: null)
+            : null;
         $data['cloud_init_enabled'] = $request->has('cloud_init_enabled')
             ? $request->boolean('cloud_init_enabled')
             : ($image?->cloud_init_enabled ?? true);

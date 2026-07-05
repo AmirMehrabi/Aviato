@@ -25,6 +25,7 @@ use Illuminate\Support\Str;
     'remote_architecture',
     'provider_metadata',
     'default_username',
+    'post_installation_script',
     'storage',
     'disk_device',
     'network_bridge',

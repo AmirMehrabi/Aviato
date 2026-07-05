@@ -8,6 +8,7 @@
 @endphp
 <div
     x-data="{
+        osFamily: @js(old('os_family', $image->os_family ?: 'ubuntu')),
         serverId: @js((string) old('proxmox_server_id', $image->proxmox_server_id)),
         urls: @js($serverOptionUrls ?? []),
         loading: false,
@@ -65,7 +66,15 @@
     </label>
     <x-form.input name="name" label="نام Image" :value="$image->name" dir-ltr />
     <x-form.input name="slug" label="Slug" :value="$image->slug" dir-ltr help="اختیاری؛ اگر خالی باشد خودکار ساخته می‌شود." />
-    <x-form.select name="os_family" label="OS Family" :selected="$image->os_family ?: 'ubuntu'" :options="$osFamilies" />
+    <label class="block">
+        <span class="text-sm font-black text-slate-700">OS Family</span>
+        <select name="os_family" x-model="osFamily" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+            @foreach($osFamilies as $value => $label)
+                <option value="{{ $value }}">{{ $label }}</option>
+            @endforeach
+        </select>
+        @error('os_family') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+    </label>
     <x-form.input name="os_version" label="OS Version" :value="$image->os_version" dir-ltr placeholder="24.04 LTS" />
     <x-form.select name="logo_key" label="Logo" :selected="$image->logo_key ?: $image->os_family ?: 'ubuntu'" :options="$logoKeys" />
     <x-form.input name="default_username" label="Default Username" :value="$image->default_username ?: 'ubuntu'" dir-ltr />
@@ -76,6 +85,17 @@
     <x-form.input name="min_disk_gb" type="number" label="Minimum Disk (GB)" :value="$image->min_disk_gb ?: 10" />
     <x-form.input name="sort_order" type="number" label="ترتیب نمایش" :value="$image->sort_order ?? 0" />
     <label class="md:col-span-2"><span class="text-sm font-black text-slate-700">توضیحات</span><textarea name="description" rows="4" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">{{ old('description', $image->description) }}</textarea>@error('description') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror</label>
+    <section x-show="osFamily === 'router_os'" x-cloak class="md:col-span-2 rounded-xl border border-sky-200 bg-sky-50 p-5">
+        <h2 class="font-black text-slate-950">Post Installation Script</h2>
+        <p class="mt-1 text-sm leading-6 text-slate-600">
+            هر دستور را در یک خط وارد کنید. دستورات پس از روشن شدن VM با نام کاربری پیش‌فرض و بدون رمز عبور، به‌ترتیب از طریق SSH اجرا می‌شوند.
+        </p>
+        <textarea name="post_installation_script" rows="8" dir="ltr" class="mt-4 w-full rounded-lg border border-sky-200 bg-white px-4 py-3 font-mono text-sm focus:border-[#0069FF] focus:outline-none" placeholder="ip address add address=&#123;&#123;ip_address_with_prefix&#125;&#125; interface=ether2">{{ old('post_installation_script', $image->post_installation_script) }}</textarea>
+        <p class="mt-2 text-xs leading-6 text-slate-600" dir="ltr">
+            Variables: @{{ip_address}}, @{{ip_address_with_prefix}}, @{{prefix_length}}, @{{gateway}}
+        </p>
+        @error('post_installation_script') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+    </section>
     <input type="hidden" name="cloud_init_enabled" value="0">
     <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="cloud_init_enabled" value="1" @checked(old('cloud_init_enabled', $image->cloud_init_enabled ?? true)) class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">CloudInit فعال است</span></label>
     <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $image->is_active ?? true)) class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">فعال</span></label>
