@@ -119,7 +119,7 @@
             profileOpen: false,
             searchItems: [],
             init() {
-                const baseItems = @json($searchBaseItems);
+                const baseItems = {{ json_encode($searchBaseItems) }};
                 const source = document.getElementById('customer-search-data');
                 let pageItems = [];
 
