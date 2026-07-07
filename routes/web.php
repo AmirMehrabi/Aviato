@@ -50,6 +50,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Http\Controllers\SitemapController;
 
 $adminDomain = config('portals.admin.domain');
 $customerDomain = config('portals.customer.domain');
@@ -420,6 +421,8 @@ Route::get('/solutions', function (WalletService $wallets) {
         'wallets' => $wallets,
     ]);
 })->name('solutions');
+
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 Route::get('/changelog', function () {
     if (Auth::guard('admin')->check()) {

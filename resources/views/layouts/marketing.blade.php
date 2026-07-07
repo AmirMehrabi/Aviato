@@ -51,14 +51,7 @@
     @php
         $activePage = $activePage ?? 'home';
         $darkHeaderTop = in_array($activePage, ['solutions'], true);
-        $marketingNavItems = [
-            ['label' => 'خانه', 'route' => 'home', 'key' => 'home'],
-            ['label' => 'قیمت‌گذاری', 'route' => 'pricing', 'key' => 'pricing'],
-            ['label' => 'راهکارهای ما', 'route' => 'solutions', 'key' => 'solutions'],
-            ['label' => 'بلاگ', 'route' => 'blog', 'key' => 'blog'],
-            ['label' => 'لیست تغییرات', 'route' => 'changelog', 'key' => 'changelog'],
-            ['label' => 'تماس', 'route' => 'contact', 'key' => 'contact'],
-        ];
+        $marketingNavItems = config('marketing.navigation', []);
     @endphp
 
     <div class="min-h-screen overflow-hidden" x-data="{ scrolled: false, menuOpen: false }" x-init="scrolled = window.scrollY > 12;
