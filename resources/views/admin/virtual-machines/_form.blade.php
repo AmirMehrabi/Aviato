@@ -66,6 +66,7 @@
         @error('ip_address_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
         <p class="mt-1 text-xs text-slate-500">بعد از تغییر IP، ipconfig0 و nameserver در Cloud-init روی Proxmox بازسازی می‌شود.</p>
     </label>
+    <x-form.checkbox name="sync_to_proxmox" label="اعمال تغییرات IP در Proxmox (Cloud-init)" :checked="old('sync_to_proxmox', true)" help="اگر غیرفعال باشد فقط رکوردهای دیتابیس به‌روزرسانی می‌شود و تغییرات به Proxmox ارسال نمی‌شود." wrapper-class="md:col-span-2" />
     <x-form.input name="vmid" type="number" label="Proxmox VMID" :value="$vm->vmid" />
     <label>
         <span class="text-sm font-black text-slate-700">Node</span>

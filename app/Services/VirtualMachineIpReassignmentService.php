@@ -15,7 +15,7 @@ class VirtualMachineIpReassignmentService
         private readonly ProxmoxService $proxmox,
     ) {}
 
-    public function reassign(VirtualMachine $vm, IpAddress $destination): VirtualMachine
+    public function reassign(VirtualMachine $vm, IpAddress $destination, bool $syncToProxmox = true): VirtualMachine
     {
         $vm->loadMissing(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool']);
         $oldAddress = $vm->reservedIpAddress;
@@ -30,6 +30,10 @@ class VirtualMachineIpReassignmentService
 
         $this->ipPools->reserveSpecificForVm($destination, $vm);
         $vm->refresh()->load(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool']);
+
+        if (! $syncToProxmox) {
+            return $vm->refresh();
+        }
 
         try {
             $this->sync($vm);

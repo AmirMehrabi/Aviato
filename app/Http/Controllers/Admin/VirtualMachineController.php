@@ -316,7 +316,8 @@ class VirtualMachineController extends Controller
 
         $data = $this->validated($request, $virtualMachine);
         $selectedIpAddressId = $data['ip_address_id'] ?? null;
-        unset($data['ip_pool_id'], $data['ip_address_id']);
+        $syncToProxmox = (bool) ($data['sync_to_proxmox'] ?? true);
+        unset($data['ip_pool_id'], $data['ip_address_id'], $data['sync_to_proxmox']);
 
         $previousIpAddressId = $virtualMachine->ip_address_id;
 
@@ -334,6 +335,7 @@ class VirtualMachineController extends Controller
                 $this->ipReassignments->reassign(
                     $virtualMachine,
                     IpAddress::query()->findOrFail((int) $selectedIpAddressId),
+                    syncToProxmox: $syncToProxmox,
                 );
             } catch (Throwable $exception) {
                 return redirect()
@@ -349,18 +351,26 @@ class VirtualMachineController extends Controller
     {
         $data = $request->validate([
             'ip_address_id' => ['required', 'integer', 'exists:ip_addresses,id'],
+            'sync_to_proxmox' => ['sometimes', 'boolean'],
         ]);
+
+        $syncToProxmox = (bool) ($data['sync_to_proxmox'] ?? true);
 
         try {
             $this->ipReassignments->reassign(
                 $virtualMachine,
                 IpAddress::query()->findOrFail($data['ip_address_id']),
+                syncToProxmox: $syncToProxmox,
             );
         } catch (Throwable $exception) {
             return back()->with('error', $exception->getMessage());
         }
 
-        return back()->with('status', 'IP ماشین و تنظیمات Proxmox با موفقیت به‌روزرسانی شد.');
+        $message = $syncToProxmox
+            ? 'IP ماشین و تنظیمات Proxmox با موفقیت به‌روزرسانی شد.'
+            : 'IP ماشین در دیتابیس به‌روزرسانی شد (بدون اعمال در Proxmox).';
+
+        return back()->with('status', $message);
     }
 
     public function destroy(VirtualMachine $virtualMachine): RedirectResponse
@@ -727,6 +737,7 @@ class VirtualMachineController extends Controller
             'start_after_create' => ['nullable', 'boolean'],
             'onboot' => ['nullable', 'boolean'],
             'tax_exempt' => ['nullable', 'boolean'],
+            'sync_to_proxmox' => ['sometimes', 'boolean'],
         ]);
     }
 

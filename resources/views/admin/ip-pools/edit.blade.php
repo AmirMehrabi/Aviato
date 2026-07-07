@@ -210,17 +210,35 @@
                                             <button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-black text-white transition hover:bg-[#0050D0]">رزرو</button>
                                         </form>
                                     @elseif($address->status === 'assigned' && $vm)
-                                        <form method="POST" action="{{ route('admin.virtual-machines.ip-address.update', $vm) }}" class="flex min-w-72 items-center gap-2">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="ip_address_id" required class="min-w-48 rounded-lg border border-slate-200 px-3 py-2 text-xs">
-                                                <option value="">IP جدید</option>
-                                                @foreach($replacementAddresses->filter(fn ($candidate) => (int) $candidate->pool?->proxmox_server_id === (int) $vm->proxmox_server_id && (blank($candidate->pool?->node) || $candidate->pool?->node === $vm->node)) as $candidate)
-                                                    <option value="{{ $candidate->id }}">{{ $candidate->address }} · {{ $candidate->pool?->name }}</option>
-                                                @endforeach
-                                            </select>
-                                            <button class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 transition hover:bg-amber-100">تغییر IP</button>
-                                        </form>
+                                        <div
+                                            x-data="{
+                                                syncProxmox: true,
+                                                ipChange: '',
+                                                submit() {
+                                                    if (!this.ipChange) return;
+                                                    if (!this.syncProxmox && !confirm('فقط رکوردهای دیتابیس به‌روزرسانی می‌شود. اعمال در Proxmox انجام نخواهد شد. ادامه می‌دهید?')) return;
+                                                    this.$refs.form.submit();
+                                                }
+                                            }"
+                                            class="flex min-w-72 flex-col gap-2"
+                                        >
+                                            <form x-ref="form" method="POST" action="{{ route('admin.virtual-machines.ip-address.update', $vm) }}" class="flex items-center gap-2" onsubmit="return false;">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="sync_to_proxmox" :value="syncProxmox ? '1' : '0'">
+                                                <select name="ip_address_id" required x-model="ipChange" class="min-w-48 rounded-lg border border-slate-200 px-3 py-2 text-xs">
+                                                    <option value="">IP جدید</option>
+                                                    @foreach($replacementAddresses->filter(fn ($candidate) => (int) $candidate->pool?->proxmox_server_id === (int) $vm->proxmox_server_id && (blank($candidate->pool?->node) || $candidate->pool?->node === $vm->node)) as $candidate)
+                                                        <option value="{{ $candidate->id }}">{{ $candidate->address }} · {{ $candidate->pool?->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <button type="button" @click="submit()" class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 transition hover:bg-amber-100">تغییر IP</button>
+                                            </form>
+                                            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-500">
+                                                <input type="checkbox" x-model="syncProxmox" class="size-3 rounded border-slate-300 text-[#0069FF]">
+                                                اعمال در Proxmox
+                                            </label>
+                                        </div>
                                     @elseif($address->status === 'reserved')
                                         <form method="POST" action="{{ route('admin.ip-pools.addresses.release', [$pool, $address]) }}" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این IP را آزاد کنید?');">
                                             @csrf
