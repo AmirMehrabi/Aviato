@@ -6,6 +6,7 @@ use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\ProjectMember;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
@@ -14,6 +15,7 @@ use App\Services\InvoiceService;
 use App\Services\Payments\HesabroPaymentException;
 use App\Services\Payments\MellatClientInterface;
 use App\Services\PaymentService;
+use App\Services\ProjectAccessService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
@@ -126,6 +128,55 @@ class CustomerWalletBillingTest extends TestCase
             'amount' => 3000000,
             'currency' => 'IRR',
         ]);
+    }
+
+    public function test_billing_workspace_member_can_top_up_owner_wallet(): void
+    {
+        $owner = Customer::factory()->create();
+        $billingMember = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $billingMember->id,
+            'role' => ProjectMember::ROLE_BILLING,
+        ]);
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+
+        $this->actingAs($billingMember, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/wallet')
+            ->assertOk()
+            ->assertSee('پرداخت و افزایش موجودی')
+            ->assertDontSee('فقط مالک فضای کاری می‌تواند موجودی این کیف پول را افزایش دهد.');
+
+        $this->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->post($this->customerBaseUrl.'/wallet/top-ups', [
+                'amount_toman' => 300000,
+                'gateway' => 'mellat',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/wallet/payments/1/gateway');
+
+        $this->assertDatabaseHas('payments', [
+            'id' => 1,
+            'customer_id' => $owner->id,
+            'amount' => 3000000,
+            'status' => Payment::STATUS_PENDING,
+        ]);
+
+        $this->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/wallet/payments/1/gateway')
+            ->assertOk()
+            ->assertSee('Mellat');
+
+        $this->post($this->customerBaseUrl.'/wallet/payments/1/callback', [
+            'RefId' => 'REF-1',
+            'ResCode' => '0',
+            'SaleOrderId' => 1,
+            'SaleReferenceId' => '127926981246',
+        ])->assertRedirect($this->customerBaseUrl.'/wallet?payment_id=1');
+
+        $this->assertSame(3000000, $owner->wallet()->firstOrFail()->balance);
+        $this->assertSame(0, $billingMember->wallet()->firstOrFail()->balance);
     }
 
     public function test_wallet_top_up_normalizes_persian_digits_and_separators(): void

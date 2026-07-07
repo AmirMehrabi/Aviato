@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Payment;
+use App\Models\Project;
 use App\Services\Payments\PaymentGatewayException;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\PaymentService;
@@ -26,7 +28,7 @@ class PaymentController extends Controller
     {
         $customer = $request->user('customer');
         $activeProject = $this->projects->activeProject($request, $customer);
-        abort_unless((int) $activeProject->owner_customer_id === (int) $customer->id, 404);
+        abort_unless($this->canTopUpProjectWallet($activeProject, $customer), 404);
 
         $request->merge([
             'amount_toman' => $this->normalizeTomanAmount($request->input('amount_toman')),
@@ -47,10 +49,11 @@ class PaymentController extends Controller
         $amount = (int) $data['amount_toman'] * 10;
 
         try {
+            $billingCustomer = $activeProject->owner;
             $payment = $this->payments->createTopUp(
-                $customer,
+                $billingCustomer,
                 $amount,
-                'شارژ کیف پول توسط مشتری',
+                'شارژ کیف پول فضای کاری',
                 $data['gateway'],
             );
         } catch (PaymentGatewayException $exception) {
@@ -81,7 +84,7 @@ class PaymentController extends Controller
             'customer' => $request->user('customer'),
             'payment' => $payment,
             'gatewayLabel' => $this->gateways->gateway($payment->provider)->label(),
-            'wallet' => $this->wallets->walletFor($request->user('customer')),
+            'wallet' => $this->wallets->walletFor($payment->customer),
             'wallets' => $this->wallets,
         ]);
     }
@@ -125,7 +128,19 @@ class PaymentController extends Controller
 
     private function ensureOwnership(Request $request, Payment $payment): void
     {
-        abort_unless($payment->customer_id === $request->user('customer')->id, 404);
+        $customer = $request->user('customer');
+        $activeProject = $this->projects->activeProject($request, $customer);
+
+        abort_unless(
+            (int) $payment->customer_id === (int) $activeProject->owner_customer_id
+            && $this->canTopUpProjectWallet($activeProject, $customer),
+            404
+        );
+    }
+
+    private function canTopUpProjectWallet(Project $project, Customer $customer): bool
+    {
+        return $this->projects->canViewBilling($project, $customer);
     }
 
     private function walletRedirect(Payment $payment): RedirectResponse

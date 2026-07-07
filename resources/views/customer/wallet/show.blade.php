@@ -6,7 +6,7 @@
 
 @php
     $activeNav = 'wallet';
-    $canTopUp = (int) $activeProject->owner_customer_id === (int) $customer->id;
+    $canTopUp = (bool) $canTopUp;
     $initialGateway = (string) old('gateway', $defaultPaymentGateway);
     $initialAmount = (string) old('amount_toman', '');
 @endphp
@@ -42,7 +42,7 @@
 
                 @if (! $canTopUp)
                     <div class="mt-7 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold leading-7 text-amber-900">
-                        فقط مالک فضای کاری می‌تواند موجودی این کیف پول را افزایش دهد.
+                        فقط مالک یا نقش مالی فضای کاری می‌تواند موجودی این کیف پول را افزایش دهد.
                     </div>
                 @elseif (empty($availablePaymentGateways))
                     <div class="mt-7 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold leading-7 text-amber-900">
