@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\DeleteVirtualMachineJob;
+use App\Jobs\ReconcilePendingVirtualMachine;
 use App\Models\HetznerAccount;
 use App\Models\VirtualMachine;
 use App\Services\HetznerCatalogSyncService;
@@ -282,6 +283,30 @@ Artisan::command('virtual-machines:cleanup-stale {--server= : Limit scan to one 
     return Command::SUCCESS;
 })->purpose('Find local VM records missing from Proxmox and safely mark them deleted');
 
+Artisan::command('virtual-machines:reconcile-pending {--minutes=10 : Minimum pending age before checking Proxmox} {--limit=50 : Maximum records to queue}', function () {
+    $minutes = max(1, (int) $this->option('minutes'));
+    $limit = max(1, (int) $this->option('limit'));
+
+    $vms = VirtualMachine::query()
+        ->where(function ($query): void {
+            $query->where('provider', VirtualMachine::PROVIDER_PROXMOX)
+                ->orWhereNull('provider');
+        })
+        ->where('provisioning_status', VirtualMachine::PROVISION_PENDING)
+        ->where('updated_at', '<=', now()->subMinutes($minutes))
+        ->orderBy('updated_at')
+        ->limit($limit)
+        ->get(['id', 'name', 'vmid', 'updated_at']);
+
+    foreach ($vms as $vm) {
+        ReconcilePendingVirtualMachine::dispatch($vm->id)->onQueue(ReconcilePendingVirtualMachine::QUEUE);
+    }
+
+    $this->info(sprintf('Queued %d pending VM reconciliation job(s).', $vms->count()));
+
+    return Command::SUCCESS;
+})->purpose('Queue throttled Proxmox checks for old pending VM provisioning records');
+
 Artisan::command('backup:run-due', function (VmBackupService $backups) {
     $queued = $backups->dispatchDuePolicies();
 
@@ -304,3 +329,4 @@ Schedule::command('hetzner:sync-catalog')->hourlyAt(5);
 Schedule::command('billing:generate-monthly-invoices')->monthlyOn(1, '00:15');
 Schedule::command('backup:run-due')->everyFifteenMinutes();
 Schedule::command('backup:sync')->hourlyAt(10);
+Schedule::command('virtual-machines:reconcile-pending')->everyTenMinutes();

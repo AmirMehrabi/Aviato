@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Jobs\RebuildCloudVirtualMachine;
+use App\Jobs\ReconcilePendingVirtualMachine;
 use App\Models\AppSetting;
 use App\Models\CloudImage;
 use App\Models\Customer;
@@ -38,6 +39,10 @@ class CloudVmProvisioningTest extends TestCase
         $image->update(['network_bridge' => 'vmbr0']);
         IpPool::query()->update(['network_bridge' => 'vmbr0']);
 
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('assignedGuestIpAddresses');
+        });
+
         $this->actingAs($customer, 'customer');
         $this->post($this->customerBaseUrl.'/servers', [
             'cloud_image_id' => $image->id,
@@ -55,7 +60,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertMatchesRegularExpression('/^UBNT-'.now()->format('ym').'-2C4G40G-[A-Z0-9]{6}$/', $vm->name);
         $this->assertSame(strtolower($vm->name), $vm->hostname);
         $this->assertSame('192.168.10.50', $vm->ip_address);
-        $this->assertSame('vmbr1', $vm->network_bridge);
+        $this->assertSame('vmbr0', $vm->network_bridge);
         $this->assertNotNull($vm->login_password);
         $this->assertSame(VirtualMachine::PROVISION_PENDING, $vm->provisioning_status);
 
@@ -833,7 +838,77 @@ class CloudVmProvisioningTest extends TestCase
             ->assertJsonCount(1, 'servers')
             ->assertJsonPath('servers.0.id', $owned->uuid)
             ->assertJsonPath('servers.0.status_label', 'خاموش')
-            ->assertJsonPath('servers.0.provisioning_pending', true);
+            ->assertJsonPath('servers.0.provisioning_pending', true)
+            ->assertJsonPath('servers.0.ssh_ready', false)
+            ->assertJsonPath('servers.0.ssh_label', 'اتصال در انتظار');
+
+        $owned->forceFill([
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ])->save();
+
+        $this->getJson($this->customerBaseUrl.'/servers/statuses?ids[]='.$owned->uuid)
+            ->assertOk()
+            ->assertJsonPath('servers.0.status_label', 'روشن')
+            ->assertJsonPath('servers.0.provisioning_pending', false)
+            ->assertJsonPath('servers.0.ssh_ready', true)
+            ->assertJsonPath('servers.0.ssh_label', 'SSH آماده');
+    }
+
+    public function test_stale_pending_reconciliation_marks_matching_remote_vm_ready(): void
+    {
+        $customer = Customer::factory()->create();
+        [$image, $bundle] = $this->catalog();
+        $pool = IpPool::query()->firstOrFail();
+        $address = IpAddress::create([
+            'ip_pool_id' => $pool->id,
+            'address' => '192.168.10.50',
+            'status' => IpAddress::STATUS_RESERVED,
+            'reserved_at' => now()->subMinutes(15),
+        ]);
+
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'provider' => VirtualMachine::PROVIDER_PROXMOX,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'ip_address_id' => $address->id,
+            'ip_address' => $address->address,
+            'vmid' => 123,
+            'name' => 'pending-match',
+            'hostname' => 'pending-match',
+            'node' => $image->node,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_STOPPED,
+            'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+        ]);
+        $address->forceFill(['virtual_machine_id' => $vm->id])->save();
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfigOrNull')
+                ->once()
+                ->andReturn(['name' => 'pending-match']);
+            $mock->shouldReceive('vmStatus')
+                ->once()
+                ->andReturn(['status' => 'running']);
+        });
+
+        (new ReconcilePendingVirtualMachine($vm->id))->handle(
+            app(ProxmoxService::class),
+            app(IpPoolService::class),
+        );
+
+        $vm->refresh();
+        $address->refresh();
+
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
+        $this->assertSame(VirtualMachine::PROVISION_READY, $vm->provisioning_status);
+        $this->assertSame(IpAddress::STATUS_ASSIGNED, $address->status);
+        $this->assertSame('matched_ready', data_get($vm->remote_state, 'reconcile_result'));
     }
 
     public function test_customer_can_queue_vm_rebuild_with_strong_confirmation(): void

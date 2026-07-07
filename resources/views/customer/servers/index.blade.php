@@ -24,6 +24,10 @@
         'delete_failed' => $server['delete_failed'],
         'delete_stale' => $server['delete_stale'],
         'is_deleted' => $server['is_deleted'],
+        'ip' => $server['ip'],
+        'ssh_ready' => $server['ssh_ready'],
+        'ssh_label' => $server['ssh_ready'] ? 'SSH آماده' : 'اتصال در انتظار',
+        'ssh_class' => $server['ssh_ready'] ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
     ])->values();
     $attentionItems = collect([
         $summary['failed'] > 0 ? ['tone' => 'red', 'text' => $summary['failed'].' ماشین با Provisioning ناموفق نیازمند بررسی است.'] : null,
@@ -176,9 +180,9 @@
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="min-w-0">
                                         <p class="text-xs font-black text-slate-500">IP Address</p>
-                                        <p class="mt-1 truncate text-base font-black text-slate-950" dir="ltr">{{ $server['ip'] }}</p>
+                                        <p class="mt-1 truncate text-base font-black text-slate-950" dir="ltr" x-text="server(@js($server['id'])).ip">{{ $server['ip'] }}</p>
                                     </div>
-                                    <span class="rounded-xl px-3 py-1.5 text-xs font-black {{ $server['ssh_ready'] ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }}">{{ $server['ssh_ready'] ? 'SSH آماده' : 'اتصال در انتظار' }}</span>
+                                    <span class="rounded-xl px-3 py-1.5 text-xs font-black" :class="server(@js($server['id'])).ssh_class" x-text="server(@js($server['id'])).ssh_label">{{ $server['ssh_ready'] ? 'SSH آماده' : 'اتصال در انتظار' }}</span>
                                 </div>
                             </div>
 
@@ -248,6 +252,10 @@
                     is_deleting: false,
                     delete_stale: false,
                     is_deleted: false,
+                    ip: 'بدون IP',
+                    ssh_ready: false,
+                    ssh_label: 'اتصال در انتظار',
+                    ssh_class: 'bg-amber-50 text-amber-700',
                 };
             },
             refresh() {

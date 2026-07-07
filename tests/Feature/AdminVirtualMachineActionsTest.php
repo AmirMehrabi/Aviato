@@ -268,10 +268,7 @@ class AdminVirtualMachineActionsTest extends TestCase
         ]);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('assignedGuestIpAddresses')
-                ->once()
-                ->withArgs(fn ($server, ?string $node): bool => $node === 'pve2')
-                ->andReturn([]);
+            $mock->shouldNotReceive('assignedGuestIpAddresses');
         });
 
         $this->actingAs($admin, 'admin');

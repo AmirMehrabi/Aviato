@@ -214,13 +214,7 @@ class CloudVmProvisioningService
     private function reserveRequiredIp(VirtualMachine $vm): void
     {
         try {
-            $remoteAddresses = [];
-
-            if ($vm->isProxmox() && $vm->proxmoxServer && $vm->node) {
-                $remoteAddresses = $this->proxmox->assignedGuestIpAddresses($vm->proxmoxServer, $vm->node);
-            }
-
-            $this->ipPools->reserveForVm($vm, $remoteAddresses);
+            $this->ipPools->reserveForVm($vm);
         } catch (Throwable $exception) {
             $vm->delete();
 
