@@ -349,16 +349,8 @@ class CloudVmProvisioningTest extends TestCase
             $mock->shouldReceive('nextVmid')->once()->andReturn(['vmid' => 101]);
             $mock->shouldReceive('assignedGuestVmids')->once()->andReturn([]);
             $mock->shouldReceive('cloneCloudTemplate')->once()->andReturn(['task_id' => null]);
-            $mock->shouldReceive('configureCloudInit')->once()->withArgs(function ($server, array $options): bool {
-                return $options['login_username'] === null
-                    && $options['login_password'] === null
-                    && $options['ssh_public_key'] === null
-                    && $options['ipconfig0'] === null
-                    && $options['nameserver'] === null
-                    && $options['cicustom'] === null
-                    && $options['network_bridge'] === 'vmbr1';
-            })->andReturn(['task_id' => null, 'payload' => []]);
-            $mock->shouldReceive('resizeDisk')->once()->andReturn(['task_id' => null]);
+            $mock->shouldReceive('configureCloudInit')->never();
+            $mock->shouldReceive('resizeDisk')->never();
             $mock->shouldReceive('regenerateCloudInit')->never();
             $mock->shouldReceive('startVm')->never();
             $mock->shouldReceive('vmConfig')->once()->andReturn([]);

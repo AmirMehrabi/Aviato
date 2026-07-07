@@ -102,29 +102,6 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             $canAutoStart = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
 
             if (! $cloudInitEnabled) {
-                $config = $proxmox->configureCloudInit($server, [
-                    'node' => $vm->node,
-                    'vmid' => $vmid,
-                    'cpu_cores' => $vm->cpu_cores,
-                    'ram_gb' => $vm->ram_gb,
-                    'login_username' => null,
-                    'login_password' => null,
-                    'ssh_public_key' => null,
-                    'ipconfig0' => null,
-                    'nameserver' => null,
-                    'cicustom' => null,
-                    'network_bridge' => $networkBridge,
-                    'onboot' => $this->options['onboot'] ?? false,
-                    'description' => 'Cloud-init disabled; base VM configured by Aviato panel',
-                ]);
-                $history[] = ['step' => 'config', 'result' => $config];
-
-                $resize = $proxmox->resizeDisk($server, $vm->node, $vmid, $image->disk_device, $vm->disk_gb);
-                $history[] = ['step' => 'resize', 'result' => $resize];
-                if (! empty($resize['task_id'])) {
-                    $history[] = ['step' => 'resize_wait', 'result' => $proxmox->waitForTask($server, $vm->node, $resize['task_id'])];
-                }
-
                 if ($shouldStartAfterCreate && $canAutoStart) {
                     $start = $proxmox->startVm($server, $vm->node, $vmid);
                     $history[] = ['step' => 'start', 'result' => $start];
@@ -147,7 +124,12 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                     $ipPools->assign($address, $vm);
                 }
 
+                $verifiedMacAddress = filled($verifiedConfig['net0'] ?? null)
+                    ? $proxmox->macAddressFromNetworkDevice((string) $verifiedConfig['net0'])
+                    : null;
+
                 $vm->forceFill([
+                    'mac_address' => $vm->mac_address ?: $verifiedMacAddress,
                     'status' => $shouldStartAfterCreate && $canAutoStart ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
                     'provisioning_status' => VirtualMachine::PROVISION_READY,
                     'last_started_at' => $shouldStartAfterCreate && $canAutoStart ? now() : null,

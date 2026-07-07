@@ -157,30 +157,31 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
             }
 
             $cloudInitEnabled = (bool) $image->cloud_init_enabled;
-            $configResult = $proxmox->configureCloudInit($server, [
-                'node' => $node,
-                'vmid' => $vmid,
-                'cpu_cores' => $vm->cpu_cores,
-                'ram_gb' => $vm->ram_gb,
-                'login_username' => $cloudInitEnabled ? $vm->login_username : null,
-                'login_password' => $cloudInitEnabled ? $vm->login_password : null,
-                'ssh_public_key' => $cloudInitEnabled ? $vm->ssh_public_key : null,
-                'ipconfig0' => ($cloudInitEnabled && $address) ? $ipPools->ipConfig($address) : null,
-                'nameserver' => ($cloudInitEnabled && $address) ? $ipPools->nameservers($address) : null,
-                'cicustom' => $cloudInitEnabled ? 'vendor=local:snippets/ubuntu-password-login.yml' : null,
-                'network_bridge' => $vm->network_bridge ?: 'vmbr1',
-                'onboot' => false,
-                'description' => $this->identityDescription($vm),
-            ]);
-            $history[] = ['step' => 'config', 'result' => $configResult, 'at' => now()->toISOString()];
-
-            $resize = $proxmox->resizeDisk($server, $node, $vmid, $image->disk_device, $vm->disk_gb);
-            $history[] = ['step' => 'resize', 'result' => $resize, 'at' => now()->toISOString()];
-            if (! empty($resize['task_id'])) {
-                $history[] = ['step' => 'resize_wait', 'result' => $proxmox->waitForTask($server, $node, (string) $resize['task_id']), 'at' => now()->toISOString()];
-            }
 
             if ($cloudInitEnabled) {
+                $configResult = $proxmox->configureCloudInit($server, [
+                    'node' => $node,
+                    'vmid' => $vmid,
+                    'cpu_cores' => $vm->cpu_cores,
+                    'ram_gb' => $vm->ram_gb,
+                    'login_username' => $vm->login_username,
+                    'login_password' => $vm->login_password,
+                    'ssh_public_key' => $vm->ssh_public_key,
+                    'ipconfig0' => $address ? $ipPools->ipConfig($address) : null,
+                    'nameserver' => $address ? $ipPools->nameservers($address) : null,
+                    'cicustom' => 'vendor=local:snippets/ubuntu-password-login.yml',
+                    'network_bridge' => $vm->network_bridge ?: 'vmbr1',
+                    'onboot' => false,
+                    'description' => $this->identityDescription($vm),
+                ]);
+                $history[] = ['step' => 'config', 'result' => $configResult, 'at' => now()->toISOString()];
+
+                $resize = $proxmox->resizeDisk($server, $node, $vmid, $image->disk_device, $vm->disk_gb);
+                $history[] = ['step' => 'resize', 'result' => $resize, 'at' => now()->toISOString()];
+                if (! empty($resize['task_id'])) {
+                    $history[] = ['step' => 'resize_wait', 'result' => $proxmox->waitForTask($server, $node, (string) $resize['task_id']), 'at' => now()->toISOString()];
+                }
+
                 $cloudInit = $proxmox->regenerateCloudInit($server, $node, $vmid);
                 $history[] = ['step' => 'cloudinit_regenerate', 'result' => $cloudInit, 'at' => now()->toISOString()];
                 if (! empty($cloudInit['task_id'])) {
