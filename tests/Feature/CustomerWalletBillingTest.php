@@ -219,7 +219,37 @@ class CustomerWalletBillingTest extends TestCase
             ->assertOk()
             ->assertSee('نمای مالی فضای کاری')
             ->assertSee('Owner wallet credit')
-            ->assertDontSee('owner-financial-vm');
+            ->assertDontSee('owner-financial-vm')
+            ->assertDontSee(route('customer.servers.index', [], false))
+            ->assertDontSee(route('customer.backups.index', [], false))
+            ->assertDontSee(route('customer.monitoring.index', [], false));
+    }
+
+    public function test_billing_workspace_member_is_redirected_from_vm_sections(): void
+    {
+        $owner = Customer::factory()->create();
+        $billingMember = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $billingMember->id,
+            'role' => ProjectMember::ROLE_BILLING,
+        ]);
+
+        $this->actingAs($billingMember, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/servers')
+            ->assertRedirect($this->customerBaseUrl.'/dashboard')
+            ->assertSessionHas('error', 'این بخش برای نقش مالی در دسترس نیست. شما به داشبورد و کیف پول دسترسی دارید.');
+
+        $this->actingAs($billingMember, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/backups')
+            ->assertRedirect($this->customerBaseUrl.'/dashboard');
+
+        $this->actingAs($billingMember, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/monitoring')
+            ->assertRedirect($this->customerBaseUrl.'/dashboard');
     }
 
     public function test_wallet_top_up_normalizes_persian_digits_and_separators(): void

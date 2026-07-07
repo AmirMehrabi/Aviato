@@ -22,6 +22,8 @@
         $projects = $projects ?? $projectAccess->projectsFor($customer);
         $activeProject = $activeProject ?? $projectAccess->activeProject(request(), $customer);
         $activeMembership = $activeMembership ?? $projectAccess->membership($activeProject, $customer);
+        $canViewVms = $canViewVms ?? $projectAccess->canViewVms($activeProject, $customer);
+        $canManageVms = $canManageVms ?? $projectAccess->canManageVms($activeProject, $customer);
         $customerInitial = mb_substr($customer->name ?? 'م', 0, 1);
         $balanceIsNegative = ($wallet->balance ?? 0) < 0;
         $walletRestrictionThreshold = \App\Models\AppSetting::customerWalletNegativeThreshold();
@@ -32,10 +34,12 @@
                 ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
             ],
             'مدیریت' => [
-                ['key' => 'servers', 'label' => 'ماشین ها', 'route' => route('customer.servers.index', [], false), 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
-                ['key' => 'network', 'label' => 'شبکه', 'route' => null, 'icon' => 'M12 3v4m0 10v4M4.9 7.1l2.8 2.8m8.6 8.6 2.8 2.8M3 12h4m10 0h4'],
-                ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => route('customer.backups.index', [], false), 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
-                ['key' => 'monitoring', 'label' => 'مانیتورینگ', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M4 19V5m4 14v-7m4 7V8m4 11v-4m4 4V9'],
+                ...($canViewVms ? [
+                    ['key' => 'servers', 'label' => 'ماشین ها', 'route' => route('customer.servers.index', [], false), 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
+                    ['key' => 'network', 'label' => 'شبکه', 'route' => null, 'icon' => 'M12 3v4m0 10v4M4.9 7.1l2.8 2.8m8.6 8.6 2.8 2.8M3 12h4m10 0h4'],
+                    ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => route('customer.backups.index', [], false), 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
+                    ['key' => 'monitoring', 'label' => 'مانیتورینگ', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M4 19V5m4 14v-7m4 7V8m4 11v-4m4 4V9'],
+                ] : []),
             ],
             'حساب' => [
                 ['key' => 'profile', 'label' => 'پروفایل', 'route' => route('customer.profile.show', [], false), 'icon' => 'M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm-8 9a8 8 0 0 1 16 0'],
@@ -53,6 +57,27 @@
                 ],
             ] : []),
         ];
+        $searchBaseItems = [
+            ['title' => 'داشبورد', 'description' => 'نمای کلی ماشین ها، کیف پول و مصرف', 'url' => route('dashboard', [], false), 'type' => 'صفحه'],
+            ['title' => 'فضاهای کاری', 'description' => 'انتخاب فضای کاری فعال، ساخت فضای کاری و مدیریت اعضا', 'url' => route('customer.projects.index', [], false), 'type' => 'صفحه'],
+            ['title' => 'تیکت‌ها', 'description' => 'درخواست‌های پشتیبانی و پاسخ‌ها', 'url' => route('customer.tickets.index', [], false), 'type' => 'صفحه'],
+            ['title' => 'تیکت جدید', 'description' => 'ثبت درخواست جدید برای پشتیبانی', 'url' => route('customer.tickets.create', [], false), 'type' => 'عملیات'],
+            ['title' => 'پروفایل', 'description' => 'کد ملی، سطح حساب و سهمیه ساخت', 'url' => route('customer.profile.show', [], false), 'type' => 'صفحه'],
+            ['title' => 'کیف پول', 'description' => 'موجودی، تراکنش ها و افزایش اعتبار', 'url' => route('customer.wallet.show', [], false), 'type' => 'صفحه'],
+            ['title' => 'افزایش اعتبار', 'description' => 'شارژ سریع کیف پول', 'url' => route('customer.wallet.show', ['topup' => 1], false), 'type' => 'عملیات'],
+            ['title' => 'صورتحساب ها', 'description' => 'بایگانی و جزئیات فاکتورهای ماهانه', 'url' => route('customer.invoices.index', [], false), 'type' => 'صفحه'],
+        ];
+
+        if ($canViewVms) {
+            $searchBaseItems[] = ['title' => 'سرورها', 'description' => 'فهرست ماشین های ابری و وضعیت آنها', 'url' => route('customer.servers.index', [], false), 'type' => 'صفحه'];
+
+            if ($canManageVms) {
+                $searchBaseItems[] = ['title' => 'ساخت ماشین', 'description' => 'انتخاب پلن، سیستم عامل و دیتاسنتر', 'url' => route('customer.servers.create', [], false), 'type' => 'عملیات'];
+            }
+
+            $searchBaseItems[] = ['title' => 'بکاپ ها', 'description' => 'بکاپ دستی، برنامه بکاپ خودکار و نگهداری نسخه ها', 'url' => route('customer.backups.index', [], false), 'type' => 'صفحه'];
+            $searchBaseItems[] = ['title' => 'مانیتورینگ', 'description' => 'نمودار مصرف CPU، RAM، شبکه و وضعیت بکاپ', 'url' => route('customer.monitoring.index', [], false), 'type' => 'صفحه'];
+        }
     @endphp
 
     @if (($wallet->balance ?? 0) < $walletRestrictionThreshold)
@@ -94,20 +119,7 @@
             profileOpen: false,
             searchItems: [],
             init() {
-                const baseItems = [
-                    { title: 'داشبورد', description: 'نمای کلی ماشین ها، کیف پول و مصرف', url: '{{ route('dashboard', [], false) }}', type: 'صفحه' },
-                    { title: 'فضاهای کاری', description: 'انتخاب فضای کاری فعال، ساخت فضای کاری و مدیریت اعضا', url: '{{ route('customer.projects.index', [], false) }}', type: 'صفحه' },
-                    { title: 'سرورها', description: 'فهرست ماشین های ابری و وضعیت آنها', url: '{{ route('customer.servers.index', [], false) }}', type: 'صفحه' },
-                    { title: 'ساخت ماشین', description: 'انتخاب پلن، سیستم عامل و دیتاسنتر', url: '{{ route('customer.servers.create', [], false) }}', type: 'عملیات' },
-                    { title: 'بکاپ ها', description: 'بکاپ دستی، برنامه بکاپ خودکار و نگهداری نسخه ها', url: '{{ route('customer.backups.index', [], false) }}', type: 'صفحه' },
-                    { title: 'مانیتورینگ', description: 'نمودار مصرف CPU، RAM، شبکه و وضعیت بکاپ', url: '{{ route('customer.monitoring.index', [], false) }}', type: 'صفحه' },
-                    { title: 'تیکت‌ها', description: 'درخواست‌های پشتیبانی و پاسخ‌ها', url: '{{ route('customer.tickets.index', [], false) }}', type: 'صفحه' },
-                    { title: 'تیکت جدید', description: 'ثبت درخواست جدید برای پشتیبانی', url: '{{ route('customer.tickets.create', [], false) }}', type: 'عملیات' },
-                    { title: 'پروفایل', description: 'کد ملی، سطح حساب و سهمیه ساخت', url: '{{ route('customer.profile.show', [], false) }}', type: 'صفحه' },
-                    { title: 'کیف پول', description: 'موجودی، تراکنش ها و افزایش اعتبار', url: '{{ route('customer.wallet.show', [], false) }}', type: 'صفحه' },
-                    { title: 'افزایش اعتبار', description: 'شارژ سریع کیف پول', url: '{{ route('customer.wallet.show', ['topup' => 1], false) }}', type: 'عملیات' },
-                    { title: 'صورتحساب ها', description: 'بایگانی و جزئیات فاکتورهای ماهانه', url: '{{ route('customer.invoices.index', [], false) }}', type: 'صفحه' }
-                ];
+                const baseItems = @json($searchBaseItems);
                 const source = document.getElementById('customer-search-data');
                 let pageItems = [];
 
@@ -294,12 +306,14 @@
                     </div>
 
                     <div class="flex shrink-0 items-center gap-2">
+                        @if ($canManageVms)
                         <a href="{{ route('customer.servers.create', [], false) }}" class="group inline-flex size-11 items-center justify-center rounded-xl border border-[#00A67E]/20 bg-[#00A67E] text-white shadow-lg shadow-[#00A67E]/20 transition hover:-translate-y-0.5 hover:bg-[#008F6E] hover:shadow-[#00A67E]/30 sm:w-auto sm:px-3.5" aria-label="ساخت ماشین">
                             <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
                             </svg>
                             <span class="hidden pr-2 text-sm font-black sm:inline">ساخت</span>
                         </a>
+                        @endif
 
                         <div class="relative">
                             <button
@@ -470,6 +484,9 @@
 
                 @if (session('status'))
                     <div class="mb-6 w-full rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
+                @endif
+                @if (session('error'))
+                    <div class="mb-6 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>
                 @endif
                 @if (session('provisioning_password'))
                     <div class="mb-6 w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
