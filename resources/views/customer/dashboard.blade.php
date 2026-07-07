@@ -9,34 +9,41 @@
 
 @php
     $activeNav = 'dashboard';
+    $searchRows = [];
+
+    if ($canManageVms) {
+        $searchRows[] = [
+            'title' => 'ساخت ماشین',
+            'description' => 'انتخاب پلن ماشین مجازی و شروع مسیر ساخت',
+            'type' => 'عملیات',
+            'url' => route('customer.servers.create', [], false),
+            'keywords' => 'ساخت ماشین vps server',
+        ];
+    }
+
+    if ($canViewVms) {
+        $searchRows[] = [
+            'title' => 'سرورها',
+            'description' => 'مشاهده همه ماشین های ابری',
+            'type' => 'صفحه',
+            'url' => route('customer.servers.index', [], false),
+            'keywords' => 'servers ماشین سرورها',
+        ];
+    }
+
+    foreach ($vmRows as $vm) {
+        $searchRows[] = [
+            'title' => $vm['name'],
+            'description' => $vm['ip'].' - '.$vm['region'].' - '.$vm['plan'],
+            'type' => 'ماشین مجازی',
+            'url' => $vm['url'],
+            'keywords' => $vm['name'].' '.$vm['ip'].' '.$vm['region'].' '.$vm['plan'].' '.$vm['status'],
+        ];
+    }
 @endphp
 
 @section('search_data')
-[
-    {
-        "title": "ساخت ماشین",
-        "description": "انتخاب پلن ماشین مجازی و شروع مسیر ساخت",
-        "type": "عملیات",
-        "url": @json(route('customer.servers.create', [], false)),
-        "keywords": "ساخت ماشین vps server"
-    },
-    {
-        "title": "سرورها",
-        "description": "مشاهده همه ماشین های ابری",
-        "type": "صفحه",
-        "url": @json(route('customer.servers.index', [], false)),
-        "keywords": "servers ماشین سرورها"
-    }@if ($vmRows->isNotEmpty()),@endif
-@foreach ($vmRows as $vm)
-    {
-        "title": @json($vm['name']),
-        "description": @json($vm['ip'].' - '.$vm['region'].' - '.$vm['plan']),
-        "type": "ماشین مجازی",
-        "url": @json($vm['url']),
-        "keywords": @json($vm['name'].' '.$vm['ip'].' '.$vm['region'].' '.$vm['plan'].' '.$vm['status'])
-    }@if (! $loop->last),@endif
-@endforeach
-]
+@json($searchRows)
 @endsection
 
 @section('content')
@@ -51,7 +58,58 @@
         ];
     @endphp
 
-    @if ($vmRows->isEmpty())
+    @if (! $canViewVms)
+        <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            @foreach ([
+                ['label' => 'موجودی کیف پول', 'value' => $wallets->format($wallet->balance), 'hint' => 'کیف پول مالک فضای کاری', 'tone' => $walletIsBlocked ? 'text-red-600' : 'text-slate-950'],
+                ['label' => 'برآورد ماهانه', 'value' => $wallets->format($dashboardStats['monthly_spend']), 'hint' => 'براساس ماشین های قابل مشاهده برای شما', 'tone' => 'text-emerald-700'],
+                ['label' => 'مصرف ثبت نشده', 'value' => $wallets->format($pendingUsage), 'hint' => 'در برداشت بعدی اعمال می شود', 'tone' => $pendingUsage > 0 ? 'text-amber-600' : 'text-emerald-600'],
+                ['label' => 'صورتحساب ها', 'value' => $invoiceCount, 'hint' => 'تعداد فاکتورهای حساب', 'tone' => 'text-[#0069FF]'],
+            ] as $metric)
+                <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
+                    <p class="text-xs font-black text-slate-500">{{ $metric['label'] }}</p>
+                    <p class="mt-2 truncate text-2xl font-black {{ $metric['tone'] }}">{{ $metric['value'] }}</p>
+                    <p class="mt-1 truncate text-xs font-bold text-slate-400">{{ $metric['hint'] }}</p>
+                </article>
+            @endforeach
+        </section>
+
+        <section class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+            <div class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-black text-slate-500">دسترسی مالی</p>
+                        <h2 class="mt-1 text-xl font-black text-slate-950">نمای مالی فضای کاری</h2>
+                    </div>
+                    <span class="rounded-xl bg-[#EBF3FF] px-3 py-1.5 text-xs font-black text-[#0069FF]">مالی</span>
+                </div>
+                <p class="mt-4 text-sm font-bold leading-7 text-slate-500">
+                    نقش شما برای این فضای کاری به اطلاعات مالی محدود است. برای مشاهده ماشین ها یا عملیات سرور، مالک فضای کاری باید نقش شما را تغییر دهد.
+                </p>
+                <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                    <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">مشاهده کیف پول</a>
+                    <a href="{{ route('customer.invoices.index', [], false) }}" class="inline-flex justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مشاهده صورتحساب ها</a>
+                </div>
+            </div>
+
+            <aside class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                <h2 class="font-black text-slate-950">آخرین تراکنش ها</h2>
+                <div class="mt-4 space-y-3">
+                    @forelse ($transactions as $transaction)
+                        <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-black text-slate-950">{{ $transaction->description ?: 'تراکنش کیف پول' }}</p>
+                                <p class="mt-1 text-xs font-bold text-slate-400" dir="ltr">{{ $transaction->created_at?->format('Y-m-d H:i') }}</p>
+                            </div>
+                            <span class="shrink-0 text-sm font-black {{ $transaction->amount < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $wallets->format($transaction->amount) }}</span>
+                        </div>
+                    @empty
+                        <p class="rounded-2xl bg-slate-50 px-4 py-5 text-center text-sm font-bold text-slate-500">هنوز تراکنشی ثبت نشده است.</p>
+                    @endforelse
+                </div>
+            </aside>
+        </section>
+    @elseif ($vmRows->isEmpty())
         <section class="relative overflow-hidden rounded-[2rem] border border-[#B8D6FF] bg-[#F8FBFF] px-6 py-14 text-center shadow-sm shadow-[#0069FF]/10 sm:px-10 lg:min-h-[560px]">
             <div class="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,#B8D6FF_0,transparent_58%)] opacity-70"></div>
             <div class="relative mx-auto flex max-w-3xl flex-col items-center">

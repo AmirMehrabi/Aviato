@@ -26,10 +26,24 @@ class DashboardController extends Controller
     {
         $customer = $request->user('customer');
         $activeProject = $this->projects->activeProject($request, $customer);
-        abort_unless($this->projects->canViewVms($activeProject, $customer), 404);
-        $wallet = $this->wallets->walletFor($customer);
-        $virtualMachines = $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks'])->latest()->get();
-        $transactions = $wallet->transactions()->with('createdBy')->limit(5)->get();
+        $canViewVms = $this->projects->canViewVms($activeProject, $customer);
+        $canViewBilling = $this->projects->canViewBilling($activeProject, $customer);
+        $canManageVms = $this->projects->canManageVms($activeProject, $customer);
+        abort_unless($canViewVms || $canViewBilling, 404);
+
+        $wallet = $this->wallets->walletFor($activeProject->owner);
+        $virtualMachines = $canViewVms
+            ? $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks'])->latest()->get()
+            : collect();
+        $transactions = $wallet->transactions()
+            ->where(function ($query) use ($activeProject): void {
+                $query->where('metadata->project_id', $activeProject->id)
+                    ->orWhereNull('metadata->project_id');
+            })
+            ->with('createdBy')
+            ->latest()
+            ->limit(5)
+            ->get();
         $summary = [
             'running' => $virtualMachines->where('status', VirtualMachine::STATUS_RUNNING)->count(),
             'stopped' => $virtualMachines->where('status', VirtualMachine::STATUS_STOPPED)->count(),
@@ -39,11 +53,13 @@ class DashboardController extends Controller
                     + $vm->disks->where('status', VmDisk::STATUS_READY)->sum(fn ($disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth()))),
             'unbilled_accrued' => 0,
         ];
-        $pendingUsage = $virtualMachines
-            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
-            ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
+        $pendingUsage = $canViewVms
+            ? $virtualMachines
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount'])
+            : $this->usageBilling->projectPendingUsage($activeProject->id);
         $summary['unbilled_accrued'] = $pendingUsage;
-        $latestInvoice = $customer->invoices()->latest('period_start')->first();
+        $latestInvoice = $activeProject->owner->invoices()->latest('period_start')->first();
 
         $vmRows = $virtualMachines->map(function (VirtualMachine $vm): array {
             $monthlyCost = $vm->isRunning()
@@ -95,7 +111,10 @@ class DashboardController extends Controller
             'dashboardStats' => $dashboardStats,
             'notifications' => $notifications,
             'latestInvoice' => $latestInvoice,
-            'invoiceCount' => $customer->invoices()->count(),
+            'invoiceCount' => $activeProject->owner->invoices()->count(),
+            'canViewVms' => $canViewVms,
+            'canViewBilling' => $canViewBilling,
+            'canManageVms' => $canManageVms,
         ]);
     }
 }

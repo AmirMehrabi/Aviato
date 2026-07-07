@@ -179,6 +179,49 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertSame(0, $billingMember->wallet()->firstOrFail()->balance);
     }
 
+    public function test_billing_workspace_member_can_open_dashboard_without_vm_access(): void
+    {
+        $owner = Customer::factory()->create();
+        $billingMember = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $billingMember->id,
+            'role' => ProjectMember::ROLE_BILLING,
+        ]);
+        $owner->wallet()->update(['balance' => 2500000]);
+
+        VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'project_id' => $project->id,
+            'name' => 'owner-financial-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        WalletTransaction::create([
+            'customer_id' => $owner->id,
+            'wallet_id' => $owner->wallet->id,
+            'amount' => 1000000,
+            'balance_before' => 1500000,
+            'balance_after' => 2500000,
+            'type' => WalletTransaction::TYPE_CREDIT,
+            'description' => 'Owner wallet credit',
+            'metadata' => ['project_id' => $project->id],
+        ]);
+
+        $this->actingAs($billingMember, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertSee('نمای مالی فضای کاری')
+            ->assertSee('Owner wallet credit')
+            ->assertDontSee('owner-financial-vm');
+    }
+
     public function test_wallet_top_up_normalizes_persian_digits_and_separators(): void
     {
         $customer = Customer::factory()->create();
