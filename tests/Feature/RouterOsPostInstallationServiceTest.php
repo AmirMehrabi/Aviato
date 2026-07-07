@@ -8,9 +8,10 @@ use App\Models\IpAddress;
 use App\Models\IpPool;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
+use App\Services\ProxmoxSerialConsoleService;
 use App\Services\RouterOsPostInstallationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\App;
 use Tests\TestCase;
 
 class RouterOsPostInstallationServiceTest extends TestCase
@@ -19,7 +20,18 @@ class RouterOsPostInstallationServiceTest extends TestCase
 
     public function test_it_interpolates_network_variables_and_runs_routeros_commands_in_order(): void
     {
-        Process::fake();
+        $console = $this->mock(ProxmoxSerialConsoleService::class);
+
+        $console->shouldReceive('executeBatch')->once()->with(
+            \Mockery::type(ProxmoxServer::class),
+            'pve1',
+            901,
+            [
+                'ip address add address=5.202.19.121/27 interface=ether2',
+                'user set password=123 numbers=admin',
+                'ip route add gateway=5.202.19.97',
+            ]
+        )->andReturn(['output' => '', 'commands_executed' => 3]);
 
         $server = ProxmoxServer::create([
             'name' => 'Test Proxmox',
@@ -72,6 +84,8 @@ SCRIPT,
             'proxmox_server_id' => $server->id,
             'cloud_image_id' => $image->id,
             'name' => 'router-1',
+            'vmid' => 901,
+            'node' => 'pve1',
             'cpu_cores' => 1,
             'ram_gb' => 1,
             'disk_gb' => 1,
@@ -87,17 +101,5 @@ SCRIPT,
         $result = app(RouterOsPostInstallationService::class)->execute($vm);
 
         $this->assertSame(['commands_executed' => 3], $result);
-        $commands = collect();
-        Process::assertRan(function ($process) use ($commands): bool {
-            $commands->push(is_array($process->command) ? implode(' ', $process->command) : $process->command);
-
-            return true;
-        });
-        $this->assertCount(4, $commands);
-        $this->assertStringContainsString(':put "ready"', $commands[0]);
-        $this->assertStringContainsString('ip address add address=5.202.19.121/27 interface=ether2', $commands[1]);
-        $this->assertStringContainsString('user set password=123 numbers=admin', $commands[2]);
-        $this->assertStringContainsString('ip route add gateway=5.202.19.97', $commands[3]);
-        $this->assertStringContainsString('admin@5.202.19.121', $commands[0]);
     }
 }

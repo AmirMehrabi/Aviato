@@ -82,7 +82,7 @@ class CloudVmProvisioningService
         $osTemplate = trim((string) ($data['os_template'] ?? '')) ?: $image->name;
         $networkBridge = $mapping?->network_bridge ?: (trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge);
 
-        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $location, $provider, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge, $mapping, $placement, $cloudInitEnabled): VirtualMachine {
+        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $location, $provider, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge, $mapping, $placement): VirtualMachine {
             $osPrefix = self::OS_PREFIXES[$image->os_family] ?? 'VM';
             $requestedName = trim((string) ($data['name'] ?? ''));
             $name = $requestedName !== '' ? $requestedName : $this->generateUniqueVmName($bundle, $resources, $osPrefix);

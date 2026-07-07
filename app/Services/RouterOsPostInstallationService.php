@@ -3,8 +3,7 @@
 namespace App\Services;
 
 use App\Models\VirtualMachine;
-use Illuminate\Contracts\Process\ProcessResult;
-use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class RouterOsPostInstallationService
@@ -30,12 +29,12 @@ class RouterOsPostInstallationService
         }
 
         if (! $address || ! $pool) {
-            throw new RuntimeException('RouterOS post-installation requires a reserved IP address and IP pool.');
+            throw new RuntimeException('Post-installation requires a reserved IP address and IP pool.');
         }
 
         $username = trim((string) $image->default_username);
         if ($username === '') {
-            throw new RuntimeException('RouterOS post-installation requires a default username.');
+            throw new RuntimeException('Post-installation requires a default username on the cloud image.');
         }
 
         $commands = collect(preg_split('/\R/u', $script) ?: [])
@@ -53,21 +52,28 @@ class RouterOsPostInstallationService
             return ['commands_executed' => 0];
         }
 
-        $this->waitUntilReachable($username, $address->address, $image?->os_family);
+        $vm->loadMissing('proxmoxServer');
 
-        foreach ($commands as $index => $command) {
-            $result = $this->run($username, $address->address, $command);
-
-            if ($result->failed()) {
-                throw new RuntimeException(sprintf(
-                    'RouterOS post-installation command %d failed: %s',
-                    $index + 1,
-                    trim($result->errorOutput()) ?: trim($result->output()) ?: 'SSH exited unsuccessfully.'
-                ));
-            }
+        $server = $vm->proxmoxServer;
+        if (! $server || ! $vm->node || ! $vm->vmid) {
+            throw new RuntimeException('Post-installation requires a connected Proxmox server, node, and VMID.');
         }
 
-        return ['commands_executed' => $commands->count()];
+        $console = app(ProxmoxSerialConsoleService::class);
+
+        try {
+            $result = $console->executeBatch($server, $vm->node, (int) $vm->vmid, $commands->all());
+        } catch (RuntimeException $exception) {
+            Log::error('Post-installation serial console failed', [
+                'virtual_machine_id' => $vm->id,
+                'vmid' => $vm->vmid,
+                'message' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        }
+
+        return ['commands_executed' => $result['commands_executed']];
     }
 
     /**
@@ -84,41 +90,9 @@ class RouterOsPostInstallationService
         }
 
         if (preg_match('/\{\{\s*[^}]+\s*\}\}|\$\{[^}]+\}/', $command)) {
-            throw new RuntimeException('RouterOS post-installation script contains an unknown variable.');
+            throw new RuntimeException('Post-installation script contains an unknown variable.');
         }
 
         return $command;
-    }
-
-    private function waitUntilReachable(string $username, string $host, ?string $osFamily = null): void
-    {
-        $probe = $osFamily === 'router_os' ? ':put "ready"' : 'echo ready';
-
-        for ($attempt = 1; $attempt <= self::CONNECT_ATTEMPTS; $attempt++) {
-            if ($this->run($username, $host, $probe)->successful()) {
-                return;
-            }
-
-            if ($attempt < self::CONNECT_ATTEMPTS) {
-                sleep(self::RETRY_DELAY_SECONDS);
-            }
-        }
-
-        throw new RuntimeException("RouterOS SSH did not become reachable at {$host}.");
-    }
-
-    private function run(string $username, string $host, string $command): ProcessResult
-    {
-        return Process::timeout(20)->run([
-            'ssh',
-            '-o', 'BatchMode=yes',
-            '-o', 'PreferredAuthentications=none,password',
-            '-o', 'PubkeyAuthentication=no',
-            '-o', 'StrictHostKeyChecking=no',
-            '-o', 'UserKnownHostsFile=/dev/null',
-            '-o', 'ConnectTimeout=10',
-            $username.'@'.$host,
-            $command,
-        ]);
     }
 }
