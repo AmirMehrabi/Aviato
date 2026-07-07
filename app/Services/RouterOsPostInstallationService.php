@@ -25,7 +25,7 @@ class RouterOsPostInstallationService
         $pool = $address?->pool;
         $script = trim((string) $image?->post_installation_script);
 
-        if ($image?->os_family !== 'router_os' || $script === '') {
+        if ($script === '') {
             return ['commands_executed' => 0];
         }
 
@@ -53,7 +53,7 @@ class RouterOsPostInstallationService
             return ['commands_executed' => 0];
         }
 
-        $this->waitUntilReachable($username, $address->address);
+        $this->waitUntilReachable($username, $address->address, $image?->os_family);
 
         foreach ($commands as $index => $command) {
             $result = $this->run($username, $address->address, $command);
@@ -90,10 +90,12 @@ class RouterOsPostInstallationService
         return $command;
     }
 
-    private function waitUntilReachable(string $username, string $host): void
+    private function waitUntilReachable(string $username, string $host, ?string $osFamily = null): void
     {
+        $probe = $osFamily === 'router_os' ? ':put "ready"' : 'echo ready';
+
         for ($attempt = 1; $attempt <= self::CONNECT_ATTEMPTS; $attempt++) {
-            if ($this->run($username, $host, ':put "ready"')->successful()) {
+            if ($this->run($username, $host, $probe)->successful()) {
                 return;
             }
 

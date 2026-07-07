@@ -7,6 +7,7 @@ use App\Models\VmBundleLocationMapping;
 use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
+use App\Services\RouterOsPostInstallationService;
 use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
@@ -136,6 +137,12 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                     'disk_device' => $image->disk_device,
                 ];
                 $vm->save();
+
+                if ($shouldStartAfterCreate && $canAutoStart && filled($image->post_installation_script)) {
+                    $result = app(RouterOsPostInstallationService::class)->execute($vm);
+                    $history[] = ['step' => 'post_installation', 'result' => $result, 'at' => now()->toISOString()];
+                    $vm->forceFill(['remote_state' => ['steps' => $history, 'finished_at' => now()->toISOString()]])->save();
+                }
 
                 return;
             }
