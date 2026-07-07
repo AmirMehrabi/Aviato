@@ -187,15 +187,17 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                 if (! empty($cloudInit['task_id'])) {
                     $history[] = ['step' => 'cloudinit_regenerate_wait', 'result' => $proxmox->waitForTask($server, $node, (string) $cloudInit['task_id']), 'at' => now()->toISOString()];
                 }
-            }
 
-            if ($address) {
-                $antiSpoofing = $proxmox->applyVmIpAntiSpoofing($server, $node, $vmid, $address->address, 'net0', $vm->network_bridge ?: 'vmbr1');
-                $history[] = ['step' => 'anti_spoofing', 'result' => $antiSpoofing, 'at' => now()->toISOString()];
+                if ($address) {
+                    $antiSpoofing = $proxmox->applyVmIpAntiSpoofing($server, $node, $vmid, $address->address, 'net0', $vm->network_bridge ?: 'vmbr1');
+                    $history[] = ['step' => 'anti_spoofing', 'result' => $antiSpoofing, 'at' => now()->toISOString()];
 
-                if (! empty($antiSpoofing['mac_address'])) {
-                    $vm->forceFill(['mac_address' => $antiSpoofing['mac_address']])->save();
+                    if (! empty($antiSpoofing['mac_address'])) {
+                        $vm->forceFill(['mac_address' => $antiSpoofing['mac_address']])->save();
+                    }
                 }
+            } elseif ($address) {
+                $history[] = ['step' => 'ip_skip_no_cloudinit', 'result' => 'IP assigned manually by user', 'at' => now()->toISOString()];
             }
 
             $startAllowed = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);

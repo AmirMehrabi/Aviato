@@ -108,10 +108,6 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 $actualRamMb = (int) ($verifiedConfig['memory'] ?? ($vm->ram_gb * 1024));
                 $actualDiskGb = (int) ($verifiedConfig['maxdisk'] ?? ($vm->disk_gb * 1024 * 1024 * 1024)) / (1024 * 1024 * 1024);
 
-                $verifiedMacAddress = filled($verifiedConfig['net0'] ?? null)
-                    ? $proxmox->macAddressFromNetworkDevice((string) $verifiedConfig['net0'])
-                    : null;
-
                 if ($shouldStartAfterCreate && $canAutoStart) {
                     $start = $proxmox->startVm($server, $vm->node, $vmid);
                     $history[] = ['step' => 'start', 'result' => $start];
@@ -123,11 +119,9 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 }
 
                 $vm->forceFill([
-                    'mac_address' => $vm->mac_address ?: $verifiedMacAddress,
                     'cpu_cores' => $actualCpu,
                     'ram_gb' => (int) ceil($actualRamMb / 1024),
                     'disk_gb' => $actualDiskGb,
-                    'ip_count' => 0,
                     'status' => $shouldStartAfterCreate && $canAutoStart ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
                     'provisioning_status' => VirtualMachine::PROVISION_READY,
                     'last_started_at' => $shouldStartAfterCreate && $canAutoStart ? now() : null,

@@ -111,7 +111,7 @@ class CloudVmProvisioningService
                 'cpu_cores' => $resources['cpu_cores'],
                 'ram_gb' => $resources['ram_gb'],
                 'disk_gb' => $resources['disk_gb'],
-                'ip_count' => $cloudInitEnabled ? 1 : 0,
+                'ip_count' => 1,
                 'tax_exempt' => (bool) ($data['tax_exempt'] ?? true),
                 'status' => VirtualMachine::STATUS_STOPPED,
                 'provisioning_status' => VirtualMachine::PROVISION_PENDING,
@@ -137,9 +137,7 @@ class CloudVmProvisioningService
         });
 
         if ($provider === InfrastructureLocation::PROVIDER_PROXMOX) {
-            if ($cloudInitEnabled) {
-                $this->reserveRequiredIp($vm);
-            }
+            $this->reserveRequiredIp($vm);
             $vm->forceFill(['network_bridge' => $networkBridge])->save();
         }
 
