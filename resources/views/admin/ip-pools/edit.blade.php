@@ -239,10 +239,12 @@
                                                 اعمال در Proxmox
                                             </label>
                                         </div>
-                                    @elseif($address->status === 'reserved')
+                                    @elseif($address->status === 'reserved' || ($address->status === 'assigned' && !$vm))
                                         <form method="POST" action="{{ route('admin.ip-pools.addresses.release', [$pool, $address]) }}" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این IP را آزاد کنید?');">
                                             @csrf
-                                            <button class="rounded-lg bg-red-50 px-4 py-2 text-xs font-black text-red-700 transition hover:bg-red-100">آزادسازی</button>
+                                            <button class="rounded-lg bg-red-50 px-4 py-2 text-xs font-black text-red-700 transition hover:bg-red-100">
+                                                {{ $address->status === 'assigned' && !$vm ? 'آزادسازی (بدون ماشین)' : 'آزادسازی' }}
+                                            </button>
                                         </form>
                                     @else
                                         <span class="text-xs font-black text-slate-400">قفل‌شده</span>

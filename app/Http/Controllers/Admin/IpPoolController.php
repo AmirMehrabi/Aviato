@@ -142,7 +142,9 @@ class IpPoolController extends Controller
             abort(404);
         }
 
-        if ($ipAddress->virtual_machine_id || $ipAddress->status === IpAddress::STATUS_ASSIGNED) {
+        $hasLiveVm = $ipAddress->virtual_machine_id && $ipAddress->virtualMachine;
+
+        if ($hasLiveVm) {
             return back()->withErrors([
                 'reservation' => 'An assigned IP must be changed through the VM IP reassignment action.',
             ]);
