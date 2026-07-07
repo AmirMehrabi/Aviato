@@ -53,6 +53,11 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 $adminDomain = config('portals.admin.domain');
 $customerDomain = config('portals.customer.domain');
+$customerAliasDomains = collect(config('portals.customer.aliases', []))
+    ->filter()
+    ->reject(fn (string $domain): bool => $domain === $customerDomain)
+    ->unique()
+    ->values();
 
 $adminLogin = config('portals.admin.login_path');
 $adminHome = config('portals.admin.home_path');
@@ -223,7 +228,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
     });
 });
 
-Route::domain($customerDomain)->middleware('portal.host:customer')->group(function () use ($customerLogin, $customerRegister, $customerHome) {
+$customerRoutes = function () use ($customerLogin, $customerRegister, $customerHome): void {
     Route::get('impersonate/{token}', CustomerImpersonationController::class)
         ->where('token', '[A-Za-z0-9]{64}')
         ->middleware('throttle:20,1')
@@ -336,7 +341,18 @@ Route::domain($customerDomain)->middleware('portal.host:customer')->group(functi
             Route::post('/withdrawals', [CustomerResellerController::class, 'storeWithdrawal'])->name('withdrawals.store');
         });
     });
-});
+};
+
+Route::domain($customerDomain)->middleware('portal.host:customer')->group($customerRoutes);
+
+foreach ($customerAliasDomains as $domain) {
+    $aliasName = 'customer.alias.'.str_replace(['.', '-'], '_', $domain).'.';
+
+    Route::domain($domain)
+        ->name($aliasName)
+        ->middleware('portal.host:customer')
+        ->group($customerRoutes);
+}
 
 Route::get('/', function (WalletService $wallets) {
     $postsPath = resource_path('blog/posts');

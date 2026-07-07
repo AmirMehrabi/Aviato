@@ -11,8 +11,10 @@ class EnsurePortalHost
     public function handle(Request $request, Closure $next, string $portal): Response
     {
         $domain = config("portals.$portal.domain");
+        $aliases = config("portals.$portal.aliases", []);
+        $allowedHosts = array_filter(array_merge([$domain], is_array($aliases) ? $aliases : []));
 
-        if ($domain && $request->getHost() !== $domain) {
+        if ($allowedHosts !== [] && ! in_array($request->getHost(), $allowedHosts, true)) {
             abort(404);
         }
 

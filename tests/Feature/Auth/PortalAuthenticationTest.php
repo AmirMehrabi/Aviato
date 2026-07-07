@@ -124,6 +124,20 @@ class PortalAuthenticationTest extends TestCase
         }
     }
 
+    public function test_customer_dashboard_is_available_on_customer_portal_alias(): void
+    {
+        config([
+            'portals.customer.domain' => 'cp.aviato.ir',
+            'portals.customer.aliases' => ['my.aviato.ir'],
+        ]);
+
+        $this->actingAs(Customer::factory()->create(), 'customer');
+
+        $this->get('https://my.aviato.ir/dashboard')
+            ->assertOk()
+            ->assertSee('داشبورد');
+    }
+
     public function test_customer_can_login_with_email_on_customer_subdomain(): void
     {
         AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'disabled');
