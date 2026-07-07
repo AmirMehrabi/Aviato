@@ -50,7 +50,7 @@
 <body class="overflow-x-hidden bg-white text-slate-950 antialiased @yield('body_class')">
     @php
         $activePage = $activePage ?? 'home';
-        $darkHeaderTop = in_array($activePage, ['solutions'], true);
+        $darkHeaderTop = false;
         $marketingNavItems = config('marketing.navigation', []);
     @endphp
 
