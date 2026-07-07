@@ -61,12 +61,15 @@ class CloudVmProvisioningService
         }
 
         $resources = $this->resources($data);
-        $this->assertMinimums($image, $resources);
         $bundle = ! empty($data['vm_bundle_id'])
             ? VmBundle::query()->find((int) $data['vm_bundle_id'])
             : null;
 
         $cloudInitEnabled = (bool) $image->cloud_init_enabled;
+
+        if ($cloudInitEnabled) {
+            $this->assertMinimums($image, $resources);
+        }
         $password = $cloudInitEnabled ? $this->resolvePassword($data) : null;
         $username = $cloudInitEnabled ? (trim((string) ($data['login_username'] ?? '')) ?: $image->default_username) : null;
         $sshPublicKey = $cloudInitEnabled ? $this->normalizeSshPublicKeys((string) ($data['ssh_public_key'] ?? '')) : null;
@@ -79,7 +82,7 @@ class CloudVmProvisioningService
         $osTemplate = trim((string) ($data['os_template'] ?? '')) ?: $image->name;
         $networkBridge = $mapping?->network_bridge ?: (trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge);
 
-        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $location, $provider, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge, $mapping, $placement): VirtualMachine {
+        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $location, $provider, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge, $mapping, $placement, $cloudInitEnabled): VirtualMachine {
             $osPrefix = self::OS_PREFIXES[$image->os_family] ?? 'VM';
             $requestedName = trim((string) ($data['name'] ?? ''));
             $name = $requestedName !== '' ? $requestedName : $this->generateUniqueVmName($bundle, $resources, $osPrefix);
@@ -108,7 +111,7 @@ class CloudVmProvisioningService
                 'cpu_cores' => $resources['cpu_cores'],
                 'ram_gb' => $resources['ram_gb'],
                 'disk_gb' => $resources['disk_gb'],
-                'ip_count' => 1,
+                'ip_count' => $cloudInitEnabled ? 1 : 0,
                 'tax_exempt' => (bool) ($data['tax_exempt'] ?? true),
                 'status' => VirtualMachine::STATUS_STOPPED,
                 'provisioning_status' => VirtualMachine::PROVISION_PENDING,
@@ -134,7 +137,9 @@ class CloudVmProvisioningService
         });
 
         if ($provider === InfrastructureLocation::PROVIDER_PROXMOX) {
-            $this->reserveRequiredIp($vm);
+            if ($cloudInitEnabled) {
+                $this->reserveRequiredIp($vm);
+            }
             $vm->forceFill(['network_bridge' => $networkBridge])->save();
         }
 

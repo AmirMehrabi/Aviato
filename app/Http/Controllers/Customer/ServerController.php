@@ -359,7 +359,7 @@ class ServerController extends Controller
         }
 
         $image->loadMissing('nodeMappings');
-        if ($location->isProxmox() && $this->availableImageIpCount($image) < 1) {
+        if ($image->cloud_init_enabled && $location->isProxmox() && $this->availableImageIpCount($image) < 1) {
             return back()
                 ->withErrors([
                     'cloud_image_id' => 'در حال حاضر IP آزاد برای این نسخه وجود ندارد.',

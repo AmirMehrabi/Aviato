@@ -7,7 +7,6 @@ use App\Models\VmBundleLocationMapping;
 use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
-use App\Services\RouterOsPostInstallationService;
 use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
@@ -38,7 +37,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
         public readonly array $options = [],
     ) {}
 
-    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, ?WalletService $wallets = null, ?HetznerCloudService $hetzner = null, ?RouterOsPostInstallationService $routerOsPostInstallation = null): void
+    public function handle(ProxmoxService $proxmox, IpPoolService $ipPools, ?WalletService $wallets = null, ?HetznerCloudService $hetzner = null): void
     {
         $wallets ??= app(WalletService::class);
 
@@ -102,6 +101,17 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             $canAutoStart = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
 
             if (! $cloudInitEnabled) {
+                $verifiedConfig = $proxmox->vmConfig($server, $vm->node, $vmid);
+                $history[] = ['step' => 'config_verify', 'result' => $verifiedConfig];
+
+                $actualCpu = (int) ($verifiedConfig['cores'] ?? $vm->cpu_cores);
+                $actualRamMb = (int) ($verifiedConfig['memory'] ?? ($vm->ram_gb * 1024));
+                $actualDiskGb = (int) ($verifiedConfig['maxdisk'] ?? ($vm->disk_gb * 1024 * 1024 * 1024)) / (1024 * 1024 * 1024);
+
+                $verifiedMacAddress = filled($verifiedConfig['net0'] ?? null)
+                    ? $proxmox->macAddressFromNetworkDevice((string) $verifiedConfig['net0'])
+                    : null;
+
                 if ($shouldStartAfterCreate && $canAutoStart) {
                     $start = $proxmox->startVm($server, $vm->node, $vmid);
                     $history[] = ['step' => 'start', 'result' => $start];
@@ -112,24 +122,12 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                     $history[] = ['step' => 'start_skipped_wallet_locked', 'result' => 'wallet below threshold'];
                 }
 
-                $verifiedConfig = $proxmox->vmConfig($server, $vm->node, $vmid);
-                $history[] = ['step' => 'config_verify', 'result' => $verifiedConfig];
-
-                if ($shouldStartAfterCreate && $canAutoStart && $image->os_family === 'router_os' && filled($image->post_installation_script)) {
-                    $result = ($routerOsPostInstallation ?? app(RouterOsPostInstallationService::class))->execute($vm);
-                    $history[] = ['step' => 'post_installation', 'result' => $result, 'at' => now()->toISOString()];
-                }
-
-                if ($address) {
-                    $ipPools->assign($address, $vm);
-                }
-
-                $verifiedMacAddress = filled($verifiedConfig['net0'] ?? null)
-                    ? $proxmox->macAddressFromNetworkDevice((string) $verifiedConfig['net0'])
-                    : null;
-
                 $vm->forceFill([
                     'mac_address' => $vm->mac_address ?: $verifiedMacAddress,
+                    'cpu_cores' => $actualCpu,
+                    'ram_gb' => (int) ceil($actualRamMb / 1024),
+                    'disk_gb' => $actualDiskGb,
+                    'ip_count' => 0,
                     'status' => $shouldStartAfterCreate && $canAutoStart ? VirtualMachine::STATUS_RUNNING : VirtualMachine::STATUS_STOPPED,
                     'provisioning_status' => VirtualMachine::PROVISION_READY,
                     'last_started_at' => $shouldStartAfterCreate && $canAutoStart ? now() : null,
@@ -137,6 +135,13 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                     'last_seen_at' => now(),
                     'remote_state' => ['steps' => $history, 'finished_at' => now()->toISOString()],
                 ])->save();
+
+                $vm->desired_state = $vm->desiredStateSnapshot() + [
+                    'start_after_create' => $shouldStartAfterCreate,
+                    'onboot' => $this->options['onboot'] ?? false,
+                    'disk_device' => $image->disk_device,
+                ];
+                $vm->save();
 
                 return;
             }
