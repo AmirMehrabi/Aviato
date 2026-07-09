@@ -3,16 +3,21 @@
 @php
     $configuredNodeEndpoints = collect($server->api_endpoints ?? [])
         ->filter(fn (mixed $endpoint, mixed $node): bool => is_string($node) && is_string($endpoint));
-    $discoveredNodeNames = collect(data_get($server->remote_inventory, 'nodes', []))
+    $activeNodeNames = collect(data_get($server->remote_inventory, 'nodes', []))
         ->map(fn (array $node): mixed => $node['node'] ?? $node['name'] ?? null)
         ->filter()
-        ->merge($configuredNodeEndpoints->keys())
         ->unique()
         ->sort()
         ->values();
     $oldNodeEndpoints = old('node_api_endpoints', []);
     $configuredNodeCredentials = collect($server->node_api_credentials ?? []);
     $oldNodeCredentials = old('node_api_credentials', []);
+    $staleNodeNames = $configuredNodeEndpoints->keys()
+        ->merge($configuredNodeCredentials->keys())
+        ->unique()
+        ->diff($activeNodeNames)
+        ->sort()
+        ->values();
 @endphp
 
 <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -104,11 +109,11 @@
             <div class="md:col-span-2">
                 <span class="text-sm font-black text-slate-700">آدرس API اختصاصی nodeها</span>
                 <p class="mt-1 text-xs leading-6 text-slate-500">پس از شناسایی nodeها، آدرس مدیریت هرکدام را وارد کنید. درخواست‌های همان node مستقیماً به این آدرس ارسال می‌شوند.</p>
-                @if ($discoveredNodeNames->isEmpty())
+                @if ($activeNodeNames->isEmpty())
                     <p class="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">ابتدا سرور را ذخیره و Sync کنید تا nodeها شناسایی شوند.</p>
                 @else
                     <div class="mt-3 grid gap-3">
-                        @foreach ($discoveredNodeNames as $nodeName)
+                        @foreach ($activeNodeNames as $nodeName)
                             <label class="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-[120px_minmax(0,1fr)] sm:items-center">
                                 <span class="font-mono text-sm font-bold text-slate-700" dir="ltr">{{ $nodeName }}</span>
                                 <input
@@ -141,6 +146,34 @@
                                 >
                             </div>
                         @endforeach
+                    </div>
+                @endif
+
+                @if ($staleNodeNames->isNotEmpty())
+                    <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                        <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <span class="text-sm font-black text-amber-900">nodeهای حذف‌شده از آخرین Sync</span>
+                            <span class="text-xs font-bold text-amber-700">برای حذف تنظیمات ذخیره‌شده، گزینه حذف را فعال کنید.</span>
+                        </div>
+                        <div class="mt-3 grid gap-3">
+                            @foreach ($staleNodeNames as $nodeName)
+                                <label class="grid gap-3 rounded-lg border border-amber-200 bg-white p-3 sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:items-center">
+                                    <span class="font-mono text-sm font-bold text-slate-700" dir="ltr">{{ $nodeName }}</span>
+                                    <span class="min-w-0 text-left font-mono text-xs font-bold text-slate-500" dir="ltr">
+                                        {{ $configuredNodeEndpoints->get($nodeName) ?: data_get($configuredNodeCredentials, $nodeName.'.token_id', 'بدون endpoint') }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-2 text-xs font-black text-red-700">
+                                        <input
+                                            type="checkbox"
+                                            name="remove_stale_nodes[]"
+                                            value="{{ $nodeName }}"
+                                            class="rounded border-red-300 text-red-600 focus:ring-red-500"
+                                        >
+                                        حذف تنظیمات
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
                     </div>
                 @endif
             </div>

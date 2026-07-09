@@ -281,16 +281,31 @@ class ProxmoxServerWebController extends Controller
         }
 
         if (array_key_exists('node_api_endpoints', $data)) {
-            $data['api_endpoints'] = collect($data['node_api_endpoints'] ?? [])
-                ->map(fn (mixed $endpoint): string => trim((string) $endpoint))
+            $removeStaleNodes = collect($data['remove_stale_nodes'] ?? [])
+                ->map(fn (mixed $node): string => trim((string) $node))
+                ->filter()
+                ->values();
+
+            $data['api_endpoints'] = collect($server?->api_endpoints ?? [])
+                ->reject(fn (mixed $endpoint, mixed $node): bool => $removeStaleNodes->contains((string) $node))
+                ->merge(collect($data['node_api_endpoints'] ?? [])
+                    ->map(fn (mixed $endpoint): string => trim((string) $endpoint))
+                    ->filter()
+                    ->all())
                 ->filter()
                 ->all();
             unset($data['node_api_endpoints']);
         }
 
         if (array_key_exists('node_api_credentials', $data)) {
-            $existing = $server?->node_api_credentials ?? [];
-            $data['node_api_credentials'] = collect($data['node_api_credentials'] ?? [])
+            $removeStaleNodes = collect($data['remove_stale_nodes'] ?? [])
+                ->map(fn (mixed $node): string => trim((string) $node))
+                ->filter()
+                ->values();
+            $existing = collect($server?->node_api_credentials ?? [])
+                ->reject(fn (mixed $credentials, mixed $node): bool => $removeStaleNodes->contains((string) $node));
+
+            $submitted = collect($data['node_api_credentials'] ?? [])
                 ->map(function (array $credentials, string $node) use ($existing): array {
                     return [
                         'token_id' => trim((string) ($credentials['token_id'] ?? '')),
@@ -301,7 +316,27 @@ class ProxmoxServerWebController extends Controller
                 })
                 ->filter(fn (array $credentials): bool => $credentials['token_id'] !== '')
                 ->all();
+
+            $data['node_api_credentials'] = $existing
+                ->merge($submitted)
+                ->filter(fn (array $credentials): bool => ($credentials['token_id'] ?? '') !== '')
+                ->all();
+        } elseif (array_key_exists('remove_stale_nodes', $data) && $server) {
+            $removeStaleNodes = collect($data['remove_stale_nodes'] ?? [])
+                ->map(fn (mixed $node): string => trim((string) $node))
+                ->filter()
+                ->values();
+
+            $data['api_endpoints'] = collect($server->api_endpoints ?? [])
+                ->reject(fn (mixed $endpoint, mixed $node): bool => $removeStaleNodes->contains((string) $node))
+                ->all();
+
+            $data['node_api_credentials'] = collect($server->node_api_credentials ?? [])
+                ->reject(fn (mixed $credentials, mixed $node): bool => $removeStaleNodes->contains((string) $node))
+                ->all();
         }
+
+        unset($data['remove_stale_nodes']);
 
         foreach (['verify_tls', 'is_active', 'maintenance_mode'] as $booleanField) {
             if (array_key_exists($booleanField, $data)) {
