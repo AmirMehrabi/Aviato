@@ -19,6 +19,11 @@ class SitemapController extends Controller
             ->values()
             ->all();
 
+        $entries[] = [
+            'loc' => route('solutions.colocation'),
+            'lastmod' => null,
+        ];
+
         foreach ($this->blogEntries() as $entry) {
             $entries[] = $entry;
         }

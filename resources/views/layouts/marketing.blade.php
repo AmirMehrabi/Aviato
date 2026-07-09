@@ -52,16 +52,48 @@
         $activePage = $activePage ?? 'home';
         $darkHeaderTop = false;
         $marketingNavItems = config('marketing.navigation', []);
+        $solutionMenuItems = [
+            [
+                'key' => 'cloud',
+                'label' => 'سرور مجازی ابری',
+                'eyebrow' => 'Cloud VPS',
+                'route' => route('solutions'),
+                'title' => 'ماشین مجازی آماده برای سایت، اپلیکیشن و سرویس‌های آنلاین',
+                'body' => 'برای تیم‌هایی که می‌خواهند با منابع روشن، IP اختصاصی، تحویل قابل پیگیری و پشتیبانی فارسی سریع‌تر وارد مرحله اجرا شوند.',
+                'points' => ['تحویل از پنل مشتری', 'منابع و هزینه شفاف', 'مناسب وب، API، دیتابیس و تست'],
+                'cta' => 'مشاهده راهکار ابری',
+            ],
+            [
+                'key' => 'colocation',
+                'label' => 'Co-location',
+                'eyebrow' => 'Dedicated Hardware',
+                'route' => route('solutions.colocation'),
+                'title' => 'میزبانی تجهیزات شما در رک استاندارد دیتاسنتر',
+                'body' => 'برای سازمان‌هایی که مالک سرور، فایروال یا تجهیزات شبکه خودشان هستند و به برق پایدار، شبکه مطمئن، رک امن و دسترسی عملیاتی نیاز دارند.',
+                'points' => ['فضای رک و برق پایدار', 'اتصال شبکه و IP', 'هماهنگی نصب و دسترسی حضوری'],
+                'cta' => 'مشاهده Co-location',
+            ],
+        ];
     @endphp
 
-    <div class="min-h-screen overflow-hidden" x-data="{ scrolled: false, menuOpen: false }" x-init="scrolled = window.scrollY > 12;
+    <div
+        class="min-h-screen overflow-hidden"
+        x-data="{
+            scrolled: false,
+            menuOpen: false,
+            solutionsOpen: false,
+            activeSolution: 'cloud',
+            solutions: @js($solutionMenuItems)
+        }"
+        x-init="scrolled = window.scrollY > 12;
         window.addEventListener('scroll', () => scrolled = window.scrollY > 12, { passive: true })"
-        @keydown.escape.window="menuOpen = false">
+        @keydown.escape.window="menuOpen = false; solutionsOpen = false">
         <header
             :class="scrolled ? 'h-14 border-slate-200/80 bg-white/95 shadow-lg shadow-slate-950/5' :
                 'h-[4.75rem] border-transparent bg-transparent'"
-            class="fixed inset-x-0 top-0 z-50 border-b border-transparent backdrop-blur transition-all duration-300">
-            <nav class="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
+            class="fixed inset-x-0 top-0 z-50 border-b border-transparent backdrop-blur transition-all duration-300"
+            @mouseleave="solutionsOpen = false">
+            <nav class="relative mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
                 <a href="{{ route('home') }}" class="flex min-w-0 items-center" aria-label="آویاتو">
                     <span class="relative block h-10 w-24 sm:w-40" :class="scrolled ? 'h-9 w-20 sm:w-40' : 'h-10 w-24 sm:w-40'">
                         <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
@@ -81,11 +113,24 @@
                     class="hidden items-center gap-1 rounded-full p-1 text-sm  ring-1 {{ $darkHeaderTop ? 'bg-white/10 ring-white/10' : 'bg-white/65 ring-sky-100/80 shadow-sm shadow-sky-100/60' }} backdrop-blur transition-all duration-300 lg:flex">
                     @foreach ($marketingNavItems as $item)
                         @php($isActive = $activePage === $item['key'])
-                        <a href="{{ route($item['route']) }}"
-                            @if (!$isActive) :class="scrolled ? 'text-slate-600 hover:bg-white hover:text-[#0069FF]' : '{{ $darkHeaderTop ? 'text-white/80 hover:bg-white/10 hover:text-white' : 'text-slate-600 hover:bg-white/80 hover:text-[#0069FF]' }}'" @endif
-                            class="relative rounded-full px-4 py-2 transition {{ $isActive ? 'bg-[#0069FF] text-white shadow-sm shadow-[#0069FF]/25' : '' }}">
-                            {{ $item['label'] }}
-                        </a>
+                        @if ($item['key'] === 'solutions')
+                            <div class="relative" @mouseenter="solutionsOpen = true" @focusin="solutionsOpen = true">
+                                <a href="{{ route($item['route']) }}"
+                                    @if (!$isActive) :class="scrolled ? 'text-slate-600 hover:bg-white hover:text-[#0069FF]' : '{{ $darkHeaderTop ? 'text-white/80 hover:bg-white/10 hover:text-white' : 'text-slate-600 hover:bg-white/80 hover:text-[#0069FF]' }}'" @endif
+                                    class="relative inline-flex items-center gap-1 rounded-full px-4 py-2 transition {{ $isActive ? 'bg-[#0069FF] text-white shadow-sm shadow-[#0069FF]/25' : '' }}">
+                                    {{ $item['label'] }}
+                                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                                        <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </a>
+                            </div>
+                        @else
+                            <a href="{{ route($item['route']) }}"
+                                @if (!$isActive) :class="scrolled ? 'text-slate-600 hover:bg-white hover:text-[#0069FF]' : '{{ $darkHeaderTop ? 'text-white/80 hover:bg-white/10 hover:text-white' : 'text-slate-600 hover:bg-white/80 hover:text-[#0069FF]' }}'" @endif
+                                class="relative rounded-full px-4 py-2 transition {{ $isActive ? 'bg-[#0069FF] text-white shadow-sm shadow-[#0069FF]/25' : '' }}">
+                                {{ $item['label'] }}
+                            </a>
+                        @endif
                     @endforeach
                 </div>
 
@@ -111,6 +156,54 @@
                             <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" />
                         </svg>
                     </button>
+                </div>
+
+                <div
+                    x-cloak
+                    x-show="solutionsOpen"
+                    @mouseenter="solutionsOpen = true"
+                    x-transition:enter="transition ease-out duration-150"
+                    x-transition:enter-start="translate-y-2 opacity-0"
+                    x-transition:enter-end="translate-y-0 opacity-100"
+                    x-transition:leave="transition ease-in duration-100"
+                    x-transition:leave-start="translate-y-0 opacity-100"
+                    x-transition:leave-end="translate-y-2 opacity-0"
+                    class="absolute inset-x-4 top-full hidden pt-2 md:inset-x-8 lg:inset-x-10 lg:block"
+                >
+                    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl shadow-slate-950/15 ring-1 ring-slate-100">
+                        <div class="grid min-h-72 grid-cols-[15rem_1fr]">
+                            <div class="border-l border-slate-200 bg-slate-50 p-3">
+                                <template x-for="solution in solutions" :key="solution.key">
+                                    <a
+                                        :href="solution.route"
+                                        @mouseenter="activeSolution = solution.key"
+                                        @focus="activeSolution = solution.key"
+                                        :class="activeSolution === solution.key ? 'border-[#B8D6FF] bg-white text-[#0069FF] shadow-sm' : 'border-transparent text-slate-700 hover:bg-white hover:text-[#0069FF]'"
+                                        class="mb-2 block rounded-xl border p-4 transition"
+                                    >
+                                        <span class="block text-xs font-bold text-slate-400" x-text="solution.eyebrow"></span>
+                                        <span class="mt-1 block text-sm font-black" x-text="solution.label"></span>
+                                    </a>
+                                </template>
+                            </div>
+                            <div class="relative overflow-hidden p-6">
+                                <div aria-hidden="true" class="absolute left-0 top-0 h-32 w-32 rounded-full bg-[#EEF5FF]"></div>
+                                <template x-for="solution in solutions" :key="solution.key">
+                                    <div x-show="activeSolution === solution.key" x-transition.opacity class="relative">
+                                        <p class="text-xs font-black text-[#0069FF]" x-text="solution.eyebrow"></p>
+                                        <h3 class="mt-3 max-w-2xl text-2xl font-black leading-9 text-slate-950" x-text="solution.title"></h3>
+                                        <p class="mt-4 max-w-3xl text-sm leading-8 text-slate-600" x-text="solution.body"></p>
+                                        <div class="mt-6 grid gap-3 sm:grid-cols-3">
+                                            <template x-for="point in solution.points" :key="point">
+                                                <div class="rounded-xl border border-slate-200 bg-[#FBFDFF] p-3 text-xs font-bold leading-6 text-slate-700" x-text="point"></div>
+                                            </template>
+                                        </div>
+                                        <a :href="solution.route" class="mt-6 inline-flex rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" x-text="solution.cta"></a>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </nav>
 
@@ -143,6 +236,12 @@
                             class="rounded-xl px-4 py-3 text-sm font-bold transition {{ $isActive ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-700 hover:bg-slate-50 hover:text-[#0069FF]' }}">
                             {{ $item['label'] }}
                         </a>
+                        @if ($item['key'] === 'solutions')
+                            <div class="-mt-1 mb-2 grid gap-1 pr-4">
+                                <a href="{{ route('solutions') }}" @click="menuOpen = false" class="rounded-xl px-4 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-[#0069FF]">سرور مجازی ابری</a>
+                                <a href="{{ route('solutions.colocation') }}" @click="menuOpen = false" class="rounded-xl px-4 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-[#0069FF]">Co-location</a>
+                            </div>
+                        @endif
                     @endforeach
                 </div>
 
@@ -183,6 +282,7 @@
                         <a href="{{ route('home') }}" class="transition hover:text-[#2C67C9]">خانه</a>
                         <a href="{{ route('pricing') }}" class="transition hover:text-[#2C67C9]">قیمت‌گذاری</a>
                         <a href="{{ route('solutions') }}" class="transition hover:text-[#2C67C9]">راهکارهای ما</a>
+                        <a href="{{ route('solutions.colocation') }}" class="transition hover:text-[#2C67C9]">Co-location</a>
                         <a href="{{ route('blog') }}" class="transition hover:text-[#2C67C9]">بلاگ</a>
                         <a href="{{ route('customer.register') }}" class="transition hover:text-[#2C67C9]">ثبت نام
                             مشتری</a>

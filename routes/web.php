@@ -424,6 +424,9 @@ Route::get('/solutions', function (WalletService $wallets) {
     ]);
 })->name('solutions');
 
+Route::get('/solutions/co-location', fn () => view('solutions-colocation'))
+    ->name('solutions.colocation');
+
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 Route::get('/changelog', function () {
