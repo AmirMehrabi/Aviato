@@ -4,6 +4,16 @@
 @section('title', 'ماشین‌های مجازی')
 
 @section('content')
+@php
+    $targetNodeOptions = collect($proxmoxServers ?? [])
+        ->flatMap(function ($server) {
+            return collect(data_get($server->remote_inventory, 'nodes', []))
+                ->map(fn (array $node): ?string => $node['node'] ?? $node['name'] ?? null)
+                ->filter()
+                ->mapWithKeys(fn (string $node): array => [$node => $node.' - '.$server->name]);
+        })
+        ->sortKeys();
+@endphp
 <script>
 document.addEventListener('alpine:init', () => {
     Alpine.data('vmFilters', () => ({
@@ -60,6 +70,9 @@ document.addEventListener('alpine:init', () => {
     @if (session('status'))
         <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
     @endif
+    @if (session('error'))
+        <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>
+    @endif
 
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -98,11 +111,32 @@ document.addEventListener('alpine:init', () => {
     </form>
 
     <section x-ref="results" class="mt-6">
+        <form method="POST" action="{{ route('admin.virtual-machines.move-node') }}">
+            @csrf
+            <div class="mb-3 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center">
+                <span class="text-sm font-black text-slate-700">انتقال Node برای VMهای انتخاب‌شده</span>
+                <select name="target_node" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
+                    <option value="">انتخاب مقصد</option>
+                    @foreach($targetNodeOptions as $node => $label)
+                        <option value="{{ $node }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                <select name="mode" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
+                    <option value="reconcile_only">فقط تطبیق دیتابیس اگر VM روی مقصد وجود دارد</option>
+                    <option value="migrate">Migration در Proxmox و سپس بروزرسانی دیتابیس</option>
+                </select>
+                <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700">
+                    <input type="checkbox" name="online" value="1" class="rounded border-slate-300 text-[#0069FF]">
+                    Online migration
+                </label>
+                <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">اجرای انتقال</button>
+            </div>
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div class="overflow-x-auto">
                 <table class="min-w-full text-right text-sm">
                     <thead class="bg-slate-50 text-xs font-black text-slate-500">
                         <tr>
+                            <th class="px-5 py-4"></th>
                             <th class="px-5 py-4">VM</th>
                             <th class="px-5 py-4">فضای کاری</th>
                             <th class="px-5 py-4">مالک فضای کاری</th>
@@ -118,8 +152,17 @@ document.addEventListener('alpine:init', () => {
                         @forelse($vms as $vm)
                             <tr>
                                 <td class="px-5 py-4">
+                                    <input
+                                        type="checkbox"
+                                        name="vm_ids[]"
+                                        value="{{ $vm->id }}"
+                                        class="rounded border-slate-300 text-[#0069FF]"
+                                        @disabled(! $vm->isProxmox() || $vm->isActionLocked() || ! $vm->proxmoxServer || ! $vm->node || ! $vm->vmid)
+                                    >
+                                </td>
+                                <td class="px-5 py-4">
                                     <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</a>
-                                    <span class="block text-xs text-slate-500" dir="ltr">{{ $vm->name }} · {{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local' }}</span>
+                                    <span class="block text-xs text-slate-500" dir="ltr">{{ $vm->name }} · {{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local' }} · {{ $vm->node ?: 'no-node' }}</span>
                                 </td>
                                 <td class="px-5 py-4 font-bold">{{ $vm->project?->name ?: '—' }}</td>
                                 <td class="px-5 py-4">{{ $vm->project?->owner?->name ?: '—' }}</td>
@@ -149,13 +192,14 @@ document.addEventListener('alpine:init', () => {
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="9" class="px-5 py-10 text-center text-slate-500">VM ثبت نشده است.</td></tr>
+                            <tr><td colspan="10" class="px-5 py-10 text-center text-slate-500">VM ثبت نشده است.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
             <div class="border-t border-slate-100 px-5 py-4">{{ $vms->links() }}</div>
         </div>
+        </form>
     </section>
 </div>
 @endsection

@@ -455,6 +455,110 @@ class AdminVirtualMachineActionsTest extends TestCase
         Bus::assertNotDispatched(DeleteVirtualMachineJob::class);
     }
 
+    public function test_admin_can_reconcile_vm_node_when_remote_vm_already_exists_on_target(): void
+    {
+        $admin = User::factory()->create();
+        $vm = $this->readyVm(Customer::factory()->create(), ['node' => 'pve1']);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmStatus')
+                ->once()
+                ->withArgs(fn ($server, string $node, int $vmid): bool => $node === 'pve1' && $vmid === 101)
+                ->andReturn(null);
+            $mock->shouldReceive('vmStatus')
+                ->once()
+                ->withArgs(fn ($server, string $node, int $vmid): bool => $node === 'pve2' && $vmid === 101)
+                ->andReturn(['status' => 'running']);
+            $mock->shouldReceive('vmConfigOrNull')
+                ->once()
+                ->andReturn(['name' => 'customer-vps-101']);
+            $mock->shouldNotReceive('migrateVm');
+        });
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post($this->adminBaseUrl.'/virtual-machines/move-node', [
+            'vm_ids' => [$vm->id],
+            'target_node' => 'pve2',
+            'mode' => 'reconcile_only',
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $vm->refresh();
+
+        $this->assertSame('pve2', $vm->node);
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
+        $this->assertSame('reconciled', $vm->remote_state['node_move']['action']);
+    }
+
+    public function test_admin_can_migrate_vm_to_target_node_before_updating_panel_record(): void
+    {
+        $admin = User::factory()->create();
+        $vm = $this->readyVm(Customer::factory()->create(), ['node' => 'pve1']);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmStatus')
+                ->once()
+                ->withArgs(fn ($server, string $node, int $vmid): bool => $node === 'pve1' && $vmid === 101)
+                ->andReturn(['status' => 'stopped']);
+            $mock->shouldReceive('vmStatus')
+                ->once()
+                ->withArgs(fn ($server, string $node, int $vmid): bool => $node === 'pve2' && $vmid === 101)
+                ->andReturn(null);
+            $mock->shouldReceive('migrateVm')
+                ->once()
+                ->withArgs(fn ($server, string $source, string $target, int $vmid): bool => $source === 'pve1' && $target === 'pve2' && $vmid === 101)
+                ->andReturn(['task_id' => 'UPID:pve1:move']);
+            $mock->shouldReceive('waitForTask')
+                ->once()
+                ->withArgs(fn ($server, string $node, string $task): bool => $node === 'pve1' && $task === 'UPID:pve1:move')
+                ->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
+            $mock->shouldReceive('vmStatus')
+                ->once()
+                ->withArgs(fn ($server, string $node, int $vmid): bool => $node === 'pve2' && $vmid === 101)
+                ->andReturn(['status' => 'stopped']);
+            $mock->shouldReceive('vmConfigOrNull')
+                ->once()
+                ->andReturn(['name' => 'customer-vps-101']);
+        });
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post($this->adminBaseUrl.'/virtual-machines/move-node', [
+            'vm_ids' => [$vm->id],
+            'target_node' => 'pve2',
+            'mode' => 'migrate',
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $vm->refresh();
+
+        $this->assertSame('pve2', $vm->node);
+        $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
+        $this->assertSame('migrated', $vm->remote_state['node_move']['action']);
+        $this->assertSame('UPID:pve1:move', $vm->remote_state['node_move']['task_id']);
+    }
+
+    public function test_admin_node_move_does_not_update_panel_when_vm_is_missing_on_both_nodes(): void
+    {
+        $admin = User::factory()->create();
+        $vm = $this->readyVm(Customer::factory()->create(), ['node' => 'pve1']);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmStatus')->twice()->andReturn(null);
+            $mock->shouldNotReceive('migrateVm');
+            $mock->shouldNotReceive('vmConfigOrNull');
+        });
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post($this->adminBaseUrl.'/virtual-machines/move-node', [
+            'vm_ids' => [$vm->id],
+            'target_node' => 'pve2',
+            'mode' => 'reconcile_only',
+        ])->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame('pve1', $vm->fresh()->node);
+    }
+
     public function test_admin_can_transfer_vm_to_specific_target_customer_workspace(): void
     {
         $admin = User::factory()->create();
@@ -542,6 +646,12 @@ class AdminVirtualMachineActionsTest extends TestCase
             'verify_tls' => false,
             'is_active' => true,
             'maintenance_mode' => false,
+            'remote_inventory' => [
+                'nodes' => [
+                    ['node' => 'pve1', 'status' => 'online'],
+                    ['node' => 'pve2', 'status' => 'online'],
+                ],
+            ],
         ]);
 
         return VirtualMachine::create(array_merge([

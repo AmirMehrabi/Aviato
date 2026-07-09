@@ -949,6 +949,48 @@ class ProxmoxService
     }
 
     /**
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    public function migrateVm(
+        ProxmoxServer $server,
+        string $sourceNode,
+        string $targetNode,
+        int $vmid,
+        bool $online = false,
+        array $context = [],
+    ): array {
+        $payload = [
+            'target' => $targetNode,
+            'online' => $online ? 1 : 0,
+        ];
+
+        $this->logInfo('Proxmox VM migration command requested', $server, [
+            'source_node' => $sourceNode,
+            'target_node' => $targetNode,
+            'vmid' => $vmid,
+            'online' => $online,
+            'context' => $context,
+        ]);
+
+        $taskId = $this->request($server, $server->apiBaseUrlForNode($sourceNode), $sourceNode)
+            ->asForm()
+            ->post("/nodes/{$sourceNode}/qemu/{$vmid}/migrate", $payload)
+            ->throw()
+            ->json('data');
+
+        $this->logInfo('Proxmox VM migration command accepted', $server, [
+            'source_node' => $sourceNode,
+            'target_node' => $targetNode,
+            'vmid' => $vmid,
+            'task_id' => $taskId,
+            'context' => $context,
+        ]);
+
+        return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function deleteVm(ProxmoxServer $server, string $node, int $vmid, bool $purge = true): array

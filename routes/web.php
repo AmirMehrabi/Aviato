@@ -43,6 +43,7 @@ use App\Http\Controllers\Customer\TicketAttachmentController;
 use App\Http\Controllers\Customer\TicketController;
 use App\Http\Controllers\Customer\VmUpgradeController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
+use App\Http\Controllers\SitemapController;
 use App\Models\VmBundle;
 use App\Services\WalletService;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -50,7 +51,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use App\Http\Controllers\SitemapController;
 
 $adminDomain = config('portals.admin.domain');
 $customerDomain = config('portals.customer.domain');
@@ -147,6 +147,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
         Route::get('virtual-machines/proxmox-servers/{proxmoxServer}/options', [VirtualMachineController::class, 'options'])
             ->name('admin.virtual-machines.options');
+        Route::post('virtual-machines/move-node', [VirtualMachineController::class, 'moveNode'])
+            ->name('admin.virtual-machines.move-node');
         Route::post('virtual-machines/{virtualMachine}/start', [VirtualMachineController::class, 'start'])
             ->name('admin.virtual-machines.start');
         Route::post('virtual-machines/{virtualMachine}/stop', [VirtualMachineController::class, 'stop'])
