@@ -18,6 +18,11 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('vmFilters', () => ({
         timer: null,
+        selectedCount: 0,
+
+        countSelection() {
+            this.selectedCount = document.querySelectorAll('input[data-vm-node-move-checkbox]:checked').length;
+        },
 
         fetchResults() {
             clearTimeout(this.timer);
@@ -42,6 +47,7 @@ document.addEventListener('alpine:init', () => {
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const next = doc.querySelector('[x-ref="results"]');
             if (next) this.$refs.results.innerHTML = next.innerHTML;
+            this.selectedCount = 0;
             const input = doc.querySelector('input[name="search"]');
             if (input && this.$refs.filters.querySelector('input[name="search"]')) {
                 this.$refs.filters.querySelector('input[name="search"]').value = input.value;
@@ -66,6 +72,7 @@ document.addEventListener('alpine:init', () => {
 <div
     class="px-4 py-6 md:px-8 lg:px-10"
     x-data="vmFilters"
+    @change="countSelection()"
 >
     @if (session('status'))
         <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
@@ -110,27 +117,34 @@ document.addEventListener('alpine:init', () => {
         </div>
     </form>
 
+    <form
+        id="vm-node-move-form"
+        method="POST"
+        action="{{ route('admin.virtual-machines.move-node') }}"
+        x-cloak
+        x-show="selectedCount > 0"
+        class="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center"
+    >
+        @csrf
+        <span class="text-sm font-black text-slate-700" x-text="`${selectedCount} VM انتخاب شده`">انتقال Node</span>
+        <select name="target_node" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
+            <option value="">انتخاب مقصد</option>
+            @foreach($targetNodeOptions as $node => $label)
+                <option value="{{ $node }}">{{ $label }}</option>
+            @endforeach
+        </select>
+        <select name="mode" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
+            <option value="reconcile_only">فقط تطبیق دیتابیس اگر VM روی مقصد وجود دارد</option>
+            <option value="migrate">Migration در Proxmox و سپس بروزرسانی دیتابیس</option>
+        </select>
+        <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700">
+            <input type="checkbox" name="online" value="1" class="rounded border-slate-300 text-[#0069FF]">
+            Online migration
+        </label>
+        <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">ثبت در صف</button>
+    </form>
+
     <section x-ref="results" class="mt-6">
-        <form method="POST" action="{{ route('admin.virtual-machines.move-node') }}">
-            @csrf
-            <div class="mb-3 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center">
-                <span class="text-sm font-black text-slate-700">انتقال Node برای VMهای انتخاب‌شده</span>
-                <select name="target_node" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
-                    <option value="">انتخاب مقصد</option>
-                    @foreach($targetNodeOptions as $node => $label)
-                        <option value="{{ $node }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-                <select name="mode" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
-                    <option value="reconcile_only">فقط تطبیق دیتابیس اگر VM روی مقصد وجود دارد</option>
-                    <option value="migrate">Migration در Proxmox و سپس بروزرسانی دیتابیس</option>
-                </select>
-                <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700">
-                    <input type="checkbox" name="online" value="1" class="rounded border-slate-300 text-[#0069FF]">
-                    Online migration
-                </label>
-                <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">اجرای انتقال</button>
-            </div>
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div class="overflow-x-auto">
                 <table class="min-w-full text-right text-sm">
@@ -156,6 +170,8 @@ document.addEventListener('alpine:init', () => {
                                         type="checkbox"
                                         name="vm_ids[]"
                                         value="{{ $vm->id }}"
+                                        form="vm-node-move-form"
+                                        data-vm-node-move-checkbox
                                         class="rounded border-slate-300 text-[#0069FF]"
                                         @disabled(! $vm->isProxmox() || $vm->isActionLocked() || ! $vm->proxmoxServer || ! $vm->node || ! $vm->vmid)
                                     >
@@ -199,7 +215,6 @@ document.addEventListener('alpine:init', () => {
             </div>
             <div class="border-t border-slate-100 px-5 py-4">{{ $vms->links() }}</div>
         </div>
-        </form>
     </section>
 </div>
 @endsection

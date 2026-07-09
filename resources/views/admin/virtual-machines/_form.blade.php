@@ -70,7 +70,13 @@
     <x-form.input name="vmid" type="number" label="Proxmox VMID" :value="$vm->vmid" />
     <label>
         <span class="text-sm font-black text-slate-700">Node</span>
-        <select name="node" x-model="form.node" @change="syncStorageForNode()" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+        <select
+            name="node"
+            x-model="form.node"
+            @change="syncStorageForNode()"
+            @disabled($vm->exists)
+            class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
+        >
             <option value="">انتخاب Node</option>
             @if($vm->node)
                 <option value="{{ $vm->node }}">{{ $vm->node }} (current)</option>
@@ -80,6 +86,9 @@
             </template>
         </select>
         @error('node') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
+        @if($vm->exists)
+            <p class="mt-1 text-xs text-slate-500">برای تغییر Node از پنل «انتقال Node» بالای همین صفحه استفاده کنید.</p>
+        @endif
     </label>
     <label>
         <span class="text-sm font-black text-slate-700">Storage</span>
