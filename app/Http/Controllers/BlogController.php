@@ -20,7 +20,7 @@ class BlogController extends Controller
     public function index()
     {
         $posts = $this->getPosts();
-        $featuredPost = collect($posts)->firstWhere('featured', true) ?? $posts[0] ?? null;
+        $featuredPost = $posts[0] ?? null;
         $regularPosts = collect($posts)
             ->reject(fn (array $post): bool => $featuredPost && $post['slug'] === $featuredPost['slug'])
             ->values()

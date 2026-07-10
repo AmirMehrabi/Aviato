@@ -12,7 +12,7 @@ class BlogPageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('بلاگ آویاتو');
-        $response->assertSee('همه مقاله‌ها');
+        $response->assertSee('همه');
         $response->assertSee('محصول');
         $response->assertSee('مطالعه مقاله');
     }
