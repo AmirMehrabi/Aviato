@@ -31,6 +31,7 @@
             namePeriod: @js(now()->format('ym')),
             taxEnabled: @js($taxEnabled),
             taxRatePercentage: @js($taxRatePercentage),
+            currency: @js(\App\Models\AppSetting::currency()),
             osFamilies: @js($osFamilies),
             locations: @js($locations->map(fn ($location) => [
                 'id' => $location->id,
@@ -145,7 +146,6 @@
                                         </template>
                                     </select>
                                 </label>
-                                <span x-show="form.os_family === family.key && selectedImage && !selectedImage.cloud_init_enabled" class="mt-3 inline-flex rounded-md bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-200">No CloudInit</span>
                             </div>
                         </template>
                     </div>
@@ -236,9 +236,6 @@
                         </div>
                     </div>
 
-                    <div x-show="!cloudInitEnabled" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-900">
-                        این template با CloudInit ساخته نشده است؛ username، password و SSH key هنگام ساخت تنظیم نمی‌شوند.
-                    </div>
                 </div>
             </section>
 
@@ -334,6 +331,7 @@
             quota: config.quota,
             taxEnabled: config.taxEnabled || false,
             taxRatePercentage: Number(config.taxRatePercentage || 0),
+            currency: config.currency || 'IRR',
             osFamilies: config.osFamilies,
             locations: config.locations || [],
             locationMappings: config.locationMappings || [],
@@ -427,10 +425,15 @@
             get monthlyPriceWithTax() {
                 return this.monthlyBasePrice + this.monthlyTaxAmount;
             },
+            formatDisplayAmount(amount) {
+                const displayAmount = this.currency === 'IRR' ? amount / 10 : amount;
+
+                return new Intl.NumberFormat('fa-IR').format(displayAmount);
+            },
             get displayMonthlyPrice() {
                 if (!this.selectedBundle) return '—';
                 if (!this.showsTax) return this.selectedBundle.price;
-                return new Intl.NumberFormat('fa-IR').format(this.monthlyPriceWithTax) + ' تومان';
+                return this.formatDisplayAmount(this.monthlyPriceWithTax) + ' تومان';
             },
             get generatedNamePreview() {
                 return `${this.osPrefix}-${this.namePeriod || 'YYMM'}-${this.bundleSpecsToken()}-XXXXXX`;
