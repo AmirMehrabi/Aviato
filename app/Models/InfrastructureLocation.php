@@ -31,6 +31,14 @@ class InfrastructureLocation extends Model
 
     public const PROVIDER_HETZNER = 'hetzner';
 
+    public const COUNTRIES = [
+        'iran' => 'Iran',
+        'usa' => 'USA',
+        'singapour' => 'Singapore',
+        'germany' => 'Germany',
+        'france' => 'France',
+    ];
+
     protected static function booted(): void
     {
         static::saving(function (InfrastructureLocation $location): void {

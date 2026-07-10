@@ -12,6 +12,16 @@
         </div>
         <div class="grid gap-4 md:grid-cols-2">
             <x-form.input name="name" label="Customer-facing location name" :value="$location->name" />
+            <div>
+                <label for="country" class="mb-1.5 block text-sm font-bold text-slate-700">Country</label>
+                <select id="country" name="country" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 focus:border-[#0069FF] focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10">
+                    <option value="">Select country</option>
+                    @foreach (\App\Models\InfrastructureLocation::COUNTRIES as $value => $label)
+                        <option value="{{ $value }}" @selected(old('country', $location->country) === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                @error('country')<p class="mt-1 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
+            </div>
             <x-form.input name="sort_order" type="number" label="Sort order" :value="$location->sort_order" dir-ltr />
             <x-form.checkbox name="is_active" label="Active" :checked="$location->is_active" />
             <x-form.checkbox name="maintenance_mode" label="Maintenance mode" :checked="$location->maintenance_mode" />

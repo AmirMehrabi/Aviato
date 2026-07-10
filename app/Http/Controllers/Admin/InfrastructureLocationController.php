@@ -45,6 +45,7 @@ class InfrastructureLocationController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'country' => ['nullable', 'string', Rule::in(array_keys(InfrastructureLocation::COUNTRIES))],
             'is_active' => ['nullable', 'boolean'],
             'maintenance_mode' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
@@ -56,6 +57,7 @@ class InfrastructureLocationController extends Controller
 
         $location->update([
             'name' => $data['name'],
+            'country' => $data['country'] ?? null,
             'is_active' => $request->boolean('is_active'),
             'maintenance_mode' => $request->boolean('maintenance_mode'),
             'sort_order' => (int) ($data['sort_order'] ?? 0),

@@ -38,6 +38,8 @@
                 'name' => $location->name,
                 'provider' => $location->provider,
                 'region' => $location->region,
+                'city' => $location->city,
+                'country' => $location->country,
                 'remote_name' => $location->remote_name,
                 'hetzner_account_id' => $location->hetzner_account_id,
                 'proxmox_server_id' => $location->proxmox_server_id,
@@ -100,17 +102,28 @@
                 </div>
                 <div class="p-5 sm:p-6">
                     <input type="hidden" name="infrastructure_location_id" :value="form.infrastructure_location_id">
-                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         <template x-for="location in locations" :key="location.id">
                             <button
                                 type="button"
                                 @click="selectLocation(location.id)"
-                                class="group relative min-h-24 rounded-xl border p-4 text-right transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                                :aria-pressed="String(form.infrastructure_location_id) === String(location.id)"
+                                class="group relative overflow-hidden rounded-2xl border p-4 text-right transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                                 :class="String(form.infrastructure_location_id) === String(location.id) ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white hover:border-[#B8D6FF] hover:bg-[#F8FBFF]'"
                             >
-                                <span class="block text-lg font-black text-slate-950" x-text="location.name"></span>
-                                <span class="mt-2 block text-xs font-bold text-slate-500" x-text="location.region || location.remote_name || 'Location'"></span>
-                                <span x-show="String(form.infrastructure_location_id) === String(location.id)" class="absolute left-3 top-3 grid size-5 place-items-center rounded-full bg-[#0069FF] text-[10px] font-black text-white">✓</span>
+                                <span class="absolute -left-8 -top-8 size-24 rounded-full bg-[#0069FF]/[0.06] transition group-hover:scale-125"></span>
+                                <span class="relative flex items-start justify-between gap-3">
+                                    <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-white text-3xl shadow-sm ring-1 ring-slate-200" x-text="countryFlag(location.country)"></span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate text-base font-black text-slate-950" x-text="location.name"></span>
+                                        <span class="mt-1 block text-xs font-bold text-slate-500" x-text="locationLabel(location)"></span>
+                                    </span>
+                                    <span x-show="String(form.infrastructure_location_id) === String(location.id)" class="grid size-6 shrink-0 place-items-center rounded-full bg-[#0069FF] text-xs font-black text-white shadow-sm">✓</span>
+                                </span>
+                                <span class="relative mt-4 flex items-center justify-between border-t border-slate-200/80 pt-3 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                    <span x-text="countryLabel(location.country)"></span>
+                                    <span class="rounded-full bg-slate-100 px-2 py-1 text-slate-500" x-text="location.provider === 'hetzner' ? 'Hetzner' : 'Proxmox'"></span>
+                                </span>
                             </button>
                         </template>
                     </div>
@@ -377,6 +390,15 @@
                 login_password_confirmation: '',
                 ssh_public_key: @js(old('ssh_public_key', '')),
                 requires_invoice: false,
+            },
+            countryFlag(country) {
+                return { iran: '🇮🇷', usa: '🇺🇸', singapour: '🇸🇬', germany: '🇩🇪', france: '🇫🇷', IR: '🇮🇷', US: '🇺🇸', SG: '🇸🇬', DE: '🇩🇪', FR: '🇫🇷' }[country] || '🌐';
+            },
+            countryLabel(country) {
+                return { iran: 'Iran', usa: 'USA', singapour: 'Singapore', germany: 'Germany', france: 'France', IR: 'Iran', US: 'USA', SG: 'Singapore', DE: 'Germany', FR: 'France' }[country] || 'Global location';
+            },
+            locationLabel(location) {
+                return [location.city, location.region || location.remote_name].filter(Boolean).join(' · ') || 'Location details unavailable';
             },
             init() {
                 if (!this.form.infrastructure_location_id && this.locations.length) {
