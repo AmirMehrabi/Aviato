@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Str;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\Extension\Table\TableExtension;
@@ -19,9 +20,17 @@ class BlogController extends Controller
     public function index()
     {
         $posts = $this->getPosts();
+        $featuredPost = collect($posts)->firstWhere('featured', true) ?? $posts[0] ?? null;
+        $regularPosts = collect($posts)
+            ->reject(fn (array $post): bool => $featuredPost && $post['slug'] === $featuredPost['slug'])
+            ->values()
+            ->all();
 
         return view('blog.index', [
             'posts' => $posts,
+            'featuredPost' => $featuredPost,
+            'regularPosts' => $regularPosts,
+            'categories' => collect($posts)->pluck('category')->filter()->unique()->values()->all(),
             'activePage' => 'blog',
         ]);
     }
@@ -35,8 +44,16 @@ class BlogController extends Controller
             abort(404);
         }
 
+        $relatedPosts = collect($posts)
+            ->reject(fn (array $item): bool => $item['slug'] === $post['slug'])
+            ->sortByDesc(fn (array $item): int => $item['category'] === $post['category'] ? 1 : 0)
+            ->take(3)
+            ->values()
+            ->all();
+
         return view('blog.show', [
             'post' => $post,
+            'relatedPosts' => $relatedPosts,
             'activePage' => 'blog',
         ]);
     }
@@ -73,16 +90,38 @@ class BlogController extends Controller
             $converter = new MarkdownConverter($env);
 
             $html = $converter->convertToHtml($markdown);
+            $toc = [];
+            $headingIndex = 0;
+
+            $html = preg_replace_callback('/<h([23])>(.*?)<\/h\1>/si', function (array $matches) use (&$toc, &$headingIndex): string {
+                $headingIndex++;
+                $headingText = trim(strip_tags($matches[2]));
+                $id = Str::slug($headingText, '-') ?: 'section-'.$headingIndex;
+                $id = $id.'-'.$headingIndex;
+                $toc[] = [
+                    'id' => $id,
+                    'label' => $headingText,
+                    'level' => (int) $matches[1],
+                ];
+
+                return '<h'.$matches[1].' id="'.$id.'">'.$matches[2].'</h'.$matches[1].'>';
+            }, $html) ?? $html;
 
             return [
                 'title' => $meta['title'] ?? '',
                 'slug' => $meta['slug'] ?? '',
                 'author' => $meta['author'] ?? 'آویاتو',
+                'author_avatar' => $meta['author_avatar'] ?? 'team',
                 'date' => $meta['date'] ?? '',
                 'date_display' => $meta['date_display'] ?? '',
+                'updated_date' => $meta['updated_date'] ?? '',
                 'category' => $meta['category'] ?? '',
                 'reading_time' => $meta['reading_time'] ?? '',
                 'excerpt' => $meta['excerpt'] ?? '',
+                'cover_image' => $meta['cover_image'] ?? '',
+                'featured' => filter_var($meta['featured'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'tags' => array_values(array_filter(array_map('trim', explode(',', $meta['tags'] ?? '')))),
+                'toc' => $toc,
                 'content' => (string) $html,
             ];
         }
