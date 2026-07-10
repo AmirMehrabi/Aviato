@@ -49,6 +49,8 @@
 @section('content')
     @php
         $walletIsBlocked = $wallet->is_locked || $wallet->balance < 0;
+        $workspaceRoleLabels = ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'];
+        $workspaceRole = $workspaceRoleLabels[$activeMembership?->role ?? 'member'] ?? 'عضو';
         $metricCards = [
             ['label' => 'کل ماشین ها', 'value' => $dashboardStats['total'], 'hint' => 'ماشین های مجازی فعال در حساب', 'tone' => 'text-slate-950'],
             ['label' => 'روشن', 'value' => $summary['running'], 'hint' => 'در حال مصرف کامل منابع', 'tone' => 'text-[#0069FF]'],
@@ -57,6 +59,23 @@
             ['label' => 'مصرف ثبت نشده', 'value' => $wallets->format($pendingUsage), 'hint' => 'در برداشت بعدی اعمال می شود', 'tone' => $pendingUsage > 0 ? 'text-amber-600' : 'text-emerald-600'],
         ];
     @endphp
+
+    <section class="mb-5 flex flex-col gap-4 rounded-2xl border border-[#B8D6FF] bg-[#F8FBFF] p-4 shadow-sm shadow-[#0069FF]/[0.06] sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-label="فضای کاری فعال">
+        <div class="flex min-w-0 items-start gap-3">
+            <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-lg font-black text-white">ف</span>
+            <div class="min-w-0">
+                <p class="text-xs font-black text-[#0069FF]">فضای کاری فعال</p>
+                <h2 class="mt-1 truncate text-lg font-black text-slate-950">{{ $activeProject->name }}</h2>
+                <p class="mt-1 text-xs font-bold leading-6 text-slate-500">این داشبورد، ماشین‌ها، هزینه‌ها و دسترسی‌های مربوط به همین فضا را نمایش می‌دهد. نقش شما: {{ $workspaceRole }}.</p>
+            </div>
+        </div>
+        <div class="flex shrink-0 flex-wrap gap-2">
+            @if($projects->count() > 1)
+                <a href="{{ route('customer.projects.index', [], false) }}" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#0050D0]">تغییر فضای کاری</a>
+            @endif
+            <a href="{{ route('customer.projects.show', $activeProject, false) }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-white hover:text-[#0069FF]">مشاهده جزئیات فضا</a>
+        </div>
+    </section>
 
     @if (! $canViewVms)
         <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

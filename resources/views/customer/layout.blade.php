@@ -24,6 +24,8 @@
         $activeMembership = $activeMembership ?? $projectAccess->membership($activeProject, $customer);
         $canViewVms = $canViewVms ?? $projectAccess->canViewVms($activeProject, $customer);
         $canManageVms = $canManageVms ?? $projectAccess->canManageVms($activeProject, $customer);
+        $workspaceRoleLabels = ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'];
+        $activeWorkspaceRole = $workspaceRoleLabels[$activeMembership?->role ?? 'member'] ?? 'عضو';
         $customerInitial = mb_substr($customer->name ?? 'م', 0, 1);
         $balanceIsNegative = ($wallet->balance ?? 0) < 0;
         $walletRestrictionThreshold = \App\Models\AppSetting::customerWalletNegativeThreshold();
@@ -116,6 +118,7 @@
             searchQuery: '',
             walletOpen: false,
             profileOpen: false,
+            workspaceOpen: false,
             searchItems: [],
             init() {
                 const baseItems = {{ json_encode($searchBaseItems) }};
@@ -151,12 +154,14 @@
                 this.searchOpen = true;
                 this.walletOpen = false;
                 this.profileOpen = false;
+                this.workspaceOpen = false;
                 this.$nextTick(() => this.$refs.customerSearch?.focus());
             },
             closePanels() {
                 this.searchOpen = false;
                 this.walletOpen = false;
                 this.profileOpen = false;
+                this.workspaceOpen = false;
             },
             goTo(item) {
                 if (!item?.url) return;
@@ -210,15 +215,62 @@
             </div>
 
             <nav class="mt-7 space-y-6 text-sm font-bold">
-                <div class="px-3 pt-2">
-                    <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
-                        @csrf
-                        <select name="project_id" onchange="this.form.submit()" class="w-full rounded-md border border-white/10 bg-[#08245A] px-3 py-1.5 text-xs font-black text-white outline-none">
+                <div class="relative px-3 pt-2" @click.outside="workspaceOpen = false">
+                    <button
+                        type="button"
+                        @click="workspaceOpen = !workspaceOpen; walletOpen = false; profileOpen = false; searchOpen = false"
+                        class="group w-full rounded-xl border border-white/10 bg-[#08245A] p-3 text-right transition hover:border-[#5B8DDA] hover:bg-[#0A2A66]"
+                        :aria-expanded="workspaceOpen.toString()"
+                        aria-controls="customer-workspace-menu"
+                    >
+                        <span class="flex items-start gap-2.5">
+                            <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">ف</span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-[10px] font-black text-[#8FA6D2]">فضای کاری فعال</span>
+                                <span class="mt-1 block truncate text-sm font-black text-white">{{ $activeProject->name }}</span>
+                                <span class="mt-1 block truncate text-[10px] font-bold text-[#9DB4DC]">{{ $activeWorkspaceRole }} · اطلاعات این فضا</span>
+                            </span>
+                            <svg class="mt-1 size-4 shrink-0 text-[#8FA6D2] transition" :class="workspaceOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+                    </button>
+
+                    <div id="customer-workspace-menu" x-cloak x-show="workspaceOpen" x-transition class="absolute inset-x-3 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl shadow-slate-950/25">
+                        <div class="rounded-lg bg-[#F2F8FF] px-3 py-2.5 text-xs font-bold leading-6 text-[#31527F]">
+                            ماشین‌ها، هزینه‌ها و دسترسی‌های پنل مربوط به فضای کاری انتخاب‌شده است.
+                        </div>
+                        <div class="mt-2 max-h-64 space-y-1 overflow-y-auto">
                             @foreach($projects as $project)
-                                <option value="{{ $project->id }}" @selected((int) $activeProject->id === (int) $project->id)>{{ $project->name }}</option>
+                                @php
+                                    $projectMembership = $project->members->firstWhere('customer_id', $customer->id);
+                                    $projectRole = $workspaceRoleLabels[$projectMembership?->role ?? 'member'] ?? 'عضو';
+                                    $isActiveWorkspace = (int) $activeProject->id === (int) $project->id;
+                                @endphp
+                                <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
+                                    @csrf
+                                    <input type="hidden" name="project_id" value="{{ $project->id }}">
+                                    <button type="submit" @click="workspaceOpen = false" class="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-right transition {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
+                                        <span class="grid size-8 shrink-0 place-items-center rounded-lg {{ $isActiveWorkspace ? 'bg-[#0069FF] text-white' : 'bg-slate-100 text-slate-500' }} text-xs font-black">{{ mb_substr($project->name, 0, 1) }}</span>
+                                        <span class="min-w-0 flex-1">
+                                            <span class="flex items-center gap-2">
+                                                <span class="truncate text-sm font-black text-slate-900">{{ $project->name }}</span>
+                                                @if($isActiveWorkspace)<span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-[#0069FF]">فعال</span>@endif
+                                            </span>
+                                            <span class="mt-1 block truncate text-[11px] font-bold text-slate-500">{{ $projectRole }} · {{ number_format($project->members_count ?? $project->members->count()) }} عضو</span>
+                                        </span>
+                                        @if($isActiveWorkspace)<span class="mt-1 text-sm font-black text-[#0069FF]" aria-hidden="true">✓</span>@endif
+                                    </button>
+                                </form>
                             @endforeach
-                        </select>
-                    </form>
+                        </div>
+                        <div class="mt-2 border-t border-slate-100 pt-2">
+                            <a href="{{ route('customer.projects.index', [], false) }}" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-black text-[#0069FF] transition hover:bg-[#F2F8FF]">
+                                <span>مدیریت فضاهای کاری</span>
+                                <span aria-hidden="true">←</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
                 @foreach ($navGroups as $group => $items)
                     <div>

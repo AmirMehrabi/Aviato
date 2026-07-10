@@ -113,6 +113,29 @@ class CustomerProjectTest extends TestCase
         ])->assertNotFound();
     }
 
+    public function test_dashboard_explains_the_active_workspace_context(): void
+    {
+        $customer = Customer::factory()->create();
+        $workspace = $customer->ownedProjects()->create([
+            'name' => 'Production Servers',
+            'slug' => 'production-servers',
+            'is_default' => false,
+        ]);
+        $workspace->members()->create([
+            'customer_id' => $customer->id,
+            'role' => ProjectMember::ROLE_OWNER,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->withSession([ProjectAccessService::SESSION_KEY => $workspace->id])
+            ->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertSee('فضای کاری فعال')
+            ->assertSee('Production Servers')
+            ->assertSee('این داشبورد، ماشین‌ها، هزینه‌ها و دسترسی‌های مربوط به همین فضا را نمایش می‌دهد.')
+            ->assertSee('مدیریت فضاهای کاری');
+    }
+
     public function test_project_member_can_see_project_vm_but_non_member_cannot_guess_it(): void
     {
         $owner = Customer::factory()->create();
