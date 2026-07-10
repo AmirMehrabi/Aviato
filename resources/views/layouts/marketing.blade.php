@@ -171,7 +171,7 @@
                     class="absolute inset-x-4 top-full hidden pt-2 md:inset-x-8 lg:inset-x-10 lg:block"
                 >
                     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl shadow-slate-950/15 ring-1 ring-slate-100">
-                        <div class="grid min-h-72 grid-cols-[15rem_1fr]">
+                        <div class="grid min-h-[25rem] grid-cols-[15rem_1fr]">
                             <div class="border-l border-slate-200 bg-slate-50 p-3">
                                 <template x-for="solution in solutions" :key="solution.key">
                                     <a
@@ -186,10 +186,10 @@
                                     </a>
                                 </template>
                             </div>
-                            <div class="relative overflow-hidden p-6">
+                            <div class="relative min-h-[25rem] overflow-hidden p-6">
                                 <div aria-hidden="true" class="absolute left-0 top-0 h-32 w-32 rounded-full bg-[#EEF5FF]"></div>
                                 <template x-for="solution in solutions" :key="solution.key">
-                                    <div x-show="activeSolution === solution.key" x-transition.opacity class="relative">
+                                    <div x-cloak x-show="activeSolution === solution.key" x-transition.opacity class="absolute inset-6">
                                         <p class="text-xs font-black text-[#0069FF]" x-text="solution.eyebrow"></p>
                                         <h3 class="mt-3 max-w-2xl text-2xl font-black leading-9 text-slate-950" x-text="solution.title"></h3>
                                         <p class="mt-4 max-w-3xl text-sm leading-8 text-slate-600" x-text="solution.body"></p>
