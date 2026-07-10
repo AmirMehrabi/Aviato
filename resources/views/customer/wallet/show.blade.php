@@ -26,18 +26,29 @@
             presets: @js($topUpPresets),
             focusTopUp: @js(request()->boolean('topup')),
         })"
-        class="overflow-hidden rounded-[32px] border border-[#B8D6FF] bg-white shadow-xl shadow-[#0069FF]/10"
+        class="overflow-hidden rounded-[32px] border border-[#9FC8FF] bg-white shadow-2xl shadow-[#0069FF]/10"
     >
         <div class="grid xl:grid-cols-[minmax(0,1fr)_340px]">
             <div class="min-w-0 p-5 sm:p-7 lg:p-9">
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                        <h2 class="text-2xl font-black text-slate-950 sm:text-3xl">افزایش موجودی</h2>
+                        <div class="flex items-center gap-2 text-xs font-black text-[#0069FF]">
+                            <span class="grid size-6 place-items-center rounded-full bg-[#EBF3FF]">۱</span>
+                            <span>شارژ سریع کیف پول</span>
+                        </div>
+                        <h2 class="mt-3 text-2xl font-black text-slate-950 sm:text-3xl">چقدر می‌خواهید کیف پول را شارژ کنید؟</h2>
+                        <p class="mt-2 max-w-2xl text-sm font-bold leading-7 text-slate-500">مبلغ را انتخاب کنید، درگاه پرداخت را مشخص کنید و به‌صورت امن پرداخت کنید. موجودی پس از تأیید پرداخت به کیف پول فضای کاری اضافه می‌شود.</p>
                     </div>
                     <span class="inline-flex w-fit items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">
                         <span class="size-2 rounded-full bg-[#00A67E]"></span>
                         پرداخت امن
                     </span>
+                </div>
+
+                <div class="mt-6 grid gap-2 rounded-2xl border border-[#D7E8FF] bg-[#F8FBFF] p-3 sm:grid-cols-3">
+                    <div class="flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-[#E5F0FF]"><span class="grid size-7 place-items-center rounded-lg bg-[#0069FF] text-xs font-black text-white">۱</span><span class="text-xs font-black text-slate-700">انتخاب مبلغ</span></div>
+                    <div class="flex items-center gap-2 rounded-xl px-3 py-2.5"><span class="grid size-7 place-items-center rounded-lg bg-slate-200 text-xs font-black text-slate-600">۲</span><span class="text-xs font-black text-slate-500">انتخاب درگاه</span></div>
+                    <div class="flex items-center gap-2 rounded-xl px-3 py-2.5"><span class="grid size-7 place-items-center rounded-lg bg-slate-200 text-xs font-black text-slate-600">۳</span><span class="text-xs font-black text-slate-500">پرداخت امن</span></div>
                 </div>
 
                 @if (! $canTopUp)
@@ -49,24 +60,28 @@
                         درگاه پرداخت در حال حاضر فعال نیست. برای افزایش موجودی با پشتیبانی تماس بگیرید.
                     </div>
                 @else
-                    <form method="POST" action="{{ route('customer.wallet.topups.store', [], false) }}" class="mt-8">
+                    <form method="POST" action="{{ route('customer.wallet.topups.store', [], false) }}" class="mt-7">
                         @csrf
                         <input type="hidden" name="amount_toman" :value="amount">
 
                         <fieldset>
-                            <div class="flex items-center justify-between gap-3">
-                                <legend class="text-sm font-black text-slate-800">مبلغ شارژ</legend>
-                                {{-- <span class="text-xs font-bold text-slate-400">تمام مبلغ‌ها به تومان است</span> --}}
+                            <div class="flex flex-wrap items-end justify-between gap-2">
+                                <div>
+                                    <legend class="text-base font-black text-slate-900">۱. مبلغ شارژ را انتخاب کنید</legend>
+                                    <p class="mt-1 text-xs font-bold text-slate-500">مبلغ‌ها به تومان هستند.</p>
+                                </div>
+                                <span x-show="amount" x-cloak class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">مبلغ انتخاب شد</span>
                             </div>
 
-                            <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                                 @foreach ($topUpPresets as $amount)
                                     <button
                                         type="button"
                                         @click="selectPreset({{ $amount }})"
                                         :class="selectedPreset === {{ $amount }} ? 'border-[#0069FF] bg-[#EBF3FF] text-[#0069FF] shadow-sm shadow-[#0069FF]/10' : 'border-slate-200 bg-white text-slate-700 hover:border-[#B8D6FF] hover:bg-slate-50'"
-                                        class="rounded-2xl border px-3 py-4 text-center text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10"
+                                        class="relative rounded-2xl border px-3 py-4 text-center text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10"
                                     >
+                                        @if ($loop->last)<span class="absolute -top-2 right-2 rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] text-white">پیشنهاد محبوب</span>@endif
                                         {{ number_format($amount) }}
                                         <span class="mt-1 block text-[11px] font-bold opacity-70">تومان</span>
                                     </button>
@@ -74,8 +89,8 @@
                             </div>
                         </fieldset>
 
-                        <div class="mt-5">
-                            <label for="custom-top-up-amount" class="text-sm font-black text-slate-800">مبلغ دلخواه (تومان)</label>
+                        <div class="mt-6">
+                            <label for="custom-top-up-amount" class="text-sm font-black text-slate-800">یا مبلغ دلخواه خود را وارد کنید</label>
                             <div
                                 class="mt-2 flex items-center rounded-2xl border bg-white px-4 transition focus-within:border-[#0069FF] focus-within:ring-4 focus-within:ring-[#0069FF]/10"
                                 :class="customAmount ? 'border-[#B8D6FF]' : 'border-slate-200'"
@@ -105,8 +120,9 @@
                         @if (count($availablePaymentGateways) === 1)
                             <input type="hidden" name="gateway" value="{{ array_key_first($availablePaymentGateways) }}">
                         @else
-                            <fieldset class="mt-7">
-                                <legend class="text-sm font-black text-slate-800">انتخاب درگاه پرداخت</legend>
+                            <fieldset class="mt-7 border-t border-slate-100 pt-6">
+                                <legend class="text-base font-black text-slate-900">۲. درگاه پرداخت را انتخاب کنید</legend>
+                                <p class="mt-1 text-xs font-bold text-slate-500">پس از کلیک، به صفحه امن درگاه منتقل می‌شوید.</p>
                                 <div class="mt-3 grid gap-2 sm:grid-cols-2">
                                     @foreach ($availablePaymentGateways as $gatewayKey => $label)
                                         <label
@@ -139,9 +155,9 @@
                             </fieldset>
                         @endif
 
-                        <div class="mt-7 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="mt-7 flex flex-col gap-4 rounded-2xl border border-[#9FC8FF] bg-[#F2F8FF] p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
                             <div>
-                                <p class="text-xs font-black text-slate-500">مبلغ شارژ</p>
+                                <p class="text-xs font-black text-[#31527F]">۳. مبلغ نهایی پرداخت</p>
                                 <p class="mt-1 text-2xl font-black text-slate-950" x-text="amountLabel"></p>
                             </div>
                             <button
@@ -149,7 +165,7 @@
                                 :disabled="!canSubmit"
                                 class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[#0069FF] px-7 py-3 text-sm font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
                             >
-                                پرداخت و افزایش موجودی
+                                <span x-text="canSubmit ? 'پرداخت و افزایش موجودی' : 'ابتدا مبلغ را انتخاب کنید'"></span>
                             </button>
                         </div>
                     </form>
