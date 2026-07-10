@@ -66,6 +66,40 @@ class AdminBillingCenterTest extends TestCase
             ->assertOk()->assertSee('Billing Customer');
     }
 
+    public function test_admin_dashboard_surfaces_gateway_payment_metrics_and_recent_payments(): void
+    {
+        Payment::create([
+            'customer_id' => $this->customer->id,
+            'wallet_id' => $this->customer->wallet->id,
+            'provider' => 'mellat',
+            'type' => Payment::TYPE_TOP_UP,
+            'status' => Payment::STATUS_SUCCESSFUL,
+            'amount' => 2_500_000,
+            'currency' => 'IRR',
+            'authority' => 'AUTH-DASHBOARD',
+            'provider_reference' => 'REF-DASHBOARD',
+            'paid_at' => now(),
+        ]);
+        Payment::create([
+            'customer_id' => $this->customer->id,
+            'wallet_id' => $this->customer->wallet->id,
+            'provider' => 'mellat',
+            'type' => Payment::TYPE_TOP_UP,
+            'status' => Payment::STATUS_PENDING,
+            'amount' => 1_000_000,
+            'currency' => 'IRR',
+            'authority' => 'AUTH-PENDING',
+        ]);
+
+        $this->get('https://admin.localhost/dashboard')
+            ->assertOk()
+            ->assertSee('پرداخت‌های درگاه')
+            ->assertSee('وصول موفق')
+            ->assertSee('REF-DASHBOARD')
+            ->assertSee('Billing Customer')
+            ->assertSee('در انتظار');
+    }
+
     public function test_admin_can_view_printable_invoice_and_export_csv(): void
     {
         $invoice = Invoice::create([

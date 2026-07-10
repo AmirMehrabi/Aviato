@@ -46,7 +46,54 @@ class DashboardController extends Controller
         $negativeWallets = Wallet::query()->where('balance', '<', 0)->count();
         $lockedWallets = Wallet::query()->where('is_locked', true)->count();
         $pendingPayments = Payment::query()->where('status', Payment::STATUS_PENDING)->count();
-        $failedPaymentsToday = Payment::query()->where('status', Payment::STATUS_FAILED)->where('created_at', '>=', now()->startOfDay())->count();
+        $paymentPeriodStart = now()->subDays(29)->startOfDay();
+        $paymentPeriodEnd = now();
+        $paymentPeriod = Payment::query()->whereBetween('created_at', [$paymentPeriodStart, $paymentPeriodEnd]);
+        $successfulPaymentQuery = Payment::query()
+            ->where('status', Payment::STATUS_SUCCESSFUL)
+            ->whereNotNull('paid_at')
+            ->whereBetween('paid_at', [$paymentPeriodStart, $paymentPeriodEnd]);
+        $successfulPaymentCount = (clone $successfulPaymentQuery)->count();
+        $successfulPaymentAmount = (int) (clone $successfulPaymentQuery)->sum('amount');
+        $paymentAttemptCount = (clone $paymentPeriod)->count();
+        $failedPaymentCount = (clone $paymentPeriod)->whereIn('status', [Payment::STATUS_FAILED, Payment::STATUS_CANCELLED])->count();
+        $paymentSuccessRate = $paymentAttemptCount > 0 ? (int) round(($successfulPaymentCount / $paymentAttemptCount) * 100) : 0;
+        $averagePaymentAmount = $successfulPaymentCount > 0 ? (int) round($successfulPaymentAmount / $successfulPaymentCount) : 0;
+        $todaySuccessfulPaymentAmount = (int) Payment::query()
+            ->where('status', Payment::STATUS_SUCCESSFUL)
+            ->whereNotNull('paid_at')
+            ->where('paid_at', '>=', now()->startOfDay())
+            ->sum('amount');
+        $paymentTrendByDay = (clone $successfulPaymentQuery)
+            ->selectRaw('DATE(paid_at) as day, SUM(amount) as amount, COUNT(*) as count')
+            ->groupByRaw('DATE(paid_at)')
+            ->get()
+            ->keyBy('day');
+        $paymentTrendLabels = [];
+        $paymentTrendData = [];
+        $paymentTrendCounts = [];
+        for ($i = 0; $i < 30; $i++) {
+            $day = $paymentPeriodStart->copy()->addDays($i);
+            $key = $day->toDateString();
+            $paymentTrendLabels[] = $day->format('M/d');
+            $paymentTrendData[] = (int) ($paymentTrendByDay[$key]?->amount ?? 0);
+            $paymentTrendCounts[] = (int) ($paymentTrendByDay[$key]?->count ?? 0);
+        }
+        $recentGatewayPayments = Payment::query()
+            ->with('customer')
+            ->latest()
+            ->limit(8)
+            ->get()
+            ->map(fn (Payment $payment): array => [
+                'id' => $payment->id,
+                'customer' => $payment->customer?->name ?: 'بدون مشتری',
+                'amount' => (int) $payment->amount,
+                'status' => $payment->status,
+                'provider' => $payment->provider,
+                'reference' => $payment->provider_reference ?: $payment->authority,
+                'at' => $payment->paid_at ?: $payment->created_at,
+                'url' => route('admin.billing.payments.show', $payment),
+            ]);
         $failedBackups = VmBackup::query()->where('status', VmBackup::STATUS_FAILED)->count();
         $pendingUpgrades = VmUpgradeOrder::query()
             ->whereIn('status', [VmUpgradeOrder::STATUS_PENDING, VmUpgradeOrder::STATUS_APPLYING])
@@ -82,7 +129,7 @@ class DashboardController extends Controller
         $recentTickets = Ticket::query()
             ->with('customer')
             ->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])
-            ->orderByRaw("FIELD(priority, 'urgent', 'high', 'normal', 'low')")
+            ->orderByRaw("CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
             ->latest()
             ->limit(5)
             ->get()
@@ -96,18 +143,6 @@ class DashboardController extends Controller
                 'status_label' => Ticket::statuses()[$t->status] ?? $t->status,
                 'time' => $t->last_activity_at?->diffForHumans() ?? $t->created_at->diffForHumans(),
             ]);
-
-        $thirtyDaysAgo = now()->subDays(29)->startOfDay();
-        $revenueChartLabels = [];
-        $revenueChartData = [];
-        for ($i = 0; $i < 30; $i++) {
-            $day = $thirtyDaysAgo->copy()->addDays($i);
-            $revenueChartLabels[] = $day->format('M/d');
-            $revenueChartData[] = (int) WalletTransaction::query()
-                ->where('amount', '>', 0)
-                ->whereDate('created_at', $day)
-                ->sum('amount');
-        }
 
         $attentionItems = $this->attentionItems();
         $resourceTotals = $this->resourceTotals();
@@ -133,11 +168,11 @@ class DashboardController extends Controller
                     'url' => route('admin.virtual-machines.index'),
                 ],
                 [
-                    'label' => 'درآمد امروز',
-                    'value' => $this->wallets->format($todayRevenue),
-                    'sub' => $this->wallets->format($monthRevenue).' ماهانه',
+                    'label' => 'وصول درگاه',
+                    'value' => $this->wallets->format($successfulPaymentAmount),
+                    'sub' => $successfulPaymentCount.' پرداخت موفق در ۳۰ روز',
                     'tone' => 'green',
-                    'url' => route('admin.customers.index'),
+                    'url' => route('admin.billing.payments.index', ['status' => Payment::STATUS_SUCCESSFUL]),
                 ],
                 [
                     'label' => 'تیکت‌ها',
@@ -154,10 +189,22 @@ class DashboardController extends Controller
                     'url' => '#operations-section',
                 ],
             ],
-            'revenueChart' => [
-                'labels' => $revenueChartLabels,
-                'data' => $revenueChartData,
+            'paymentTrend' => [
+                'labels' => $paymentTrendLabels,
+                'amounts' => $paymentTrendData,
+                'counts' => $paymentTrendCounts,
+                'period_label' => '۳۰ روز اخیر',
             ],
+            'paymentSummary' => [
+                'successful_amount' => $successfulPaymentAmount,
+                'successful_count' => $successfulPaymentCount,
+                'today_amount' => $todaySuccessfulPaymentAmount,
+                'pending_count' => $pendingPayments,
+                'failed_count' => $failedPaymentCount,
+                'success_rate' => $paymentSuccessRate,
+                'average_amount' => $averagePaymentAmount,
+            ],
+            'recentGatewayPayments' => $recentGatewayPayments,
             'serverHealth' => $capacityRows,
             'criticalAlerts' => $attentionItems->where('tone', '!=', 'blue')->take(6)->values(),
             'ticketStats' => [
