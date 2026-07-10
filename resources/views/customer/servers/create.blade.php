@@ -85,25 +85,32 @@
     >
         <form x-ref="createForm" method="POST" action="{{ route('customer.servers.store') }}" class="space-y-5">
             @csrf
-            @if ($errors->any())<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ $errors->first() }}</div>@endif
+            @if ($errors->any())<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold leading-6 text-red-800 shadow-sm">{{ $errors->first() }}</div>@endif
 
-            <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                <div class="border-b border-slate-100 px-5 py-4">
-                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 1</p>
-                    <h2 class="mt-1 text-xl font-black text-slate-950">موقعیت سرور را انتخاب کنید</h2>
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                <div class="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+                    <div class="flex items-center gap-3">
+                        <span class="grid size-9 shrink-0 place-items-center rounded-full bg-[#0069FF] text-sm font-black text-white">۱</span>
+                        <div>
+                            <p class="text-[11px] font-black uppercase tracking-widest text-[#0069FF]">Step 1</p>
+                            <h2 class="mt-0.5 text-xl font-black text-slate-950">موقعیت سرور را انتخاب کنید</h2>
+                        </div>
+                    </div>
+                    <p class="mt-3 pr-12 text-xs font-bold text-slate-500">نزدیک‌ترین موقعیت به کاربران یا سرویس خود را انتخاب کنید.</p>
                 </div>
-                <div class="p-5">
+                <div class="p-5 sm:p-6">
                     <input type="hidden" name="infrastructure_location_id" :value="form.infrastructure_location_id">
                     <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <template x-for="location in locations" :key="location.id">
                             <button
                                 type="button"
                                 @click="selectLocation(location.id)"
-                                class="rounded-xl border p-4 text-right transition"
+                                class="group relative min-h-24 rounded-xl border p-4 text-right transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
                                 :class="String(form.infrastructure_location_id) === String(location.id) ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white hover:border-[#B8D6FF] hover:bg-[#F8FBFF]'"
                             >
                                 <span class="block text-lg font-black text-slate-950" x-text="location.name"></span>
                                 <span class="mt-2 block text-xs font-bold text-slate-500" x-text="location.region || location.remote_name || 'Location'"></span>
+                                <span x-show="String(form.infrastructure_location_id) === String(location.id)" class="absolute left-3 top-3 grid size-5 place-items-center rounded-full bg-[#0069FF] text-[10px] font-black text-white">✓</span>
                             </button>
                         </template>
                     </div>
@@ -111,18 +118,24 @@
                 </div>
             </section>
 
-            <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                <div class="border-b border-slate-100 px-5 py-4">
-                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 2</p>
-                    <h2 class="mt-1 text-xl font-black text-slate-950">سیستم عامل و نسخه را انتخاب کنید</h2>
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                <div class="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+                    <div class="flex items-center gap-3">
+                        <span class="grid size-9 shrink-0 place-items-center rounded-full bg-[#0069FF] text-sm font-black text-white">۲</span>
+                        <div>
+                            <p class="text-[11px] font-black uppercase tracking-widest text-[#0069FF]">Step 2</p>
+                            <h2 class="mt-0.5 text-xl font-black text-slate-950">سیستم عامل و نسخه را انتخاب کنید</h2>
+                        </div>
+                    </div>
+                    <p class="mt-3 pr-12 text-xs font-bold text-slate-500">یک خانواده را انتخاب کنید، سپس نسخه موردنظر را از فهرست بازشونده مشخص کنید.</p>
                 </div>
-                <div class="p-5">
+                <div class="p-5 sm:p-6">
                     <input type="hidden" name="cloud_image_id" :value="form.cloud_image_id">
                     <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                         <template x-for="family in osFamilies" :key="family.key">
                             <div
                                 @click="selectOs(family.key)"
-                                class="group min-h-32 cursor-pointer rounded-lg border p-3 text-right transition"
+                                class="group min-h-32 cursor-pointer rounded-xl border p-3 text-right transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
                                 :class="form.os_family === family.key ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white hover:border-[#B8D6FF] hover:bg-[#F8FBFF]'"
                             >
                                 <div class="flex items-center gap-2">
@@ -139,7 +152,7 @@
                                     <select
                                         x-model="form.cloud_image_id"
                                         @change="applyImage()"
-                                        class="w-full rounded-lg border border-[#B8D6FF] bg-white px-3 py-2.5 text-sm font-black text-slate-800 focus:border-[#0069FF] focus:outline-none"
+                                        class="w-full rounded-lg border border-[#B8D6FF] bg-white px-3 py-2.5 text-sm font-black text-slate-800 shadow-sm focus:border-[#0069FF] focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10"
                                     >
                                         <template x-for="image in imagesForFamily(family.key)" :key="image.id">
                                             <option :value="String(image.id)" x-text="image.os_version || image.name"></option>
@@ -153,15 +166,21 @@
                 </div>
             </section>
 
-            <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                <div class="border-b border-slate-100 px-5 py-4">
-                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 3</p>
-                    <h2 class="mt-1 text-xl font-black text-slate-950">پلن ماشین مجازی را انتخاب کنید</h2>
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                <div class="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+                    <div class="flex items-center gap-3">
+                        <span class="grid size-9 shrink-0 place-items-center rounded-full bg-[#0069FF] text-sm font-black text-white">۳</span>
+                        <div>
+                            <p class="text-[11px] font-black uppercase tracking-widest text-[#0069FF]">Step 3</p>
+                            <h2 class="mt-0.5 text-xl font-black text-slate-950">پلن ماشین مجازی را انتخاب کنید</h2>
+                        </div>
+                    </div>
+                    <p class="mt-3 pr-12 text-xs font-bold text-slate-500">منابع موردنیاز ماشین و هزینه ماهانه را با هم مقایسه کنید.</p>
                 </div>
-                    <div class="grid gap-4 p-5 lg:grid-cols-3">
+                <div class="grid gap-4 p-5 sm:p-6 lg:grid-cols-3">
                     <template x-for="(bundle, index) in visibleBundles" :key="bundle.id">
                         <label
-                            class="relative cursor-pointer rounded-xl border p-4 text-right transition"
+                            class="relative flex min-h-64 cursor-pointer flex-col rounded-xl border p-4 text-right transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                             :class="planClasses(bundle, index)"
                         >
                             <input type="radio" name="vm_bundle_id" :value="bundle.id" x-model="form.vm_bundle_id" @change="applyBundle()" class="sr-only">
@@ -170,11 +189,11 @@
                             <span class="block text-lg font-black text-slate-950" x-text="bundle.name"></span>
                             <span class="mt-2 block min-h-10 text-xs leading-6 text-slate-500" x-text="bundle.description"></span>
                             <span class="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
-                                <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><b x-text="bundle.cpu_cores"></b><br>CPU</span>
-                                <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><b x-text="bundle.ram_gb"></b><br>RAM</span>
-                                <span class="rounded-lg bg-white p-2 ring-1 ring-slate-200"><b x-text="bundle.disk_gb"></b><br>Disk</span>
+                                <span class="rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200"><b class="block text-base text-slate-950" x-text="bundle.cpu_cores"></b><span class="text-slate-500">CPU</span></span>
+                                <span class="rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200"><b class="block text-base text-slate-950" x-text="bundle.ram_gb"></b><span class="text-slate-500">RAM</span></span>
+                                <span class="rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200"><b class="block text-base text-slate-950" x-text="bundle.disk_gb"></b><span class="text-slate-500">Disk</span></span>
                             </span>
-                            <span class="mt-5 block text-left text-xl font-black text-slate-950"><span x-text="bundle.price"></span> <small class="text-xs text-slate-500">/ ماه</small></span>
+                            <span class="mt-auto border-t border-slate-100 pt-4 text-left text-xl font-black text-slate-950"><span x-text="bundle.price"></span> <small class="text-xs font-bold text-slate-500">/ ماه</small></span>
                         </label>
                     </template>
                 </div>
@@ -185,13 +204,19 @@
                 </div>
             </section>
 
-            <section class="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                <div class="border-b border-slate-100 px-5 py-4">
-                    <p class="text-xs font-black uppercase text-[#0069FF]">Step 4</p>
-                    <h2 class="mt-1 text-xl font-black text-slate-950">دسترسی اولیه</h2>
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                <div class="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+                    <div class="flex items-center gap-3">
+                        <span class="grid size-9 shrink-0 place-items-center rounded-full bg-[#0069FF] text-sm font-black text-white">۴</span>
+                        <div>
+                            <p class="text-[11px] font-black uppercase tracking-widest text-[#0069FF]">Step 4</p>
+                            <h2 class="mt-0.5 text-xl font-black text-slate-950">دسترسی اولیه</h2>
+                        </div>
+                    </div>
+                    <p class="mt-3 pr-12 text-xs font-bold text-slate-500">نام و اطلاعات ورود اولیه ماشین را در صورت نیاز تنظیم کنید.</p>
                 </div>
-                <div class="grid gap-5 p-5">
-                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div class="grid gap-5 p-5 sm:p-6">
+                    <div class="rounded-xl border border-[#D7E8FF] bg-[#F8FBFF] p-4">
                         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <span class="text-sm font-black text-slate-700">شناسه ماشین مجازی</span>
                             <span class="break-all text-left text-lg font-black text-slate-950" dir="ltr" x-text="generatedNamePreview"></span>
@@ -200,7 +225,7 @@
 
                     <label class="block">
                         <span class="text-sm font-black text-slate-700">نام نمایشی (اختیاری)</span>
-                        <input name="display_name" x-model="form.display_name" maxlength="128" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none" placeholder="My Production Server">
+                        <input name="display_name" x-model="form.display_name" maxlength="128" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition placeholder:text-slate-400 focus:border-[#0069FF] focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10" placeholder="My Production Server">
                         <span class="mt-1 block text-xs font-bold text-slate-400">نامی که در پنل نمایش داده می‌شود. در صورت خالی بودن، شناسه خودکار نمایش داده خواهد شد.</span>
                         @error('display_name') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                     </label>
@@ -209,7 +234,7 @@
                         <div class="grid gap-4 md:grid-cols-2">
                             <label class="block">
                                 <span class="text-sm font-black text-slate-700">Username</span>
-                                <input name="login_username" x-model="form.login_username" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="username" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
+                                <input name="login_username" x-model="form.login_username" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="username" class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition focus:border-[#0069FF] focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10 disabled:cursor-not-allowed disabled:bg-slate-100">
                                 @error('login_username') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                             </label>
                             <label class="block">
@@ -217,7 +242,7 @@
                                     <span class="text-sm font-black text-slate-700">SSH Public Key</span>
                                     <span x-show="sshKeyAdded" class="text-xs font-black text-emerald-700">Key added</span>
                                 </span>
-                                <textarea name="ssh_public_key" x-model="form.ssh_public_key" rows="3" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm focus:border-[#0069FF] focus:outline-none" placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."></textarea>
+                                <textarea name="ssh_public_key" x-model="form.ssh_public_key" rows="3" dir="ltr" :disabled="!cloudInitEnabled" class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-left text-sm shadow-sm transition focus:border-[#0069FF] focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10 disabled:cursor-not-allowed disabled:bg-slate-100" placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."></textarea>
                                 <span x-show="sshKeyInvalid" x-cloak class="mt-1 block text-xs font-bold text-red-600">فرمت کلید SSH معتبر نیست.</span>
                                 @error('ssh_public_key') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                             </label>
@@ -226,12 +251,12 @@
                         <div class="grid gap-4 md:grid-cols-2">
                             <label class="block">
                                 <span class="text-sm font-black text-slate-700">Password</span>
-                                <input name="login_password" x-model="form.login_password" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" placeholder="Auto generate" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
+                                <input name="login_password" x-model="form.login_password" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" placeholder="Auto generate" class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition placeholder:text-slate-400 focus:border-[#0069FF] focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10 disabled:cursor-not-allowed disabled:bg-slate-100">
                                 @error('login_password') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                             </label>
                             <label class="block">
                                 <span class="text-sm font-black text-slate-700">Confirm Password</span>
-                                <input name="login_password_confirmation" x-model="form.login_password_confirmation" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" placeholder="Auto generate" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-left focus:border-[#0069FF] focus:outline-none">
+                                <input name="login_password_confirmation" x-model="form.login_password_confirmation" type="password" :disabled="!cloudInitEnabled" dir="ltr" autocomplete="new-password" placeholder="Auto generate" class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition placeholder:text-slate-400 focus:border-[#0069FF] focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10 disabled:cursor-not-allowed disabled:bg-slate-100">
                             </label>
                         </div>
                     </div>
@@ -247,37 +272,37 @@
 
         <aside class="space-y-5">
             <div class="sticky top-24 overflow-hidden rounded-2xl border border-[#B8D6FF] bg-[#F4F8FF] shadow-xl shadow-[#0069FF]/10 ring-1 ring-white">
-                <div class="border-b border-[#D7E8FF] bg-white/70 px-5 py-4">
+                <div class="border-b border-[#D7E8FF] bg-white px-5 py-4">
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <p class="text-xs font-black uppercase text-[#0069FF]">Summary</p>
                             <h2 class="mt-1 text-lg font-black text-slate-950">حساب و کتاب</h2>
                         </div>
-                        <span class="rounded-lg bg-[#EBF3FF] px-2.5 py-1 text-[11px] font-black text-[#0069FF]">آماده بررسی</span>
+                        <span class="rounded-full bg-[#EBF3FF] px-3 py-1 text-[11px] font-black text-[#0069FF]">آماده بررسی</span>
                     </div>
                 </div>
 
                 <div class="p-5">
-                    <div class="space-y-3 rounded-xl bg-white/75 p-4 text-sm ring-1 ring-[#D7E8FF]">
-                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">موقعیت</span><span class="font-black text-slate-950" x-text="selectedLocation?.name || '—'"></span></div>
-                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="font-black text-slate-950" x-text="selectedOsLabel || '—'"></span></div>
-                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">نسخه</span><span class="font-black text-slate-950" x-text="selectedImage?.os_version || '—'"></span></div>
-                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">CloudInit</span><span class="font-black text-slate-950" x-text="cloudInitEnabled ? 'فعال' : 'غیرفعال'"></span></div>
-                        <div class="flex justify-between gap-3 border-t border-slate-100 pt-3"><span class="font-bold text-slate-500">پلن</span><span class="font-black text-slate-950" x-text="selectedBundle?.name || '—'"></span></div>
-                        <div class="flex justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class="font-black text-slate-950" dir="ltr" x-text="`${form.cpu_cores} CPU / ${form.ram_gb}GB / ${form.disk_gb}GB`"></span></div>
+                    <div class="space-y-3 rounded-xl bg-white p-4 text-sm shadow-sm ring-1 ring-[#D7E8FF]">
+                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">موقعیت</span><span class="text-left font-black text-slate-950" x-text="selectedLocation?.name || '—'"></span></div>
+                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="text-left font-black text-slate-950" x-text="selectedOsLabel || '—'"></span></div>
+                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">نسخه</span><span class="text-left font-black text-slate-950" x-text="selectedImage?.os_version || '—'"></span></div>
+                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">CloudInit</span><span class="text-left font-black text-slate-950" x-text="cloudInitEnabled ? 'فعال' : 'غیرفعال'"></span></div>
+                        <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3"><span class="font-bold text-slate-500">پلن</span><span class="text-left font-black text-slate-950" x-text="selectedBundle?.name || '—'"></span></div>
+                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class="text-left font-black text-slate-950" dir="ltr" x-text="`${form.cpu_cores} CPU / ${form.ram_gb}GB / ${form.disk_gb}GB`"></span></div>
                     </div>
 
-                    <div class="mt-4 rounded-2xl border border-white bg-white p-4 shadow-sm shadow-[#0069FF]/10">
+                    <div class="mt-4 rounded-2xl border border-[#D7E8FF] bg-white p-5 shadow-sm shadow-[#0069FF]/10">
                         <p class="text-xs font-black text-[#0069FF]">هزینه ماهانه تقریبی</p>
-                        <p class="mt-2 text-3xl font-black leading-tight text-slate-950" x-text="displayMonthlyPrice"></p>
+                        <p class="mt-2 text-3xl font-black leading-tight tracking-tight text-slate-950" x-text="displayMonthlyPrice"></p>
                         <p x-show="showsTax" x-cloak class="mt-1 text-xs font-bold text-slate-500" x-text="`شامل مالیات ${taxRatePercentage}%`"></p>
                         <p class="mt-2 text-xs font-bold leading-6 text-slate-500">پس از ساخت، مصرف PAYG از کیف پول پروژه محاسبه می شود.</p>
                     </div>
 
                     <div x-show="taxEnabled" class="mt-4">
-                        <label class="flex items-center gap-3 rounded-xl border border-[#B8D6FF] bg-white/50 p-4 cursor-pointer">
+                        <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-[#B8D6FF] bg-white p-4 transition hover:border-[#0069FF] hover:shadow-sm">
                             <input type="checkbox" x-model="form.requires_invoice" class="size-4 rounded border-slate-300 text-[#0069FF] focus:ring-[#0069FF]">
-                            <span class="text-xs font-bold text-slate-600">نیاز به صورتحساب رسمی (شامل مالیات)</span>
+                            <span class="text-xs font-bold leading-6 text-slate-600">نیاز به صورتحساب رسمی (شامل مالیات)</span>
                         </label>
                     </div>
 
