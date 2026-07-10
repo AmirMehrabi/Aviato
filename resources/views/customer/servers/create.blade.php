@@ -120,9 +120,9 @@
                                     </span>
                                     <span x-show="String(form.infrastructure_location_id) === String(location.id)" class="grid size-6 shrink-0 place-items-center rounded-full bg-[#0069FF] text-xs font-black text-white shadow-sm">✓</span>
                                 </span>
-                                <span class="relative mt-4 flex items-center justify-between border-t border-slate-200/80 pt-3 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                <span class="relative mt-4 flex items-center justify-between border-t border-slate-200/80 pt-3 text-[10px] font-black tracking-wider text-slate-400">
                                     <span x-text="countryLabel(location.country)"></span>
-                                    <span class="rounded-full bg-slate-100 px-2 py-1 text-slate-500" x-text="location.provider === 'hetzner' ? 'Hetzner' : 'Proxmox'"></span>
+                                    <span class="text-slate-400" x-text="String(form.infrastructure_location_id) === String(location.id) ? 'انتخاب شده' : 'انتخاب موقعیت'"></span>
                                 </span>
                             </button>
                         </template>
@@ -144,36 +144,70 @@
                 </div>
                 <div class="p-5 sm:p-6">
                     <input type="hidden" name="cloud_image_id" :value="form.cloud_image_id">
-                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div class="grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]">
+                        <div class="space-y-2">
+                            <p class="mb-3 text-xs font-black text-slate-500">خانواده سیستم‌عامل</p>
                         <template x-for="family in osFamilies" :key="family.key">
-                            <div
+                            <button
+                                type="button"
                                 @click="selectOs(family.key)"
-                                class="group min-h-32 cursor-pointer rounded-xl border p-3 text-right transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                                :class="form.os_family === family.key ? 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10' : 'border-slate-200 bg-white hover:border-[#B8D6FF] hover:bg-[#F8FBFF]'"
+                                class="group flex w-full items-center gap-3 rounded-xl border p-3 text-right transition duration-200 hover:border-[#B8D6FF] hover:bg-[#F8FBFF]"
+                                :class="form.os_family === family.key ? 'border-[#0069FF] bg-[#F2F8FF] shadow-sm ring-2 ring-[#0069FF]/10' : 'border-slate-200 bg-white'"
                             >
-                                <div class="flex items-center gap-2">
-                                    <span class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200" :class="logoFrameClasses(family.logo_key)">
-                                        <img x-show="logoAsset(family.logo_key)" :src="logoAsset(family.logo_key)" :alt="family.label + ' logo'" class="size-full object-contain p-1.5">
-                                        <span x-show="!logoAsset(family.logo_key)" class="text-base font-black" :class="logoClasses(family.logo_key)" x-text="logoText(family.logo_key)"></span>
-                                    </span>
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block font-black text-slate-950" x-text="family.label"></span>
-                                        <span class="mt-1 block text-xs font-bold text-slate-500" x-text="selectedImageForFamily(family.key)?.os_version || selectedImageForFamily(family.key)?.name || `${family.count} نسخه آماده`"></span>
-                                    </span>
-                                </div>
-                                <label x-show="form.os_family === family.key" x-cloak class="mt-4 block cursor-default" @click.stop>
-                                    <select
-                                        x-model="form.cloud_image_id"
-                                        @change="applyImage()"
-                                        class="w-full rounded-lg border border-[#B8D6FF] bg-white px-3 py-2.5 text-sm font-black text-slate-800 shadow-sm focus:border-[#0069FF] focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10"
-                                    >
-                                        <template x-for="image in imagesForFamily(family.key)" :key="image.id">
-                                            <option :value="String(image.id)" x-text="image.os_version || image.name"></option>
-                                        </template>
-                                    </select>
-                                </label>
-                            </div>
+                                <span class="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200" :class="logoFrameClasses(family.logo_key)">
+                                    <img x-show="logoAsset(family.logo_key)" :src="logoAsset(family.logo_key)" :alt="family.label + ' logo'" class="size-full object-contain p-1.5">
+                                    <span x-show="!logoAsset(family.logo_key)" class="text-base font-black" :class="logoClasses(family.logo_key)" x-text="logoText(family.logo_key)"></span>
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block font-black text-slate-950" x-text="family.label"></span>
+                                    <span class="mt-0.5 block text-xs font-bold text-slate-500" x-text="`${family.count} نسخه`"></span>
+                                </span>
+                                <span class="text-lg text-slate-300" :class="form.os_family === family.key ? 'text-[#0069FF]' : ''">←</span>
+                            </button>
                         </template>
+                        </div>
+                        <div class="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="flex items-center gap-3">
+                                    <span class="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200" :class="logoFrameClasses(selectedFamily?.logo_key)">
+                                        <img x-show="logoAsset(selectedFamily?.logo_key)" :src="logoAsset(selectedFamily?.logo_key)" :alt="selectedFamily?.label + ' logo'" class="size-full object-contain p-2">
+                                        <span x-show="!logoAsset(selectedFamily?.logo_key)" class="text-lg font-black" :class="logoClasses(selectedFamily?.logo_key)" x-text="logoText(selectedFamily?.logo_key)"></span>
+                                    </span>
+                                    <div>
+                                        <p class="text-xs font-black text-[#0069FF]">انتخاب نسخه</p>
+                                        <h3 class="mt-1 text-lg font-black text-slate-950" x-text="selectedFamily?.label || 'سیستم‌عامل'">سیستم‌عامل</h3>
+                                        <p class="mt-1 text-xs font-bold text-slate-500" x-text="selectedImage?.description || 'نسخه مناسب سرویس خود را انتخاب کنید.'"></p>
+                                    </div>
+                                </div>
+                                <span x-show="selectedImage" class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">آماده استفاده</span>
+                            </div>
+                            <div class="relative mt-5" @click.outside="osDropdownOpen = false">
+                                <label class="mb-2 block text-xs font-black text-slate-600">نسخه سیستم‌عامل</label>
+                                <button type="button" @click="osDropdownOpen = !osDropdownOpen" class="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-right shadow-sm transition hover:border-[#0069FF] focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10">
+                                    <span class="min-w-0">
+                                        <span class="block truncate font-black text-slate-950" x-text="selectedImage?.os_version || selectedImage?.name || 'انتخاب نسخه'">انتخاب نسخه</span>
+                                        <span class="mt-1 block truncate text-xs font-bold text-slate-500" x-text="selectedImage?.name || 'برای مشاهده نسخه‌ها کلیک کنید'"></span>
+                                    </span>
+                                    <span class="text-slate-400" :class="osDropdownOpen ? 'rotate-180' : ''">⌄</span>
+                                </button>
+                                <div x-show="osDropdownOpen" x-cloak class="absolute inset-x-0 top-full z-20 mt-2 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl">
+                                    <template x-for="image in imagesForFamily(form.os_family)" :key="image.id">
+                                        <button type="button" @click="selectImage(image.id)" class="flex w-full items-start justify-between gap-3 rounded-lg px-3 py-3 text-right transition hover:bg-[#F2F8FF]" :class="String(form.cloud_image_id) === String(image.id) ? 'bg-[#F2F8FF]' : ''">
+                                            <span class="min-w-0">
+                                                <span class="block font-black text-slate-950" x-text="image.os_version || image.name"></span>
+                                                <span class="mt-1 block text-xs font-bold text-slate-500" x-text="image.name"></span>
+                                            </span>
+                                            <span x-show="String(form.cloud_image_id) === String(image.id)" class="text-[#0069FF]">✓</span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            <div x-show="selectedImage" class="mt-4 grid gap-2 sm:grid-cols-3">
+                                <div class="rounded-lg bg-white p-3 ring-1 ring-slate-200"><span class="block text-[11px] font-bold text-slate-500">نام کاربری پیش‌فرض</span><b class="mt-1 block text-sm text-slate-900" dir="ltr" x-text="selectedImage?.default_username || '—'"></b></div>
+                                <div class="rounded-lg bg-white p-3 ring-1 ring-slate-200"><span class="block text-[11px] font-bold text-slate-500">Cloud-init</span><b class="mt-1 block text-sm text-slate-900" x-text="cloudInitEnabled ? 'پشتیبانی می‌شود' : 'پشتیبانی نمی‌شود'"></b></div>
+                                <div class="rounded-lg bg-white p-3 ring-1 ring-slate-200"><span class="block text-[11px] font-bold text-slate-500">IP آزاد</span><b class="mt-1 block text-sm text-slate-900" x-text="selectedImage?.has_available_ip ? 'موجود' : 'ناموجود'"></b></div>
+                            </div>
+                        </div>
                     </div>
                     <p x-show="!osFamilies.length" class="rounded-lg border border-dashed border-slate-300 p-5 text-center text-sm font-bold text-slate-500">فعلا هیچ Cloud Image فعالی منتشر نشده است.</p>
                 </div>
@@ -190,23 +224,37 @@
                     </div>
                     <p class="mt-3 pr-12 text-xs font-bold text-slate-500">منابع موردنیاز ماشین و هزینه ماهانه را با هم مقایسه کنید.</p>
                 </div>
+                <div class="border-b border-slate-100 bg-white px-5 py-3 sm:px-6">
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-500">
+                        <span>هر پلن شامل منابع اختصاصی و هزینه ماهانه مشخص است.</span>
+                        <span x-show="visibleBundles.length" x-text="`${visibleBundles.length} پلن قابل انتخاب`"></span>
+                    </div>
+                </div>
                 <div class="grid gap-4 p-5 sm:p-6 lg:grid-cols-3">
                     <template x-for="(bundle, index) in visibleBundles" :key="bundle.id">
                         <label
-                            class="relative flex min-h-64 cursor-pointer flex-col rounded-xl border p-4 text-right transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                            class="relative flex min-h-72 cursor-pointer flex-col rounded-2xl border p-5 text-right transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                             :class="planClasses(bundle, index)"
                         >
                             <input type="radio" name="vm_bundle_id" :value="bundle.id" x-model="form.vm_bundle_id" @change="applyBundle()" class="sr-only">
-                            <span x-show="index === 1" class="absolute left-4 top-4 rounded-md bg-[#0069FF] px-2.5 py-1 text-[11px] font-black text-white">پیشنهادی</span>
-                            <span x-show="index === bundles.length - 1 && bundles.length > 2" class="absolute left-4 top-4 rounded-md bg-slate-950 px-2.5 py-1 text-[11px] font-black text-white">پرقدرت</span>
-                            <span class="block text-lg font-black text-slate-950" x-text="bundle.name"></span>
-                            <span class="mt-2 block min-h-10 text-xs leading-6 text-slate-500" x-text="bundle.description"></span>
-                            <span class="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
-                                <span class="rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200"><b class="block text-base text-slate-950" x-text="bundle.cpu_cores"></b><span class="text-slate-500">CPU</span></span>
-                                <span class="rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200"><b class="block text-base text-slate-950" x-text="bundle.ram_gb"></b><span class="text-slate-500">RAM</span></span>
-                                <span class="rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200"><b class="block text-base text-slate-950" x-text="bundle.disk_gb"></b><span class="text-slate-500">Disk</span></span>
+                            <span x-show="planBadge(index)" x-text="planBadge(index)" class="absolute left-4 top-4 rounded-full bg-[#0069FF] px-3 py-1 text-[11px] font-black text-white"></span>
+                            <span class="flex items-start justify-between gap-3">
+                                <span>
+                                    <span class="block text-lg font-black text-slate-950" x-text="bundle.name"></span>
+                                    <span class="mt-1 block text-xs font-bold text-slate-500" x-text="planTier(index)"></span>
+                                </span>
+                                <span class="grid size-6 shrink-0 place-items-center rounded-full border-2" :class="String(form.vm_bundle_id) === String(bundle.id) ? 'border-[#0069FF] bg-[#0069FF] text-white' : 'border-slate-300 text-transparent'">✓</span>
                             </span>
-                            <span class="mt-auto border-t border-slate-100 pt-4 text-left text-xl font-black text-slate-950"><span x-text="bundle.price"></span> <small class="text-xs font-bold text-slate-500">/ ماه</small></span>
+                            <span class="mt-3 block min-h-10 text-xs leading-6 text-slate-500" x-text="bundle.description || 'برای اجرای پایدار سرویس‌های شما' "></span>
+                            <span class="mt-5 divide-y divide-slate-100 rounded-xl bg-white text-sm ring-1 ring-slate-200">
+                                <span class="flex items-center justify-between px-3 py-2.5"><span class="font-bold text-slate-500">پردازنده</span><b class="text-slate-950" x-text="`${bundle.cpu_cores} هسته`"></b></span>
+                                <span class="flex items-center justify-between px-3 py-2.5"><span class="font-bold text-slate-500">حافظه</span><b class="text-slate-950" dir="ltr" x-text="`${bundle.ram_gb} GB`"></b></span>
+                                <span class="flex items-center justify-between px-3 py-2.5"><span class="font-bold text-slate-500">فضای دیسک</span><b class="text-slate-950" dir="ltr" x-text="`${bundle.disk_gb} GB`"></b></span>
+                            </span>
+                            <span class="mt-auto flex items-end justify-between gap-3 border-t border-slate-100 pt-4">
+                                <span><span class="block text-[11px] font-bold text-slate-500">هزینه ماهانه</span><b class="mt-1 block text-xl font-black text-slate-950" x-text="bundle.price"></b></span>
+                                <span class="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-500">انتخاب</span>
+                            </span>
                         </label>
                     </template>
                 </div>
@@ -371,6 +419,7 @@
             taxRatePercentage: Number(config.taxRatePercentage || 0),
             currency: config.currency || 'IRR',
             osFamilies: config.osFamilies,
+            osDropdownOpen: false,
             locations: config.locations || [],
             locationMappings: config.locationMappings || [],
             bundles: config.bundles,
@@ -395,7 +444,7 @@
                 return { iran: '🇮🇷', usa: '🇺🇸', singapour: '🇸🇬', germany: '🇩🇪', france: '🇫🇷', IR: '🇮🇷', US: '🇺🇸', SG: '🇸🇬', DE: '🇩🇪', FR: '🇫🇷' }[country] || '🌐';
             },
             countryLabel(country) {
-                return { iran: 'Iran', usa: 'USA', singapour: 'Singapore', germany: 'Germany', france: 'France', IR: 'Iran', US: 'USA', SG: 'Singapore', DE: 'Germany', FR: 'France' }[country] || 'Global location';
+                return { iran: 'ایران', usa: 'آمریکا', singapour: 'سنگاپور', germany: 'آلمان', france: 'فرانسه', IR: 'ایران', US: 'آمریکا', SG: 'سنگاپور', DE: 'آلمان', FR: 'فرانسه' }[country] || 'موقعیت بین‌المللی';
             },
             locationLabel(location) {
                 return [location.city, location.region || location.remote_name].filter(Boolean).join(' · ') || 'Location details unavailable';
@@ -417,6 +466,7 @@
             },
             get selectedLocation() { return this.locations.find((location) => String(location.id) === String(this.form.infrastructure_location_id)); },
             get selectedImage() { return this.images.find((image) => String(image.id) === String(this.form.cloud_image_id)); },
+            get selectedFamily() { return this.osFamilies.find((family) => family.key === this.form.os_family); },
             get availableImages() {
                 if (!this.selectedLocation) return [];
                 return this.images.filter((image) => {
@@ -513,10 +563,16 @@
                 return this.imagesForFamily(family)[0] || null;
             },
             selectOs(family) {
+                this.osDropdownOpen = false;
                 this.form.os_family = family;
                 const current = this.selectedImage && this.selectedImage.os_family === family ? this.selectedImage : null;
                 const firstImage = current || this.imagesForFamily(family)[0];
                 this.form.cloud_image_id = firstImage ? String(firstImage.id) : '';
+                this.applyImage();
+            },
+            selectImage(imageId) {
+                this.form.cloud_image_id = String(imageId);
+                this.osDropdownOpen = false;
                 this.applyImage();
             },
             applyImage() {
@@ -635,6 +691,19 @@
                 if (selected) return 'border-[#0069FF] bg-[#F2F8FF] ring-4 ring-[#0069FF]/10';
                 if (index === this.visibleBundles.length - 1 && this.visibleBundles.length > 2) return 'border-slate-300 bg-slate-50 hover:border-slate-400';
                 return 'border-slate-200 bg-white hover:border-[#B8D6FF] hover:bg-[#F8FBFF]';
+            },
+            planTier(index) {
+                if (index === 0) return 'مناسب برای شروع';
+                if (index === this.visibleBundles.length - 1) return 'برای بارهای سنگین';
+
+                return 'انتخاب محبوب';
+            },
+            planBadge(index) {
+                if (this.visibleBundles.length < 2) return '';
+                if (index === 1) return 'پیشنهاد ما';
+                if (index === this.visibleBundles.length - 1 && this.visibleBundles.length > 2) return 'بیشترین منابع';
+
+                return '';
             },
         };
     }
