@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\App;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -20,6 +21,8 @@ class AuthenticatedSessionController extends Controller
 
     public function store(Request $request, string $portal): RedirectResponse
     {
+        App::setLocale('fa');
+
         $credentials = $request->validate([
             'login' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
@@ -32,7 +35,7 @@ class AuthenticatedSessionController extends Controller
             'password' => $credentials['password'],
         ], $request->boolean('remember'))) {
             throw ValidationException::withMessages([
-                'login' => __('These credentials do not match our records.'),
+                'login' => 'ایمیل یا شماره موبایل و رمز عبور با اطلاعات ما مطابقت ندارد.',
             ]);
         }
 

@@ -214,6 +214,42 @@ class PortalAuthenticationTest extends TestCase
             ->assertDontSee('فراموشی رمز عبور؟');
     }
 
+    public function test_login_validation_is_persian_and_rendered_once(): void
+    {
+        $response = $this->followingRedirects()->from('https://cp.localhost/login')
+            ->post('https://cp.localhost/login', [
+                'login' => '',
+                'password' => '',
+            ]);
+
+        $response->assertSee('وارد کردن فیلد ایمیل یا شماره موبایل الزامی است.')
+            ->assertSee('وارد کردن فیلد رمز عبور الزامی است.')
+            ->assertDontSee('The login field is required.')
+            ->assertDontSee('The password field is required.');
+
+        self::assertSame(
+            1,
+            substr_count($response->getContent(), 'وارد کردن فیلد ایمیل یا شماره موبایل الزامی است.')
+        );
+    }
+
+    public function test_registration_validation_is_persian_and_not_repeated_beside_fields(): void
+    {
+        $response = $this->followingRedirects()->from('https://cp.localhost/register')
+            ->post('https://cp.localhost/register', []);
+
+        $response->assertSee('لطفا موارد زیر را بررسی کنید:')
+            ->assertSee('وارد کردن فیلد نام الزامی است.')
+            ->assertSee('وارد کردن فیلد نام خانوادگی الزامی است.')
+            ->assertDontSee('The first_name field is required.')
+            ->assertDontSee('The email field is required.');
+
+        self::assertSame(
+            1,
+            substr_count($response->getContent(), 'وارد کردن فیلد نام الزامی است.')
+        );
+    }
+
     public function test_customer_can_reset_password_with_email_otp(): void
     {
         Mail::fake();

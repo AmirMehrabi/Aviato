@@ -29,7 +29,7 @@
                 <div class="hidden lg:block">
                     <p class="text-sm font-black text-[#0069FF]">{{ $isAdminPortal ? 'کنسول مدیریت آویاتو' : 'کنسول ابری مشتریان' }}</p>
                     <h1 class="mt-4 max-w-2xl text-3xl font-black leading-tight text-slate-950">
-                        {{ $isAdminPortal ? 'مدیریت زیرساخت و فروش از یک پنل متمرکز.' : 'ساخت و مدیریت Droplet در کمتر از یک دقیقه.' }}
+                        {{ $isAdminPortal ? 'مدیریت زیرساخت و فروش از یک پنل متمرکز.' : 'ساخت و مدیریت ماشین مجازی در کمتر از یک دقیقه.' }}
                     </h1>
                     <p class="mt-6 max-w-xl text-base leading-8 text-slate-600">
                         {{ $isAdminPortal ? 'برای پیگیری سرورها، مشتریان، پلن ها و وضعیت provisioning وارد پنل مدیریت شوید.' : 'پس از ورود می توانید ماشین ها، کیف پول، بکاپ ها، مانیتورینگ و صورتحساب ها را از یک فضای واحد مدیریت کنید.' }}
@@ -66,20 +66,16 @@
                         @if (session('status'))
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{{ session('status') }}</div>
                         @endif
-                        @if ($errors->any())
-                            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first() }}</div>
-                        @endif
+                        @include('auth.partials.validation-errors')
 
                         <label class="block">
                             <span class="text-sm font-black text-slate-700">ایمیل یا شماره موبایل</span>
                             <input name="login" value="{{ old('login') }}" required autofocus class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition placeholder:text-slate-400 focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
-                            @error('login') <span class="mt-2 block text-sm font-bold text-red-600">{{ $message }}</span> @enderror
                         </label>
 
                         <label class="block">
                             <span class="text-sm font-black text-slate-700">رمز عبور</span>
                             <input type="password" name="password" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
-                            @error('password') <span class="mt-2 block text-sm font-bold text-red-600">{{ $message }}</span> @enderror
                         </label>
 
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

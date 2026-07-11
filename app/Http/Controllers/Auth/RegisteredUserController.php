@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\App;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
@@ -28,6 +29,8 @@ class RegisteredUserController extends Controller
 
     public function store(Request $request, string $portal): RedirectResponse
     {
+        App::setLocale('fa');
+
         $model = $portal === 'admin' ? User::class : Customer::class;
         $verificationMode = $portal === 'customer' ? AppSetting::customerVerificationMode() : 'disabled';
 
