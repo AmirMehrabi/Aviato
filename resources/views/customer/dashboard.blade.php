@@ -51,18 +51,25 @@
         $walletIsBlocked = $wallet->is_locked || $wallet->balance < 0;
         $workspaceRoleLabels = ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'];
         $workspaceRole = $workspaceRoleLabels[$activeMembership?->role ?? 'member'] ?? 'عضو';
+        $workspaceInitial = mb_substr($activeProject->name ?: 'ف', 0, 1);
+        $attentionItems = collect([
+            $walletIsBlocked ? ['tone' => 'red', 'title' => 'کیف پول نیازمند توجه است', 'body' => 'برای ادامه مصرف یا ساخت ماشین، موجودی کیف پول را بررسی و شارژ کنید.', 'url' => route('customer.wallet.show', ['topup' => 1], false), 'action' => 'افزایش اعتبار'] : null,
+            ($summary['failed'] ?? 0) > 0 ? ['tone' => 'red', 'title' => 'ماشین نیازمند بررسی است', 'body' => $summary['failed'].' ماشین با آماده سازی ناموفق وجود دارد.', 'url' => route('customer.servers.index', [], false), 'action' => 'مشاهده سرورها'] : null,
+            ($summary['deleting'] ?? 0) > 0 ? ['tone' => 'amber', 'title' => 'حذف ماشین در حال انجام است', 'body' => $summary['deleting'].' ماشین در حال حذف است و وضعیت آن از همین پنل پیگیری می شود.', 'url' => route('customer.servers.index', [], false), 'action' => 'پیگیری وضعیت'] : null,
+        ])->filter()->values();
         $metricCards = [
-            ['label' => 'کل ماشین ها', 'value' => $dashboardStats['total'], 'hint' => 'ماشین های مجازی فعال در حساب', 'tone' => 'text-slate-950'],
+            ['label' => 'کل ماشین ها', 'value' => $dashboardStats['total'], 'hint' => 'ماشین های این فضای کاری', 'tone' => 'text-slate-950'],
             ['label' => 'روشن', 'value' => $summary['running'], 'hint' => 'در حال مصرف کامل منابع', 'tone' => 'text-[#0069FF]'],
-            ['label' => 'منابع', 'value' => $dashboardStats['cpu'].' CPU / '.$dashboardStats['ram'].'GB', 'hint' => $dashboardStats['disk'].'GB دیسک رزرو شده', 'tone' => 'text-slate-950'],
-            ['label' => 'برآورد ماهانه', 'value' => $wallets->format($dashboardStats['monthly_spend']), 'hint' => 'بر اساس وضعیت فعلی', 'tone' => 'text-emerald-700'],
+            ['label' => 'در حال آماده سازی', 'value' => $summary['pending'], 'hint' => 'تا تکمیل، اتصال فعال نیست', 'tone' => $summary['pending'] > 0 ? 'text-[#0069FF]' : 'text-slate-950'],
+            ['label' => 'منابع رزرو شده', 'value' => $dashboardStats['cpu'].' CPU / '.$dashboardStats['ram'].'GB RAM', 'hint' => $dashboardStats['disk'].'GB دیسک اصلی', 'tone' => 'text-slate-950'],
+            ['label' => 'برآورد ماهانه', 'value' => $wallets->format($dashboardStats['monthly_spend']), 'hint' => 'شامل دیسک های آماده', 'tone' => 'text-emerald-700'],
             ['label' => 'مصرف ثبت نشده', 'value' => $wallets->format($pendingUsage), 'hint' => 'در برداشت بعدی اعمال می شود', 'tone' => $pendingUsage > 0 ? 'text-amber-600' : 'text-emerald-600'],
         ];
     @endphp
 
     <section class="mb-5 flex flex-col gap-4 rounded-2xl border border-[#B8D6FF] bg-[#F8FBFF] p-4 shadow-sm shadow-[#0069FF]/[0.06] sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-label="فضای کاری فعال">
         <div class="flex min-w-0 items-start gap-3">
-            <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-lg font-black text-white">ف</span>
+            <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-lg font-black text-white">{{ $workspaceInitial }}</span>
             <div class="min-w-0">
                 <p class="text-xs font-black text-[#0069FF]">فضای کاری فعال</p>
                 <h2 class="mt-1 truncate text-lg font-black text-slate-950">{{ $activeProject->name }}</h2>
@@ -76,6 +83,22 @@
             <a href="{{ route('customer.projects.show', $activeProject, false) }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-white hover:text-[#0069FF]">مشاهده جزئیات فضا</a>
         </div>
     </section>
+
+    @if ($attentionItems->isNotEmpty())
+        <section class="mb-5 grid gap-3 lg:grid-cols-3" aria-label="موارد نیازمند توجه">
+            @foreach ($attentionItems as $item)
+                <div class="rounded-2xl border px-4 py-3 {{ $item['tone'] === 'red' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50' }}">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-black {{ $item['tone'] === 'red' ? 'text-red-800' : 'text-amber-900' }}">{{ $item['title'] }}</p>
+                            <p class="mt-1 text-xs font-bold leading-6 {{ $item['tone'] === 'red' ? 'text-red-700' : 'text-amber-800' }}">{{ $item['body'] }}</p>
+                        </div>
+                        <a href="{{ $item['url'] }}" class="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-black {{ $item['tone'] === 'red' ? 'text-red-700' : 'text-amber-800' }}">{{ $item['action'] }}</a>
+                    </div>
+                </div>
+            @endforeach
+        </section>
+    @endif
 
     @if (! $canViewVms)
         <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -144,9 +167,15 @@
                     هنوز هیچ ماشین مجازی برای این حساب ثبت نشده است. پلن، سیستم عامل و دیتاسنتر را انتخاب کنید و بعد از آماده شدن ماشین، هزینه، مانیتورینگ و بکاپ را از همین پنل دنبال کنید.
                 </p>
                 <div class="mt-8 flex flex-wrap justify-center gap-3">
-                    <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex items-center justify-center rounded-2xl bg-[#0069FF] px-7 py-4 text-sm font-black text-white shadow-lg shadow-[#0069FF]/25 transition hover:bg-[#0050D0]">
-                        ساخت اولین ماشین
-                    </a>
+                    @if ($canManageVms)
+                        <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex items-center justify-center rounded-2xl bg-[#0069FF] px-7 py-4 text-sm font-black text-white shadow-lg shadow-[#0069FF]/25 transition hover:bg-[#0050D0]">
+                            ساخت اولین ماشین
+                        </a>
+                    @else
+                        <span class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-7 py-4 text-sm font-black text-slate-500">
+                            ساخت ماشین فقط برای مدیر فضا فعال است
+                        </span>
+                    @endif
                     <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-7 py-4 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-white hover:text-[#0069FF]">
                         شارژ کیف پول
                     </a>
@@ -188,12 +217,12 @@
                 <div class="relative overflow-hidden bg-[#031B4E] p-6 text-white">
                     <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(0,105,255,.45),transparent_28%),radial-gradient(circle_at_85%_10%,rgba(0,166,126,.28),transparent_24%)]"></div>
                     <div class="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                        <div>
-                            <p class="text-sm font-black text-[#8FBFFF]">Account Health</p>
-                            <h2 class="mt-2 text-3xl font-black leading-tight">وضعیت حساب شما شفاف است</h2>
-                            <p class="mt-3 max-w-2xl text-sm font-bold leading-8 text-[#C7D4EA]">
+                <div>
+                    <p class="text-sm font-black text-[#8FBFFF]">وضعیت فضای کاری</p>
+                    <h2 class="mt-2 text-3xl font-black leading-tight">{{ $attentionItems->isNotEmpty() ? 'چند مورد نیازمند توجه است' : 'حساب شما آماده استفاده است' }}</h2>
+                    <p class="mt-3 max-w-2xl text-sm font-bold leading-8 text-[#C7D4EA]">
                                 {{ $summary['running'] }} ماشین روشن، {{ $summary['stopped'] }} ماشین خاموش و {{ $wallets->format($pendingUsage) }} مصرف ثبت نشده دارید.
-                            </p>
+                    </p>
                         </div>
                         <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                             <p class="text-xs font-black text-[#9DB4DC]">موجودی کیف پول</p>
@@ -208,9 +237,10 @@
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <div class="flex items-start gap-3">
                                 <span class="mt-1 size-2.5 shrink-0 rounded-full {{ $notice['tone'] }}"></span>
-                                <div>
+                                <div class="min-w-0">
                                     <p class="font-black text-slate-950">{{ $notice['title'] }}</p>
                                     <p class="mt-2 text-xs font-bold leading-6 text-slate-500">{{ $notice['body'] }}</p>
+                                    <a href="{{ $notice['url'] }}" class="mt-3 inline-flex text-xs font-black text-[#0069FF] hover:underline">{{ $notice['action'] }}</a>
                                 </div>
                             </div>
                         </div>
@@ -230,7 +260,11 @@
                     <div class="mt-4 space-y-3 text-sm">
                         <div class="flex items-center justify-between gap-3">
                             <span class="font-bold text-slate-500">آخرین صورتحساب</span>
-                            <span class="font-black text-slate-950">{{ $latestInvoice?->number ?? 'صادر نشده' }}</span>
+                            @if ($latestInvoice)
+                                <a href="{{ route('customer.invoices.show', $latestInvoice, false) }}" class="font-black text-[#0069FF] hover:underline">{{ $latestInvoice->number }}</a>
+                            @else
+                                <span class="font-black text-slate-950">صادر نشده</span>
+                            @endif
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <span class="font-bold text-slate-500">مصرف ثبت نشده</span>
@@ -241,7 +275,10 @@
                             <span class="font-black {{ $walletIsBlocked ? 'text-red-600' : 'text-emerald-700' }}">{{ $walletIsBlocked ? 'نیازمند توجه' : 'فعال' }}</span>
                         </div>
                     </div>
-                    <a href="{{ route('customer.invoices.index', [], false) }}" class="mt-5 inline-flex w-full justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مشاهده صورتحساب ها</a>
+                    <div class="mt-5 grid gap-2 sm:grid-cols-2">
+                        <a href="{{ route('customer.invoices.index', [], false) }}" class="inline-flex w-full justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">همه صورتحساب ها</a>
+                        <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex w-full justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مشاهده کیف پول</a>
+                    </div>
                 </div>
 
                 <div class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
@@ -259,6 +296,7 @@
                             <p class="rounded-2xl bg-slate-50 px-4 py-5 text-center text-sm font-bold text-slate-500">هنوز تراکنشی ثبت نشده است.</p>
                         @endforelse
                     </div>
+                    <a href="{{ route('customer.wallet.show', [], false) }}" class="mt-4 inline-flex text-sm font-black text-[#0069FF] hover:underline">مشاهده همه تراکنش ها</a>
                 </div>
             </aside>
         </section>
@@ -278,12 +316,16 @@
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <p class="truncate text-lg font-black text-slate-950" dir="ltr">{{ $vm['name'] }}</p>
-                                <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr">{{ $vm['ip'] }} · {{ $vm['region'] }}</p>
+                                <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr">{{ $vm['hostname'] }} · {{ $vm['ip'] }}</p>
+                                <p class="mt-1 truncate text-xs font-bold text-slate-400">{{ $vm['region'] }} · {{ $vm['image'] }}</p>
                             </div>
-                            <span class="inline-flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black {{ $vm['statusClass'] }}">
+                            <div class="flex shrink-0 flex-col items-end gap-2">
+                                <span class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1 text-xs font-black {{ $vm['statusClass'] }}">
                                 <span class="size-2 rounded-full {{ $vm['dot'] }}"></span>
                                 {{ $vm['status'] }}
-                            </span>
+                                </span>
+                                <span class="inline-flex rounded-xl px-2.5 py-1 text-xs font-black {{ $vm['provisioningClass'] }}">{{ $vm['provisioningStatus'] }}</span>
+                            </div>
                         </div>
                         <div class="mt-4 grid grid-cols-3 gap-2 text-center">
                             <div class="rounded-xl bg-slate-50 px-2 py-3">
@@ -295,16 +337,20 @@
                                 <p class="mt-1 text-sm font-black text-slate-950" dir="ltr">{{ $vm['ram'] }}</p>
                             </div>
                             <div class="rounded-xl bg-slate-50 px-2 py-3">
-                                <p class="text-[11px] font-black text-slate-400">Disk</p>
+                                <p class="text-[11px] font-black text-slate-400">دیسک</p>
                                 <p class="mt-1 text-sm font-black text-slate-950" dir="ltr">{{ $vm['disk'] }}</p>
                             </div>
                         </div>
-                        <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                            <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
                             <div>
-                                <p class="text-xs font-black text-slate-400">پلن / هزینه</p>
-                                <p class="mt-1 text-sm font-black text-slate-950">{{ $vm['plan'] }} · {{ $wallets->format($vm['cost']) }}</p>
+                                <p class="text-xs font-black text-slate-400">پلن / برآورد ماهانه</p>
+                                <p class="mt-1 text-sm font-black text-slate-950">{{ $vm['plan'] }} · {{ $vm['isLocked'] ? 'در انتظار وضعیت نهایی' : $wallets->format($vm['cost']) }}</p>
+                                <p class="mt-1 text-xs font-bold text-slate-400">{{ $vm['billingHint'] }}</p>
+                                @if ($vm['extraDiskCount'] > 0)
+                                    <p class="mt-1 text-xs font-bold text-slate-400">{{ $vm['extraDiskCount'] }} دیسک اضافه · +{{ $wallets->format($vm['extraDiskMonthlyCost']) }}</p>
+                                @endif
                             </div>
-                            <a href="{{ $vm['url'] }}" class="inline-flex shrink-0 rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white transition hover:bg-[#0069FF]">مشاهده</a>
+                            <a href="{{ $vm['url'] }}" class="inline-flex shrink-0 rounded-xl {{ $vm['needsAttention'] ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-950 hover:bg-[#0069FF]' }} px-4 py-2 text-xs font-black text-white transition">{{ $vm['needsAttention'] ? 'بررسی خطا' : 'جزئیات و اتصال' }}</a>
                         </div>
                     </article>
                 @endforeach
