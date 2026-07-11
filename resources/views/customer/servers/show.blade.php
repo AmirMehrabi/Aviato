@@ -313,20 +313,6 @@
                         </button>
                     </form>
 
-                    <form method="POST" action="{{ route('customer.servers.upgrades.extra-disk.store', $server, false) }}" class="mt-5 space-y-3 border-t border-slate-100 pt-4" x-data="{ submitting: false }" x-on:submit="submitting = true">
-                        @csrf
-                        <label class="block text-xs font-black text-slate-500" for="size_gb">دیسک اضافه</label>
-                        <select id="size_gb" name="size_gb" @disabled($isLocked || $hasPendingUpgrade) class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold text-slate-800 focus:border-[#0069FF] focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-60">
-                            @foreach ($extraDiskOptions as $option)
-                                <option value="{{ $option['size_gb'] }}">{{ $option['size_gb'] }}GB - +{{ $wallets->format($option['monthly_delta']) }}/ماه</option>
-                            @endforeach
-                        </select>
-                        <p class="text-xs font-bold leading-6 text-slate-500">دیسک اضافه به ماشین مجازی متصل می شود؛ داخل سیستم عامل باید پارتیشن بندی و mount شود.</p>
-                        <button type="submit" x-bind:disabled="submitting || {{ ($isLocked || $hasPendingUpgrade) ? 'true' : 'false' }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] disabled:cursor-not-allowed disabled:opacity-60">
-                            <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span>
-                            <span x-text="submitting ? 'در حال ثبت...' : 'افزودن دیسک'">افزودن دیسک</span>
-                        </button>
-                    </form>
                 </article>
 
                 <article class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">

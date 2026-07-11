@@ -63,7 +63,7 @@ class ServerController extends Controller
         ]);
 
         $servers = $this->projects->visibleVms($activeProject, $customer)
-            ->with(['bundle', 'proxmoxServer', 'infrastructureLocation', 'cloudImage'])
+            ->with(['bundle', 'disks', 'proxmoxServer', 'infrastructureLocation', 'cloudImage'])
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
@@ -107,11 +107,17 @@ class ServerController extends Controller
                 'plan' => $server->bundle?->name ?: 'Custom',
                 'image' => $server->cloudImage?->name ?: 'Image نامشخص',
                 'resources' => sprintf('%d CPU / %dGB RAM / %dGB Disk', $server->cpu_cores, $server->ram_gb, $server->disk_gb),
+                'cpu_cores' => $server->cpu_cores,
+                'ram_gb' => $server->ram_gb,
+                'disk_gb' => $server->disk_gb,
+                'extra_disk_count' => $server->disks->where('status', 'ready')->count(),
+                'extra_disk_monthly_cost' => $server->disks->where('status', 'ready')->sum(fn ($disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth())),
                 'monthly_cost' => $server->isActionLocked()
                     ? 0
                     : ($server->isRunning()
                         ? $this->billing->estimateMonthly($server)
-                        : $this->billing->estimateStoppedMonthly($server)),
+                        : $this->billing->estimateStoppedMonthly($server))
+                        + $server->disks->where('status', 'ready')->sum(fn ($disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth())),
                 'billing_hint' => $server->isRunning() ? 'CPU/RAM فعال' : 'دیسک و IP پایدار',
                 'status' => $server->status,
                 'status_label' => $this->statusLabel($server->status),

@@ -80,11 +80,11 @@
 
         <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             @foreach ([
-                ['label' => 'کل ماشین ها', 'value' => $summary['total'], 'hint' => 'همه ماشین های مجازی حساب', 'tone' => 'text-slate-950'],
+                ['label' => 'کل ماشین ها', 'value' => $summary['total'], 'hint' => 'همه ماشین های این فضا', 'tone' => 'text-slate-950'],
                 ['label' => 'روشن', 'value' => $summary['running'], 'hint' => 'CPU/RAM فعال', 'tone' => 'text-[#0069FF]'],
                 ['label' => 'خاموش', 'value' => $summary['stopped'], 'hint' => 'دیسک و IP همچنان هزینه دارند', 'tone' => 'text-slate-950'],
                 ['label' => 'در حال آماده سازی', 'value' => $summary['pending'], 'hint' => 'تا تکمیل، SSH فعال نیست', 'tone' => $summary['pending'] > 0 ? 'text-[#0069FF]' : 'text-slate-950'],
-                ['label' => 'برآورد ماهانه', 'value' => $wallets->format($summary['monthly_spend']), 'hint' => 'براساس وضعیت فعلی', 'tone' => 'text-emerald-700'],
+                ['label' => 'برآورد ماهانه', 'value' => $wallets->format($summary['monthly_spend']), 'hint' => 'بر اساس وضعیت و دیسک های فعال', 'tone' => 'text-emerald-700'],
             ] as $metric)
                 <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
                     <p class="text-xs font-black text-slate-500">{{ $metric['label'] }}</p>
@@ -98,20 +98,20 @@
             <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                     <h2 class="text-xl font-black text-slate-950">فهرست ماشین ها</h2>
-                    <p class="mt-1 text-sm leading-7 text-slate-500">سرورها را براساس وضعیت، IP یا hostname پیدا کنید.</p>
+                    <p class="mt-1 text-sm leading-7 text-slate-500">{{ $servers->total() }} ماشین در این فضا؛ جستجو بر اساس نام، IP یا hostname.</p>
                 </div>
                 <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex w-fit justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
                     ساخت ماشین
                 </a>
             </div>
 
-            <form class="grid gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <form method="GET" class="grid gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <div class="relative">
                     <svg class="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"/>
                         <path d="m21 21-4.35-4.35" stroke-linecap="round"/>
                     </svg>
-                    <input name="search" value="{{ $filters['search'] ?? '' }}" placeholder="جستجو نام، hostname یا IP..." class="h-12 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10">
+                    <input name="search" value="{{ $filters['search'] ?? '' }}" placeholder="جستجو نام، hostname یا IP..." aria-label="جستجوی ماشین ها" class="h-12 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10">
                 </div>
                 <div class="flex flex-wrap gap-2">
                     @foreach ([
@@ -187,22 +187,41 @@
                             </div>
 
                             <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-                                @foreach (explode(' / ', $server['resources']) as $resource)
+                                @foreach ([
+                                    ['label' => 'CPU', 'value' => $server['cpu_cores'].' هسته'],
+                                    ['label' => 'RAM', 'value' => $server['ram_gb'].' گیگ'],
+                                    ['label' => 'دیسک', 'value' => $server['disk_gb'].' گیگ'],
+                                ] as $resource)
                                     <div class="rounded-xl border border-slate-100 bg-white px-2 py-3">
-                                        <p class="text-sm font-black text-slate-950" dir="ltr">{{ $resource }}</p>
+                                        <p class="text-[11px] font-black text-slate-400">{{ $resource['label'] }}</p>
+                                        <p class="mt-1 text-sm font-black text-slate-950">{{ $resource['value'] }}</p>
                                     </div>
                                 @endforeach
                             </div>
 
                             <div class="mt-4 space-y-3 border-t border-slate-100 pt-4 text-sm">
                                 <div class="flex items-center justify-between gap-3">
+                                    <span class="font-bold text-slate-500">موقعیت</span>
+                                    <span class="truncate font-black text-slate-950">{{ $server['location'] }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-bold text-slate-500">سیستم عامل</span>
+                                    <span class="truncate font-black text-slate-950">{{ $server['image'] }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3">
                                     <span class="font-bold text-slate-500">پلن</span>
                                     <span class="truncate font-black text-slate-950">{{ $server['plan'] }}</span>
                                 </div>
                                 <div class="flex items-center justify-between gap-3">
-                                    <span class="font-bold text-slate-500">هزینه ماهانه</span>
+                                    <span class="font-bold text-slate-500">برآورد ماهانه</span>
                                     <span class="font-black text-slate-950">{{ $server['is_deleting'] ? 'متوقف شده' : $wallets->format($server['monthly_cost']) }}</span>
                                 </div>
+                                @if ($server['extra_disk_count'] > 0)
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="font-bold text-slate-500">دیسک اضافه</span>
+                                        <span class="font-black text-slate-950">{{ $server['extra_disk_count'] }} عدد · +{{ $wallets->format($server['extra_disk_monthly_cost']) }}</span>
+                                    </div>
+                                @endif
                                 <div class="flex items-center justify-between gap-3">
                                     <span class="font-bold text-slate-500">محاسبه</span>
                                     <span class="font-black text-slate-950">{{ $server['billing_hint'] }}</span>
@@ -210,11 +229,11 @@
                             </div>
 
                             <div class="mt-5 grid grid-cols-2 gap-2 xl:grid-cols-4">
-                                <a href="{{ $server['show_url'] }}" class="inline-flex justify-center rounded-xl bg-slate-950 px-3 py-2.5 text-xs font-black text-white transition hover:bg-[#0069FF]">مشاهده و اتصال</a>
+                                <a href="{{ $server['show_url'] }}" class="inline-flex justify-center rounded-xl bg-slate-950 px-3 py-2.5 text-xs font-black text-white transition hover:bg-[#0069FF]">جزئیات و اتصال</a>
                                 @if ($server['console_ready'])
-                                    <a href="{{ $server['console_url'] }}" class="inline-flex justify-center rounded-xl bg-[#0069FF] px-3 py-2.5 text-xs font-black text-white transition hover:bg-[#0050D0]">Console</a>
+                                    <a href="{{ $server['console_url'] }}" class="inline-flex justify-center rounded-xl bg-[#0069FF] px-3 py-2.5 text-xs font-black text-white transition hover:bg-[#0050D0]">کنسول</a>
                                 @else
-                                    <span class="inline-flex cursor-not-allowed justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-black text-slate-400">Console</span>
+                                    <span class="inline-flex cursor-not-allowed justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-black text-slate-400">کنسول</span>
                                 @endif
                                 <a href="{{ $server['monitoring_url'] }}" class="inline-flex justify-center rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مانیتورینگ</a>
                                 <a href="{{ $server['backup_url'] }}" class="inline-flex justify-center rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">بکاپ</a>
