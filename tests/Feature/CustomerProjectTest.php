@@ -215,6 +215,38 @@ class CustomerProjectTest extends TestCase
         $this->get($this->customerBaseUrl.'/servers/'.$ownerVm->uuid)->assertNotFound();
     }
 
+    public function test_customer_with_specific_vm_access_can_open_workspace(): void
+    {
+        $owner = Customer::factory()->create();
+        $member = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $vm = VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'project_id' => $project->id,
+            'name' => 'specific-access-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+        $membership = $project->members()->create([
+            'customer_id' => $member->id,
+            'role' => ProjectMember::ROLE_MEMBER,
+            'vm_access_scope' => ProjectMember::VM_ACCESS_SPECIFIC,
+        ]);
+        $membership->specificVirtualMachines()->attach($vm->id);
+
+        $this->actingAs($member, 'customer');
+
+        $this->post($this->customerBaseUrl.'/projects/switch', [
+            'project_id' => $project->id,
+        ])->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id);
+
+        $this->get($this->customerBaseUrl.'/projects/'.$project->uuid)->assertOk();
+    }
+
     public function test_customer_role_update_keeps_existing_vm_scope(): void
     {
         $owner = Customer::factory()->create();

@@ -9,6 +9,7 @@ use App\Models\VirtualMachine;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -113,7 +114,7 @@ class ProjectAccessService
             return $query->whereRaw('1 = 0');
         }
 
-        $query->whereExists(function (Builder $query) use ($membership): void {
+        $query->whereExists(function (QueryBuilder $query) use ($membership): void {
             $query->selectRaw('1')
                 ->from('project_member_virtual_machines')
                 ->whereColumn('project_member_virtual_machines.virtual_machine_id', 'virtual_machines.id')
