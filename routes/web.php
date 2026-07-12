@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\CustomerEmailVerificationController;
 use App\Http\Controllers\Auth\CustomerImpersonationController;
+use App\Http\Controllers\Auth\CustomerOtpLoginController;
 use App\Http\Controllers\Auth\CustomerPasswordResetController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BlogController;
@@ -248,6 +249,17 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::post($customerLogin, [AuthenticatedSessionController::class, 'store'])
             ->defaults('portal', 'customer')
             ->name('customer.login.store');
+
+        Route::get('login/otp', [CustomerOtpLoginController::class, 'requestForm'])
+            ->name('customer.login.otp');
+        Route::post('login/otp', [CustomerOtpLoginController::class, 'sendCode'])
+            ->name('customer.login.otp.send');
+        Route::get('login/otp/verify', [CustomerOtpLoginController::class, 'form'])
+            ->name('customer.login.otp.verify');
+        Route::post('login/otp/verify', [CustomerOtpLoginController::class, 'verify'])
+            ->name('customer.login.otp.verify.store');
+        Route::post('login/otp/resend', [CustomerOtpLoginController::class, 'resend'])
+            ->name('customer.login.otp.resend');
 
         Route::get('password/forgot', [CustomerPasswordResetController::class, 'requestForm'])
             ->name('customer.password.request');

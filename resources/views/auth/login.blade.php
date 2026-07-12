@@ -96,6 +96,10 @@
                         </button>
 
                         @if (! $isAdminPortal)
+                            <a href="{{ route('customer.login.otp', [], false) }}" class="flex items-center justify-center gap-2 rounded-xl border border-[#B8D6FF] bg-[#F4F8FF] px-4 py-3 text-sm font-black text-[#0069FF] transition hover:border-[#0069FF] hover:bg-[#EBF3FF]">
+                                <span class="text-base">✦</span>
+                                ورود بدون رمز عبور با کد یک‌بارمصرف
+                            </a>
                             <p class="text-center text-sm font-bold text-slate-500">
                                 حساب ندارید؟
                                 <a class="text-[#0069FF] transition hover:text-[#0050D0]" href="{{ route($portal.'.register', [], false) }}">ثبت نام مشتری</a>

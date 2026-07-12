@@ -2,12 +2,15 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Mail\CustomerLoginOtpCodeMail;
 use App\Mail\CustomerPasswordResetCodeMail;
 use App\Mail\CustomerVerificationCodeMail;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\Sms\VerificationSmsSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -207,11 +210,88 @@ class PortalAuthenticationTest extends TestCase
         $this->get('https://cp.localhost/login')
             ->assertOk()
             ->assertSee('فراموشی رمز عبور؟')
+            ->assertSee('ورود بدون رمز عبور با کد یک‌بارمصرف')
             ->assertSee('/password/forgot');
 
         $this->get('https://admin.localhost/login')
             ->assertOk()
             ->assertDontSee('فراموشی رمز عبور؟');
+    }
+
+    public function test_customer_can_login_with_a_phone_otp_and_sms_is_preferred(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'disabled');
+        $customer = Customer::factory()->create([
+            'email' => 'customer@example.com',
+            'phone' => '09123456789',
+        ]);
+
+        $this->mock(VerificationSmsSender::class, function ($mock): void {
+            $mock->shouldReceive('send')->once()->with('09123456789', \Mockery::type('string'));
+        });
+
+        $this->post('https://cp.localhost/login/otp', ['login' => 'customer@example.com'])
+            ->assertRedirect('https://cp.localhost/login/otp/verify');
+
+        $challenge = DB::table('customer_login_otp_challenges')->where('customer_id', $customer->id)->first();
+        $this->assertSame('sms', $challenge->channel);
+        $this->assertTrue(Hash::check('123456', $challenge->token) === false);
+
+        DB::table('customer_login_otp_challenges')->where('id', $challenge->id)->update([
+            'token' => Hash::make('123456'),
+        ]);
+
+        $this->post('https://cp.localhost/login/otp/verify', ['code' => '123456'])
+            ->assertRedirect('https://cp.localhost/dashboard');
+
+        $this->assertAuthenticatedAs($customer, 'customer');
+        $this->assertNotNull(DB::table('customer_login_otp_challenges')->where('id', $challenge->id)->first()->consumed_at);
+    }
+
+    public function test_customer_can_login_with_an_email_otp_when_phone_is_unavailable(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'disabled');
+        $customer = Customer::factory()->create([
+            'email' => 'customer@example.com',
+            'phone' => null,
+        ]);
+        Mail::fake();
+
+        $this->post('https://cp.localhost/login/otp', ['login' => 'customer@example.com'])
+            ->assertRedirect('https://cp.localhost/login/otp/verify');
+
+        Mail::assertSent(CustomerLoginOtpCodeMail::class, fn (CustomerLoginOtpCodeMail $mail): bool => $mail->customer->is($customer));
+        $challenge = DB::table('customer_login_otp_challenges')->where('customer_id', $customer->id)->first();
+        $this->assertSame('email', $challenge->channel);
+    }
+
+    public function test_customer_otp_request_does_not_reveal_unknown_accounts(): void
+    {
+        $response = $this->post('https://cp.localhost/login/otp', ['login' => 'missing@example.com']);
+
+        $response->assertRedirect('https://cp.localhost/login/otp/verify');
+        $this->followingRedirects()->get('https://cp.localhost/login/otp/verify')
+            ->assertOk()
+            ->assertSee('اگر اطلاعات حساب صحیح باشد');
+        $this->assertGuest('customer');
+    }
+
+    public function test_customer_otp_cannot_be_reused_or_used_after_expiry(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'disabled');
+        $customer = Customer::factory()->create(['phone' => null]);
+        Mail::fake();
+
+        $this->post('https://cp.localhost/login/otp', ['login' => $customer->email]);
+        $challenge = DB::table('customer_login_otp_challenges')->where('customer_id', $customer->id)->first();
+        DB::table('customer_login_otp_challenges')->where('id', $challenge->id)->update(['token' => Hash::make('123456')]);
+
+        $this->post('https://cp.localhost/login/otp/verify', ['code' => '123456'])->assertRedirect('https://cp.localhost/dashboard');
+        Auth::guard('customer')->logout();
+
+        $this->post('https://cp.localhost/login/otp/verify', ['code' => '123456'])
+            ->assertSessionHasErrors('code');
+        $this->assertGuest('customer');
     }
 
     public function test_login_validation_is_persian_and_rendered_once(): void
