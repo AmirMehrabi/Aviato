@@ -6,15 +6,16 @@
 @section('content')
 @php
     $baseUrl = url('/api/v1');
-    $walletCurl = 'curl -X GET "'.$baseUrl.'/projects/PROJECT_UUID/wallet" -H "Accept: application/json" -H "Authorization: Bearer YOUR_API_KEY"';
-    $transactionsCurl = 'curl -X GET "'.$baseUrl.'/projects/PROJECT_UUID/wallet/transactions?per_page=25" -H "Accept: application/json" -H "Authorization: Bearer YOUR_API_KEY"';
+    $walletCurl = 'curl -X GET "'.$baseUrl.'/projects/YOUR_PROJECT_UUID/wallet" -H "Accept: application/json" -H "Authorization: Bearer YOUR_API_KEY"';
+    $transactionsCurl = 'curl -X GET "'.$baseUrl.'/projects/YOUR_PROJECT_UUID/wallet/transactions?per_page=25" -H "Accept: application/json" -H "Authorization: Bearer YOUR_API_KEY"';
+    $transactionCurl = 'curl -X GET "'.$baseUrl.'/projects/YOUR_PROJECT_UUID/wallet/transactions/TRANSACTION_ID" -H "Accept: application/json" -H "Authorization: Bearer YOUR_API_KEY"';
 @endphp
 
 <div x-data="{
     copied: null,
     mobileNav: false,
     activeSection: 'quick-start',
-    tabs: { wallet: 'curl', transactions: 'curl' },
+    tabs: { wallet: 'curl', transactions: 'curl', transaction: 'curl' },
     copy(value, key) {
         navigator.clipboard?.writeText(value);
         this.copied = key;
@@ -61,6 +62,7 @@
                 <a @click="mobileNav = false; activeSection = 'authentication'" href="#authentication" :class="activeSection === 'authentication' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="rounded-lg px-3 py-2 text-sm font-bold hover:bg-[#F3F7FF] hover:text-[#0069FF]">احراز هویت</a>
                 <a @click="mobileNav = false; activeSection = 'wallet'" href="#wallet" :class="activeSection === 'wallet' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="rounded-lg px-3 py-2 text-sm font-bold hover:bg-[#F3F7FF] hover:text-[#0069FF]">کیف پول</a>
                 <a @click="mobileNav = false; activeSection = 'transactions'" href="#transactions" :class="activeSection === 'transactions' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="rounded-lg px-3 py-2 text-sm font-bold hover:bg-[#F3F7FF] hover:text-[#0069FF]">تراکنش‌ها</a>
+                <a @click="mobileNav = false; activeSection = 'transaction-detail'" href="#transaction-detail" :class="activeSection === 'transaction-detail' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="rounded-lg px-3 py-2 text-sm font-bold hover:bg-[#F3F7FF] hover:text-[#0069FF]">جزئیات تراکنش</a>
                 <a @click="mobileNav = false; activeSection = 'errors'" href="#errors" :class="activeSection === 'errors' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="rounded-lg px-3 py-2 text-sm font-bold hover:bg-[#F3F7FF] hover:text-[#0069FF]">خطاها</a>
                 <a @click="mobileNav = false; activeSection = 'security'" href="#security" :class="activeSection === 'security' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="rounded-lg px-3 py-2 text-sm font-bold hover:bg-[#F3F7FF] hover:text-[#0069FF]">نکات امنیتی</a>
             </div>
@@ -76,6 +78,7 @@
                     <p class="px-3 pb-1 pt-4 text-[10px] font-black tracking-[.16em] text-slate-400">ENDPOINTS</p>
                     <a @click="activeSection = 'wallet'" href="#wallet" :class="activeSection === 'wallet' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="block rounded-lg px-3 py-2 text-sm font-bold transition hover:bg-slate-50 hover:text-[#0069FF]">کیف پول</a>
                     <a @click="activeSection = 'transactions'" href="#transactions" :class="activeSection === 'transactions' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="block rounded-lg px-3 py-2 text-sm font-bold transition hover:bg-slate-50 hover:text-[#0069FF]">تراکنش‌ها</a>
+                    <a @click="activeSection = 'transaction-detail'" href="#transaction-detail" :class="activeSection === 'transaction-detail' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="block rounded-lg px-3 py-2 text-sm font-bold transition hover:bg-slate-50 hover:text-[#0069FF]">جزئیات تراکنش</a>
                     <p class="px-3 pb-1 pt-4 text-[10px] font-black tracking-[.16em] text-slate-400">REFERENCE</p>
                     <a @click="activeSection = 'errors'" href="#errors" :class="activeSection === 'errors' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="block rounded-lg px-3 py-2 text-sm font-bold transition hover:bg-slate-50 hover:text-[#0069FF]">خطاها</a>
                     <a @click="activeSection = 'security'" href="#security" :class="activeSection === 'security' ? 'bg-[#EEF5FF] text-[#0069FF]' : 'text-slate-600'" class="block rounded-lg px-3 py-2 text-sm font-bold transition hover:bg-slate-50 hover:text-[#0069FF]">نکات امنیتی</a>
@@ -83,6 +86,16 @@
             </aside>
 
             <main class="min-w-0 space-y-8">
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-8 text-amber-950"><strong>قبل از ارسال درخواست:</strong> مقدار <code dir="ltr">YOUR_PROJECT_UUID</code> فقط یک placeholder است. UUID واقعی پروژه را از آدرس یا صفحه جزئیات همان پروژه در پنل مشتری پیدا و جایگزین کنید.</div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 text-sm leading-8 text-slate-600">
+                    <h2 class="text-lg font-black text-slate-950">Wallet endpoints</h2>
+                    <div class="mt-4 grid gap-3 md:grid-cols-3">
+                        <a href="#wallet" class="rounded-xl bg-slate-50 p-4"><strong class="block text-slate-950">Get remaining balance</strong><code dir="ltr" class="text-xs">/wallet</code></a>
+                        <a href="#transactions" class="rounded-xl bg-slate-50 p-4"><strong class="block text-slate-950">List transactions</strong><code dir="ltr" class="text-xs">/wallet/transactions</code></a>
+                        <a href="#transaction-detail" class="rounded-xl bg-slate-50 p-4"><strong class="block text-slate-950">Get one transaction</strong><code dir="ltr" class="text-xs">/wallet/transactions/{transaction}</code></a>
+                    </div>
+                    <p class="mt-4">خطاهای رایج: UUID نامعتبر یا placeholder و تراکنش ناموجود یا خارج از scope با ۴۰۴، پروژه معتبر بدون دسترسی مالی با ۴۰۳، و فیلتر نامعتبر با ۴۲۲ پاسخ داده می‌شود.</p>
+                </div>
                 <section id="quick-start" class="scroll-mt-24 rounded-2xl border border-[#B8D6FF] bg-[#F4F8FF] p-6 md:p-8">
                     <div class="flex flex-wrap items-start justify-between gap-4"><div><p class="text-xs font-black tracking-[.14em] text-[#0069FF]">QUICK START</p><h2 class="mt-2 text-2xl font-black text-slate-950">در سه مرحله شروع کنید</h2></div><span class="rounded-full border border-[#CFE0FF] bg-white px-3 py-1.5 text-xs font-bold text-slate-600">زمان لازم: کمتر از ۲ دقیقه</span></div>
                     <div class="mt-6 grid gap-3 md:grid-cols-3">
@@ -100,11 +113,11 @@
 
                 <section id="wallet" class="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                     <div class="border-b border-slate-200 p-6 md:p-8"><div class="flex flex-wrap items-center gap-3"><span class="rounded-md bg-emerald-100 px-2.5 py-1.5 font-mono text-xs font-black text-emerald-700" dir="ltr">GET</span><code class="font-mono text-sm font-bold text-slate-800" dir="ltr">/projects/{project_uuid}/wallet</code><span class="mr-auto rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">200 OK</span></div><p class="mt-4 text-sm leading-7 text-slate-600">موجودی کیف پول فضای کاری را برمی‌گرداند. کلید باید به مشتری‌ای تعلق داشته باشد که در پروژه دسترسی مالی دارد.</p></div>
-                    <div class="grid lg:grid-cols-2"><div class="border-b border-slate-200 p-6 lg:border-b-0 lg:border-l md:p-8"><div class="flex items-center justify-between"><span class="text-xs font-black text-slate-500">REQUEST EXAMPLE</span><div class="flex rounded-lg bg-slate-100 p-1"><button type="button" @click="tabs.wallet = 'curl'" :class="tabs.wallet === 'curl' ? 'bg-white text-[#0069FF] shadow-sm' : 'text-slate-500'" class="rounded-md px-2.5 py-1 text-[11px] font-black">cURL</button><button type="button" @click="tabs.wallet = 'php'" :class="tabs.wallet === 'php' ? 'bg-white text-[#0069FF] shadow-sm' : 'text-slate-500'" class="rounded-md px-2.5 py-1 text-[11px] font-black">PHP</button></div></div><div class="mt-3 rounded-xl bg-[#071B3A] p-4"><div class="flex justify-end"><button type="button" @click="copy(tabs.wallet === 'curl' ? @js($walletCurl) : @js('$ch = curl_init("'.$baseUrl.'/projects/PROJECT_UUID/wallet");'), 'wallet-request')" class="text-xs font-black text-blue-300" x-text="copied === 'wallet-request' ? 'کپی شد' : 'کپی'">کپی</button></div><pre x-show="tabs.wallet === 'curl'" class="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-7 text-emerald-300" dir="ltr"><code>{{ $walletCurl }}</code></pre><pre x-cloak x-show="tabs.wallet === 'php'" class="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-7 text-emerald-300" dir="ltr"><code>$ch = curl_init('{{ $baseUrl }}/projects/PROJECT_UUID/wallet');
+                    <div class="grid lg:grid-cols-2"><div class="border-b border-slate-200 p-6 lg:border-b-0 lg:border-l md:p-8"><div class="flex items-center justify-between"><span class="text-xs font-black text-slate-500">REQUEST EXAMPLE</span><div class="flex rounded-lg bg-slate-100 p-1"><button type="button" @click="tabs.wallet = 'curl'" :class="tabs.wallet === 'curl' ? 'bg-white text-[#0069FF] shadow-sm' : 'text-slate-500'" class="rounded-md px-2.5 py-1 text-[11px] font-black">cURL</button><button type="button" @click="tabs.wallet = 'php'" :class="tabs.wallet === 'php' ? 'bg-white text-[#0069FF] shadow-sm' : 'text-slate-500'" class="rounded-md px-2.5 py-1 text-[11px] font-black">PHP</button></div></div><div class="mt-3 rounded-xl bg-[#071B3A] p-4"><div class="flex justify-end"><button type="button" @click="copy(tabs.wallet === 'curl' ? @js($walletCurl) : @js('$ch = curl_init("'.$baseUrl.'/projects/YOUR_PROJECT_UUID/wallet");'), 'wallet-request')" class="text-xs font-black text-blue-300" x-text="copied === 'wallet-request' ? 'کپی شد' : 'کپی'">کپی</button></div><pre x-show="tabs.wallet === 'curl'" class="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-7 text-emerald-300" dir="ltr"><code>{{ $walletCurl }}</code></pre><pre x-cloak x-show="tabs.wallet === 'php'" class="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-7 text-emerald-300" dir="ltr"><code>$ch = curl_init('{{ $baseUrl }}/projects/YOUR_PROJECT_UUID/wallet');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer YOUR_API_KEY']);</code></pre></div></div><div class="bg-slate-50 p-6 md:p-8"><span class="text-xs font-black text-slate-500">RESPONSE · JSON</span><pre class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 font-mono text-xs leading-7 text-slate-700" dir="ltr"><code>{
   "data": {
-    "project_id": "PROJECT_UUID",
+    "project_id": "YOUR_PROJECT_UUID",
     "balance": 1250000,
     "currency": "IRR",
     "display_amount": "125,000 تومان"
@@ -115,7 +128,7 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer YOUR_API_KEY']);</c
 
                 <section id="transactions" class="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                     <div class="border-b border-slate-200 p-6 md:p-8"><div class="flex flex-wrap items-center gap-3"><span class="rounded-md bg-emerald-100 px-2.5 py-1.5 font-mono text-xs font-black text-emerald-700" dir="ltr">GET</span><code class="font-mono text-sm font-bold text-slate-800" dir="ltr">/projects/{project_uuid}/wallet/transactions</code><span class="mr-auto rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">PAGINATED</span></div><p class="mt-4 text-sm leading-7 text-slate-600">تراکنش‌های قابل مشاهده همان فضای کاری را به صورت صفحه‌بندی‌شده برمی‌گرداند.</p><div class="mt-5 grid gap-2 text-xs text-slate-600 sm:grid-cols-3"><div class="rounded-lg bg-slate-50 p-3"><code class="font-mono font-bold text-slate-800" dir="ltr">type</code><span class="mt-1 block leading-6">all, credit, debit, charge, refund</span></div><div class="rounded-lg bg-slate-50 p-3"><code class="font-mono font-bold text-slate-800" dir="ltr">per_page</code><span class="mt-1 block leading-6">۱ تا ۱۰۰ · پیش‌فرض ۲۵</span></div><div class="rounded-lg bg-slate-50 p-3"><code class="font-mono font-bold text-slate-800" dir="ltr">from / to</code><span class="mt-1 block leading-6">تاریخ مانند 2026-07-01</span></div></div></div>
-                    <div class="grid lg:grid-cols-2"><div class="border-b border-slate-200 p-6 lg:border-b-0 lg:border-l md:p-8"><div class="flex items-center justify-between"><span class="text-xs font-black text-slate-500">REQUEST EXAMPLE</span><div class="flex rounded-lg bg-slate-100 p-1"><button type="button" @click="tabs.transactions = 'curl'" :class="tabs.transactions === 'curl' ? 'bg-white text-[#0069FF] shadow-sm' : 'text-slate-500'" class="rounded-md px-2.5 py-1 text-[11px] font-black">cURL</button><button type="button" @click="tabs.transactions = 'php'" :class="tabs.transactions === 'php' ? 'bg-white text-[#0069FF] shadow-sm' : 'text-slate-500'" class="rounded-md px-2.5 py-1 text-[11px] font-black">PHP</button></div></div><div class="mt-3 rounded-xl bg-[#071B3A] p-4"><div class="flex justify-end"><button type="button" @click="copy(tabs.transactions === 'curl' ? @js($transactionsCurl) : @js('$ch = curl_init("'.$baseUrl.'/projects/PROJECT_UUID/wallet/transactions?per_page=25");'), 'transactions-request')" class="text-xs font-black text-blue-300" x-text="copied === 'transactions-request' ? 'کپی شد' : 'کپی'">کپی</button></div><pre x-show="tabs.transactions === 'curl'" class="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-7 text-emerald-300" dir="ltr"><code>{{ $transactionsCurl }}</code></pre><pre x-cloak x-show="tabs.transactions === 'php'" class="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-7 text-emerald-300" dir="ltr"><code>$ch = curl_init('{{ $baseUrl }}/projects/PROJECT_UUID/wallet/transactions?per_page=25');
+                    <div class="grid lg:grid-cols-2"><div class="border-b border-slate-200 p-6 lg:border-b-0 lg:border-l md:p-8"><div class="flex items-center justify-between"><span class="text-xs font-black text-slate-500">REQUEST EXAMPLE</span><div class="flex rounded-lg bg-slate-100 p-1"><button type="button" @click="tabs.transactions = 'curl'" :class="tabs.transactions === 'curl' ? 'bg-white text-[#0069FF] shadow-sm' : 'text-slate-500'" class="rounded-md px-2.5 py-1 text-[11px] font-black">cURL</button><button type="button" @click="tabs.transactions = 'php'" :class="tabs.transactions === 'php' ? 'bg-white text-[#0069FF] shadow-sm' : 'text-slate-500'" class="rounded-md px-2.5 py-1 text-[11px] font-black">PHP</button></div></div><div class="mt-3 rounded-xl bg-[#071B3A] p-4"><div class="flex justify-end"><button type="button" @click="copy(tabs.transactions === 'curl' ? @js($transactionsCurl) : @js('$ch = curl_init("'.$baseUrl.'/projects/YOUR_PROJECT_UUID/wallet/transactions?per_page=25");'), 'transactions-request')" class="text-xs font-black text-blue-300" x-text="copied === 'transactions-request' ? 'کپی شد' : 'کپی'">کپی</button></div><pre x-show="tabs.transactions === 'curl'" class="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-7 text-emerald-300" dir="ltr"><code>{{ $transactionsCurl }}</code></pre><pre x-cloak x-show="tabs.transactions === 'php'" class="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-7 text-emerald-300" dir="ltr"><code>$ch = curl_init('{{ $baseUrl }}/projects/YOUR_PROJECT_UUID/wallet/transactions?per_page=25');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer YOUR_API_KEY']);</code></pre></div></div><div class="bg-slate-50 p-6 md:p-8"><span class="text-xs font-black text-slate-500">RESPONSE · JSON</span><pre class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 font-mono text-xs leading-7 text-slate-700" dir="ltr"><code>{
   "data": [{
@@ -141,4 +154,22 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer YOUR_API_KEY']);</c
         </div>
     </div>
 </div>
+                <section id="transaction-detail" class="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div class="border-b border-slate-200 p-6 md:p-8"><div class="flex flex-wrap items-center gap-3"><span class="rounded-md bg-emerald-100 px-2.5 py-1.5 font-mono text-xs font-black text-emerald-700" dir="ltr">GET</span><code class="font-mono text-sm font-bold text-slate-800" dir="ltr">/projects/{project_uuid}/wallet/transactions/{transaction}</code><span class="mr-auto rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">200 OK</span></div><h2 class="mt-4 text-xl font-black text-slate-950">Get one transaction</h2><p class="mt-2 text-sm leading-7 text-slate-600">یک تراکنش قابل مشاهده را با شناسه عددی آن برمی‌گرداند. همان Bearer Token، توانایی <code dir="ltr">wallet:read</code> و دسترسی مالی پروژه لازم است.</p></div>
+                    <div class="grid lg:grid-cols-2"><div class="border-b border-slate-200 p-6 lg:border-b-0 lg:border-l md:p-8"><span class="text-xs font-black text-slate-500">cURL</span><div class="mt-3 rounded-xl bg-[#071B3A] p-4"><pre class="overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-7 text-emerald-300" dir="ltr"><code>{{ $transactionCurl }}</code></pre></div></div><div class="bg-slate-50 p-6 md:p-8"><span class="text-xs font-black text-slate-500">RESPONSE · JSON</span><pre class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 font-mono text-xs leading-7 text-slate-700" dir="ltr"><code>{
+  "data": {
+    "id": 42,
+    "type": "credit",
+    "amount": 500000,
+    "display_amount": "50,000 تومان",
+    "balance_before": 0,
+    "balance_after": 500000,
+    "description": "Wallet credit",
+    "currency": "IRR",
+    "created_at": "2026-07-13T08:30:00+03:30"
+  },
+  "meta": { "request_id": "REQUEST_ID" }
+}</code></pre></div></div>
+                    <div class="border-t border-slate-200 p-6 text-sm leading-8 text-slate-600">تراکنش باید متعلق به کیف پول مالک پروژه باشد و یا <code dir="ltr">metadata.project_id</code> آن با پروژه منطبق باشد یا این metadata را نداشته باشد. تراکنش پروژه دیگر یا مشتری دیگر با پاسخ <code dir="ltr">404 transaction_not_found</code> پنهان می‌شود.</div>
+                </section>
 @endsection

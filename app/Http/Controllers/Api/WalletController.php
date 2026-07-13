@@ -8,6 +8,8 @@ use App\Http\Resources\Api\WalletTransactionResource;
 use App\Models\Project;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -53,11 +55,7 @@ class WalletController extends Controller
             ], 422);
         }
 
-        $transactions = $project->owner->walletTransactions()
-            ->where(function ($query) use ($project): void {
-                $query->where('metadata->project_id', $project->id)
-                    ->orWhereNull('metadata->project_id');
-            })
+        $transactions = $this->visibleTransactions($project)
             ->when(($request->string('type')->toString() ?: 'all') !== 'all', fn ($query) => $query->where('type', $request->string('type')))
             ->when($request->filled('from'), fn ($query) => $query->whereDate('created_at', '>=', $request->input('from')))
             ->when($request->filled('to'), fn ($query) => $query->whereDate('created_at', '<=', $request->input('to')))
@@ -65,6 +63,34 @@ class WalletController extends Controller
             ->withQueryString();
 
         return WalletTransactionResource::collection($transactions);
+    }
+
+    public function transaction(Request $request, Project $project, string $transaction): WalletTransactionResource|JsonResponse
+    {
+        if (! $this->canReadWallet($request, $project)) {
+            return $this->error('You do not have billing access to this project.', 'project_forbidden', 403);
+        }
+
+        if (! ctype_digit($transaction) || (int) $transaction < 1) {
+            return $this->error('The requested transaction was not found.', 'transaction_not_found', 404);
+        }
+
+        $walletTransaction = $this->visibleTransactions($project)->find((int) $transaction);
+
+        if (! $walletTransaction) {
+            return $this->error('The requested transaction was not found.', 'transaction_not_found', 404);
+        }
+
+        return WalletTransactionResource::make($walletTransaction);
+    }
+
+    private function visibleTransactions(Project $project): HasMany
+    {
+        return $project->owner->walletTransactions()
+            ->where(function (Builder $query) use ($project): void {
+                $query->where('metadata->project_id', $project->id)
+                    ->orWhereNull('metadata->project_id');
+            });
     }
 
     private function canReadWallet(Request $request, Project $project): bool
