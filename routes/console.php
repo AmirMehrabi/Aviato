@@ -2,6 +2,7 @@
 
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Jobs\ReconcilePendingVirtualMachine;
+use App\Models\ApiRequestLog;
 use App\Models\HetznerAccount;
 use App\Models\VirtualMachine;
 use App\Services\HetznerCatalogSyncService;
@@ -24,6 +25,12 @@ Artisan::command('billing:charge-usage', function (UsageBillingService $billing)
         $accruals->sum('amount'),
     ));
 })->purpose('Accrue hourly PAYG usage without creating wallet transactions');
+
+Artisan::command('api:prune-logs {--days=90 : Keep logs newer than this many days}', function (): void {
+    $days = max(1, (int) $this->option('days'));
+    $deleted = ApiRequestLog::query()->where('created_at', '<', now()->subDays($days))->delete();
+    $this->info(sprintf('Deleted %d API request log(s) older than %d days.', $deleted, $days));
+})->purpose('Prune old public API request audit records');
 
 Artisan::command('billing:settle-usage {--date= : Service date to settle in YYYY-MM-DD format}', function (UsageBillingService $billing) {
     $date = $this->option('date') ?: now()->subDay()->toDateString();
@@ -324,6 +331,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('billing:charge-usage')->hourly();
+Schedule::command('api:prune-logs')->dailyAt('00:30');
 Schedule::command('billing:settle-usage')->dailyAt('00:05');
 Schedule::command('hetzner:sync-catalog')->hourlyAt(5);
 Schedule::command('billing:generate-monthly-invoices')->monthlyOn(1, '00:15');

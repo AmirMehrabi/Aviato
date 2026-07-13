@@ -212,6 +212,7 @@
                         [
                             'label' => 'سیستم',
                             'items' => [
+                                ['label' => 'فعالیت API', 'route' => 'admin.api-activity.index', 'active' => request()->routeIs('admin.api-activity.*'), 'icon' => 'M4 5h16v14H4V5Zm4 4h8M8 13h5'],
                                 ['label' => 'تنظیمات', 'route' => 'admin.settings.edit', 'active' => request()->routeIs('admin.settings.*'), 'icon' => 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z M12 8V5 M12 16v3 M8 12H5 M16 12h3 M9.2 9.2l-1.8-1.8 M14.8 14.8l1.8 1.8 M9.2 14.8l-1.8 1.8 M14.8 9.2l1.8-1.8'],
                             ],
                         ],

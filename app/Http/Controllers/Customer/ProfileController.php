@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApiRequestLog;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Services\CustomerVmQuotaService;
@@ -41,6 +42,8 @@ class ProfileController extends Controller
             'quota' => $this->quota->snapshot($customer),
             'invoiceCount' => $customer->invoices()->count(),
             'nationalCodeVerificationEnabled' => AppSetting::nationalCodeVerificationEnabled(),
+            'apiTokens' => $customer->tokens()->latest()->get(),
+            'apiLogs' => ApiRequestLog::query()->where('customer_id', $customer->id)->latest()->limit(12)->get(),
         ]);
     }
 

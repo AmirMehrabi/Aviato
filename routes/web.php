@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ApiActivityController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\Auth\CustomerPasswordResetController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\Customer\ApiTokenController;
 use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\InvoiceController;
@@ -95,6 +97,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::get('search', [SearchController::class, '__invoke'])->name('admin.search');
 
         Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
+        Route::get('api-activity', [ApiActivityController::class, 'index'])->name('admin.api-activity.index');
         Route::patch('settings', [SettingController::class, 'update'])->name('admin.settings.update');
         Route::post('hetzner-accounts/{hetznerAccount}/test', [HetznerAccountController::class, 'test'])
             ->name('admin.hetzner-accounts.test');
@@ -308,6 +311,8 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
     Route::middleware(['auth:customer', 'customer.wallet.access'])->group(function () use ($customerHome) {
         Route::get($customerHome, DashboardController::class)->name('dashboard');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
+        Route::post('profile/api-tokens', [ApiTokenController::class, 'store'])->name('customer.profile.api-tokens.store');
+        Route::delete('profile/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('customer.profile.api-tokens.destroy');
         Route::patch('profile/national-code', [ProfileController::class, 'updateNationalCode'])->name('customer.profile.national-code.update');
         Route::post('projects/switch', [ProjectController::class, 'switch'])->name('customer.projects.switch');
         Route::get('projects', [ProjectController::class, 'index'])->name('customer.projects.index');
@@ -457,3 +462,5 @@ Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 
 Route::get('/contact', [ContactController::class, 'create'])->name('contact');
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
+
+Route::get('/api-docs', fn () => view('api-docs'))->name('api.documentation');

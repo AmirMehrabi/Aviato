@@ -12,13 +12,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'first_name', 'last_name', 'email', 'phone', 'national_code', 'national_code_hash', 'national_code_verified_at', 'password', 'email_verified_at', 'email_verification_code', 'email_verification_expires_at', 'status', 'suspended_at', 'suspension_reason', 'sms_notifications_enabled', 'is_reseller', 'reseller_commission_pct', 'reseller_payout_method', 'reseller_earnings_balance', 'reseller_code', 'reseller_status', 'reseller_activated_at'])]
 #[Hidden(['password', 'remember_token'])]
 class Customer extends Authenticatable
 {
     /** @use HasFactory<CustomerFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     public const STATUS_ACTIVE = 'active';
 
