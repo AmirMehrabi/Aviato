@@ -12,9 +12,11 @@ class ApiTokenController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
+            'abilities' => ['nullable', 'array'],
+            'abilities.*' => ['string', 'in:wallet:read,vm:read,vm:create,vm:delete'],
         ]);
 
-        $token = $request->user('customer')->createToken($data['name'], ['wallet:read']);
+        $token = $request->user('customer')->createToken($data['name'], array_values($data['abilities'] ?? ['wallet:read']));
 
         return back()->with('api_token', $token->plainTextToken)->with('status', 'کلید API ساخته شد. آن را همین حالا ذخیره کنید؛ بعدا دوباره نمایش داده نمی‌شود.');
     }

@@ -85,7 +85,7 @@
             <div>
                 <p class="text-xs font-black text-[#0069FF]">PUBLIC API</p>
                 <h2 class="mt-2 text-xl font-black text-slate-950">دسترسی API</h2>
-                <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-500">برای خواندن موجودی و تراکنش‌های یک فضای کاری، یک کلید بسازید و آن را در هدر Bearer درخواست‌های API ارسال کنید. کلید را فقط یک‌بار می‌بینید.</p>
+                <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-500">برای دسترسی به کیف پول یا چرخه عمر ماشین‌های مجازی، دسترسی‌های لازم را انتخاب کنید. کلید فقط یک‌بار نمایش داده می‌شود.</p>
             </div>
             <a href="{{ route('api.documentation') }}" target="_blank" class="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-black text-blue-700 transition hover:bg-blue-100">مشاهده مستندات API</a>
         </div>
@@ -100,6 +100,11 @@
         <form method="POST" action="{{ route('customer.profile.api-tokens.store') }}" class="mt-5 flex flex-col gap-3 sm:flex-row">
             @csrf
             <input name="name" value="{{ old('name') }}" required maxlength="100" placeholder="مثلا: سرور مانیتورینگ" class="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold focus:border-[#0069FF] focus:outline-none">
+            <div class="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-600">
+                @foreach (['wallet:read' => 'کیف پول', 'vm:read' => 'خواندن VM', 'vm:create' => 'ساخت VM', 'vm:delete' => 'حذف VM'] as $ability => $label)
+                    <label class="inline-flex items-center gap-1"><input type="checkbox" name="abilities[]" value="{{ $ability }}" @checked(in_array($ability, old('abilities', ['wallet:read']), true))> <span dir="ltr">{{ $ability }}</span></label>
+                @endforeach
+            </div>
             <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">ساخت کلید API</button>
         </form>
         @error('name')<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
@@ -109,7 +114,7 @@
                 <thead class="bg-slate-50 text-xs font-black text-slate-500"><tr><th class="px-4 py-3">نام کلید</th><th class="px-4 py-3">دسترسی</th><th class="px-4 py-3">آخرین استفاده</th><th class="px-4 py-3"></th></tr></thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($apiTokens as $token)
-                        <tr><td class="px-4 py-3 font-bold">{{ $token->name }}</td><td class="px-4 py-3 font-mono text-xs text-slate-500" dir="ltr">wallet:read</td><td class="px-4 py-3 text-slate-500">{{ $token->last_used_at?->format('Y/m/d H:i') ?? 'هنوز استفاده نشده' }}</td><td class="px-4 py-3"><form method="POST" action="{{ route('customer.profile.api-tokens.destroy', $token) }}" onsubmit="return confirm('این کلید لغو شود؟')">@csrf @method('DELETE')<button class="text-xs font-black text-red-600 hover:text-red-800">لغو کلید</button></form></td></tr>
+                        <tr><td class="px-4 py-3 font-bold">{{ $token->name }}</td><td class="px-4 py-3 font-mono text-xs text-slate-500" dir="ltr">{{ implode(', ', $token->abilities ?? []) }}</td><td class="px-4 py-3 text-slate-500">{{ $token->last_used_at?->format('Y/m/d H:i') ?? 'هنوز استفاده نشده' }}</td><td class="px-4 py-3"><form method="POST" action="{{ route('customer.profile.api-tokens.destroy', $token) }}" onsubmit="return confirm('این کلید لغو شود؟')">@csrf @method('DELETE')<button class="text-xs font-black text-red-600 hover:text-red-800">لغو کلید</button></form></td></tr>
                     @empty
                         <tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">هنوز کلیدی نساخته‌اید.</td></tr>
                     @endforelse

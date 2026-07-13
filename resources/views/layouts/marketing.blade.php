@@ -77,7 +77,7 @@
     @endphp
 
     <div
-        class="min-h-screen overflow-hidden"
+        class="min-h-screen overflow-x-clip"
         x-data="{
             scrolled: false,
             menuOpen: false,

@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\ProjectMember;
+use App\Models\VirtualMachine;
 use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class PublicApiTest extends TestCase
@@ -105,6 +107,49 @@ class PublicApiTest extends TestCase
             ->assertJsonPath('error.code', 'unauthenticated');
 
         $this->assertDatabaseHas('api_request_logs', ['status_code' => 401, 'failure_type' => 'authentication']);
+    }
+
+    public function test_vm_api_uses_separate_abilities_and_project_scope(): void
+    {
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $readToken = $customer->createToken('VM reader', ['vm:read'])->plainTextToken;
+
+        $this->withToken($readToken)->getJson('/api/v1/projects/'.$project->uuid.'/virtual-machines/options')
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['locations', 'images', 'bundles', 'wallet', 'quota', 'can_create'], 'meta' => ['request_id']]);
+        $this->withToken($readToken)->getJson('/api/v1/projects/'.$project->uuid.'/virtual-machines')
+            ->assertOk()
+            ->assertJsonStructure(['data', 'links', 'meta']);
+        Sanctum::actingAs($customer, ['vm:create']);
+        $this->getJson('/api/v1/projects/'.$project->uuid.'/virtual-machines')
+            ->assertForbidden();
+    }
+
+    public function test_vm_list_and_detail_never_expose_passwords_or_cross_project_records(): void
+    {
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $otherProject = Customer::factory()->create()->ensureDefaultProject();
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id, 'project_id' => $project->id, 'name' => 'VM-1', 'display_name' => 'Public VM',
+            'provider' => VirtualMachine::PROVIDER_HETZNER, 'cpu_cores' => 1, 'ram_gb' => 1, 'disk_gb' => 10,
+            'status' => VirtualMachine::STATUS_STOPPED, 'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'login_username' => 'root', 'login_password' => 'do-not-return',
+        ]);
+        $otherVm = VirtualMachine::create([
+            'customer_id' => $otherProject->owner_customer_id, 'project_id' => $otherProject->id, 'name' => 'VM-2',
+            'provider' => VirtualMachine::PROVIDER_HETZNER, 'cpu_cores' => 1, 'ram_gb' => 1, 'disk_gb' => 10,
+            'status' => VirtualMachine::STATUS_STOPPED, 'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+        $token = $customer->createToken('VM reader', ['vm:read'])->plainTextToken;
+
+        $this->withToken($token)->getJson('/api/v1/projects/'.$project->uuid.'/virtual-machines')
+            ->assertOk()->assertJsonPath('data.0.uuid', $vm->uuid)->assertJsonMissing(['login_password' => 'do-not-return']);
+        $this->withToken($token)->getJson('/api/v1/projects/'.$project->uuid.'/virtual-machines/'.$vm->uuid)
+            ->assertOk()->assertJsonMissing(['login_password' => 'do-not-return']);
+        $this->withToken($token)->getJson('/api/v1/projects/'.$project->uuid.'/virtual-machines/'.$otherVm->uuid)
+            ->assertNotFound();
     }
 
     public function test_public_api_documentation_is_available_to_guests(): void
