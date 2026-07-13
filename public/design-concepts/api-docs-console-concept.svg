@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120">
+  <rect width="1600" height="1120" fill="#f5f8fd"/>
+  <rect x="55" y="45" width="1490" height="1030" rx="28" fill="#fff" stroke="#dbe4f0"/>
+  <rect x="55" y="45" width="1490" height="82" rx="28" fill="#fff"/>
+  <text x="110" y="96" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#071b3a">AVIATO</text>
+  <text x="1310" y="95" text-anchor="end" font-family="Arial, sans-serif" font-size="18" fill="#64748b">مستندات API</text>
+  <rect x="1360" y="74" width="135" height="34" rx="17" fill="#eaf2ff"/>
+  <text x="1427" y="97" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#0069ff">API · V1</text>
+  <line x1="55" y1="127" x2="1545" y2="127" stroke="#e2e8f0"/>
+  <rect x="87" y="162" width="1426" height="194" rx="22" fill="#fff" stroke="#dbe4f0"/>
+  <text x="1435" y="216" text-anchor="end" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#0069ff">AVIATO API · V1</text>
+  <text x="1435" y="270" text-anchor="end" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#071b3a">مستندات API، برای ساختن سریع‌تر</text>
+  <text x="1435" y="310" text-anchor="end" font-family="Arial, sans-serif" font-size="17" fill="#64748b">موجودی و تراکنش‌های فضای کاری خود را با چند درخواست ساده بخوانید.</text>
+  <rect x="1125" y="325" width="150" height="40" rx="10" fill="#0069ff"/>
+  <text x="1200" y="351" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#fff">شروع سریع</text>
+  <rect x="1300" y="325" width="150" height="40" rx="10" fill="#fff" stroke="#cbd5e1"/>
+  <text x="1375" y="351" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#475569">ساخت کلید</text>
+  <rect x="87" y="390" width="246" height="635" rx="18" fill="#fff" stroke="#dbe4f0"/>
+  <text x="300" y="432" text-anchor="end" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#94a3b8">ON THIS PAGE</text>
+  <rect x="110" y="449" width="200" height="44" rx="9" fill="#eef5ff"/>
+  <text x="290" y="477" text-anchor="end" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#0069ff">شروع سریع</text>
+  <text x="300" y="535" text-anchor="end" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#94a3b8">GUIDE</text>
+  <text x="290" y="576" text-anchor="end" font-family="Arial, sans-serif" font-size="16" fill="#475569">احراز هویت</text>
+  <text x="300" y="635" text-anchor="end" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#94a3b8">ENDPOINTS</text>
+  <text x="290" y="676" text-anchor="end" font-family="Arial, sans-serif" font-size="16" fill="#475569">کیف پول</text>
+  <text x="290" y="716" text-anchor="end" font-family="Arial, sans-serif" font-size="16" fill="#475569">تراکنش‌ها</text>
+  <text x="300" y="775" text-anchor="end" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#94a3b8">REFERENCE</text>
+  <text x="290" y="816" text-anchor="end" font-family="Arial, sans-serif" font-size="16" fill="#475569">خطاها</text>
+  <text x="290" y="856" text-anchor="end" font-family="Arial, sans-serif" font-size="16" fill="#475569">نکات امنیتی</text>
+  <rect x="365" y="390" width="1148" height="182" rx="18" fill="#f4f8ff" stroke="#b8d6ff"/>
+  <text x="1460" y="432" text-anchor="end" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#0069ff">QUICK START</text>
+  <text x="1460" y="470" text-anchor="end" font-family="Arial, sans-serif" font-size="27" font-weight="700" fill="#071b3a">در سه مرحله شروع کنید</text>
+  <rect x="412" y="500" width="322" height="52" rx="11" fill="#fff"/>
+  <rect x="750" y="500" width="322" height="52" rx="11" fill="#fff"/>
+  <rect x="1088" y="500" width="322" height="52" rx="11" fill="#fff"/>
+  <circle cx="438" cy="526" r="14" fill="#eaf2ff"/><text x="438" y="532" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#0069ff">1</text>
+  <text x="708" y="532" text-anchor="end" font-family="Arial, sans-serif" font-size="15" fill="#334155">کلید بسازید</text>
+  <circle cx="776" cy="526" r="14" fill="#eaf2ff"/><text x="776" y="532" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#0069ff">2</text>
+  <text x="1046" y="532" text-anchor="end" font-family="Arial, sans-serif" font-size="15" fill="#334155">هدر را اضافه کنید</text>
+  <circle cx="1114" cy="526" r="14" fill="#eaf2ff"/><text x="1114" y="532" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#0069ff">3</text>
+  <text x="1384" y="532" text-anchor="end" font-family="Arial, sans-serif" font-size="15" fill="#334155">اولین درخواست</text>
+  <rect x="365" y="606" width="1148" height="334" rx="18" fill="#fff" stroke="#dbe4f0"/>
+  <rect x="365" y="606" width="1148" height="90" rx="18" fill="#fff"/>
+  <rect x="1410" y="635" width="58" height="30" rx="7" fill="#d9f7e7"/>
+  <text x="1439" y="656" text-anchor="middle" font-family="monospace" font-size="14" font-weight="700" fill="#137a4a">GET</text>
+  <text x="1385" y="657" text-anchor="end" font-family="monospace" font-size="18" font-weight="700" fill="#1e293b">/projects/{project_uuid}/wallet</text>
+  <text x="1435" y="684" text-anchor="end" font-family="Arial, sans-serif" font-size="14" fill="#64748b">موجودی کیف پول فضای کاری را برمی‌گرداند.</text>
+  <rect x="390" y="723" width="520" height="184" rx="13" fill="#071b3a"/>
+  <text x="875" y="750" text-anchor="end" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#94a3b8">REQUEST · cURL</text>
+  <text x="425" y="785" font-family="monospace" font-size="13" fill="#6ee7b7">curl -X GET "/api/v1/projects/PROJECT_UUID/wallet"</text>
+  <text x="425" y="818" font-family="monospace" font-size="13" fill="#6ee7b7">-H "Authorization: Bearer YOUR_API_KEY"</text>
+  <text x="425" y="851" font-family="monospace" font-size="13" fill="#60a5fa">-H "Accept: application/json"</text>
+  <rect x="936" y="723" width="520" height="184" rx="13" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="1422" y="750" text-anchor="end" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#64748b">RESPONSE · JSON · 200 OK</text>
+  <text x="972" y="785" font-family="monospace" font-size="13" fill="#334155">{ "data": {</text>
+  <text x="1000" y="818" font-family="monospace" font-size="13" fill="#334155">"balance": 1250000,</text>
+  <text x="1000" y="851" font-family="monospace" font-size="13" fill="#334155">"currency": "IRR"</text>
+  <text x="972" y="884" font-family="monospace" font-size="13" fill="#334155">} }</text>
+  <text x="1460" y="986" text-anchor="end" font-family="Arial, sans-serif" font-size="14" fill="#94a3b8">Design concept · focused console · RTL Persian UI + LTR code</text>
+</svg>
