@@ -269,11 +269,13 @@
                         ماشین مجازی ابری ساده، روشن و قابل پیش بینی برای تیم هایی که می خواهند سرور را بدون پیچیدگی اضافه بخرند و
                         سرویس را اجرا کنند.
                     </p>
-                    <a referrerpolicy='origin' target='_blank'
-                        href='https://trustseal.enamad.ir/?id=741993&Code=nS8E7FstzvRwYUnf48e4uvEM0kHHqTGU'
-                        class="mt-6 hidden max-w-full sm:inline-flex"><img referrerpolicy='origin'
-                            src='https://trustseal.enamad.ir/logo.aspx?id=741993&Code=nS8E7FstzvRwYUnf48e4uvEM0kHHqTGU'
-                            alt='' class="h-auto max-w-full" style='cursor:pointer' code='nS8E7FstzvRwYUnf48e4uvEM0kHHqTGU'></a>
+                    @if (request()->routeIs('home'))
+                        <a referrerpolicy='origin' target='_blank'
+                            href='https://trustseal.enamad.ir/?id=741993&Code=nS8E7FstzvRwYUnf48e4uvEM0kHHqTGU'
+                            class="mt-6 hidden max-w-full sm:inline-flex"><img referrerpolicy='origin'
+                                src='https://trustseal.enamad.ir/logo.aspx?id=741993&Code=nS8E7FstzvRwYUnf48e4uvEM0kHHqTGU'
+                                alt='' class="h-auto max-w-full" style='cursor:pointer' code='nS8E7FstzvRwYUnf48e4uvEM0kHHqTGU'></a>
+                    @endif
                 </div>
 
                 <div>
