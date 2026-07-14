@@ -163,6 +163,10 @@ class PublicApiTest extends TestCase
             ->assertSee('YOUR_PROJECT_UUID')
             ->assertSee('Get remaining balance')
             ->assertSee('List transactions')
-            ->assertSee('Get one transaction');
+            ->assertSee('Get one transaction')
+            ->assertSee('JavaScript')
+            ->assertSee('Copied ✓')
+            ->assertSee('api-docs-code')
+            ->assertDontSee('+  -H');
     }
 }
