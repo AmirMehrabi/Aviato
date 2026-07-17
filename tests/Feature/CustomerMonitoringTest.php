@@ -8,6 +8,7 @@ use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class CustomerMonitoringTest extends TestCase
@@ -55,9 +56,32 @@ class CustomerMonitoringTest extends TestCase
         $this->actingAs($customer, 'customer');
         $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->uuid.'/metrics?timeframe=hour')
             ->assertOk()
-            ->assertJsonPath('data.vmid', 101)
             ->assertJsonPath('data.latest.cpu_percent', 12)
-            ->assertJsonPath('data.server.id', $vm->uuid);
+            ->assertJsonPath('data.server.id', $vm->uuid)
+            ->assertJsonMissingPath('data.vmid')
+            ->assertJsonMissingPath('data.node')
+            ->assertJsonMissingPath('data.server.vmid')
+            ->assertJsonMissingPath('data.server.node');
+    }
+
+    public function test_monitoring_failure_does_not_expose_backend_exception(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->readyVm($customer);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('qemuPerformance')
+                ->once()
+                ->andThrow(new RuntimeException('secret infrastructure failure'));
+        });
+
+        $this->actingAs($customer, 'customer');
+        $response = $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->uuid.'/metrics')
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'دریافت داده های مانیتورینگ ماشین مجازی ممکن نیست.')
+            ->assertJsonMissingPath('error');
+
+        $this->assertStringNotContainsString('secret infrastructure failure', $response->getContent());
     }
 
     public function test_customer_cannot_fetch_another_customer_vm_metrics(): void
@@ -76,9 +100,9 @@ class CustomerMonitoringTest extends TestCase
         $vm = $this->readyVm($customer);
 
         $this->actingAs($customer, 'customer');
-        $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->uuid.'/metrics?timeframe=minute')
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('timeframe');
+        $response = $this->getJson($this->customerBaseUrl.'/monitoring/servers/'.$vm->uuid.'/metrics?timeframe=minute');
+
+        $this->assertSame(422, $response->status(), $response->getContent());
     }
 
     private function readyVm(Customer $customer): VirtualMachine

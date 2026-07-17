@@ -93,8 +93,10 @@ class ProfileController extends Controller
             try {
                 $this->nationalCodeVerification->verify((string) $customer->phone, $nationalCode);
             } catch (\RuntimeException $e) {
+                report($e);
+
                 throw ValidationException::withMessages([
-                    'national_code' => $e->getMessage(),
+                    'national_code' => 'تأیید کد ملی انجام نشد. لطفاً اطلاعات را بررسی و دوباره تلاش کنید.',
                 ]);
             }
         }

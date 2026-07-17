@@ -245,9 +245,6 @@
                                 @if (!empty($meta['vm_name']))
                                     <span class="break-all" dir="ltr">ماشین مجازی: {{ $meta['vm_name'] }}</span>
                                 @endif
-                                @if (!empty($meta['provider_reference']))
-                                    <span class="break-all" dir="ltr">Ref: {{ $meta['provider_reference'] }}</span>
-                                @endif
                             </div>
                             @if (($meta['category'] ?? null) === 'payg_usage')
                                 <p class="mt-3 break-words text-sm leading-7 text-slate-600">از {{ \Carbon\CarbonImmutable::parse($meta['period_start'])->format('Y/m/d H:i') }} تا {{ \Carbon\CarbonImmutable::parse($meta['period_end'])->format('Y/m/d H:i') }} · {{ number_format((float) ($meta['hours'] ?? 0), 2) }} ساعت · نرخ ساعتی {{ number_format((float) ($meta['hourly_rate'] ?? 0), 2) }}</p>

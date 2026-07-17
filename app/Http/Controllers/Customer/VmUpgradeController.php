@@ -36,7 +36,9 @@ class VmUpgradeController extends Controller
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
-            return back()->with('error', 'ثبت ارتقای باندل ممکن نیست: '.$exception->getMessage());
+            report($exception);
+
+            return back()->with('error', 'ارتقای منابع ثبت نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
     }
 
@@ -56,7 +58,9 @@ class VmUpgradeController extends Controller
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
-            return back()->with('error', 'ثبت دیسک اضافه ممکن نیست: '.$exception->getMessage());
+            report($exception);
+
+            return back()->with('error', 'دیسک اضافه ثبت نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
     }
 }

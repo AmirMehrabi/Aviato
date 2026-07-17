@@ -12,6 +12,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 
@@ -57,9 +58,6 @@ class MonitoringController extends Controller
                 'hostname' => $vm->hostname,
                 'ip_address' => $vm->ip_address,
                 'status' => $vm->status,
-                'provisioning_status' => $vm->provisioning_status,
-                'node' => $vm->node,
-                'vmid' => $vm->vmid,
                 'cpu_cores' => $vm->cpu_cores,
                 'ram_gb' => $vm->ram_gb,
                 'disk_gb' => $vm->disk_gb,
@@ -74,9 +72,16 @@ class MonitoringController extends Controller
     {
         $this->projects->resolveCustomerVm($request, $virtualMachine);
 
-        $data = $request->validate([
-            'timeframe' => ['nullable', Rule::in(['hour', 'day', 'week', 'month', 'year'])],
-        ]);
+        try {
+            $data = $request->validate([
+                'timeframe' => ['nullable', Rule::in(['hour', 'day', 'week', 'month', 'year'])],
+            ]);
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'message' => 'بازه زمانی انتخاب‌شده معتبر نیست.',
+                'errors' => $exception->errors(),
+            ], 422);
+        }
         $timeframe = $data['timeframe'] ?? 'hour';
 
         try {
@@ -94,6 +99,7 @@ class MonitoringController extends Controller
                 (int) $virtualMachine->vmid,
                 $timeframe,
             );
+            unset($metrics['node'], $metrics['vmid']);
 
             return response()->json([
                 'data' => array_merge($metrics, [
@@ -103,9 +109,6 @@ class MonitoringController extends Controller
                         'hostname' => $virtualMachine->hostname,
                         'ip_address' => $virtualMachine->ip_address,
                         'status' => $virtualMachine->status,
-                        'provisioning_status' => $virtualMachine->provisioning_status,
-                        'node' => $virtualMachine->node,
-                        'vmid' => $virtualMachine->vmid,
                         'cpu_cores' => $virtualMachine->cpu_cores,
                         'ram_gb' => $virtualMachine->ram_gb,
                         'disk_gb' => $virtualMachine->disk_gb,
@@ -118,8 +121,7 @@ class MonitoringController extends Controller
 
             return response()->json([
                 'message' => 'دریافت داده های مانیتورینگ ماشین مجازی ممکن نیست.',
-                'error' => $exception->getMessage(),
-            ], 422);
+                ], 422);
         }
     }
 
@@ -146,7 +148,7 @@ class MonitoringController extends Controller
             'last_at' => $lastBackup?->created_at?->toISOString(),
             'last_ready_at' => $lastReady?->finished_at?->toISOString(),
             'last_failed_at' => $lastFailed?->created_at?->toISOString(),
-            'last_error' => $lastFailed?->error,
+            'last_error' => $lastFailed ? 'آخرین بکاپ ناموفق بوده است.' : null,
         ];
     }
 }

@@ -63,7 +63,7 @@
                             <div class="min-w-0">
                                 <p class="text-xs font-black text-slate-500">ماشین مجازی انتخاب‌شده</p>
                                 <h2 class="mt-1 truncate text-xl font-black text-slate-950" dir="ltr" x-text="selected?.name || '—'"></h2>
-                                <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr" x-text="selected ? `${selected.ip_address || 'no-ip'} · ${selected.node || 'node'} · ${selected.cpu_cores} CPU / ${selected.ram_gb}GB RAM / ${selected.disk_gb}GB Disk` : ''"></p>
+                                <p class="mt-1 truncate text-xs font-bold text-slate-500" dir="ltr" x-text="selected ? `${selected.ip_address || 'بدون IP'} · ${selected.cpu_cores} CPU / ${selected.ram_gb}GB RAM / ${selected.disk_gb}GB Disk` : ''"></p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <select x-model="timeframe" @change="load()" class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none focus:border-[#0069FF]">
@@ -166,7 +166,7 @@
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <span class="font-bold text-slate-500">آخرین وضعیت</span>
-                            <span class="font-black text-slate-950" x-text="backup.last_status || '—'"></span>
+                            <span class="font-black text-slate-950" x-text="backupStatusLabel(backup.last_status)"></span>
                         </div>
                     </div>
                     <p x-show="backup.last_error" class="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-800" x-text="backup.last_error"></p>
@@ -191,7 +191,7 @@
                     { key: 'cpu', label: 'CPU', help: 'درصد مصرف پردازنده', color: '#0069FF', max: 100, maxLabel: '100%' },
                     { key: 'memory', label: 'RAM', help: 'درصد مصرف حافظه', color: '#00A67E', max: 100, maxLabel: '100%' },
                     { key: 'network', label: 'Network', help: 'مجموع ورودی و خروجی', color: '#f59e0b', max: null, maxLabel: 'auto' },
-                    { key: 'diskio', label: 'Disk I/O', help: 'مجموع خواندن و نوشتن دیسک', color: '#fb7185', max: null, maxLabel: 'auto' },
+                    { key: 'diskio', label: 'فعالیت دیسک', help: 'مجموع خواندن و نوشتن دیسک', color: '#fb7185', max: null, maxLabel: 'خودکار' },
                 ],
                 init() {
                     this.selectedId ||= this.servers[0]?.id || null;
@@ -207,7 +207,7 @@
                         { label: 'CPU', value: this.formatPercent(this.latest.cpu_percent), hint: `${this.selected?.cpu_cores || '—'} vCPU` },
                         { label: 'RAM', value: this.formatPercent(this.latest.memory_percent), hint: `${this.latest.memory_used || '—'} / ${this.latest.memory_total || `${this.selected?.ram_gb || '—'} GB`}` },
                         { label: 'Network', value: `↓ ${this.formatRate(this.latest.netin_bytes_per_second)}`, hint: `↑ ${this.formatRate(this.latest.netout_bytes_per_second)}` },
-                        { label: 'Disk I/O', value: `R ${this.formatRate(this.latest.diskread_bytes_per_second)}`, hint: `W ${this.formatRate(this.latest.diskwrite_bytes_per_second)}` },
+                        { label: 'فعالیت دیسک', value: `خواندن ${this.formatRate(this.latest.diskread_bytes_per_second)}`, hint: `نوشتن ${this.formatRate(this.latest.diskwrite_bytes_per_second)}` },
                     ];
                 },
                 get alerts() {
@@ -308,6 +308,9 @@
                         unit++;
                     }
                     return `${size.toFixed(size >= 10 ? 1 : 2)} ${units[unit]}`;
+                },
+                backupStatusLabel(status) {
+                    return ({ ready: 'آماده', failed: 'ناموفق', queued: 'در صف ایجاد', running: 'در حال ایجاد' })[status] || '—';
                 },
                 formatUptime(seconds) {
                     if (!seconds) return 'بدون uptime';

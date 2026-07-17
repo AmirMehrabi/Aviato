@@ -7,7 +7,6 @@ use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
 use App\Models\VmBackupPolicy;
 use App\Services\ProjectAccessService;
-use App\Services\ProxmoxService;
 use App\Services\VmBackupService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -21,7 +20,6 @@ class BackupController extends Controller
         private readonly WalletService $wallets,
         private readonly ProjectAccessService $projects,
         private readonly VmBackupService $backups,
-        private readonly ProxmoxService $proxmox,
     ) {}
 
     public function index(Request $request): View
@@ -36,19 +34,6 @@ class BackupController extends Controller
             ->get();
         $backupRate = ResourceRate::query()->where('resource', ResourceRate::BACKUP)->where('is_active', true)->first();
 
-        $storageOptions = [];
-        foreach ($vms as $vm) {
-            if (! $vm->proxmoxServer || ! $vm->node) {
-                continue;
-            }
-
-            try {
-                $storageOptions[$vm->id] = $this->proxmox->backupStorages($vm->proxmoxServer, $vm->node);
-            } catch (\Throwable) {
-                $storageOptions[$vm->id] = [];
-            }
-        }
-
         return view('customer.backups.index', [
             'customer' => $customer,
             'activeProject' => $activeProject,
@@ -57,7 +42,6 @@ class BackupController extends Controller
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'vms' => $vms,
-            'storageOptions' => $storageOptions,
             'backupRate' => $backupRate,
             'invoiceCount' => $customer->invoices()->count(),
         ]);
@@ -73,7 +57,9 @@ class BackupController extends Controller
 
             return back()->with('status', 'Backup queued.');
         } catch (\Throwable $exception) {
-            return back()->with('error', 'Backup could not be queued: '.$exception->getMessage());
+            report($exception);
+
+            return back()->with('error', 'بکاپ این ماشین ثبت نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
     }
 

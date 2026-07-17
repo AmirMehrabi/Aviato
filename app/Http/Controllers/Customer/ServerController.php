@@ -69,8 +69,7 @@ class ServerController extends Controller
                 $query->where(function ($query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
                         ->orWhere('hostname', 'like', "%{$search}%")
-                        ->orWhere('ip_address', 'like', "%{$search}%")
-                        ->orWhere('node', 'like', "%{$search}%");
+                        ->orWhere('ip_address', 'like', "%{$search}%");
                 });
             })
             ->latest()
@@ -102,7 +101,6 @@ class ServerController extends Controller
                 'internal_name' => $server->name,
                 'hostname' => $server->hostname ?: '-',
                 'ip' => $server->ip_address ?: 'بدون IP',
-                'node' => $server->node ?: 'نامشخص',
                 'location' => $server->infrastructureLocation?->name ?: ($server->proxmoxServer?->name ?: 'local'),
                 'plan' => $server->bundle?->name ?: 'Custom',
                 'image' => $server->cloudImage?->name ?: 'Image نامشخص',
@@ -122,7 +120,6 @@ class ServerController extends Controller
                 'status' => $server->status,
                 'status_label' => $this->statusLabel($server->status),
                 'status_class' => $this->statusClass($server->status),
-                'provisioning_status' => $server->provisioning_status,
                 'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
@@ -208,7 +205,6 @@ class ServerController extends Controller
                 'status' => $server->status,
                 'status_label' => $this->statusLabel($server->status),
                 'status_class' => $this->statusClass($server->status),
-                'provisioning_status' => $server->provisioning_status,
                 'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
@@ -218,14 +214,11 @@ class ServerController extends Controller
                 'delete_stale' => $server->deleteAttemptIsStale(),
                 'is_deleted' => $server->isDeleted(),
                 'is_rebuilding' => $this->isRebuilding($server),
-                'rebuild_error' => data_get($server->remote_state, 'rebuild_error'),
                 'ip' => $server->ip_address ?: 'بدون IP',
                 'ssh_ready' => $server->ip_address && $server->provisioning_status === VirtualMachine::PROVISION_READY,
                 'ssh_label' => $server->ip_address && $server->provisioning_status === VirtualMachine::PROVISION_READY ? 'SSH آماده' : 'اتصال در انتظار',
                 'ssh_class' => $server->ip_address && $server->provisioning_status === VirtualMachine::PROVISION_READY ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
                 'hostname' => $server->hostname ?: 'hostname-not-set',
-                'node' => $server->node ?: 'node-not-set',
-                'vmid' => $server->vmid,
                 'login_username' => $server->login_username ?: '-',
                 'has_password' => filled($server->login_password),
                 'console_ready' => $server->isProxmox() && $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === VirtualMachine::PROVISION_READY && ! $server->isActionLocked(),
@@ -400,9 +393,11 @@ class ServerController extends Controller
                 ->withErrors($exception->errors())
                 ->withInput($this->safeCreateInput($request));
         } catch (Throwable $exception) {
+            report($exception);
+
             return back()
                 ->withInput($this->safeCreateInput($request))
-                ->with('error', 'ساخت ماشین مجازی ممکن نیست: '.$exception->getMessage());
+                ->with('error', 'ساخت ماشین مجازی ممکن نیست. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
     }
 
@@ -499,7 +494,7 @@ class ServerController extends Controller
                 'ready_count' => $server->backups->where('status', VmBackup::STATUS_READY)->count(),
                 'latest_status' => $latestBackup?->status,
                 'latest_at' => $latestBackup?->created_at,
-                'latest_error' => $latestBackup?->status === VmBackup::STATUS_FAILED ? $latestBackup->error : null,
+                'latest_error' => $latestBackup?->status === VmBackup::STATUS_FAILED ? 'آخرین بکاپ ناموفق بوده است. برای بررسی بیشتر با پشتیبانی تماس بگیرید.' : null,
             ],
             'eligibleBundles' => $eligibleBundles,
             'bundlePreviews' => $eligibleBundles->mapWithKeys(fn (VmBundle $bundle): array => [
@@ -533,7 +528,7 @@ class ServerController extends Controller
         }
 
         if (! $server->cloudImage->is_active) {
-            return back()->with('error', 'Image فعلی این سرور غیرفعال است و برای بازسازی قابل استفاده نیست.');
+            return back()->with('error', 'سیستم‌عامل فعلی برای نصب مجدد در دسترس نیست.');
         }
 
         $billingCustomer = $server->project?->owner ?? $server->customer;
@@ -629,7 +624,9 @@ class ServerController extends Controller
         try {
             $result = $this->deletions->requestDelete($server, 'customer');
         } catch (Throwable $exception) {
-            return back()->with('error', 'درخواست حذف سرور ثبت نشد: '.$exception->getMessage());
+            report($exception);
+
+            return back()->with('error', 'درخواست حذف سرویس ثبت نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
 
         if ($result['status'] === 'already_queued') {

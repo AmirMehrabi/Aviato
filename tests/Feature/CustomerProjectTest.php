@@ -161,7 +161,12 @@ class CustomerProjectTest extends TestCase
         ]);
 
         $this->actingAs($member, 'customer');
-        $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid)->assertOk();
+        $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid)
+            ->assertOk()
+            ->assertDontSee('جزئیات فنی')
+            ->assertDontSee('Network Bridge')
+            ->assertDontSee('OS Template')
+            ->assertDontSee('vmbr1');
 
         $this->actingAs($outsider, 'customer');
         $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid)->assertNotFound();

@@ -37,7 +37,7 @@
                     <div>
                         <div class="flex flex-wrap items-center gap-2">
                             <p class="text-base font-black text-slate-950">{{ $invoice->number }}</p>
-                            <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">{{ $invoice->status }}</span>
+                            <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">{{ match ($invoice->status) { 'paid', 'issued' => 'تسویه شده', 'cancelled' => 'لغو شده', default => 'در حال بررسی' } }}</span>
                         </div>
                         <p class="mt-2 text-sm text-slate-500">بازه {{ $invoice->period_start->format('Y/m/d') }} تا {{ $invoice->period_end->format('Y/m/d') }} · صدور {{ $invoice->issued_at?->format('Y/m/d H:i') }}</p>
                     </div>

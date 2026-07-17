@@ -12,7 +12,7 @@
     <section class="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60 md:p-8">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div>
-                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{{ $invoice->status }}</span>
+                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{{ match ($invoice->status) { 'paid', 'issued' => 'تسویه شده', 'cancelled' => 'لغو شده', default => 'در حال بررسی' } }}</span>
                 <h2 class="mt-4 text-2xl font-black text-slate-950">{{ $invoice->number }}</h2>
                 <p class="mt-2 text-sm text-slate-500">بازه صورتحساب: {{ $invoice->period_start->format('Y/m/d') }} تا {{ $invoice->period_end->format('Y/m/d') }}</p>
                 <p class="mt-1 text-sm text-slate-500">تاریخ صدور: {{ $invoice->issued_at?->format('Y/m/d H:i') }}</p>

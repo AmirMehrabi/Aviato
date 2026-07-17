@@ -86,8 +86,6 @@
                 action_pending: @js($server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null && ! $deleteAttemptIsStale)),
                 is_rebuilding: @js($isRebuilding),
                 hostname: @js($server->hostname ?: 'hostname-not-set'),
-                vmid: @js($server->vmid ?: '-'),
-                node: @js($server->node ?: 'node-not-set'),
                 ip: @js($server->ip_address ?: 'Pending'),
             },
             copy(value, key) {
@@ -142,15 +140,15 @@
                         <p class="mt-2 truncate text-sm font-bold text-[#9DB4DC]" dir="ltr" x-text="serverState.hostname">{{ $server->hostname ?: 'hostname-not-set' }}</p>
                         <div class="mt-6 grid gap-3 sm:grid-cols-3">
                             <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-                                <p class="text-xs font-black text-[#9DB4DC]">IP Address</p>
+                                <p class="text-xs font-black text-[#9DB4DC]">نشانی IP</p>
                                 <p class="mt-2 truncate text-xl font-black" dir="ltr" x-text="serverState.ip">{{ $server->ip_address ?: 'Pending' }}</p>
                             </div>
                             <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-                                <p class="text-xs font-black text-[#9DB4DC]">Resources</p>
+                                <p class="text-xs font-black text-[#9DB4DC]">منابع</p>
                                 <p class="mt-2 truncate text-xl font-black" dir="ltr">{{ $server->cpu_cores }} CPU / {{ $server->ram_gb }}GB</p>
                             </div>
                             <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-                                <p class="text-xs font-black text-[#9DB4DC]">Monthly</p>
+                                <p class="text-xs font-black text-[#9DB4DC]">هزینه ماهانه</p>
                                 <p class="mt-2 truncate text-xl font-black">{{ $formattedMonthlyCost }}</p>
                             </div>
                         </div>
@@ -175,9 +173,9 @@
                         @endif
                         <div class="mt-4 flex flex-wrap gap-2">
                             @if ($consoleReady)
-                                <a href="{{ $consoleUrl }}" class="inline-flex flex-1 justify-center rounded-xl bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white transition hover:bg-[#0050D0]">Console</a>
+                                <a href="{{ $consoleUrl }}" class="inline-flex flex-1 justify-center rounded-xl bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white transition hover:bg-[#0050D0]">کنسول</a>
                             @else
-                                <span class="inline-flex flex-1 cursor-not-allowed justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-black text-slate-400">Console</span>
+                                <span class="inline-flex flex-1 cursor-not-allowed justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-black text-slate-400">کنسول</span>
                             @endif
                             <a href="{{ $monitoringUrl }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مانیتورینگ</a>
                             <a href="{{ $backupUrl }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">بکاپ ها</a>
@@ -321,7 +319,7 @@
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">برنامه خودکار</span><span class="font-black {{ $backupSummary['enabled'] ? 'text-emerald-700' : 'text-slate-950' }}">{{ $backupSummary['enabled'] ? 'فعال' : 'غیرفعال' }}</span></div>
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">زمان بندی</span><span class="font-black text-slate-950">{{ $backupFrequency }}</span></div>
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">نسخه آماده</span><span class="font-black text-slate-950">{{ $backupSummary['ready_count'] }}</span></div>
-                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین وضعیت</span><span class="font-black text-slate-950">{{ $latestBackupStatus }}</span></div>
+                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین وضعیت</span><span class="font-black text-slate-950">{{ $latestBackupStatus }}</span></div>
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">اجرای بعدی</span><span class="font-black text-slate-950" dir="ltr">{{ $backupSummary['next_run_at']?->format('Y/m/d H:i') ?: '-' }}</span></div>
                     </div>
                     @if ($backupSummary['latest_error'])
@@ -333,32 +331,12 @@
         </section>
 
         <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-            <div class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                <h2 class="font-black text-slate-950">جزئیات فنی</h2>
-                <div class="mt-4 grid gap-3 md:grid-cols-2">
-                    @foreach ([
-                        ['label' => 'Node', 'value' => $server->node ?: '-', 'dir' => 'ltr'],
-                        ['label' => 'Storage', 'value' => $server->storage ?: '-', 'dir' => 'ltr'],
-                        ['label' => 'Network Bridge', 'value' => $server->network_bridge ?: '-', 'dir' => 'ltr'],
-                        ['label' => 'Image', 'value' => $server->cloudImage?->name ?: '-', 'dir' => 'rtl'],
-                        ['label' => 'OS Template', 'value' => $server->os_template ?: '-', 'dir' => 'ltr'],
-                    ] as $item)
-                        <div class="rounded-2xl bg-slate-50 p-4">
-                            <p class="text-xs font-black text-slate-500">{{ $item['label'] }}</p>
-                            <p class="mt-2 truncate font-black text-slate-950" dir="{{ $item['dir'] }}">{{ $item['value'] }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-
             <aside class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                <h2 class="font-black text-slate-950">چرخه حیات</h2>
+                <h2 class="font-black text-slate-950">وضعیت سرویس</h2>
                 <div class="mt-4 space-y-3 text-sm">
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">وضعیت ماشین</span><span class="rounded-xl px-3 py-1 text-xs font-black" :class="serverState.status_class" x-text="serverState.status_label">{{ $statusLabel }}</span></div>
-                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">Provisioning</span><span class="inline-flex items-center gap-2 rounded-xl px-3 py-1 text-xs font-black" :class="serverState.provisioning_class"><span x-show="serverState.provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span><span x-text="serverState.provisioning_label">{{ $provisioningLabel }}</span></span></div>
-                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین مشاهده</span><span class="font-black text-slate-950" dir="ltr">{{ $server->last_seen_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
-                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین شروع</span><span class="font-black text-slate-950" dir="ltr">{{ $server->last_started_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
-                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین توقف</span><span class="font-black text-slate-950" dir="ltr">{{ $server->last_stopped_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
+                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آمادگی سرویس</span><span class="inline-flex items-center gap-2 rounded-xl px-3 py-1 text-xs font-black" :class="serverState.provisioning_class"><span x-show="serverState.provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span><span x-text="serverState.provisioning_label">{{ $provisioningLabel }}</span></span></div>
+                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین تغییر وضعیت</span><span class="font-black text-slate-950" dir="ltr">{{ $server->updated_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
                 </div>
             </aside>
         </section>
@@ -370,10 +348,10 @@
                     @forelse ($server->disks as $disk)
                         <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-4 text-sm">
                             <div>
-                                <p class="font-black text-slate-950" dir="ltr">{{ $disk->disk_device }} · {{ $disk->size_gb }}GB</p>
-                                <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ $disk->storage ?: 'default storage' }}</p>
+                                <p class="font-black text-slate-950" dir="ltr">دیسک اضافه · {{ $disk->size_gb }}GB</p>
+                                <p class="mt-1 text-xs font-bold text-slate-500">فضای اضافه برای نگهداری اطلاعات</p>
                             </div>
-                            <span class="rounded-xl px-3 py-1 text-xs font-black {{ $disk->status === 'ready' ? 'bg-emerald-50 text-emerald-700' : ($disk->status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700') }}">{{ $disk->status }}</span>
+                            <span class="rounded-xl px-3 py-1 text-xs font-black {{ $disk->status === 'ready' ? 'bg-emerald-50 text-emerald-700' : ($disk->status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700') }}">{{ $disk->status === 'ready' ? 'فعال' : ($disk->status === 'failed' ? 'نیازمند بررسی' : 'در حال آماده‌سازی') }}</span>
                         </div>
                     @empty
                         <p class="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">دیسک اضافه ای برای این سرور ثبت نشده است.</p>
@@ -388,7 +366,7 @@
                         <div class="rounded-2xl border border-slate-100 p-4 text-sm">
                             <div class="flex items-center justify-between gap-3">
                                 <p class="font-black text-slate-950">{{ $order->type === 'bundle' ? 'ارتقای باندل' : 'دیسک اضافه' }}</p>
-                                <span class="rounded-xl px-3 py-1 text-xs font-black {{ $order->status === 'succeeded' ? 'bg-emerald-50 text-emerald-700' : ($order->status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700') }}">{{ $order->status }}</span>
+                                <span class="rounded-xl px-3 py-1 text-xs font-black {{ $order->status === 'succeeded' ? 'bg-emerald-50 text-emerald-700' : ($order->status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700') }}">{{ $order->status === 'succeeded' ? 'موفق' : ($order->status === 'failed' ? 'ناموفق' : 'در حال انجام') }}</span>
                             </div>
                             <p class="mt-2 text-xs font-bold leading-6 text-slate-500">
                                 @if ($order->type === 'bundle')
@@ -399,7 +377,7 @@
                                 · افزایش ماهانه: {{ $wallets->format($order->estimated_monthly_delta) }}
                             </p>
                             @if ($order->failure_reason)
-                                <p class="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{{ $order->failure_reason }}</p>
+                                <p class="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">این عملیات کامل نشد. برای بررسی بیشتر با پشتیبانی تماس بگیرید.</p>
                             @endif
                         </div>
                     @empty
@@ -441,7 +419,7 @@
                     <div>
                         <p class="text-xs font-black text-amber-700">Rebuild</p>
                         <h2 class="mt-1 font-black text-amber-950">بازسازی سیستم عامل</h2>
-                        <p class="mt-2 text-sm font-bold leading-7 text-amber-800">دیسک اصلی پاک می شود و ماشین مجازی با همان IP، منابع و Image فعلی دوباره ساخته می شود. بکاپ ها و دیسک های اضافه جداگانه نگهداری می شوند.</p>
+                        <p class="mt-2 text-sm font-bold leading-7 text-amber-800">سیستم‌عامل فعلی پاک می‌شود و سرویس با همان IP و منابع دوباره آماده خواهد شد. بکاپ‌ها و دیسک‌های اضافه حفظ می‌شوند.</p>
                         <p class="mt-3 inline-flex rounded-xl bg-white px-3 py-2 text-xs font-black text-amber-800">هزینه بازسازی: {{ $formattedRebuildFee }}</p>
                         @if ($isRebuilding)
                             <p class="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-[#0069FF]">
@@ -449,10 +427,10 @@
                                 بازسازی در حال انجام است
                             </p>
                         @elseif ($rebuildError)
-                            <p class="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700">آخرین خطای بازسازی: {{ $rebuildError }}</p>
+                            <p class="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700">نصب مجدد قبلی کامل نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.</p>
                         @endif
                         @unless ($canRebuild)
-                            <p class="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-bold text-amber-800">بازسازی فقط وقتی ممکن است که سرور آماده باشد، Image فعال باشد و عملیات حذف، provisioning یا ارتقا در جریان نباشد.</p>
+                            <p class="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-bold text-amber-800">نصب مجدد زمانی در دسترس است که سرویس آماده باشد و عملیات دیگری روی آن انجام نشود.</p>
                         @endunless
                     </div>
                     <button type="button" @click="openRebuildDialog()" @disabled(! $canRebuild) class="inline-flex w-full shrink-0 items-center justify-center rounded-xl bg-amber-600 px-5 py-3 text-sm font-black text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto">
@@ -598,7 +576,7 @@
                             <h2 class="mt-1 font-black text-red-950">{{ ($server->delete_failed_at || $deleteAttemptIsStale) ? 'تلاش دوباره برای حذف سرور' : 'حذف دائمی سرور' }}</h2>
                             <p class="mt-2 text-sm font-bold leading-7 text-red-800">ماشین مجازی ابتدا خاموش و سپس حذف می شود. پس از حذف موفق، IP رزرو شده آزاد می شود. بکاپ ها جداگانه نگهداری می شوند.</p>
                             @if ($server->delete_failed_at && $server->delete_error)
-                                <p class="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700">آخرین خطا: {{ $server->delete_error }}</p>
+                                <p class="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700">حذف سرویس کامل نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.</p>
                             @endif
                         </div>
                         <div class="flex w-full shrink-0 flex-col gap-3 lg:w-auto">

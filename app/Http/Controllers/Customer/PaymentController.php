@@ -60,7 +60,7 @@ class PaymentController extends Controller
             report($exception);
 
             return back()
-                ->withErrors(['payment' => $exception->getMessage()])
+                ->withErrors(['payment' => 'درگاه پرداخت در دسترس نیست. لطفاً دوباره تلاش کنید یا روش پرداخت دیگری را انتخاب کنید.'])
                 ->withInput();
         }
 

@@ -66,8 +66,7 @@ class ServerConsoleController extends Controller
             report($exception);
 
             return response()->json([
-                'message' => 'Console session could not be started.',
-                'error' => $exception->getMessage(),
+                'message' => 'نشست کنسول ایجاد نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.',
             ], 422);
         }
     }

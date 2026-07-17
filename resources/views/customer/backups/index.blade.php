@@ -40,7 +40,6 @@
                 $policy = $vm->backupPolicy;
                 $running = $vm->backups->whereIn('status', ['queued', 'running'])->isNotEmpty();
                 $readyBackups = $vm->backups->where('status', 'ready');
-                $storageItems = $storageOptions[$vm->id] ?? [];
             @endphp
             <article class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                 <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
@@ -63,7 +62,7 @@
                         <div class="flex items-center justify-between gap-3">
                             <div>
                                 <p class="font-black text-slate-950">بکاپ خودکار</p>
-                                <p class="mt-1 text-xs leading-6 text-slate-500">Laravel scheduler در زمان تعیین‌شده بکاپ را اجرا می‌کند.</p>
+                                <p class="mt-1 text-xs leading-6 text-slate-500">بکاپ‌ها در زمان تعیین‌شده به‌صورت خودکار ایجاد می‌شوند.</p>
                             </div>
                             <label class="inline-flex items-center gap-2 text-sm font-black text-slate-700">
                                 <input type="checkbox" name="is_enabled" value="1" @checked($policy?->is_enabled) class="size-4 rounded border-slate-300 text-[#0069FF]">
@@ -86,15 +85,6 @@
                                 <span class="text-xs font-black text-slate-500">تعداد نگهداری</span>
                                 <input name="retention_count" type="number" min="1" max="30" value="{{ old('retention_count', $policy?->retention_count ?: 3) }}" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold focus:border-[#0069FF] focus:outline-none">
                             </label>
-                            <label>
-                                <span class="text-xs font-black text-slate-500">Storage</span>
-                                <select name="backup_storage" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold focus:border-[#0069FF] focus:outline-none">
-                                    <option value="">Auto</option>
-                                    @foreach ($storageItems as $storage)
-                                        <option value="{{ $storage['storage'] }}" @selected(($policy?->backup_storage ?? '') === $storage['storage'])>{{ $storage['display'] }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
                         </div>
                         <button class="mt-5 w-full rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-black text-white">ذخیره برنامه</button>
                         @if($policy?->next_run_at)
@@ -111,11 +101,11 @@
                             @forelse ($vm->backups as $backup)
                                 <div class="flex items-center justify-between gap-4 py-3">
                                     <div class="min-w-0">
-                                        <p class="truncate font-mono text-xs font-black text-slate-900" dir="ltr">{{ $backup->filename ?: $backup->volid ?: 'backup-'.$backup->id }}</p>
+                                        <p class="truncate font-black text-slate-900">نسخه پشتیبان · {{ $backup->created_at->format('Y/m/d H:i') }}</p>
                                         <p class="mt-1 text-xs font-bold text-slate-500">{{ $backup->source === 'policy' ? 'خودکار' : 'دستی' }} · {{ $backup->created_at->format('Y/m/d H:i') }} · {{ number_format($backup->sizeGb(), 2) }}GB</p>
-                                        @if($backup->error)<p class="mt-1 text-xs text-red-600">{{ $backup->error }}</p>@endif
+                                        @if($backup->error)<p class="mt-1 text-xs text-red-600">ایجاد این نسخه کامل نشد. برای بررسی بیشتر با پشتیبانی تماس بگیرید.</p>@endif
                                     </div>
-                                    <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $backup->status === 'ready' ? 'bg-emerald-50 text-emerald-700' : ($backup->status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-[#0069FF]') }}">{{ $backup->status }}</span>
+                                    <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $backup->status === 'ready' ? 'bg-emerald-50 text-emerald-700' : ($backup->status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-[#0069FF]') }}">{{ $backup->status === 'ready' ? 'آماده' : ($backup->status === 'failed' ? 'ناموفق' : 'در حال ایجاد') }}</span>
                                 </div>
                             @empty
                                 <p class="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">هنوز بکاپی برای این ماشین ثبت نشده است.</p>

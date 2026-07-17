@@ -36,13 +36,12 @@
             locations: @js($locations->map(fn ($location) => [
                 'id' => $location->id,
                 'name' => $location->name,
-                'provider' => $location->provider,
+                'kind' => $location->provider,
                 'region' => $location->region,
                 'city' => $location->city,
                 'country' => $location->country,
                 'remote_name' => $location->remote_name,
-                'hetzner_account_id' => $location->hetzner_account_id,
-                'proxmox_server_id' => $location->proxmox_server_id,
+                'account_id' => $location->hetzner_account_id,
                 'bundle_ids' => $location->bundleMappings->pluck('vm_bundle_id')->map(fn ($id) => (int) $id)->values()->all(),
             ])->values()),
             locationMappings: @js($locationMappings->map(fn ($mapping) => [
@@ -72,12 +71,11 @@
                 'os_family' => $image->os_family,
                 'os_version' => $image->os_version,
                 'logo_key' => $image->logo_key ?: $image->os_family,
-                'provider' => $image->provider ?: 'proxmox',
-                'infrastructure_location_id' => $image->infrastructure_location_id,
-                'hetzner_account_id' => data_get($image->provider_metadata, 'hetzner_account_id'),
-                'server' => $image->proxmoxServer?->datacenter ?: $image->proxmoxServer?->name,
+                'kind' => $image->provider ?: 'proxmox',
+                'location_id' => $image->infrastructure_location_id,
+                'account_id' => data_get($image->provider_metadata, 'hetzner_account_id'),
                 'default_username' => $image->default_username,
-                'cloud_init_enabled' => $image->cloud_init_enabled,
+                'access_setup_available' => $image->cloud_init_enabled,
                 'allowed_bundle_ids' => $image->allowedBundles->pluck('id')->values()->all(),
                 'available_ip_count' => (int) ($ipAvailability[$image->id] ?? 0),
                 'has_available_ip' => (int) ($ipAvailability[$image->id] ?? 0) > 0,
@@ -204,7 +202,6 @@
                             </div>
                             <div x-show="selectedImage" class="mt-4 grid gap-2 sm:grid-cols-3">
                                 <div class="rounded-lg bg-white p-3 ring-1 ring-slate-200"><span class="block text-[11px] font-bold text-slate-500">نام کاربری پیش‌فرض</span><b class="mt-1 block text-sm text-slate-900" dir="ltr" x-text="selectedImage?.default_username || '—'"></b></div>
-                                <div class="rounded-lg bg-white p-3 ring-1 ring-slate-200"><span class="block text-[11px] font-bold text-slate-500">Cloud-init</span><b class="mt-1 block text-sm text-slate-900" x-text="cloudInitEnabled ? 'پشتیبانی می‌شود' : 'پشتیبانی نمی‌شود'"></b></div>
                                 <div class="rounded-lg bg-white p-3 ring-1 ring-slate-200"><span class="block text-[11px] font-bold text-slate-500">IP آزاد</span><b class="mt-1 block text-sm text-slate-900" x-text="selectedImage?.has_available_ip ? 'موجود' : 'ناموجود'"></b></div>
                             </div>
                         </div>
@@ -348,7 +345,7 @@
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">موقعیت</span><span class="text-left font-black text-slate-950" x-text="selectedLocation?.name || '—'"></span></div>
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">سیستم عامل</span><span class="text-left font-black text-slate-950" x-text="selectedOsLabel || '—'"></span></div>
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">نسخه</span><span class="text-left font-black text-slate-950" x-text="selectedImage?.os_version || '—'"></span></div>
-                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">CloudInit</span><span class="text-left font-black text-slate-950" x-text="cloudInitEnabled ? 'فعال' : 'غیرفعال'"></span></div>
+                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">دسترسی اولیه</span><span class="text-left font-black text-slate-950">قابل تنظیم هنگام ساخت</span></div>
                         <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3"><span class="font-bold text-slate-500">پلن</span><span class="text-left font-black text-slate-950" x-text="selectedBundle?.name || '—'"></span></div>
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class="text-left font-black text-slate-950" dir="ltr" x-text="`${form.cpu_cores} CPU / ${form.ram_gb}GB / ${form.disk_gb}GB`"></span></div>
                     </div>
@@ -470,16 +467,16 @@
             get availableImages() {
                 if (!this.selectedLocation) return [];
                 return this.images.filter((image) => {
-                    if (this.selectedLocation.provider === 'proxmox') {
-                        return image.provider === 'proxmox' && String(image.infrastructure_location_id) === String(this.selectedLocation.id);
+                    if (this.selectedLocation.kind === 'proxmox') {
+                        return image.kind === 'proxmox' && String(image.location_id) === String(this.selectedLocation.id);
                     }
 
-                    return image.provider === 'hetzner' && String(image.hetzner_account_id) === String(this.selectedLocation.hetzner_account_id);
+                    return image.kind === 'hetzner' && String(image.account_id) === String(this.selectedLocation.account_id);
                 });
             },
             get visibleBundles() {
                 if (!this.selectedImage || !this.selectedLocation) return [];
-                if (this.selectedLocation.provider === 'proxmox') {
+                if (this.selectedLocation.kind === 'proxmox') {
                     const allowed = new Set((this.selectedImage.allowed_bundle_ids || []).map((id) => String(id)));
                     return this.bundles.filter((bundle) => allowed.has(String(bundle.id)));
                 }
@@ -490,7 +487,7 @@
                     .map((bundle) => this.bundleWithLocationPrice(bundle));
             },
             get selectedBundle() { return this.visibleBundles.find((bundle) => String(bundle.id) === String(this.form.vm_bundle_id)); },
-            get cloudInitEnabled() { return this.selectedImage ? Boolean(this.selectedImage.cloud_init_enabled) : true; },
+            get cloudInitEnabled() { return this.selectedImage ? Boolean(this.selectedImage.access_setup_available) : true; },
             get selectedOsLabel() {
                 return this.osFamilies.find((family) => family.key === this.form.os_family)?.label || '';
             },
@@ -581,7 +578,7 @@
                 this.syncBundleSelection();
             },
             bundleWithLocationPrice(bundle) {
-                if (!this.selectedLocation || this.selectedLocation.provider !== 'hetzner') return bundle;
+                if (!this.selectedLocation || this.selectedLocation.kind !== 'hetzner') return bundle;
 
                 const mapping = this.locationMappings.find((item) => String(item.location_id) === String(this.selectedLocation.id) && String(item.bundle_id) === String(bundle.id));
                 if (!mapping || !mapping.monthly_price_irr) return bundle;

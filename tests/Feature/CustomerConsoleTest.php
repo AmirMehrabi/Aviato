@@ -33,7 +33,7 @@ class CustomerConsoleTest extends TestCase
 
         $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid.'/console')
             ->assertOk()
-            ->assertSee('VM Console')
+            ->assertSee('کنسول ماشین مجازی')
             ->assertSee($vm->name);
     }
 
@@ -84,7 +84,7 @@ class CustomerConsoleTest extends TestCase
 
         $this->postJson($this->customerBaseUrl.'/servers/'.$vm->uuid.'/console/session')
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'Console session could not be started.');
+            ->assertJsonPath('message', 'نشست کنسول ایجاد نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
     }
 
     private function readyVm(Customer $customer, array $overrides = []): VirtualMachine

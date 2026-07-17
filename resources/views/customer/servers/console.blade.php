@@ -51,7 +51,7 @@
                     <span class="size-3 rounded-full" :class="connected ? 'bg-emerald-400' : (loading ? 'animate-pulse bg-amber-400' : 'bg-slate-500')"></span>
                     <span class="text-sm font-black" x-text="statusText">در حال اتصال...</span>
                 </div>
-                <span class="text-xs font-bold text-slate-400" dir="ltr">noVNC</span>
+                <span class="text-xs font-bold text-slate-400">کنسول امن</span>
             </div>
 
             

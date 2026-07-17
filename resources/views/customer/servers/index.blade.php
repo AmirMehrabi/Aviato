@@ -15,7 +15,6 @@
         'status' => $server['status'],
         'status_label' => $server['status_label'],
         'status_class' => $server['status_class'],
-        'provisioning_status' => $server['provisioning_status'],
         'provisioning_label' => $server['provisioning_label'],
         'provisioning_class' => $server['provisioning_class'],
         'provisioning_pending' => $server['provisioning_pending'],
@@ -30,7 +29,7 @@
         'ssh_class' => $server['ssh_ready'] ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
     ])->values();
     $attentionItems = collect([
-        $summary['failed'] > 0 ? ['tone' => 'red', 'text' => $summary['failed'].' ماشین با Provisioning ناموفق نیازمند بررسی است.'] : null,
+        $summary['failed'] > 0 ? ['tone' => 'red', 'text' => $summary['failed'].' ماشین آماده استفاده نشده است؛ وضعیت آن را بررسی کنید.'] : null,
         $summary['delete_failed'] > 0 ? ['tone' => 'red', 'text' => $summary['delete_failed'].' حذف ناموفق مانده است؛ از صفحه همان سرور دوباره تلاش کنید.'] : null,
         $summary['delete_stale'] > 0 ? ['tone' => 'red', 'text' => $summary['delete_stale'].' حذف بیش از حد منتظر مانده است؛ از صفحه همان سرور دوباره تلاش کنید.'] : null,
         $summary['pending'] > 0 ? ['tone' => 'blue', 'text' => $summary['pending'].' ماشین هنوز در حال آماده سازی است؛ SSH بعد از آماده شدن فعال می شود.'] : null,
@@ -54,7 +53,7 @@
         "description": @json($server['ip'].' - '.$server['resources']),
         "type": "ماشین مجازی",
         "url": @json($server['show_url']),
-        "keywords": @json($server['name'].' '.$server['internal_name'].' '.$server['hostname'].' '.$server['ip'].' '.$server['status'].' '.$server['provisioning_status'])
+        "keywords": @json($server['name'].' '.$server['internal_name'].' '.$server['hostname'].' '.$server['ip'].' '.$server['status'])
     }@if (! $loop->last),@endif
 @endforeach
 ]
