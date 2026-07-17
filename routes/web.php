@@ -43,6 +43,7 @@ use App\Http\Controllers\Customer\ResellerController as CustomerResellerControll
 use App\Http\Controllers\Customer\ServerConsoleController;
 use App\Http\Controllers\Customer\ServerController;
 use App\Http\Controllers\Customer\StorageController;
+use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\Customer\TicketAttachmentController;
 use App\Http\Controllers\Customer\TicketController;
 use App\Http\Controllers\Customer\VmUpgradeController;
@@ -69,6 +70,19 @@ $adminHome = config('portals.admin.home_path');
 $customerLogin = config('portals.customer.login_path');
 $customerRegister = config('portals.customer.register_path');
 $customerHome = config('portals.customer.home_path');
+
+Route::domain(config('storage.s3_domain'))
+    ->middleware(['api.audit', 'throttle:120,1'])
+    ->withoutMiddleware([
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        PreventRequestForgery::class,
+    ])
+    ->group(function (): void {
+        Route::any('{bucket?}/{key?}', S3GatewayController::class)
+            ->where('key', '.*')
+            ->name('s3.gateway');
+    });
 
 Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () use ($adminLogin, $adminHome) {
     Route::get('/', fn () => redirect('/'.trim($adminHome, '/')))

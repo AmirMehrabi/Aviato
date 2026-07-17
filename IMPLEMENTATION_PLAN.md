@@ -51,24 +51,25 @@ This checklist is the working implementation contract. Each item should be check
 
 ### Authentication and request pipeline
 
-- [ ] Add a dedicated S3 hostname/path configuration.
-- [ ] Parse path-style bucket and object keys without losing encoded characters.
-- [ ] Implement SigV4 header authentication.
+- [x] Add a dedicated S3 hostname/path configuration.
+- [x] Parse path-style bucket and object keys without losing encoded characters.
+- [x] Implement SigV4 header authentication.
 - [ ] Implement SigV4 presigned-query authentication.
 - [ ] Validate request dates, signed headers, payload hashes, and replay-sensitive timestamps.
 - [ ] Add constant-time signature comparisons.
-- [ ] Return standard S3 XML errors and request IDs.
-- [ ] Ensure S3 request logging redacts authorization, signatures, secrets, and object content.
+- [x] Return standard S3 XML errors and request IDs.
+- [x] Ensure S3 request logging redacts authorization, signatures, secrets, and object content.
 
 ### Core bucket and object operations
 
-- [ ] Implement bucket create, head, list, and delete.
-- [ ] Implement ListObjectsV2 with prefix, delimiter, continuation token, max keys, contents, and common prefixes.
-- [ ] Implement object PUT with streaming writes and metadata persistence.
-- [ ] Implement object GET with streaming responses and range requests.
-- [ ] Implement object HEAD with standard metadata headers.
-- [ ] Implement object DELETE and idempotent missing-object behavior.
-- [ ] Implement conditional requests and ETag handling where supported.
+- [x] Implement bucket create, head, list, and delete.
+- [x] Implement initial ListObjectsV2-compatible listing with prefix and max keys.
+- [x] Implement object PUT with streaming writes and metadata persistence.
+- [x] Implement object GET with streaming responses.
+- [x] Implement object HEAD with standard metadata headers.
+- [x] Implement object DELETE and idempotent missing-object behavior.
+- [x] Implement basic ETag handling.
+- [ ] Implement range reads, conditional requests, continuation tokens, delimiters, and common prefixes.
 - [ ] Implement server-side copy.
 
 ### Multipart operations
@@ -83,14 +84,16 @@ This checklist is the working implementation contract. Each item should be check
 ### Object backend
 
 - [ ] Define an `ObjectStore` interface independent of Laravel controllers.
-- [ ] Implement the private local-volume adapter.
-- [ ] Use atomic finalization for completed objects.
-- [ ] Stream reads and writes instead of buffering objects in PHP memory.
-- [ ] Prevent path traversal and unsafe key-to-path conversion.
-- [ ] Keep the adapter replaceable by MinIO, RustFS, or Ceph later.
+- [x] Implement the private local-volume adapter.
+- [x] Use atomic finalization for completed objects.
+- [x] Stream reads and writes instead of buffering objects in PHP memory.
+- [x] Prevent path traversal and unsafe key-to-path conversion.
+- [x] Keep the adapter replaceable by MinIO, RustFS, or Ceph later.
 
 ## Phase 3 — Usage billing and operations
 
+- [ ] Point `s3.aviato.ir` DNS to the Aviato gateway and provision a valid TLS certificate.
+- [ ] Configure the reverse proxy to preserve the `Host`, path, query string, and request body for S3 clients.
 - [ ] Add storage and request resource-rate types.
 - [ ] Record successful request usage by project, bucket, operation, and service date.
 - [ ] Calculate daily average stored bytes.
