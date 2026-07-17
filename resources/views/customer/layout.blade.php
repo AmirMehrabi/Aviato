@@ -36,6 +36,7 @@
                 ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
             ],
             'مدیریت' => [
+                ['key' => 'storage', 'label' => 'فضای ذخیره‌سازی', 'route' => route('customer.storage.index', [], false), 'icon' => 'M4 7h16v10H4V7Zm3-4h10l2 4H5l2-4Zm2 8h6m-6 3h4'],
                 ...($canViewVms ? [
                     ['key' => 'servers', 'label' => 'ماشین ها', 'route' => route('customer.servers.index', [], false), 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
                     ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => route('customer.backups.index', [], false), 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
@@ -65,6 +66,7 @@
             ['title' => 'تیکت جدید', 'description' => 'ثبت درخواست جدید برای پشتیبانی', 'url' => route('customer.tickets.create', [], false), 'type' => 'عملیات'],
             ['title' => 'پروفایل', 'description' => 'کد ملی، سطح حساب و سهمیه ساخت', 'url' => route('customer.profile.show', [], false), 'type' => 'صفحه'],
             ['title' => 'کیف پول', 'description' => 'موجودی، تراکنش ها و افزایش اعتبار', 'url' => route('customer.wallet.show', [], false), 'type' => 'صفحه'],
+            ['title' => 'فضای ذخیره‌سازی', 'description' => 'باکت‌های S3، کلیدهای دسترسی و مصرف ذخیره‌سازی', 'url' => route('customer.storage.index', [], false), 'type' => 'صفحه'],
             ['title' => 'افزایش اعتبار', 'description' => 'شارژ سریع کیف پول', 'url' => route('customer.wallet.show', ['topup' => 1], false), 'type' => 'عملیات'],
             ['title' => 'صورتحساب ها', 'description' => 'بایگانی و جزئیات فاکتورهای ماهانه', 'url' => route('customer.invoices.index', [], false), 'type' => 'صفحه'],
         ];

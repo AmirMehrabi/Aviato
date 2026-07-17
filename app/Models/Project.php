@@ -40,6 +40,16 @@ class Project extends Model
         return $this->hasMany(VirtualMachine::class);
     }
 
+    public function storageBuckets(): HasMany
+    {
+        return $this->hasMany(StorageBucket::class);
+    }
+
+    public function storageAccessKeys(): HasMany
+    {
+        return $this->hasMany(StorageAccessKey::class);
+    }
+
     public function scopeVisibleTo(Builder $query, Customer $customer): Builder
     {
         return $query->whereHas('members', fn (Builder $query) => $query->where('customer_id', $customer->id));
