@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Exceptions\S3Exception;
 use App\Models\StorageAccessKey;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class S3SignatureService
 {
@@ -13,6 +12,7 @@ class S3SignatureService
     {
         $authorization = (string) $request->header('Authorization');
         $query = $request->query();
+        $presigned = $authorization === '' && isset($query['X-Amz-Signature']);
         $algorithm = $request->header('X-Amz-Algorithm') ?: ($query['X-Amz-Algorithm'] ?? null);
         $credential = $request->header('X-Amz-Credential') ?: ($query['X-Amz-Credential'] ?? null);
         $signature = $request->header('X-Amz-Signature') ?: ($query['X-Amz-Signature'] ?? null);
@@ -39,12 +39,20 @@ class S3SignatureService
             throw new S3Exception('AccessDenied', 'A valid AWS Signature Version 4 credential is required.', 403);
         }
 
+        if ($presigned) {
+            $expires = filter_var($query['X-Amz-Expires'] ?? null, FILTER_VALIDATE_INT);
+            if ($expires === false || $expires < 1 || $expires > 604800) {
+                throw new S3Exception('InvalidArgument', 'The presigned URL expiration is invalid.', 400);
+            }
+        }
+
         [$accessKeyId, $dateScope, $region, $service, $terminator] = array_pad(explode('/', (string) $credential), 5, null);
         if ($terminator !== 'aws4_request' || $service !== 's3' || $region !== config('storage.aviato_region') || ! preg_match('/^\d{8}T\d{6}Z$/', $date)) {
             throw new S3Exception('AuthorizationHeaderMalformed', 'The authorization scope is invalid.', 400);
         }
 
-        if ($dateScope !== substr($date, 0, 8) || abs(now('UTC')->timestamp - \DateTimeImmutable::createFromFormat('!Ymd\THis\Z', $date, new \DateTimeZone('UTC'))->getTimestamp()) > 900) {
+        $requestDate = \DateTimeImmutable::createFromFormat('!Ymd\THis\Z', $date, new \DateTimeZone('UTC'));
+        if (! $requestDate || $dateScope !== substr($date, 0, 8) || ($presigned ? now('UTC')->timestamp > $requestDate->getTimestamp() + $expires : abs(now('UTC')->timestamp - $requestDate->getTimestamp()) > 900)) {
             throw new S3Exception('RequestTimeTooSkewed', 'The request timestamp is outside the allowed window.', 403);
         }
 
@@ -106,7 +114,8 @@ class S3SignatureService
     {
         $pairs = [];
         foreach ($request->query() as $key => $values) {
-            foreach ((array) $values as $value) {
+            if (strtolower((string) $key) === 'x-amz-signature') continue;
+            foreach (is_array($values) ? $values : [$values] as $value) {
                 $pairs[] = [rawurlencode((string) $key), rawurlencode((string) $value)];
             }
         }

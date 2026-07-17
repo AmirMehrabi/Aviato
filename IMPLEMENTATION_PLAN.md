@@ -54,7 +54,7 @@ This checklist is the working implementation contract. Each item should be check
 - [x] Add a dedicated S3 hostname/path configuration.
 - [x] Parse path-style bucket and object keys without losing encoded characters.
 - [x] Implement SigV4 header authentication.
-- [ ] Implement SigV4 presigned-query authentication.
+- [x] Implement SigV4 presigned-query authentication.
 - [ ] Validate request dates, signed headers, payload hashes, and replay-sensitive timestamps.
 - [ ] Add constant-time signature comparisons.
 - [x] Return standard S3 XML errors and request IDs.
@@ -69,16 +69,16 @@ This checklist is the working implementation contract. Each item should be check
 - [x] Implement object HEAD with standard metadata headers.
 - [x] Implement object DELETE and idempotent missing-object behavior.
 - [x] Implement basic ETag handling.
-- [ ] Implement range reads, conditional requests, continuation tokens, delimiters, and common prefixes.
+- [x] Implement range reads, conditional requests, continuation tokens, delimiters, and common prefixes.
 - [ ] Implement server-side copy.
 
 ### Multipart operations
 
-- [ ] Initiate multipart uploads.
-- [ ] Upload individual parts to temporary private paths.
-- [ ] List uploaded parts.
-- [ ] Complete uploads in part-number order with deterministic final ETag behavior.
-- [ ] Abort uploads and delete temporary parts.
+- [x] Initiate multipart uploads.
+- [x] Upload individual parts to temporary private paths.
+- [x] List uploaded parts.
+- [x] Complete uploads in part-number order with deterministic final ETag behavior.
+- [x] Abort uploads and delete temporary parts.
 - [ ] Add scheduled cleanup for expired multipart sessions.
 
 ### Object backend
@@ -92,8 +92,10 @@ This checklist is the working implementation contract. Each item should be check
 
 ## Phase 3 — Usage billing and operations
 
-- [ ] Point `s3.aviato.ir` DNS to the Aviato gateway and provision a valid TLS certificate.
-- [ ] Configure the reverse proxy to preserve the `Host`, path, query string, and request body for S3 clients.
+- [x] Point `s3.aviato.ir` DNS to the Aviato gateway.
+- [ ] Provision a valid TLS certificate for `s3.aviato.ir`.
+- [ ] Install and reload the Nginx S3 vhost on production.
+- [x] Configure the reverse proxy template to preserve the `Host`, path, query string, and request body for S3 clients.
 - [ ] Add storage and request resource-rate types.
 - [ ] Record successful request usage by project, bucket, operation, and service date.
 - [ ] Calculate daily average stored bytes.
@@ -107,12 +109,12 @@ This checklist is the working implementation contract. Each item should be check
 ## Phase 4 — API docs and SDK usability
 
 - [ ] Add management API endpoints for buckets, usage, and access keys.
-- [ ] Add S3 endpoint and AWS CLI examples to `/api-docs`.
-- [ ] Add PHP AWS SDK examples.
-- [ ] Add JavaScript AWS SDK examples.
+- [x] Add S3 endpoint and AWS CLI examples to `/api-docs`.
+- [x] Add PHP AWS SDK examples.
+- [x] Add JavaScript AWS SDK examples.
 - [ ] Add Laravel filesystem configuration examples.
-- [ ] Document limits, unsupported features, billing, errors, presigned URLs, and multipart uploads.
-- [ ] Make examples copy-safe and executable against the configured Aviato endpoint.
+- [x] Document current limits, unsupported features, billing status, and errors.
+- [x] Make the upload/download examples executable against the configured Aviato endpoint after replacing clearly marked credentials and bucket placeholders.
 
 ## Phase 5 — Verification and launch gates
 
@@ -120,7 +122,7 @@ This checklist is the working implementation contract. Each item should be check
 - [ ] Add feature tests for project isolation and management abilities.
 - [ ] Add SigV4 valid/invalid signature tests.
 - [ ] Add core object operation tests.
-- [ ] Add multipart lifecycle tests.
+- [x] Add multipart lifecycle tests.
 - [ ] Add AWS CLI smoke tests.
 - [ ] Add AWS SDK for PHP smoke tests.
 - [ ] Run focused PHPUnit tests, `php artisan view:cache`, PHP lint, frontend build, and `git diff --check`.

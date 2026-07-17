@@ -1,0 +1,46 @@
+# Install as /etc/nginx/sites-available/aviato-s3.conf and enable it.
+# The certificate must exist before `nginx -t` can pass.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name s3.aviato.ir;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name s3.aviato.ir;
+
+    root /var/www/html/aviato/current/public;
+    index index.php;
+
+    ssl_certificate /etc/letsencrypt/live/aviato.ir/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/aviato.ir/privkey.pem;
+
+    client_max_body_size 10g;
+    client_body_timeout 600s;
+    send_timeout 600s;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param HTTP_HOST $host;
+        fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+        fastcgi_pass unix:/run/php/php8.5-fpm.sock;
+        fastcgi_request_buffering off;
+        fastcgi_buffering off;
+        fastcgi_read_timeout 600s;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}

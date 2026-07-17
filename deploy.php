@@ -98,6 +98,18 @@ task('php-fpm:reload', function () {
     run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
 });
 
+// task('nginx:s3', function () {
+//     $localPath = __DIR__.'/ops/nginx/aviato-s3.conf.example';
+//     $remotePath = '/tmp/aviato-s3.conf';
+
+//     upload($localPath, $remotePath);
+//     run('sudo -n install -m 644 '.$remotePath.' /etc/nginx/sites-available/aviato-s3.conf');
+//     run('sudo -n ln -sfn /etc/nginx/sites-available/aviato-s3.conf /etc/nginx/sites-enabled/aviato-s3.conf');
+//     run('rm -f '.$remotePath);
+//     run('sudo -n nginx -t');
+//     run('sudo -n systemctl reload nginx');
+// });
+
 after('deploy:success', 'php-fpm:reload');
 
 after('deploy:failed', 'deploy:unlock');
