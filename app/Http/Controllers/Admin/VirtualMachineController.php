@@ -434,7 +434,7 @@ class VirtualMachineController extends Controller
         $virtualMachine->loadMissing(['project.owner', 'customer']);
         $billingCustomer = $virtualMachine->project?->owner ?? $virtualMachine->customer;
 
-        if ($billingCustomer && $this->wallets->isBelowNegativeThreshold($billingCustomer)) {
+        if ($billingCustomer && $this->wallets->isWalletDepleted($billingCustomer)) {
             return back()->with('error', 'این VM تا شارژ شدن کیف پول فضای کاری مربوطه قابل روشن کردن نیست.');
         }
 

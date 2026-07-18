@@ -125,6 +125,7 @@ class CustomerProjectTest extends TestCase
             'customer_id' => $customer->id,
             'role' => ProjectMember::ROLE_OWNER,
         ]);
+        $customer->wallet()->update(['balance' => 1000000]);
 
         $this->actingAs($customer, 'customer');
         $this->withSession([ProjectAccessService::SESSION_KEY => $workspace->id])
@@ -146,6 +147,7 @@ class CustomerProjectTest extends TestCase
             'customer_id' => $member->id,
             'role' => ProjectMember::ROLE_MEMBER,
         ]);
+        $owner->wallet()->update(['balance' => 1000000]);
 
         $vm = VirtualMachine::create([
             'customer_id' => $owner->id,
@@ -168,6 +170,7 @@ class CustomerProjectTest extends TestCase
             ->assertDontSee('OS Template')
             ->assertDontSee('vmbr1');
 
+        $outsider->wallet()->update(['balance' => 1000000]);
         $this->actingAs($outsider, 'customer');
         $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid)->assertNotFound();
     }
@@ -181,6 +184,7 @@ class CustomerProjectTest extends TestCase
             'customer_id' => $member->id,
             'role' => ProjectMember::ROLE_MEMBER,
         ]);
+        $owner->wallet()->update(['balance' => 1000000]);
 
         $ownerVm = VirtualMachine::create([
             'customer_id' => $owner->id,

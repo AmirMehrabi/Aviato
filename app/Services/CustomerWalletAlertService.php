@@ -15,6 +15,7 @@ class CustomerWalletAlertService
 {
     public function __construct(
         private readonly ProxmoxService $proxmox,
+        private readonly UsageBalanceService $usageBalances,
     ) {}
 
     public function handleWalletBalanceChange(Customer $customer): void
@@ -27,7 +28,9 @@ class CustomerWalletAlertService
         }
 
         $threshold = AppSetting::customerWalletNegativeThreshold();
-        if ($wallet->balance >= $threshold) {
+        $effectiveBalance = $this->usageBalances->effectiveBalance($customer);
+
+        if ($effectiveBalance > $threshold) {
             if ((int) $wallet->negative_notification_count !== 0) {
                 $wallet->forceFill([
                     'negative_notification_count' => 0,
@@ -44,7 +47,11 @@ class CustomerWalletAlertService
             'negative_notification_count' => (int) ($wallet->negative_notification_count ?? 0),
         ])->save();
 
-        $this->lockVirtualMachines($customer);
+        if ($effectiveBalance <= 0) {
+            $this->lockVirtualMachines($customer);
+        } else {
+            $this->restoreLockedVirtualMachines($customer);
+        }
 
         if (! $customer->smsNotificationsEnabled() || ! AppSetting::customerWalletNegativeSmsEnabled() || blank($customer->phone)) {
             return;
@@ -52,8 +59,9 @@ class CustomerWalletAlertService
 
         DB::transaction(function () use ($customer, $wallet, $threshold): void {
             $lockedWallet = Wallet::query()->whereKey($wallet->id)->lockForUpdate()->first();
+            $effectiveBalance = $this->usageBalances->effectiveBalance($customer);
 
-            if (! $lockedWallet || $lockedWallet->balance >= $threshold) {
+            if (! $lockedWallet || $effectiveBalance > $threshold) {
                 return;
             }
 
@@ -146,6 +154,7 @@ class CustomerWalletAlertService
         $customer->virtualMachines()
             ->where('status', VirtualMachine::STATUS_SUSPENDED)
             ->get()
+            ->filter(fn ($vm): bool => filled(data_get($vm->remote_state, 'wallet_locked_at')))
             ->each(function ($vm): void {
                 $vm->forceFill([
                     'status' => VirtualMachine::STATUS_STOPPED,

@@ -200,7 +200,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                 $history[] = ['step' => 'ip_skip_no_cloudinit', 'result' => 'IP assigned manually by user', 'at' => now()->toISOString()];
             }
 
-            $startAllowed = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
+            $startAllowed = ! $billingCustomer || ! $wallets->isWalletDepleted($billingCustomer);
             if ($startAllowed) {
                 $start = $proxmox->startVm($server, $node, $vmid);
                 $history[] = ['step' => 'start', 'result' => $start, 'at' => now()->toISOString()];
@@ -301,7 +301,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
             $history[] = ['step' => 'rebuild', 'result' => $rebuild, 'at' => now()->toISOString()];
             $hetzner->waitForAction($account, $rebuild['action']['id'] ?? null, 600);
 
-            $startAllowed = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
+            $startAllowed = ! $billingCustomer || ! $wallets->isWalletDepleted($billingCustomer);
             if ($startAllowed) {
                 $start = $hetzner->powerOn($account, $vm->remote_id);
                 $history[] = ['step' => 'start', 'result' => $start, 'at' => now()->toISOString()];

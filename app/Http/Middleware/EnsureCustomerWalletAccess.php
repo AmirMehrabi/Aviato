@@ -22,7 +22,7 @@ class EnsureCustomerWalletAccess
         $activeProject = $customer instanceof Customer ? $this->projects->activeProject($request, $customer) : null;
         $billingOwner = $activeProject?->owner ?? $customer;
 
-        if (! $billingOwner instanceof Customer || ! $this->wallets->isBelowNegativeThreshold($billingOwner)) {
+        if (! $billingOwner instanceof Customer || ! $this->wallets->isWalletDepleted($billingOwner)) {
             return $next($request);
         }
 
@@ -33,7 +33,8 @@ class EnsureCustomerWalletAccess
             || str_starts_with($routeName, 'customer.verification.')
             || str_starts_with($routeName, 'customer.password.')
             || str_starts_with($routeName, 'customer.invoices.')
-            || str_starts_with($routeName, 'customer.payments.');
+            || str_starts_with($routeName, 'customer.payments.')
+            || str_starts_with($routeName, 'customer.projects.');
 
         if ($walletAllowed) {
             return $next($request);

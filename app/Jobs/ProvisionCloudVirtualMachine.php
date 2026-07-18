@@ -99,7 +99,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
             $cloudInitEnabled = (bool) $image->cloud_init_enabled;
             $shouldStartAfterCreate = (bool) ($this->options['start_after_create'] ?? true);
-            $canAutoStart = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
+            $canAutoStart = ! $billingCustomer || ! $wallets->isWalletDepleted($billingCustomer);
 
             if (! $cloudInitEnabled) {
                 $verifiedConfig = $proxmox->vmConfig($server, $vm->node, $vmid);
@@ -276,7 +276,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
         try {
             $shouldStartAfterCreate = (bool) ($this->options['start_after_create'] ?? true);
-            $canAutoStart = ! $billingCustomer || ! $wallets->isBelowNegativeThreshold($billingCustomer);
+            $canAutoStart = ! $billingCustomer || ! $wallets->isWalletDepleted($billingCustomer);
             $payload = [
                 'name' => $vm->name,
                 'server_type' => $serverType->name,

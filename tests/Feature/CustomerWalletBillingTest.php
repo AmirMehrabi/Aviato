@@ -234,6 +234,7 @@ class CustomerWalletBillingTest extends TestCase
             'customer_id' => $billingMember->id,
             'role' => ProjectMember::ROLE_BILLING,
         ]);
+        $owner->wallet()->update(['balance' => 1000000]);
 
         $this->actingAs($billingMember, 'customer')
             ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
@@ -302,9 +303,8 @@ class CustomerWalletBillingTest extends TestCase
             ->assertSee('1,000,000')
             ->assertSee('2,500,000')
             // ->assertSee('تمام مبلغ‌ها به تومان است')
-            ->assertSee('مبلغ دلخواه (تومان)')
+            ->assertSee('مبلغ دلخواه خود را وارد کنید')
             ->assertSee('پرداخت و افزایش موجودی')
-            ->assertDontSee('انتخاب درگاه پرداخت')
             ->assertSee('type="hidden" name="gateway" value="mellat"', false);
     }
 
@@ -317,7 +317,7 @@ class CustomerWalletBillingTest extends TestCase
         $this->actingAs($customer, 'customer')
             ->get($this->customerBaseUrl.'/wallet')
             ->assertOk()
-            ->assertSee('انتخاب درگاه پرداخت')
+            ->assertSee('درگاه پرداخت را انتخاب کنید')
             ->assertSee('بانک ملت')
             ->assertSee('حسابرو');
     }

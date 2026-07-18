@@ -98,7 +98,7 @@ class ApplyVmUpgradeJob implements ShouldQueue
             throw new \RuntimeException('No Hetzner server type is mapped for the target bundle.');
         }
 
-        $billingBlocked = $billingCustomer ? $wallets->isBelowNegativeThreshold($billingCustomer) : false;
+        $billingBlocked = $billingCustomer ? $wallets->isWalletDepleted($billingCustomer) : false;
         $remoteBefore = $hetzner->server($account, $vm->remote_id);
         $result = ['server_before' => $remoteBefore, 'server_type' => $serverType->name];
 
@@ -138,7 +138,7 @@ class ApplyVmUpgradeJob implements ShouldQueue
             'restart_required' => true,
             'restart_pause_seconds' => self::BUNDLE_RESTART_PAUSE_SECONDS,
         ];
-        $billingBlocked = $billingCustomer ? $wallets->isBelowNegativeThreshold($billingCustomer) : false;
+        $billingBlocked = $billingCustomer ? $wallets->isWalletDepleted($billingCustomer) : false;
 
         $remoteStatus = $proxmox->vmStatus($server, $node, $vmid);
         $result['status_before_shutdown'] = $remoteStatus;

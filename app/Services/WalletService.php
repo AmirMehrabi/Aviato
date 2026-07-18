@@ -61,11 +61,19 @@ class WalletService
         return AppSetting::customerWalletNegativeThreshold();
     }
 
-    public function isBelowNegativeThreshold(Customer $customer): bool
+    public function isWalletDepleted(Customer $customer): bool
     {
         $usageBalances = $this->usageBalances ?? app(UsageBalanceService::class);
 
-        return $usageBalances->effectiveBalance($customer) < $this->customerWalletNegativeThreshold();
+        return $usageBalances->effectiveBalance($customer) <= 0;
+    }
+
+    /**
+     * @deprecated Use isWalletDepleted(); the configured threshold is notification-only.
+     */
+    public function isBelowNegativeThreshold(Customer $customer): bool
+    {
+        return $this->isWalletDepleted($customer);
     }
 
     private function formattedAmount(int $amount, string $currency): string

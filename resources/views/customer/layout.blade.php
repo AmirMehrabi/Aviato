@@ -28,7 +28,10 @@
         $activeWorkspaceRole = $workspaceRoleLabels[$activeMembership?->role ?? 'member'] ?? 'عضو';
         $customerInitial = mb_substr($customer->name ?? 'م', 0, 1);
         $balanceIsNegative = ($wallet->balance ?? 0) < 0;
-        $walletRestrictionThreshold = \App\Models\AppSetting::customerWalletNegativeThreshold();
+        $billingOwner = $activeProject?->owner ?? $customer;
+        $walletIsDepleted = $billingOwner instanceof \App\Models\Customer
+            ? app(\App\Services\WalletService::class)->isWalletDepleted($billingOwner)
+            : (($wallet->balance ?? 0) <= 0);
         $activeNav = $activeNav ?? 'dashboard';
         $navGroups = [
             'فضای کاری' => [
@@ -83,7 +86,7 @@
         }
     @endphp
 
-    @if (($wallet->balance ?? 0) < $walletRestrictionThreshold)
+    @if ($walletIsDepleted)
         <div class="border-b border-red-200 bg-red-50 px-4 py-3 text-red-900 sm:px-6 lg:px-8">
             <div class="mx-auto flex max-w-[1600px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div class="flex items-start gap-3">
@@ -97,7 +100,7 @@
                     <div>
                         <p class="text-xs font-black tracking-[0.2em] text-red-700">نیاز به شارژ کیف پول</p>
                         <p class="mt-1 text-sm font-bold leading-7 text-red-800">
-                            موجودی کیف پول این فضای کاری کافی نیست. فعلا فقط شارژ کیف پول، صورتحساب‌ها و تراکنش‌های مالی در دسترس است.
+                            موجودی مؤثر کیف پول این فضای کاری به صفر یا کمتر رسیده است. برای ادامه مصرف، کیف پول را شارژ کنید.
                         </p>
                     </div>
                 </div>
