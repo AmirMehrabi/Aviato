@@ -43,11 +43,11 @@ use App\Http\Controllers\Customer\ResellerController as CustomerResellerControll
 use App\Http\Controllers\Customer\ServerConsoleController;
 use App\Http\Controllers\Customer\ServerController;
 use App\Http\Controllers\Customer\StorageController;
-use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\Customer\TicketAttachmentController;
 use App\Http\Controllers\Customer\TicketController;
 use App\Http\Controllers\Customer\VmUpgradeController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
+use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\SitemapController;
 use App\Models\VmBundle;
 use App\Services\WalletService;
@@ -112,8 +112,14 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::get('search', [SearchController::class, '__invoke'])->name('admin.search');
 
         Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
+        Route::get('settings/{section}', [SettingController::class, 'section'])
+            ->whereIn('section', ['general', 'billing', 'payments', 'verification', 'sms', 'email', 'tickets', 'protection'])
+            ->name('admin.settings.section');
         Route::get('api-activity', [ApiActivityController::class, 'index'])->name('admin.api-activity.index');
         Route::patch('settings', [SettingController::class, 'update'])->name('admin.settings.update');
+        Route::patch('settings/{section}', [SettingController::class, 'updateSection'])
+            ->whereIn('section', ['general', 'billing', 'payments', 'verification', 'sms', 'email', 'tickets', 'protection'])
+            ->name('admin.settings.section.update');
         Route::post('hetzner-accounts/{hetznerAccount}/test', [HetznerAccountController::class, 'test'])
             ->name('admin.hetzner-accounts.test');
         Route::post('hetzner-accounts/{hetznerAccount}/sync', [HetznerAccountController::class, 'sync'])

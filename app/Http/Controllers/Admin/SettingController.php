@@ -15,6 +15,92 @@ class SettingController extends Controller
     public function edit(): View
     {
         return view('admin.settings.edit', [
+            'sections' => $this->sections(),
+        ]);
+    }
+
+    public function section(string $section): View
+    {
+        abort_unless(array_key_exists($section, $this->sections()), 404);
+
+        return view('admin.settings.section', [
+            'section' => $section,
+            'sectionMeta' => $this->sections()[$section],
+        ] + $this->settingsData());
+    }
+
+    public function updateSection(Request $request, string $section): RedirectResponse
+    {
+        abort_unless(array_key_exists($section, $this->sections()), 404);
+
+        $data = $request->validate($this->sectionRules($section));
+
+        if ($section === 'verification' && $data['customer_verification_mode'] === 'sms') {
+            $smsValidator = Validator::make($data, $this->activeSmsGatewayRules(AppSetting::smsGateway()));
+            if ($smsValidator->fails()) {
+                return back()->withErrors($smsValidator)->withInput();
+            }
+        }
+
+        if ($section === 'verification' && $data['national_code_verification_enabled'] && ! ($data['national_code_verification_token'] ?? AppSetting::nationalCodeVerificationToken())) {
+            return back()->withErrors(['national_code_verification_token' => 'توکن سرویس استعلام کد ملی الزامی است.'])->withInput();
+        }
+
+        if ($section === 'sms') {
+            $smsValidator = Validator::make($data, $this->activeSmsGatewayRules($data['sms_gateway']));
+            $effectiveSecret = $data['sms_gateway'] === 'sms0098'
+                ? (($data['sms0098_password'] ?? '') ?: AppSetting::getValue(AppSetting::SMS0098_PASSWORD, ''))
+                : (($data['kavenegar_api_key'] ?? '') ?: AppSetting::getValue(AppSetting::KAVENEGAR_API_KEY, ''));
+            if ($effectiveSecret === '') {
+                $field = $data['sms_gateway'] === 'sms0098' ? 'sms0098_password' : 'kavenegar_api_key';
+                $smsValidator->errors()->add($field, $data['sms_gateway'] === 'sms0098' ? 'رمز عبور SMS0098 الزامی است.' : 'API Key کاوه‌نگار الزامی است.');
+            }
+            if ($smsValidator->fails()) {
+                return back()->withErrors($smsValidator)->withInput();
+            }
+        }
+
+        if ($section === 'payments') {
+            $mellatEnabled = (bool) ($data['mellat_payment_enabled'] ?? false);
+            $hesabroEnabled = (bool) ($data['hesabro_payment_enabled'] ?? false);
+            $paymentsEnabled = (bool) ($data['payments_enabled'] ?? false);
+            if ($mellatEnabled) {
+                $validator = Validator::make([
+                    'mellat_terminal_id' => $data['mellat_terminal_id'] ?? null,
+                    'mellat_username' => $data['mellat_username'] ?? null,
+                    'mellat_password' => ($data['mellat_password'] ?? '') ?: AppSetting::mellatPassword(),
+                ], ['mellat_terminal_id' => ['required', 'integer', 'min:1'], 'mellat_username' => ['required', 'string', 'max:255'], 'mellat_password' => ['required', 'string', 'max:255']]);
+                if ($validator->fails()) {
+                    return back()->withErrors($validator)->withInput();
+                }
+            }
+            if ($hesabroEnabled) {
+                $validator = Validator::make([
+                    'hesabro_client' => ltrim(trim((string) ($data['hesabro_client'] ?? AppSetting::hesabroClient())), '@'),
+                    'hesabro_client_id' => $data['hesabro_client_id'] ?? null,
+                    'hesabro_client_secret' => ($data['hesabro_client_secret'] ?? '') ?: AppSetting::hesabroClientSecret(),
+                ], ['hesabro_client' => ['required', 'string', 'max:255'], 'hesabro_client_id' => ['required', 'string', 'max:255'], 'hesabro_client_secret' => ['required', 'string', 'max:2000']]);
+                if ($validator->fails()) {
+                    return back()->withErrors($validator)->withInput();
+                }
+            }
+            if ($paymentsEnabled && ! $mellatEnabled && ! $hesabroEnabled) {
+                return back()->withErrors(['payments_enabled' => 'برای فعال‌سازی پرداخت آنلاین، حداقل یک درگاه باید فعال باشد.'])->withInput();
+            }
+            $defaultGateway = $data['default_payment_gateway'] ?? AppSetting::defaultPaymentGateway();
+            if ($paymentsEnabled && (($defaultGateway === 'mellat' && ! $mellatEnabled) || ($defaultGateway === 'hesabro' && ! $hesabroEnabled))) {
+                return back()->withErrors(['default_payment_gateway' => 'درگاه پیش‌فرض باید فعال باشد.'])->withInput();
+            }
+        }
+
+        $this->persistSection($section, $data);
+
+        return to_route('admin.settings.section', $section)->with('status', 'تنظیمات ذخیره شد.');
+    }
+
+    private function settingsData(): array
+    {
+        return [
             'currency' => AppSetting::currency(),
             'currencies' => AppSetting::supportedCurrencies(),
             'verificationMode' => AppSetting::customerVerificationMode(),
@@ -64,7 +150,119 @@ class SettingController extends Controller
             'hesabroClientId' => AppSetting::hesabroClientId(),
             'taxEnabled' => AppSetting::taxEnabled(),
             'taxRatePercentage' => AppSetting::taxRatePercentage(),
-        ]);
+        ];
+    }
+
+    private function sections(): array
+    {
+        return [
+            'general' => ['title' => 'تنظیمات عمومی', 'description' => 'واحد پول و گزینه‌های پایه‌ای که در سراسر پنل و صورتحساب‌ها استفاده می‌شوند.', 'label' => 'پایه'],
+            'billing' => ['title' => 'مالی و قیمت‌گذاری', 'description' => 'مالیات، قیمت‌گذاری Hetzner و هزینه‌های مربوط به ساخت ماشین مجازی را مدیریت کنید.', 'label' => 'مالی'],
+            'payments' => ['title' => 'پرداخت آنلاین', 'description' => 'درگاه‌های پرداخت، محیط اجرا و اطلاعات اتصال به بانک ملت و حسابرو.', 'label' => 'پرداخت'],
+            'verification' => ['title' => 'تأیید مشتریان', 'description' => 'روش تأیید ثبت‌نام و استعلام برخط کد ملی مشتریان را تنظیم کنید.', 'label' => 'مشتریان'],
+            'sms' => ['title' => 'ارسال پیامک', 'description' => 'درگاه پیامک پیش‌فرض و اطلاعات اتصال SMS0098 یا کاوه‌نگار را تنظیم کنید.', 'label' => 'ارتباطات'],
+            'email' => ['title' => 'ارسال ایمیل', 'description' => 'اتصال SMTP و مشخصات فرستنده ایمیل‌های سیستم را مدیریت کنید.', 'label' => 'ارتباطات'],
+            'tickets' => ['title' => 'اعلان‌های تیکت', 'description' => 'اعلان‌های ایمیلی و پیامکی تیکت‌ها و قالب‌های کاوه‌نگار را کنترل کنید.', 'label' => 'پشتیبانی'],
+            'protection' => ['title' => 'سقف‌ها و محافظت حساب', 'description' => 'سقف ماشین‌های مجازی، دوره آزادسازی سهمیه و هشدار کیف‌پول منفی را مدیریت کنید.', 'label' => 'مشتریان'],
+        ];
+    }
+
+    private function sectionRules(string $section): array
+    {
+        return match ($section) {
+            'general' => [
+                'currency' => ['required', 'string', Rule::in(array_keys(AppSetting::supportedCurrencies()))],
+            ],
+            'billing' => [
+                'tax_enabled' => ['required', 'boolean'],
+                'tax_rate_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+                'vm_creation_charge_enabled' => ['required', 'boolean'],
+                'vm_creation_charge_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+                'hetzner_usd_to_irr_rate' => ['nullable', 'integer', 'min:0'],
+                'hetzner_price_markup_percentage' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            ],
+            'payments' => [
+                'payments_enabled' => ['nullable', 'boolean'],
+                'default_payment_gateway' => ['nullable', 'string', Rule::in(array_keys(AppSetting::paymentGateways()))],
+                'mellat_payment_enabled' => ['nullable', 'boolean'],
+                'mellat_payment_mode' => ['nullable', 'string', Rule::in(array_keys(AppSetting::mellatPaymentModes()))],
+                'mellat_terminal_id' => ['nullable', 'integer', 'min:1'],
+                'mellat_username' => ['nullable', 'string', 'max:255'],
+                'mellat_password' => ['nullable', 'string', 'max:255'],
+                'hesabro_payment_enabled' => ['nullable', 'boolean'],
+                'hesabro_client' => ['nullable', 'string', 'max:255'],
+                'hesabro_client_id' => ['nullable', 'string', 'max:255'],
+                'hesabro_client_secret' => ['nullable', 'string', 'max:2000'],
+            ],
+            'verification' => [
+                'customer_verification_mode' => ['required', 'string', Rule::in(array_keys(AppSetting::customerVerificationModes()))],
+                'national_code_verification_enabled' => ['required', 'boolean'],
+                'national_code_verification_token' => ['nullable', 'string', 'max:255'],
+            ],
+            'sms' => [
+                'sms_gateway' => ['required', 'string', Rule::in(array_keys(AppSetting::smsGateways()))],
+                'sms0098_username' => ['nullable', 'string', 'max:255'],
+                'sms0098_password' => ['nullable', 'string', 'max:255'],
+                'sms0098_panel_no' => ['nullable', 'string', 'max:50'],
+                'kavenegar_api_key' => ['nullable', 'string', 'max:255'],
+                'kavenegar_template' => ['nullable', 'string', 'max:100'],
+            ],
+            'email' => [
+                'smtp_host' => ['nullable', 'string', 'max:255'], 'smtp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+                'smtp_username' => ['nullable', 'string', 'max:255'], 'smtp_password' => ['nullable', 'string', 'max:255'],
+                'smtp_encryption' => ['nullable', 'string', Rule::in(array_keys(AppSetting::smtpEncryptions()))],
+                'smtp_from_address' => ['nullable', 'email', 'max:255'], 'smtp_from_name' => ['nullable', 'string', 'max:255'],
+            ],
+            'tickets' => [
+                'ticket_email_notifications_enabled' => ['nullable', 'boolean'], 'ticket_sms_notifications_enabled' => ['nullable', 'boolean'],
+                'ticket_kavenegar_customer_created_template' => ['nullable', 'string', 'max:100'], 'ticket_kavenegar_admin_new_template' => ['nullable', 'string', 'max:100'],
+                'ticket_kavenegar_customer_reply_template' => ['nullable', 'string', 'max:100'], 'ticket_kavenegar_admin_reply_template' => ['nullable', 'string', 'max:100'],
+                'ticket_kavenegar_assignment_template' => ['nullable', 'string', 'max:100'],
+            ],
+            'protection' => [
+                'customer_wallet_negative_threshold' => ['nullable', 'integer'], 'customer_wallet_negative_sms_enabled' => ['nullable', 'boolean'],
+                'customer_wallet_negative_sms_template' => ['nullable', 'string', 'max:100'],
+                'unverified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'], 'verified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'],
+                'deleted_vm_cooldown_days' => ['required', 'integer', 'min:0', 'max:3650'], 'vm_rebuild_fee_multiplier_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            ],
+        };
+    }
+
+    private function persistSection(string $section, array $data): void
+    {
+        $definitions = [
+            'general' => [['currency', AppSetting::BILLING_CURRENCY, 'string', 'billing']],
+            'billing' => [
+                ['tax_enabled', AppSetting::TAX_ENABLED, 'boolean', 'billing'], ['tax_rate_percentage', AppSetting::TAX_RATE_PERCENTAGE, 'float', 'billing'],
+                ['vm_creation_charge_enabled', AppSetting::VM_CREATION_CHARGE_ENABLED, 'boolean', 'billing'], ['vm_creation_charge_percentage', AppSetting::VM_CREATION_CHARGE_PERCENTAGE, 'float', 'billing'],
+                ['hetzner_usd_to_irr_rate', AppSetting::HETZNER_USD_TO_IRR_RATE, 'integer', 'hetzner'], ['hetzner_price_markup_percentage', AppSetting::HETZNER_PRICE_MARKUP_PERCENTAGE, 'float', 'hetzner'],
+            ],
+            'verification' => [['customer_verification_mode', AppSetting::CUSTOMER_VERIFICATION_MODE, 'string', 'customer'], ['national_code_verification_enabled', AppSetting::NATIONAL_CODE_VERIFICATION_ENABLED, 'boolean', 'customer']],
+            'sms' => [['sms_gateway', AppSetting::SMS_GATEWAY, 'string', 'sms'], ['sms0098_username', AppSetting::SMS0098_USERNAME, 'string', 'sms0098'], ['sms0098_panel_no', AppSetting::SMS0098_PANEL_NO, 'string', 'sms0098'], ['kavenegar_template', AppSetting::KAVENEGAR_TEMPLATE, 'string', 'kavenegar']],
+            'email' => [['smtp_host', AppSetting::SMTP_HOST, 'string', 'smtp'], ['smtp_port', AppSetting::SMTP_PORT, 'integer', 'smtp'], ['smtp_username', AppSetting::SMTP_USERNAME, 'string', 'smtp'], ['smtp_encryption', AppSetting::SMTP_ENCRYPTION, 'string', 'smtp'], ['smtp_from_address', AppSetting::SMTP_FROM_ADDRESS, 'string', 'smtp'], ['smtp_from_name', AppSetting::SMTP_FROM_NAME, 'string', 'smtp']],
+            'tickets' => [['ticket_email_notifications_enabled', AppSetting::TICKET_EMAIL_NOTIFICATIONS_ENABLED, 'boolean', 'ticketing'], ['ticket_sms_notifications_enabled', AppSetting::TICKET_SMS_NOTIFICATIONS_ENABLED, 'boolean', 'ticketing'], ['ticket_kavenegar_customer_created_template', AppSetting::TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_admin_new_template', AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_customer_reply_template', AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_admin_reply_template', AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_assignment_template', AppSetting::TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE, 'string', 'ticketing']],
+            'protection' => [['customer_wallet_negative_threshold', AppSetting::CUSTOMER_WALLET_NEGATIVE_THRESHOLD, 'integer', 'billing'], ['customer_wallet_negative_sms_enabled', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, 'boolean', 'billing'], ['customer_wallet_negative_sms_template', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'string', 'billing'], ['unverified_customer_vm_limit', AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 'integer', 'customer'], ['verified_customer_vm_limit', AppSetting::CUSTOMER_VERIFIED_VM_LIMIT, 'integer', 'customer'], ['deleted_vm_cooldown_days', AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 'integer', 'customer'], ['vm_rebuild_fee_multiplier_percentage', AppSetting::VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE, 'float', 'billing']],
+        ];
+
+        foreach ($definitions[$section] ?? [] as [$field, $key, $type, $group]) {
+            AppSetting::setValue($key, $data[$field] ?? false, $type, $group);
+        }
+
+        foreach (['sms0098_password' => [AppSetting::SMS0098_PASSWORD, 'sms0098'], 'kavenegar_api_key' => [AppSetting::KAVENEGAR_API_KEY, 'kavenegar'], 'smtp_password' => [AppSetting::SMTP_PASSWORD, 'smtp'], 'mellat_password' => [AppSetting::MELLAT_PASSWORD, 'payment'], 'hesabro_client_secret' => [AppSetting::HESABRO_CLIENT_SECRET, 'payment'], 'national_code_verification_token' => [AppSetting::NATIONAL_CODE_VERIFICATION_TOKEN, 'customer']] as $field => [$key, $group]) {
+            if (! empty($data[$field])) {
+                AppSetting::setValue($key, $data[$field], 'string', $group);
+            }
+        }
+
+        if ($section === 'payments') {
+            foreach ([['payments_enabled', AppSetting::PAYMENTS_ENABLED], ['default_payment_gateway', AppSetting::DEFAULT_PAYMENT_GATEWAY], ['mellat_payment_enabled', AppSetting::MELLAT_PAYMENT_ENABLED], ['mellat_payment_mode', AppSetting::MELLAT_PAYMENT_MODE], ['mellat_terminal_id', AppSetting::MELLAT_TERMINAL_ID], ['mellat_username', AppSetting::MELLAT_USERNAME], ['hesabro_payment_enabled', AppSetting::HESABRO_PAYMENT_ENABLED], ['hesabro_client', AppSetting::HESABRO_CLIENT], ['hesabro_client_id', AppSetting::HESABRO_CLIENT_ID]] as [$field, $key]) {
+                $value = $data[$field] ?? false;
+                if ($field === 'hesabro_client') {
+                    $value = ltrim(trim((string) $value), '@');
+                }
+                AppSetting::setValue($key, $value, in_array($field, ['payments_enabled', 'mellat_payment_enabled', 'hesabro_payment_enabled'], true) ? 'boolean' : 'string', 'payment');
+            }
+        }
     }
 
     public function update(Request $request): RedirectResponse
