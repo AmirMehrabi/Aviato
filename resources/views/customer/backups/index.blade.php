@@ -88,7 +88,7 @@
                         </div>
                         <button class="mt-5 w-full rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-black text-white">ذخیره برنامه</button>
                         @if($policy?->next_run_at)
-                            <p class="mt-3 text-xs font-bold text-slate-500">اجرای بعدی: <span dir="ltr">{{ $policy->next_run_at->format('Y-m-d H:i') }}</span></p>
+            <p class="mt-3 text-xs font-bold text-slate-500">اجرای بعدی: <span dir="ltr">{{ \App\Support\Jalali::format($policy->next_run_at) }}</span></p>
                         @endif
                     </form>
 
@@ -101,8 +101,8 @@
                             @forelse ($vm->backups as $backup)
                                 <div class="flex items-center justify-between gap-4 py-3">
                                     <div class="min-w-0">
-                                        <p class="truncate font-black text-slate-900">نسخه پشتیبان · {{ $backup->created_at->format('Y/m/d H:i') }}</p>
-                                        <p class="mt-1 text-xs font-bold text-slate-500">{{ $backup->source === 'policy' ? 'خودکار' : 'دستی' }} · {{ $backup->created_at->format('Y/m/d H:i') }} · {{ number_format($backup->sizeGb(), 2) }}GB</p>
+                                        <p class="truncate font-black text-slate-900">نسخه پشتیبان · {{ \App\Support\Jalali::format($backup->created_at) }}</p>
+                                        <p class="mt-1 text-xs font-bold text-slate-500">{{ $backup->source === 'policy' ? 'خودکار' : 'دستی' }} · {{ \App\Support\Jalali::format($backup->created_at) }} · {{ number_format($backup->sizeGb(), 2) }}GB</p>
                                         @if($backup->error)<p class="mt-1 text-xs text-red-600">ایجاد این نسخه کامل نشد. برای بررسی بیشتر با پشتیبانی تماس بگیرید.</p>@endif
                                     </div>
                                     <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $backup->status === 'ready' ? 'bg-emerald-50 text-emerald-700' : ($backup->status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-[#0069FF]') }}">{{ $backup->status === 'ready' ? 'آماده' : ($backup->status === 'failed' ? 'ناموفق' : 'در حال ایجاد') }}</span>

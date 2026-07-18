@@ -83,7 +83,7 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach ($recentCommissions as $commission)
                             <tr class="hover:bg-slate-50/50">
-                                <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ $commission->service_date->format('Y/m/d') }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ \App\Support\Jalali::format($commission->service_date, 'Y/m/d') }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $commission->customer->name ?? '—' }}</td>
                                 <td class="whitespace-nowrap px-4 py-3">{{ $money->format($commission->settlement_amount) }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold text-emerald-600">{{ $money->format($commission->commission_amount) }}</td>

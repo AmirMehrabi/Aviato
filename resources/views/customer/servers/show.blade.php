@@ -320,7 +320,7 @@
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">زمان بندی</span><span class="font-black text-slate-950">{{ $backupFrequency }}</span></div>
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">نسخه آماده</span><span class="font-black text-slate-950">{{ $backupSummary['ready_count'] }}</span></div>
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین وضعیت</span><span class="font-black text-slate-950">{{ $latestBackupStatus }}</span></div>
-                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">اجرای بعدی</span><span class="font-black text-slate-950" dir="ltr">{{ $backupSummary['next_run_at']?->format('Y/m/d H:i') ?: '-' }}</span></div>
+                        <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">اجرای بعدی</span><span class="font-black text-slate-950" dir="ltr">{{ \App\Support\Jalali::format($backupSummary['next_run_at'] ?? null) }}</span></div>
                     </div>
                     @if ($backupSummary['latest_error'])
                         <p class="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{{ $backupSummary['latest_error'] }}</p>
@@ -336,7 +336,7 @@
                 <div class="mt-4 space-y-3 text-sm">
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">وضعیت ماشین</span><span class="rounded-xl px-3 py-1 text-xs font-black" :class="serverState.status_class" x-text="serverState.status_label">{{ $statusLabel }}</span></div>
                     <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آمادگی سرویس</span><span class="inline-flex items-center gap-2 rounded-xl px-3 py-1 text-xs font-black" :class="serverState.provisioning_class"><span x-show="serverState.provisioning_pending" class="size-3 animate-spin rounded-full border-2 border-[#0069FF]/30 border-t-[#0069FF]"></span><span x-text="serverState.provisioning_label">{{ $provisioningLabel }}</span></span></div>
-                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین تغییر وضعیت</span><span class="font-black text-slate-950" dir="ltr">{{ $server->updated_at?->format('Y/m/d H:i') ?: '-' }}</span></div>
+                    <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">آخرین تغییر وضعیت</span><span class="font-black text-slate-950" dir="ltr">{{ \App\Support\Jalali::format($server->updated_at) }}</span></div>
                 </div>
             </aside>
         </section>

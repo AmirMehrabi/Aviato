@@ -141,7 +141,7 @@
                         <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                             <div class="min-w-0">
                                 <p class="truncate text-sm font-black text-slate-950">{{ $transaction->description ?: 'تراکنش کیف پول' }}</p>
-                                <p class="mt-1 text-xs font-bold text-slate-400" dir="ltr">{{ $transaction->created_at?->format('Y-m-d H:i') }}</p>
+                                <p class="mt-1 text-xs font-bold text-slate-400" dir="ltr">{{ \App\Support\Jalali::format($transaction->created_at) }}</p>
                             </div>
                             <span class="shrink-0 text-sm font-black {{ $transaction->amount < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $wallets->format($transaction->amount) }}</span>
                         </div>
@@ -288,7 +288,7 @@
                             <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                                 <div class="min-w-0">
                                     <p class="truncate text-sm font-black text-slate-950">{{ $transaction->description ?: 'تراکنش کیف پول' }}</p>
-                                    <p class="mt-1 text-xs font-bold text-slate-400" dir="ltr">{{ $transaction->created_at?->format('Y-m-d H:i') }}</p>
+                                    <p class="mt-1 text-xs font-bold text-slate-400" dir="ltr">{{ \App\Support\Jalali::format($transaction->created_at) }}</p>
                                 </div>
                                 <span class="shrink-0 text-sm font-black {{ $transaction->amount < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $wallets->format($transaction->amount) }}</span>
                             </div>

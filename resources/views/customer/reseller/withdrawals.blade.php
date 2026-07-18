@@ -47,7 +47,7 @@
             <tbody class="divide-y divide-slate-100">
                 @forelse ($withdrawals as $withdrawal)
                     <tr class="hover:bg-slate-50/50">
-                        <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ $withdrawal->created_at->format('Y/m/d H:i') }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ \App\Support\Jalali::format($withdrawal->created_at) }}</td>
                         <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $money->format($withdrawal->amount) }}</td>
                         <td class="whitespace-nowrap px-4 py-3">
                             @if ($withdrawal->status === 'pending')

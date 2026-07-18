@@ -45,7 +45,7 @@
                 </form>
             @else
                 <div class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                    <p class="text-sm font-bold leading-7 text-emerald-800">کد ملی در تاریخ {{ $customer->national_code_verified_at?->format('Y/m/d H:i') }} تایید شده است.</p>
+                    <p class="text-sm font-bold leading-7 text-emerald-800">کد ملی در تاریخ {{ \App\Support\Jalali::format($customer->national_code_verified_at) }} تایید شده است.</p>
                 </div>
             @endif
         </section>
@@ -114,7 +114,7 @@
                 <thead class="bg-slate-50 text-xs font-black text-slate-500"><tr><th class="px-4 py-3">نام کلید</th><th class="px-4 py-3">دسترسی</th><th class="px-4 py-3">آخرین استفاده</th><th class="px-4 py-3"></th></tr></thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($apiTokens as $token)
-                        <tr><td class="px-4 py-3 font-bold">{{ $token->name }}</td><td class="px-4 py-3 font-mono text-xs text-slate-500" dir="ltr">{{ implode(', ', $token->abilities ?? []) }}</td><td class="px-4 py-3 text-slate-500">{{ $token->last_used_at?->format('Y/m/d H:i') ?? 'هنوز استفاده نشده' }}</td><td class="px-4 py-3"><form method="POST" action="{{ route('customer.profile.api-tokens.destroy', $token) }}" onsubmit="return confirm('این کلید لغو شود؟')">@csrf @method('DELETE')<button class="text-xs font-black text-red-600 hover:text-red-800">لغو کلید</button></form></td></tr>
+                        <tr><td class="px-4 py-3 font-bold">{{ $token->name }}</td><td class="px-4 py-3 font-mono text-xs text-slate-500" dir="ltr">{{ implode(', ', $token->abilities ?? []) }}</td><td class="px-4 py-3 text-slate-500">{{ $token->last_used_at ? \App\Support\Jalali::format($token->last_used_at) : 'هنوز استفاده نشده' }}</td><td class="px-4 py-3"><form method="POST" action="{{ route('customer.profile.api-tokens.destroy', $token) }}" onsubmit="return confirm('این کلید لغو شود؟')">@csrf @method('DELETE')<button class="text-xs font-black text-red-600 hover:text-red-800">لغو کلید</button></form></td></tr>
                     @empty
                         <tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">هنوز کلیدی نساخته‌اید.</td></tr>
                     @endforelse
@@ -126,7 +126,7 @@
             <h3 class="text-sm font-black text-slate-950">آخرین درخواست‌های API</h3>
             <div class="mt-3 space-y-2">
                 @forelse ($apiLogs as $log)
-                    <div class="flex flex-col gap-1 rounded-xl bg-slate-50 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between"><span class="font-mono text-slate-700" dir="ltr">{{ $log->method }} {{ $log->route }}</span><span class="{{ $log->status_code < 400 ? 'text-emerald-700' : 'text-red-700' }} font-black" dir="ltr">{{ $log->status_code }} · {{ $log->duration_ms }}ms · {{ $log->created_at?->format('Y/m/d H:i') }}</span></div>
+                    <div class="flex flex-col gap-1 rounded-xl bg-slate-50 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between"><span class="font-mono text-slate-700" dir="ltr">{{ $log->method }} {{ $log->route }}</span><span class="{{ $log->status_code < 400 ? 'text-emerald-700' : 'text-red-700' }} font-black" dir="ltr">{{ $log->status_code }} · {{ $log->duration_ms }}ms · {{ \App\Support\Jalali::format($log->created_at) }}</span></div>
                 @empty
                     <p class="rounded-xl bg-slate-50 px-4 py-4 text-xs text-slate-500">هنوز درخواستی ثبت نشده است.</p>
                 @endforelse

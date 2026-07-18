@@ -41,7 +41,7 @@
                     <h1 class="mt-4 text-2xl font-black leading-9">{{ $ticket->subject }}</h1>
                     <p class="mt-2 text-sm font-bold leading-7 text-[#C7D4EA]">
                         {{ $ticket->category?->name ?? 'بدون دسته‌بندی' }} · آخرین فعالیت
-                        <span dir="ltr">{{ $ticket->last_activity_at?->format('Y-m-d H:i') ?? $ticket->created_at?->format('Y-m-d H:i') }}</span>
+                        <span dir="ltr">{{ \App\Support\Jalali::format($ticket->last_activity_at ?? $ticket->created_at) }}</span>
                     </p>
                 </div>
                 <div class="grid gap-2 sm:grid-cols-2 lg:w-80">
@@ -60,15 +60,15 @@
         <div class="grid gap-4 p-5 lg:grid-cols-4">
             <div class="rounded-xl bg-slate-50 p-4">
                 <p class="text-xs font-black text-slate-500">ثبت شده</p>
-                <p class="mt-2 text-sm font-black text-slate-950" dir="ltr">{{ $ticket->created_at?->format('Y-m-d H:i') }}</p>
+                <p class="mt-2 text-sm font-black text-slate-950" dir="ltr">{{ \App\Support\Jalali::format($ticket->created_at) }}</p>
             </div>
             <div class="rounded-xl bg-slate-50 p-4">
                 <p class="text-xs font-black text-slate-500">آخرین پاسخ مشتری</p>
-                <p class="mt-2 text-sm font-black text-slate-950" dir="ltr">{{ $ticket->last_customer_reply_at?->format('Y-m-d H:i') ?? '—' }}</p>
+                <p class="mt-2 text-sm font-black text-slate-950" dir="ltr">{{ $ticket->last_customer_reply_at ? \App\Support\Jalali::format($ticket->last_customer_reply_at) : '—' }}</p>
             </div>
             <div class="rounded-xl bg-slate-50 p-4">
                 <p class="text-xs font-black text-slate-500">آخرین پاسخ پشتیبانی</p>
-                <p class="mt-2 text-sm font-black text-slate-950" dir="ltr">{{ $ticket->last_admin_reply_at?->format('Y-m-d H:i') ?? '—' }}</p>
+                <p class="mt-2 text-sm font-black text-slate-950" dir="ltr">{{ $ticket->last_admin_reply_at ? \App\Support\Jalali::format($ticket->last_admin_reply_at) : '—' }}</p>
             </div>
             <div class="rounded-xl bg-slate-50 p-4">
                 <p class="text-xs font-black text-slate-500">سرویس مرتبط</p>
@@ -86,7 +86,7 @@
                             <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ mb_substr($firstMessage->author?->name ?? 'م', 0, 1) }}</span>
                             <div>
                                 <p class="font-black text-slate-950">درخواست اولیه</p>
-                                <p class="mt-1 text-xs font-bold text-slate-500">{{ $firstMessage->author?->name ?? 'مشتری' }} · <span dir="ltr">{{ $firstMessage->created_at?->format('Y-m-d H:i') }}</span></p>
+                                <p class="mt-1 text-xs font-bold text-slate-500">{{ $firstMessage->author?->name ?? 'مشتری' }} · <span dir="ltr">{{ \App\Support\Jalali::format($firstMessage->created_at) }}</span></p>
                             </div>
                         </div>
                         <span class="w-fit rounded-lg bg-white px-3 py-1.5 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">Ticket body</span>
@@ -117,7 +117,7 @@
                                     <div class="flex flex-wrap items-center justify-between gap-2">
                                         <div>
                                             <p class="font-black text-slate-950">{{ $message->author?->name ?? 'سیستم' }}</p>
-                                            <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ $message->created_at?->format('Y-m-d H:i') }}</p>
+                                            <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ \App\Support\Jalali::format($message->created_at) }}</p>
                                         </div>
                                         <span class="rounded-lg px-2.5 py-1 text-xs font-black ring-1 {{ $roleBadge }}">{{ $isCustomer ? 'پاسخ مشتری' : 'پاسخ پشتیبانی' }}</span>
                                     </div>

@@ -25,7 +25,7 @@
                     <tr class="hover:bg-slate-50/50">
                         <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $assignment->customer->name }}</td>
                         <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ $assignment->customer->email ?? '—' }}</td>
-                        <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ $assignment->created_at->format('Y/m/d') }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ \App\Support\Jalali::format($assignment->created_at, 'Y/m/d') }}</td>
                         <td class="whitespace-nowrap px-4 py-3">
                             @if ($assignment->assigned_via === 'referral')
                                 <span class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">لینک معرفی</span>

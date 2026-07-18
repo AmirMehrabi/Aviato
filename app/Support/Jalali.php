@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Morilog\Jalali\Jalalian;
 
 class Jalali
@@ -9,6 +11,17 @@ class Jalali
     public static function now(): Jalalian
     {
         return Jalalian::now();
+    }
+
+    public static function format(?CarbonInterface $date, string $format = 'Y/m/d H:i'): string
+    {
+        if (! $date) {
+            return '—';
+        }
+
+        return Jalalian::fromCarbon(
+            Carbon::instance($date->copy()->setTimezone(config('app.customer_timezone', 'Asia/Tehran'))),
+        )->format($format);
     }
 
     

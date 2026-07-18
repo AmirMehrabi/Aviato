@@ -320,11 +320,19 @@
                 },
                 formatDate(value) {
                     if (!value) return '—';
-                    return new Date(value).toLocaleString('fa-IR');
+                    return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                        timeZone: 'Asia/Tehran',
+                    }).format(new Date(value));
                 },
                 timeLabel(value) {
                     if (!value) return '';
-                    return new Date(Number(value) * 1000).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+                    return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'Asia/Tehran',
+                    }).format(new Date(Number(value) * 1000));
                 },
             };
         }

@@ -42,7 +42,7 @@
                         <h3 class="mt-3 truncate text-base font-black text-slate-950">{{ $ticket->subject }}</h3>
                         <p class="mt-1 text-sm font-bold text-slate-500">{{ $ticket->category?->name ?? 'بدون دسته‌بندی' }} @if($ticket->virtualMachine) · <span dir="ltr">{{ $ticket->virtualMachine->name }}</span> @endif</p>
                     </div>
-                    <p class="shrink-0 text-xs font-bold text-slate-400" dir="ltr">{{ $ticket->last_activity_at?->format('Y-m-d H:i') ?? $ticket->created_at?->format('Y-m-d H:i') }}</p>
+                    <p class="shrink-0 text-xs font-bold text-slate-400" dir="ltr">{{ \App\Support\Jalali::format($ticket->last_activity_at ?? $ticket->created_at) }}</p>
                 </div>
             </a>
         @empty
