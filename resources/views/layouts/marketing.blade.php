@@ -260,14 +260,13 @@
             @yield('content')
         </main>
 
-        <footer class="border-t border-slate-200 bg-[#F5F8FD] px-4 py-12 text-slate-700 md:px-8 lg:px-10">
-            <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.15fr_0.85fr_0.85fr]">
+        <footer class="border-t border-slate-200 bg-[#F5F8FD] px-4 py-10 text-slate-700 md:px-8 md:py-12 lg:px-10">
+            <div class="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.35fr_0.65fr_0.65fr] md:gap-12">
                 <div>
                     <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
-                        class="h-14 w-44 object-contain object-right">
-                    <p class="mt-5 max-w-xl text-sm leading-8 text-slate-600">
-                        ماشین مجازی ابری ساده، روشن و قابل پیش بینی برای تیم هایی که می خواهند سرور را بدون پیچیدگی اضافه بخرند و
-                        سرویس را اجرا کنند.
+                        class="h-12 w-40 object-contain object-right">
+                    <p class="mt-4 max-w-sm text-base font-black leading-8 text-slate-950">
+                        آویاتو، زیرساخت ساده و قابل اتکا برای اجرای سرویس های آنلاین.
                     </p>
                     @if (request()->routeIs('home'))
                         <a referrerpolicy='origin' target='_blank'
@@ -278,33 +277,32 @@
                     @endif
                 </div>
 
-                <div>
-                    <p class="text-sm text-slate-950">خرید و بررسی</p>
+                <nav aria-label="خرید و بررسی">
+                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">خرید و بررسی</p>
                     <div class="mt-4 grid gap-3 text-sm font-bold text-slate-600">
                         <a href="{{ route('home') }}" class="transition hover:text-[#2C67C9]">خانه</a>
                         <a href="{{ route('pricing') }}" class="transition hover:text-[#2C67C9]">قیمت‌گذاری</a>
                         <a href="{{ route('solutions') }}" class="transition hover:text-[#2C67C9]">راهکارهای ما</a>
                         <a href="{{ route('solutions.colocation') }}" class="transition hover:text-[#2C67C9]">Co-location</a>
                         <a href="{{ route('blog') }}" class="transition hover:text-[#2C67C9]">بلاگ</a>
-                        <a href="{{ route('customer.register') }}" class="transition hover:text-[#2C67C9]">ثبت نام
-                            مشتری</a>
                     </div>
-                </div>
+                </nav>
 
-                <div>
-                    <p class="text-sm text-slate-950">ارتباط و پنل</p>
+                <nav aria-label="ارتباط و پنل">
+                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">ارتباط و پنل</p>
                     <div class="mt-4 grid gap-3 text-sm font-bold text-slate-600">
+                        <a href="{{ route('customer.register') }}" class="transition hover:text-[#2C67C9]">ثبت نام مشتری</a>
                         <a href="{{ route('customer.login') }}" class="transition hover:text-[#2C67C9]">ورود به پنل</a>
                         <a href="{{ route('changelog') }}" class="transition hover:text-[#2C67C9]">تغییرات</a>
                         <a href="{{ route('contact') }}" class="transition hover:text-[#2C67C9]">تماس با ما</a>
                     </div>
-                </div>
+                </nav>
             </div>
 
             <div
                 class="mx-auto mt-10 flex max-w-7xl flex-col gap-3 border-t border-slate-200 pt-6 text-xs font-bold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
                 <p>© {{ now()->year }} آویاتو. همه حقوق محفوظ است.</p>
-                <p>ماشین مجازی روشن برای خرید سریع، اجرای ساده و رشد قابل پیش بینی.</p>
+                <p>زیرساخت مطمئن برای سرویس هایی که باید همیشه در دسترس باشند.</p>
             </div>
         </footer>
     </div>
