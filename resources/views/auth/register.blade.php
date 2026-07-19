@@ -27,15 +27,15 @@
 
             <section class="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:py-14">
                 <div class="hidden lg:block">
-                    <p class="text-sm font-black text-[#0069FF]">شروع خرید ماشین مجازی</p>
+                    <p class="text-sm font-black text-[#0069FF]">شروع کار با آویاتو</p>
                     <h1 class="mt-4 max-w-2xl text-3xl font-black leading-tight text-slate-950">
-                        حساب بسازید، کیف پول خود را شارژ کنید و سرور آماده تحویل بگیرید.
+                        حساب‌تان را بسازید و آماده شروع شوید.
                     </h1>
                     <p class="mt-6 max-w-xl text-base leading-8 text-slate-600">
-                        ثبت نام سرراست است؛ پلن را انتخاب می کنید، منابع را می بینید و ماشین از پنل مشتری ساخته می شود.
+                        ثبت‌نام فقط چند لحظه زمان می‌برد. بعد از آن می‌توانید پلن‌تان را انتخاب کنید، حساب را شارژ کنید و ماشین مجازی بسازید.
                     </p>
                     <div class="mt-8 overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-2xl shadow-[#031B4E]/20">
-                        <p class="text-sm font-black text-[#8FC7FF]">آنچه بعد از ثبت نام دارید</p>
+                        <p class="text-sm font-black text-[#8FC7FF]">بعد از ساخت حساب چه چیزی در اختیار دارید؟</p>
                         <div class="mt-5 grid gap-3 text-sm font-bold text-[#C7D4EA]">
                             @foreach (['مدیریت ماشین های ابری', 'کیف پول و پرداخت براساس میزان مصرف', 'بکاپ، مانیتورینگ و مدیریت صورت‌حساب‌ها'] as $item)
                                 <div class="flex items-center gap-2">
@@ -51,7 +51,9 @@
                     <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] p-4 md:px-8">
                         {{-- <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">پنل مشتریان</span> --}}
                         <h2 class="text-3xl font-black leading-tight text-slate-950">ثبت نام</h2>
-                        {{-- <p class="mt-2 text-sm leading-7 text-slate-600">{{ $isCustomerSmsMode ? 'بعد از ثبت نام، کد OTP با پیامک برای موبایل شما ارسال می شود.' : ($verificationModeValue === 'disabled' ? 'تایید حساب مشتری غیرفعال است و پس از ثبت نام می‌توانید وارد شوید.' : 'بعد از ثبت نام، کد OTP به ایمیل شما ارسال می شود.') }}</p> --}}
+                        <p class="mt-2 text-sm leading-7 text-slate-600">
+                            {{ $verificationModeValue === 'disabled' ? 'اطلاعات‌تان را وارد کنید تا حساب شما ساخته شود.' : ($isCustomerSmsMode ? 'بعد از ثبت‌نام، یک کد تأیید برای شماره موبایل‌تان می‌فرستیم.' : 'بعد از ثبت‌نام، یک کد تأیید برای ایمیل‌تان می‌فرستیم.') }}
+                        </p>
                     </div>
 
                     <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading>
@@ -97,11 +99,11 @@
                         </label>
 
                         <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0069FF] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" type="submit">
-                            <span>{{ $verificationModeValue === 'disabled' ? 'ایجاد حساب' : 'ایجاد حساب و ارسال OTP' }}</span>
+                            <span>{{ $verificationModeValue === 'disabled' ? 'ساخت حساب' : 'ساخت حساب و دریافت کد' }}</span>
                         </button>
 
                         <p class="text-center text-sm font-bold text-slate-500">
-                            حساب دارید؟
+                            قبلاً حساب ساخته‌اید؟
                             <a class="text-[#0069FF] transition hover:text-[#0050D0]" href="{{ route($portal.'.login', [], false) }}">ورود</a>
                         </p>
                     </form>

@@ -27,12 +27,12 @@
 
             <section class="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[minmax(0,1fr)_440px] lg:py-14">
                 <div class="hidden lg:block">
-                    <p class="text-sm font-black text-[#0069FF]">{{ $isAdminPortal ? 'کنسول مدیریت آویاتو' : 'کنسول ابری مشتریان' }}</p>
+                    <p class="text-sm font-black text-[#0069FF]">{{ $isAdminPortal ? 'ورود به بخش مدیریت' : 'خوش آمدید' }}</p>
                     <h1 class="mt-4 max-w-2xl text-3xl font-black leading-tight text-slate-950">
-                        {{ $isAdminPortal ? 'مدیریت زیرساخت و فروش از یک پنل متمرکز.' : 'ساخت و مدیریت ماشین مجازی در کمتر از یک دقیقه.' }}
+                        {{ $isAdminPortal ? 'همه‌چیز برای مدیریت آویاتو از همین‌جا در دسترس شماست.' : 'سرویس‌ها و حساب آویاتو را از همین‌جا مدیریت کنید.' }}
                     </h1>
                     <p class="mt-6 max-w-xl text-base leading-8 text-slate-600">
-                        {{ $isAdminPortal ? 'برای پیگیری سرورها، مشتریان، پلن ها و وضعیت provisioning وارد پنل مدیریت شوید.' : 'پس از ورود می توانید ماشین ها، کیف پول، بکاپ ها، مانیتورینگ و صورتحساب ها را از یک فضای واحد مدیریت کنید.' }}
+                        {{ $isAdminPortal ? 'برای ادامه، اطلاعات ورود بخش مدیریت را وارد کنید.' : 'بعد از ورود، ماشین‌های مجازی، کیف پول، بکاپ‌ها و صورت‌حساب‌هایتان را یک‌جا می‌بینید.' }}
                     </p>
                     <div class="mt-8 grid max-w-2xl grid-cols-3 gap-3">
                         @foreach ([
@@ -56,8 +56,8 @@
                         </span>                            
                         @endif
 
-                        <h2 class="text-3xl font-black leading-tight text-slate-950">ورود</h2>
-                        {{-- <p class="mt-2 text-sm leading-7 text-slate-600">برای ادامه، اطلاعات حساب خود را وارد کنید.</p> --}}
+                        <h2 class="text-3xl font-black leading-tight text-slate-950">{{ $isAdminPortal ? 'ورود به مدیریت' : 'خوش آمدید' }}</h2>
+                        <p class="mt-2 text-sm leading-7 text-slate-600">برای ادامه، ایمیل یا شماره موبایل و رمز عبورتان را وارد کنید.</p>
                     </div>
 
                     <form method="POST" action="{{ route($portal.'.login.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading>
@@ -86,7 +86,7 @@
 
                             @if (! $isAdminPortal)
                                 <a href="{{ route('customer.password.request', [], false) }}" class="inline-flex items-center justify-center rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-2 text-sm font-black text-[#0069FF] transition hover:border-[#0069FF] hover:bg-white">
-                                    فراموشی رمز عبور؟
+                                    رمز عبورتان را فراموش کرده‌اید؟
                                 </a>
                             @endif
                         </div>
@@ -98,11 +98,11 @@
                         @if (! $isAdminPortal)
                             <a href="{{ route('customer.login.otp', [], false) }}" class="flex items-center justify-center gap-2 rounded-xl border border-[#B8D6FF] bg-[#F4F8FF] px-4 py-3 text-sm font-black text-[#0069FF] transition hover:border-[#0069FF] hover:bg-[#EBF3FF]">
                                 <span class="text-base">✦</span>
-                                ورود بدون رمز عبور با کد یک‌بارمصرف
+                                ورود با کد یک‌بارمصرف
                             </a>
                             <p class="text-center text-sm font-bold text-slate-500">
-                                حساب ندارید؟
-                                <a class="text-[#0069FF] transition hover:text-[#0050D0]" href="{{ route($portal.'.register', [], false) }}">ثبت نام مشتری</a>
+                                هنوز حساب ندارید؟
+                                <a class="text-[#0069FF] transition hover:text-[#0050D0]" href="{{ route($portal.'.register', [], false) }}">حساب بسازید</a>
                             </p>
                         @endif
                     </form>

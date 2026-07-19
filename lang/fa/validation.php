@@ -1,22 +1,22 @@
 <?php
 
 return [
-    'required' => 'وارد کردن فیلد :attribute الزامی است.',
-    'required_without' => 'وارد کردن فیلد :attribute الزامی است، مگر اینکه :values وارد شده باشد.',
-    'required_without_all' => 'وارد کردن فیلد :attribute الزامی است.',
-    'required_with' => 'وارد کردن فیلد :attribute الزامی است.',
-    'required_with_all' => 'وارد کردن فیلد :attribute الزامی است.',
-    'email' => 'فیلد :attribute باید یک ایمیل معتبر باشد.',
+    'required' => ':attribute را وارد کنید.',
+    'required_without' => ':attribute را وارد کنید.',
+    'required_without_all' => ':attribute را وارد کنید.',
+    'required_with' => ':attribute را وارد کنید.',
+    'required_with_all' => ':attribute را وارد کنید.',
+    'email' => 'ایمیل واردشده معتبر نیست.',
     'max' => [
         'string' => 'تعداد نویسه‌های :attribute نباید بیشتر از :max باشد.',
     ],
     'min' => [
         'string' => 'تعداد نویسه‌های :attribute باید حداقل :min باشد.',
     ],
-    'confirmed' => 'تکرار :attribute با مقدار آن مطابقت ندارد.',
-    'unique' => 'این مقدار برای :attribute قبلا ثبت شده است.',
-    'regex' => 'قالب :attribute معتبر نیست.',
-    'string' => 'فیلد :attribute باید به صورت متن وارد شود.',
+    'confirmed' => ':attribute و تکرار آن یکی نیستند.',
+    'unique' => 'این :attribute قبلاً ثبت شده است.',
+    'regex' => 'فرمت :attribute درست نیست.',
+    'string' => ':attribute را به صورت متن وارد کنید.',
     'password' => [
         'letters' => 'رمز عبور باید حداقل یک حرف داشته باشد.',
         'mixed' => 'رمز عبور باید حداقل یک حرف بزرگ و یک حرف کوچک داشته باشد.',
@@ -26,10 +26,10 @@ return [
     ],
     'custom' => [
         'email' => [
-            'required_without' => 'وارد کردن ایمیل یا موبایل الزامی است.',
+            'required_without' => 'ایمیل یا شماره موبایل را وارد کنید.',
         ],
         'phone' => [
-            'required_without' => 'وارد کردن ایمیل یا موبایل الزامی است.',
+            'required_without' => 'ایمیل یا شماره موبایل را وارد کنید.',
         ],
     ],
     'attributes' => [
