@@ -365,6 +365,61 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertNull($vm->ip_address);
     }
 
+    public function test_provisioning_skips_a_vmid_retained_by_a_deleted_panel_record(): void
+    {
+        [$image, $bundle] = $this->catalog();
+        $image->update(['cloud_init_enabled' => false]);
+        $customer = Customer::factory()->create();
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'template_vmid' => $image->template_vmid,
+            'name' => 'new-vps-after-deletion',
+            'node' => $image->node,
+            'storage' => $image->storage,
+            'network_bridge' => $image->network_bridge,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 0,
+            'status' => VirtualMachine::STATUS_STOPPED,
+            'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+        ]);
+        VirtualMachine::create([
+            'customer_id' => Customer::factory()->create()->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vmid' => 101,
+            'name' => 'deleted-old-vps',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'status' => VirtualMachine::STATUS_DELETED,
+            'provisioning_status' => VirtualMachine::PROVISION_FAILED,
+            'deleted_at' => now()->subDay(),
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('nextVmid')->once()->andReturn(['vmid' => 101]);
+            $mock->shouldReceive('assignedGuestVmids')->once()->andReturn([]);
+            $mock->shouldReceive('cloneCloudTemplate')->once()->withArgs(fn ($server, array $options): bool => (int) $options['newid'] === 102)->andReturn(['task_id' => null]);
+            $mock->shouldReceive('configureCloudInit')->never();
+            $mock->shouldReceive('resizeDisk')->never();
+            $mock->shouldReceive('regenerateCloudInit')->never();
+            $mock->shouldReceive('startVm')->never();
+            $mock->shouldReceive('vmConfig')->once()->andReturn([]);
+        });
+
+        (new ProvisionCloudVirtualMachine($vm->id, ['start_after_create' => false]))->handle(
+            app(ProxmoxService::class),
+            app(IpPoolService::class),
+        );
+
+        $this->assertSame(102, $vm->refresh()->vmid);
+        $this->assertSame(VirtualMachine::PROVISION_READY, $vm->provisioning_status);
+    }
+
     public function test_cloud_image_minimum_resources_are_enforced(): void
     {
         Bus::fake();
