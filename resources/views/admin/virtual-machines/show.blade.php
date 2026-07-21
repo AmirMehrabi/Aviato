@@ -65,7 +65,7 @@
             <div class="flex flex-wrap gap-2">
                 <a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
                 <a href="{{ route('admin.virtual-machines.transfer.show', $vm) }}" class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">انتقال مالکیت</a>
-                @if($vm->proxmoxServer && $vm->node && $vm->vmid && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $vm->isActionLocked())
+                @if($vm->proxmoxServer && $vm->node && $vm->vmid && ! $vm->isLxc() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $vm->isActionLocked())
                     <a href="{{ route('admin.virtual-machines.console.show', $vm) }}" class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">کنسول</a>
                 @endif
 

@@ -59,6 +59,10 @@ class VirtualMachineConsoleController extends Controller
             throw new RuntimeException('This VM is not connected to Proxmox console yet.');
         }
 
+        if ($vm->isLxc()) {
+            throw new RuntimeException('Console is not available for imported LXC guests yet.');
+        }
+
         if ($vm->isActionLocked()) {
             throw new RuntimeException('Console is unavailable while this VM is locked for deletion.');
         }

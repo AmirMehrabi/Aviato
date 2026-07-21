@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\TicketCategoryController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\VirtualMachineConsoleController;
 use App\Http\Controllers\Admin\VirtualMachineController;
+use App\Http\Controllers\Admin\UnprovisionedVirtualMachineController;
 use App\Http\Controllers\Admin\VmBundleController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -193,6 +194,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::resource('virtual-machines', VirtualMachineController::class)
             ->parameters(['virtual-machines' => 'virtualMachine'])
             ->names('admin.virtual-machines');
+        Route::get('unprovisioned-virtual-machines', [UnprovisionedVirtualMachineController::class, 'index'])
+            ->name('admin.unprovisioned-virtual-machines.index');
+        Route::post('unprovisioned-virtual-machines/claim', [UnprovisionedVirtualMachineController::class, 'claim'])
+            ->name('admin.unprovisioned-virtual-machines.claim');
         Route::resource('cloud-images', CloudImageController::class)
             ->parameters(['cloud-images' => 'cloudImage'])
             ->except(['show'])

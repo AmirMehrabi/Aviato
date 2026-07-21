@@ -86,6 +86,10 @@ class ServerConsoleController extends Controller
             throw new RuntimeException('کنسول برای این ماشین مجازی در دسترس نیست.');
         }
 
+        if ($server->isLxc()) {
+            throw new RuntimeException('کنسول برای کانتینرهای LXC در دسترس نیست.');
+        }
+
         if (! $server->proxmoxServer || blank($server->node) || blank($server->vmid)) {
             throw new RuntimeException('کنسول این ماشین مجازی هنوز آماده نیست.');
         }

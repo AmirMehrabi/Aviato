@@ -227,6 +227,11 @@ class VirtualMachine extends Model
         return $this->provider === self::PROVIDER_HETZNER;
     }
 
+    public function isLxc(): bool
+    {
+        return $this->isProxmox() && data_get($this->provider_metadata, 'guest_type') === 'lxc';
+    }
+
     public function deleteAttemptIsStale(int $minutes = 15): bool
     {
         if (! $this->isDeleting() || $this->delete_failed_at) {

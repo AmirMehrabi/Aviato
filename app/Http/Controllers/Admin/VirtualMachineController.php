@@ -427,6 +427,10 @@ class VirtualMachineController extends Controller
 
     public function start(VirtualMachine $virtualMachine): RedirectResponse
     {
+        if ($virtualMachine->isLxc()) {
+            return back()->with('error', 'Power actions for imported LXC guests are not available yet.');
+        }
+
         if ($virtualMachine->isActionLocked()) {
             return back()->with('error', 'این VM در وضعیت حذف است و امکان روشن کردن ندارد.');
         }
@@ -515,6 +519,10 @@ class VirtualMachineController extends Controller
 
     public function stop(VirtualMachine $virtualMachine): RedirectResponse
     {
+        if ($virtualMachine->isLxc()) {
+            return back()->with('error', 'Power actions for imported LXC guests are not available yet.');
+        }
+
         $expectedGeneration = request()->integer('power_generation');
         $currentGeneration = (int) data_get($virtualMachine->desired_state, 'power_generation', 0);
 

@@ -185,6 +185,7 @@
                                 ['label' => 'Hetzner', 'route' => 'admin.hetzner-accounts.index', 'active' => request()->routeIs('admin.hetzner-accounts.*'), 'icon' => 'M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10Z'],
                                 ['label' => 'موقعیت‌های زیرساخت', 'route' => 'admin.infrastructure-locations.index', 'active' => request()->routeIs('admin.infrastructure-locations.*'), 'icon' => 'M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11Zm0-8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z'],
                                 ['label' => 'ماشین‌ها', 'route' => 'admin.virtual-machines.index', 'active' => request()->routeIs('admin.virtual-machines.*'), 'icon' => 'M4 5h16v11H4V5Zm4 14h8'],
+                                ['label' => 'ماشین‌های ثبت‌نشده', 'route' => 'admin.unprovisioned-virtual-machines.index', 'active' => request()->routeIs('admin.unprovisioned-virtual-machines.*'), 'icon' => 'M12 3v18M3 12h18'],
                                 ['label' => 'ایمیج‌های ابری', 'route' => 'admin.cloud-images.index', 'active' => request()->routeIs('admin.cloud-images.*'), 'icon' => 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm3 10 2.5-3 2 2 2.5-3 4 4H7Z'],
                                 ['label' => 'مخزن‌های IP', 'route' => 'admin.ip-pools.index', 'active' => request()->routeIs('admin.ip-pools.*'), 'icon' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M3 12h18'],
                             ],
