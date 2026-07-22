@@ -1228,8 +1228,9 @@ class ProxmoxService
             $lastStatus = $this->getData($server, "/nodes/{$node}/tasks/{$upid}/status") ?? [];
 
             if (($lastStatus['status'] ?? null) === 'stopped') {
-                if (($lastStatus['exitstatus'] ?? 'OK') !== 'OK') {
-                    throw new RuntimeException('Proxmox task failed: '.($lastStatus['exitstatus'] ?? 'unknown error'));
+                $exitStatus = $lastStatus['exitstatus'] ?? 'OK';
+                if ($exitStatus !== 'OK' && ! str_starts_with($exitStatus, 'WARNINGS')) {
+                    throw new RuntimeException('Proxmox task failed: '.$exitStatus);
                 }
 
                 return $lastStatus;
