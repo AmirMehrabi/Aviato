@@ -814,6 +814,62 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertNotNull(data_get($vm->remote_state, 'wallet_unlocked_at'));
     }
 
+    public function test_disabled_auto_suspension_does_not_lock_vms_or_restore_existing_wallet_locks(): void
+    {
+        $customer = Customer::factory()->create(['auto_suspend_vms' => false]);
+        $server = ProxmoxServer::create([
+            'name' => 'THR Proxmox',
+            'datacenter' => 'THR-1',
+            'host' => 'pve.local',
+            'port' => 8006,
+            'realm' => 'pam',
+            'username' => 'root',
+            'api_token_id' => 'root@pam!panel',
+            'api_token_secret' => 'secret',
+            'is_active' => true,
+            'maintenance_mode' => false,
+        ]);
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $server->id,
+            'vmid' => 102,
+            'name' => 'auto-suspension-disabled-vm',
+            'hostname' => 'auto-suspension-disabled-vm',
+            'node' => 'pve1',
+            'storage' => 'local-lvm',
+            'network_bridge' => 'vmbr1',
+            'ip_address' => '192.168.10.51',
+            'login_username' => 'ubuntu',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('stopVm');
+        });
+
+        app(WalletService::class)->charge($customer, 1000, 'کسر آزمایشی');
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
+        $this->assertNull(data_get($vm->remote_state, 'wallet_locked_at'));
+
+        $vm->forceFill([
+            'status' => VirtualMachine::STATUS_SUSPENDED,
+            'remote_state' => ['wallet_locked_at' => now()->toISOString()],
+        ])->save();
+
+        app(WalletService::class)->charge($customer, 1000, 'کسر آزمایشی دوم');
+
+        $vm->refresh();
+        $this->assertSame(VirtualMachine::STATUS_SUSPENDED, $vm->status);
+        $this->assertNotNull(data_get($vm->remote_state, 'wallet_locked_at'));
+    }
+
     private function enableMellatGateway(): void
     {
         AppSetting::setValue(AppSetting::PAYMENTS_ENABLED, true, 'boolean', 'payment');

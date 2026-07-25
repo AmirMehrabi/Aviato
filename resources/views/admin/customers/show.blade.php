@@ -56,6 +56,24 @@
         @endforeach
     </section>
 
+    <section class="mt-6 rounded-2xl border {{ $customer->auto_suspend_vms ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50' }} p-5">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <h2 class="text-xl font-black text-slate-950">تعلیق خودکار ماشین‌ها</h2>
+                <p class="mt-2 text-sm leading-7 text-slate-600">وقتی موجودی مؤثر کیف‌پول به صفر یا کمتر برسد، ماشین‌های این مشتری به‌صورت خودکار متوقف و معلق می‌شوند. این گزینه فقط همین رفتار را کنترل می‌کند و محدودیت‌های دیگر کیف‌پول را تغییر نمی‌دهد.</p>
+                <p class="mt-2 text-sm font-black {{ $customer->auto_suspend_vms ? 'text-amber-800' : 'text-emerald-800' }}">وضعیت: {{ $customer->auto_suspend_vms ? 'فعال' : 'غیرفعال' }}</p>
+            </div>
+            <form method="POST" action="{{ route('admin.customers.auto-suspension.update', $customer) }}" class="shrink-0">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="auto_suspend_vms" value="{{ $customer->auto_suspend_vms ? 0 : 1 }}">
+                <button class="rounded-lg {{ $customer->auto_suspend_vms ? 'bg-amber-600' : 'bg-emerald-600' }} px-5 py-3 text-sm font-black text-white transition hover:opacity-90">
+                    {{ $customer->auto_suspend_vms ? 'غیرفعال کردن' : 'فعال کردن' }}
+                </button>
+            </form>
+        </div>
+    </section>
+
     <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)]">
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex items-start justify-between gap-4">

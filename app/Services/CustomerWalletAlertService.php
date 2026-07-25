@@ -47,9 +47,9 @@ class CustomerWalletAlertService
             'negative_notification_count' => (int) ($wallet->negative_notification_count ?? 0),
         ])->save();
 
-        if ($effectiveBalance <= 0) {
+        if ($effectiveBalance <= 0 && $customer->auto_suspend_vms) {
             $this->lockVirtualMachines($customer);
-        } else {
+        } elseif ($effectiveBalance > 0) {
             $this->restoreLockedVirtualMachines($customer);
         }
 

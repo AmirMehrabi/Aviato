@@ -153,6 +153,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.customers.wallet-lock.update');
         Route::patch('customers/{customer}/sms-notifications', [CustomerController::class, 'updateSmsNotifications'])
             ->name('admin.customers.sms-notifications.update');
+        Route::patch('customers/{customer}/auto-suspension', [CustomerController::class, 'updateAutoSuspension'])
+            ->name('admin.customers.auto-suspension.update');
 
         Route::patch('customers/{customer}/suspend', [CustomerController::class, 'suspend'])
             ->name('admin.customers.suspend');

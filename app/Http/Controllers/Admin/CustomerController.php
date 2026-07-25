@@ -150,6 +150,21 @@ class CustomerController extends Controller
         return back()->with('status', (bool) $data['sms_notifications_enabled'] ? 'اعلان پیامکی مشتری فعال شد.' : 'اعلان پیامکی مشتری غیرفعال شد.');
     }
 
+    public function updateAutoSuspension(Request $request, Customer $customer): RedirectResponse
+    {
+        $data = $request->validate([
+            'auto_suspend_vms' => ['required', 'boolean'],
+        ]);
+
+        $customer->forceFill([
+            'auto_suspend_vms' => (bool) $data['auto_suspend_vms'],
+        ])->save();
+
+        return back()->with('status', (bool) $data['auto_suspend_vms']
+            ? 'تعلیق خودکار ماشین‌های مشتری فعال شد.'
+            : 'تعلیق خودکار ماشین‌های مشتری غیرفعال شد.');
+    }
+
     public function impersonate(Request $request, Customer $customer): RedirectResponse
     {
         $token = Str::random(64);
