@@ -3,6 +3,7 @@ import RFB from '@novnc/novnc';
 import { Editor } from '@toast-ui/editor';
 import '@toast-ui/editor/dist/toastui-editor.css';
 import { Chart, registerables } from 'chart.js';
+import PersianDate from 'persian-date';
 
 Chart.register(...registerables);
 window.Chart = Chart;
@@ -302,6 +303,180 @@ window.adminNotificationDropdown = function adminNotificationDropdown(config) {
 
         openNotification(notification) {
             this.markRead(notification.id, notification.url);
+        },
+    };
+};
+
+window.walletTransactions = function walletTransactions(config) {
+    return {
+        type: config.type || 'all',
+        search: config.search || '',
+        from: config.from || '',
+        to: config.to || '',
+        page: 1,
+        loading: false,
+        html: config.html || '',
+        hasPages: config.hasPages || false,
+
+        pickerTarget: null,
+        pickerYear: 0,
+        pickerMonth: 0,
+
+        async load() {
+            this.loading = true;
+
+            try {
+                const params = new URLSearchParams();
+
+                if (this.type !== 'all') params.set('type', this.type);
+                if (this.search) params.set('search', this.search);
+                if (this.from) params.set('from', this.from);
+                if (this.to) params.set('to', this.to);
+                if (this.page > 1) params.set('page', this.page);
+
+                const response = await fetch(`/wallet/transactions?${params}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const data = await response.json();
+
+                if (! response.ok) {
+                    throw new Error(data.message || 'Failed to load transactions');
+                }
+
+                const url = new URL(window.location);
+
+                if (this.type !== 'all') url.searchParams.set('type', this.type);
+                else url.searchParams.delete('type');
+
+                if (this.search) url.searchParams.set('search', this.search);
+                else url.searchParams.delete('search');
+
+                if (this.from) url.searchParams.set('from', this.from);
+                else url.searchParams.delete('from');
+
+                if (this.to) url.searchParams.set('to', this.to);
+                else url.searchParams.delete('to');
+
+                url.searchParams.delete('page');
+                window.history.replaceState({}, '', url.toString());
+
+                this.html = data.html;
+                this.hasPages = data.hasPages;
+            } catch (e) {
+                // keep existing content on error
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        setType(type) {
+            this.type = type;
+            this.page = 1;
+            this.load();
+        },
+
+        handlePageClick(e) {
+            const link = e.target.closest('a[href]');
+
+            if (! link) return;
+
+            e.preventDefault();
+            const url = new URL(link.href);
+            this.page = url.searchParams.get('page') || 1;
+            this.load();
+        },
+
+        clearFilters() {
+            this.type = 'all';
+            this.search = '';
+            this.from = '';
+            this.to = '';
+            this.page = 1;
+            this.load();
+        },
+
+        openPicker(target) {
+            if (this.pickerTarget === target) {
+                this.pickerTarget = null;
+                return;
+            }
+
+            this.pickerTarget = target;
+
+            const value = this[target];
+
+            if (value) {
+                const parts = value.split('/');
+
+                if (parts.length === 3) {
+                    this.pickerYear = parseInt(parts[0]);
+                    this.pickerMonth = parseInt(parts[1]);
+                    return;
+                }
+            }
+
+            const now = new PersianDate();
+            this.pickerYear = now.year();
+            this.pickerMonth = now.month();
+        },
+
+        closePicker() {
+            this.pickerTarget = null;
+        },
+
+        selectDate(day) {
+            const value = `${this.pickerYear}/${String(this.pickerMonth).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+
+            this[this.pickerTarget] = value;
+            this.pickerTarget = null;
+            this.page = 1;
+            this.load();
+        },
+
+        prevCalendarMonth() {
+            let y = this.pickerYear;
+            let m = this.pickerMonth - 1;
+
+            if (m < 1) { m = 12; y--; }
+            this.pickerYear = y;
+            this.pickerMonth = m;
+        },
+
+        nextCalendarMonth() {
+            let y = this.pickerYear;
+            let m = this.pickerMonth + 1;
+
+            if (m > 12) { m = 1; y++; }
+            this.pickerYear = y;
+            this.pickerMonth = m;
+        },
+
+        get calendarWeeks() {
+            const start = new PersianDate([this.pickerYear, this.pickerMonth, 1]);
+            const daysInMonth = start.daysInMonth();
+            const startWeekday = start.day();
+            const weeks = [];
+            let week = new Array(7).fill(null);
+            let dayIndex = startWeekday - 1;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                week[dayIndex] = d;
+                dayIndex++;
+
+                if (dayIndex === 7) {
+                    weeks.push(week);
+                    week = new Array(7).fill(null);
+                    dayIndex = 0;
+                }
+            }
+
+            if (dayIndex > 0) weeks.push(week);
+
+            return weeks;
+        },
+
+        get calendarMonthName() {
+            return new PersianDate([this.pickerYear, this.pickerMonth, 1]).format('MMMM');
         },
     };
 };

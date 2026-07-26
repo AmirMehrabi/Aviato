@@ -24,8 +24,6 @@ class Jalali
         )->format($format);
     }
 
-    
-
     public static function currentJalaliMonthRange(): array
     {
         $now = Jalalian::now();

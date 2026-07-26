@@ -128,7 +128,7 @@ class S3GatewayTest extends TestCase
         $requestPath = $parsed['path'] ?? '/';
         parse_str($parsed['query'] ?? '', $query);
         $canonicalQuery = collect($query)->flatMap(fn ($values, $name) => collect((array) $values)->map(fn ($value) => rawurlencode((string) $name).'='.rawurlencode((string) $value)))->sort()->implode('&');
-        $canonicalHeaders = "host:{$host}\n".'x-amz-content-sha256:UNSIGNED-PAYLOAD' . "\n" . "x-amz-date:{$date}\n";
+        $canonicalHeaders = "host:{$host}\n".'x-amz-content-sha256:UNSIGNED-PAYLOAD'."\n"."x-amz-date:{$date}\n";
         $canonicalRequest = implode("\n", [$method, $requestPath, $canonicalQuery, $canonicalHeaders, $signedHeaders, 'UNSIGNED-PAYLOAD']);
         $scope = $shortDate.'/aviato-1/s3/aws4_request';
         $stringToSign = "AWS4-HMAC-SHA256\n{$date}\n{$scope}\n".hash('sha256', $canonicalRequest);
@@ -150,7 +150,9 @@ class S3GatewayTest extends TestCase
             'HTTP_X_AMZ_CONTENT_SHA256' => 'UNSIGNED-PAYLOAD',
             'HTTP_AUTHORIZATION' => $headers['Authorization'],
         ];
-        foreach ($extraHeaders as $name => $value) $server['HTTP_'.strtoupper(str_replace('-', '_', $name))] = $value;
+        foreach ($extraHeaders as $name => $value) {
+            $server['HTTP_'.strtoupper(str_replace('-', '_', $name))] = $value;
+        }
 
         return $this->call($method, $this->endpoint.$path, [], [], [], $server, $body);
     }

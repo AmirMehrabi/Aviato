@@ -8,6 +8,7 @@ return [
         ['label' => 'بلاگ', 'route' => 'blog', 'key' => 'blog'],
         ['label' => 'مستندات API', 'route' => 'api.documentation', 'key' => 'api'],
         ['label' => 'لیست تغییرات', 'route' => 'changelog', 'key' => 'changelog'],
+        ['label' => 'گزارش رخدادها', 'route' => 'incidents.index', 'key' => 'incidents'],
         ['label' => 'تماس', 'route' => 'contact', 'key' => 'contact'],
     ],
 ];

@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'password' => 'password1@1@'
+            'password' => 'password1@1@',
         ]);
 
         foreach (ResourceRate::defaults() as $resource => $data) {
@@ -47,5 +47,7 @@ class DatabaseSeeder extends Seeder
                 'sort_order' => 10,
             ],
         );
+
+        $this->call(IncidentSeeder::class);
     }
 }

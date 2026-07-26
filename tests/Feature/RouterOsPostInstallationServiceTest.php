@@ -11,7 +11,6 @@ use App\Models\VirtualMachine;
 use App\Services\ProxmoxSerialConsoleService;
 use App\Services\RouterOsPostInstallationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\App;
 use Tests\TestCase;
 
 class RouterOsPostInstallationServiceTest extends TestCase

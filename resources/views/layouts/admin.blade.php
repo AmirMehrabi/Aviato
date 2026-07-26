@@ -194,6 +194,7 @@
                             'label' => 'پشتیبانی',
                             'items' => [
                                 ['label' => 'تیکت‌ها', 'route' => 'admin.tickets.index', 'active' => request()->routeIs('admin.tickets.*') || request()->routeIs('admin.support-teams.*') || request()->routeIs('admin.ticket-categories.*'), 'icon' => 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-5 4V5Z'],
+                                ['label' => 'گزارش رخدادها', 'route' => 'admin.incidents.index', 'active' => request()->routeIs('admin.incidents.*'), 'icon' => 'M12 3v18M3 12h18'],
                             ],
                         ],
                         [

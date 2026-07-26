@@ -26,6 +26,7 @@ class S3SignatureService
 
             $parts = collect(explode(',', $matches[1]))->mapWithKeys(function (string $part): array {
                 [$key, $value] = array_pad(explode('=', trim($part), 2), 2, null);
+
                 return [$key => $value];
             });
             $algorithm = 'AWS4-HMAC-SHA256';
@@ -100,6 +101,7 @@ class S3SignatureService
             $lines[] = strtolower($name).':'.preg_replace('/\s+/', ' ', trim($value));
         }
         sort($lines);
+
         return ['value' => implode("\n", $lines)."\n"];
     }
 
@@ -114,12 +116,15 @@ class S3SignatureService
     {
         $pairs = [];
         foreach ($request->query() as $key => $values) {
-            if (strtolower((string) $key) === 'x-amz-signature') continue;
+            if (strtolower((string) $key) === 'x-amz-signature') {
+                continue;
+            }
             foreach (is_array($values) ? $values : [$values] as $value) {
                 $pairs[] = [rawurlencode((string) $key), rawurlencode((string) $value)];
             }
         }
         usort($pairs, fn (array $a, array $b): int => ($a[0].'='.$a[1]) <=> ($b[0].'='.$b[1]));
+
         return implode('&', array_map(fn (array $pair): string => $pair[0].'='.$pair[1], $pairs));
     }
 }

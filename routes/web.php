@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\HetznerAccountController;
+use App\Http\Controllers\Admin\IncidentController as AdminIncidentController;
+use App\Http\Controllers\Admin\IncidentTimelineEventController;
 use App\Http\Controllers\Admin\InfrastructureLocationController;
 use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\NotificationController;
@@ -19,9 +21,9 @@ use App\Http\Controllers\Admin\SupportTeamController;
 use App\Http\Controllers\Admin\TicketAttachmentController as AdminTicketAttachmentController;
 use App\Http\Controllers\Admin\TicketCategoryController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
+use App\Http\Controllers\Admin\UnprovisionedVirtualMachineController;
 use App\Http\Controllers\Admin\VirtualMachineConsoleController;
 use App\Http\Controllers\Admin\VirtualMachineController;
-use App\Http\Controllers\Admin\UnprovisionedVirtualMachineController;
 use App\Http\Controllers\Admin\VmBundleController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -48,6 +50,7 @@ use App\Http\Controllers\Customer\TicketAttachmentController;
 use App\Http\Controllers\Customer\TicketController;
 use App\Http\Controllers\Customer\VmUpgradeController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
+use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\SitemapController;
 use App\Models\VmBundle;
@@ -138,6 +141,15 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::patch('tickets/{ticket}/status', [AdminTicketController::class, 'status'])->name('admin.tickets.status');
         Route::get('tickets/{ticket}/attachments/{attachment}', [AdminTicketAttachmentController::class, 'show'])->name('admin.tickets.attachments.show');
         Route::resource('tickets', AdminTicketController::class)->only(['index', 'create', 'store', 'show'])->names('admin.tickets');
+        Route::resource('incidents', AdminIncidentController::class)
+            ->except(['show'])
+            ->names('admin.incidents');
+        Route::post('incidents/{incident}/timeline', [IncidentTimelineEventController::class, 'store'])
+            ->name('admin.incidents.timeline.store');
+        Route::patch('incidents/{incident}/timeline/{timelineEvent}', [IncidentTimelineEventController::class, 'update'])
+            ->name('admin.incidents.timeline.update');
+        Route::delete('incidents/{incident}/timeline/{timelineEvent}', [IncidentTimelineEventController::class, 'destroy'])
+            ->name('admin.incidents.timeline.destroy');
         Route::resource('support-teams', SupportTeamController::class)
             ->parameters(['support-teams' => 'supportTeam'])
             ->only(['index', 'store', 'update'])
@@ -381,6 +393,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::get('tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'show'])->name('customer.tickets.attachments.show');
         Route::resource('tickets', TicketController::class)->only(['index', 'create', 'store', 'show'])->names('customer.tickets');
         Route::get('wallet', [CustomerWalletController::class, 'show'])->name('customer.wallet.show');
+        Route::get('wallet/transactions', [CustomerWalletController::class, 'transactionsJson'])->name('customer.wallet.transactions.json');
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');
         Route::get('wallet/payments/{payment}/gateway', [PaymentController::class, 'showGateway'])->name('customer.wallet.payments.gateway.show');
         Route::post('wallet/payments/{payment}/gateway', [PaymentController::class, 'submitGateway'])->name('customer.wallet.payments.gateway.store');
@@ -490,6 +503,8 @@ Route::get('/changelog', function () {
 
     return view('changelog');
 })->name('changelog');
+Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
+Route::get('/incidents/{slug}', [IncidentController::class, 'show'])->name('incidents.show');
 Route::get('/blog', [BlogController::class, 'index'])->name('blog');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 

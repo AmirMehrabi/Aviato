@@ -10,9 +10,12 @@ use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Morilog\Jalali\Jalalian;
 
 class WalletController extends Controller
 {
@@ -75,6 +78,68 @@ class WalletController extends Controller
             'availablePaymentGateways' => $this->paymentGateways->available(),
             'defaultPaymentGateway' => AppSetting::defaultPaymentGateway(),
             'paymentNotice' => $paymentNotice,
+        ]);
+    }
+
+    public function transactionsJson(Request $request): JsonResponse
+    {
+        $customer = $request->user('customer');
+        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_unless($this->projects->canViewBilling($activeProject, $customer), 404);
+        $wallet = $this->wallets->walletFor($activeProject->owner);
+
+        $filters = $request->validate([
+            'type' => ['nullable', Rule::in([
+                'all',
+                WalletTransaction::TYPE_CREDIT,
+                WalletTransaction::TYPE_CHARGE,
+                WalletTransaction::TYPE_REFUND,
+                WalletTransaction::TYPE_ADJUSTMENT,
+                WalletTransaction::TYPE_DEBIT,
+            ])],
+            'from' => ['nullable', 'string', 'max:15'],
+            'to' => ['nullable', 'string', 'max:15'],
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $selectedType = $filters['type'] ?? 'all';
+
+        $parseDate = function (?string $value, ?Carbon $fallback): ?Carbon {
+            if (! $value) {
+                return $fallback;
+            }
+            try {
+                return str_contains($value, '/')
+                    ? Jalalian::fromFormat('Y/m/d', $value)->toCarbon()
+                    : Carbon::parse($value);
+            } catch (\Throwable) {
+                return $fallback;
+            }
+        };
+
+        $from = $parseDate($filters['from'] ?? null, null);
+        $to = $parseDate($filters['to'] ?? null, null);
+
+        $transactions = $wallet->transactions()
+            ->where(function ($query) use ($activeProject): void {
+                $query->where('metadata->project_id', $activeProject->id)
+                    ->orWhereNull('metadata->project_id');
+            })
+            ->when($selectedType !== 'all', fn ($query) => $query->where('type', $selectedType))
+            ->when($from, fn ($query) => $query->whereDate('created_at', '>=', $from))
+            ->when($to, fn ($query) => $query->whereDate('created_at', '<=', $to))
+            ->when($filters['search'] ?? null, fn ($query) => $query->where('description', 'like', '%'.$filters['search'].'%'))
+            ->orderBy('created_at', 'desc')
+            ->paginate(12);
+
+        $html = view('customer.wallet._transactions', [
+            'transactions' => $transactions,
+            'wallets' => $this->wallets,
+        ])->render();
+
+        return response()->json([
+            'html' => $html,
+            'hasPages' => $transactions->hasPages(),
         ]);
     }
 

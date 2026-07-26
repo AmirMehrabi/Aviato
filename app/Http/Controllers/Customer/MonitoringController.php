@@ -121,7 +121,7 @@ class MonitoringController extends Controller
 
             return response()->json([
                 'message' => 'دریافت داده های مانیتورینگ ماشین مجازی ممکن نیست.',
-                ], 422);
+            ], 422);
         }
     }
 

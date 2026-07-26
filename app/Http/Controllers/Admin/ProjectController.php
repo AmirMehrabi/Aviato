@@ -190,7 +190,7 @@ class ProjectController extends Controller
 
         DB::transaction(function () use ($project, $customers, $request, $data, $customerIds): void {
             foreach ($customerIds as $customerId) {
-                /** @var \App\Models\Customer $customer */
+                /** @var Customer $customer */
                 $customer = $customers->get($customerId);
 
                 if (! $customer) {

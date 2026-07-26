@@ -12,11 +12,20 @@ class StorageBucket extends Model
 {
     public const STATUS_ACTIVE = 'active';
 
-    public function project(): BelongsTo { return $this->belongsTo(Project::class); }
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
 
-    public function objects(): HasMany { return $this->hasMany(StorageObject::class); }
+    public function objects(): HasMany
+    {
+        return $this->hasMany(StorageObject::class);
+    }
 
-    public function multipartUploads(): HasMany { return $this->hasMany(StorageMultipartUpload::class); }
+    public function multipartUploads(): HasMany
+    {
+        return $this->hasMany(StorageMultipartUpload::class);
+    }
 
     protected function casts(): array
     {

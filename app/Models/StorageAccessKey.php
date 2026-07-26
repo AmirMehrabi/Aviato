@@ -13,9 +13,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StorageAccessKey extends Model
 {
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_REVOKED = 'revoked';
 
-    public function project(): BelongsTo { return $this->belongsTo(Project::class); }
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
 
     protected function secret(): Attribute
     {
@@ -25,5 +29,8 @@ class StorageAccessKey extends Model
         );
     }
 
-    protected function casts(): array { return ['last_used_at' => 'datetime']; }
+    protected function casts(): array
+    {
+        return ['last_used_at' => 'datetime'];
+    }
 }

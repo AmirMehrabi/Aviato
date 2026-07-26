@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\ProxmoxServerController;
-use App\Http\Controllers\Api\WalletController;
 use App\Http\Controllers\Api\VirtualMachineController;
+use App\Http\Controllers\Api\WalletController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware(['api.audit', 'auth:sanctum', 'throttle:60,1'])->group(function (): void {

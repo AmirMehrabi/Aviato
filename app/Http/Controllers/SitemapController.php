@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Incident;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 
@@ -23,6 +24,18 @@ class SitemapController extends Controller
             'loc' => route('solutions.colocation'),
             'lastmod' => null,
         ];
+
+        $entries[] = [
+            'loc' => route('incidents.index'),
+            'lastmod' => null,
+        ];
+
+        foreach (Incident::query()->where('is_published', true)->get(['slug', 'updated_at']) as $incident) {
+            $entries[] = [
+                'loc' => route('incidents.show', $incident->slug),
+                'lastmod' => $incident->updated_at?->toAtomString(),
+            ];
+        }
 
         foreach ($this->blogEntries() as $entry) {
             $entries[] = $entry;

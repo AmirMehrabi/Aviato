@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'آویاتو | خرید ماشین مجازی ابری سریع')</title>
     <meta name="description" content="@yield('description', 'خرید ماشین مجازی ابری با دیسک NVMe، IP اختصاصی، منابع شفاف، قیمت قابل پیش بینی و پشتیبانی فارسی.')">
+    <meta property="og:type" content="@yield('og_type', 'website')">
+    <meta property="og:title" content="@yield('og_title', trim($__env->yieldContent('title'))) ">
+    <meta property="og:description" content="@yield('og_description', trim($__env->yieldContent('description'))) ">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:site_name" content="Aviato">
+    <link rel="canonical" href="{{ url()->current() }}">
     <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicons/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicons/favicon-16x16.png') }}">
@@ -284,6 +290,7 @@
                         <a href="{{ route('pricing') }}" class="transition hover:text-[#2C67C9]">قیمت‌گذاری</a>
                         <a href="{{ route('solutions') }}" class="transition hover:text-[#2C67C9]">راهکارهای ما</a>
                         <a href="{{ route('solutions.colocation') }}" class="transition hover:text-[#2C67C9]">Co-location</a>
+                        <a href="{{ route('incidents.index') }}" class="transition hover:text-[#2C67C9]">گزارش رخدادها</a>
                         <a href="{{ route('blog') }}" class="transition hover:text-[#2C67C9]">بلاگ</a>
                     </div>
                 </nav>
