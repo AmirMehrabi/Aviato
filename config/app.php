@@ -65,7 +65,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('TIMEZONE', 'Asia/Tehran'),
 
     'customer_timezone' => env('CUSTOMER_TIMEZONE', 'Asia/Tehran'),
 
