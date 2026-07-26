@@ -22,6 +22,9 @@ class CustomerConsoleTest extends TestCase
         config([
             'console.proxy_path' => '/console-ws',
         ]);
+
+        Customer::all();
+        Customer::created(fn (Customer $c) => \DB::table('wallets')->where('customer_id', $c->id)->update(['balance' => 10_000_000]));
     }
 
     public function test_customer_can_open_own_vm_console_page(): void

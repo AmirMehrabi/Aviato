@@ -9,11 +9,12 @@ use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use RuntimeException;
+use Tests\Concerns\FundsCustomerWallet;
 use Tests\TestCase;
 
 class CustomerMonitoringTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, FundsCustomerWallet;
 
     private string $customerBaseUrl = 'https://cp.localhost';
 

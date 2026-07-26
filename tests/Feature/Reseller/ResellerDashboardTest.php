@@ -5,11 +5,12 @@ namespace Tests\Feature\Reseller;
 use App\Models\Customer;
 use App\Services\ResellerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\FundsCustomerWallet;
 use Tests\TestCase;
 
 class ResellerDashboardTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, FundsCustomerWallet;
 
     private string $customerBaseUrl = 'https://cp.localhost';
 

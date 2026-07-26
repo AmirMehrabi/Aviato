@@ -24,6 +24,9 @@ class CustomerProfileVerificationTest extends TestCase
             'portals.admin.domain' => 'admin.localhost',
             'portals.customer.domain' => 'cp.localhost',
         ]);
+
+        Customer::all();
+        Customer::created(fn (Customer $c) => \DB::table('wallets')->where('customer_id', $c->id)->update(['balance' => 10_000_000]));
     }
 
     public function test_customer_can_verify_national_code_from_profile_when_verification_is_enabled(): void

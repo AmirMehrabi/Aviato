@@ -15,11 +15,12 @@ use App\Services\VirtualMachineDeletionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
+use Tests\Concerns\FundsCustomerWallet;
 use Tests\TestCase;
 
 class CustomerServerDeletionTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, FundsCustomerWallet;
 
     private string $customerBaseUrl = 'https://cp.localhost';
 

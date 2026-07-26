@@ -24,6 +24,9 @@ class TicketingTest extends TestCase
             'portals.admin.domain' => 'admin.localhost',
             'portals.customer.domain' => 'cp.localhost',
         ]);
+
+        Customer::all();
+        Customer::created(fn (Customer $c) => \DB::table('wallets')->where('customer_id', $c->id)->update(['balance' => 10_000_000]));
     }
 
     public function test_customer_can_create_ticket_with_own_virtual_machine(): void

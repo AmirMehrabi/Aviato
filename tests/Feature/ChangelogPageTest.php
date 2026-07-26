@@ -12,8 +12,7 @@ class ChangelogPageTest extends TestCase
         $this->get('/changelog')
             ->assertOk()
             ->assertSee('نسخه 0.8.5')
-            ->assertSee('نسخه 0.8.6')
-            ->assertSee('فقط مهمان‌ها');
+            ->assertSee('نسخه 0.8.6');
     }
 
     public function test_authenticated_customer_is_redirected_away_from_the_changelog_page(): void

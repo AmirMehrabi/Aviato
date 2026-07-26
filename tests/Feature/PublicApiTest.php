@@ -8,11 +8,12 @@ use App\Models\VirtualMachine;
 use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\FundsCustomerWallet;
 use Tests\TestCase;
 
 class PublicApiTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, FundsCustomerWallet;
 
     public function test_customer_can_create_and_revoke_an_api_key(): void
     {
@@ -33,6 +34,7 @@ class PublicApiTest extends TestCase
     public function test_api_can_read_project_wallet_and_transactions(): void
     {
         $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 0]);
         $project = $customer->ensureDefaultProject();
         $token = $customer->createToken('Test client', ['wallet:read'])->plainTextToken;
 

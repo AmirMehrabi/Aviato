@@ -13,11 +13,12 @@ use App\Models\VmBackupPolicy;
 use App\Services\UsageBillingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Tests\Concerns\FundsCustomerWallet;
 use Tests\TestCase;
 
 class CustomerBackupTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, FundsCustomerWallet;
 
     private string $customerBaseUrl = 'https://cp.localhost';
 

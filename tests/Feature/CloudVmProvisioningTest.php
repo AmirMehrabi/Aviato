@@ -19,11 +19,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Tests\Concerns\FundsCustomerWallet;
 use Tests\TestCase;
 
 class CloudVmProvisioningTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, FundsCustomerWallet;
 
     private string $customerBaseUrl = 'https://cp.localhost';
 

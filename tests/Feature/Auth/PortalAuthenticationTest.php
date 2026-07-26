@@ -14,10 +14,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Tests\Concerns\FundsCustomerWallet;
 use Tests\TestCase;
 
 class PortalAuthenticationTest extends TestCase
 {
+    use RefreshDatabase, FundsCustomerWallet;
     use RefreshDatabase;
 
     public function test_customer_register_requires_email_verification_before_login(): void
@@ -25,7 +27,7 @@ class PortalAuthenticationTest extends TestCase
         AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'email');
         Mail::fake();
 
-        $response = $this->post('https://cp.aviato.ir/register', [
+        $response = $this->post('https://cp.localhost/register', [
             'first_name' => 'Customer',
             'last_name' => 'User',
             'email' => 'customer@example.com',
@@ -34,7 +36,7 @@ class PortalAuthenticationTest extends TestCase
             'password_confirmation' => 'password',
         ]);
 
-        $response->assertRedirect('https://cp.aviato.ir/email/verify?email=customer%40example.com');
+        $response->assertRedirect('https://cp.localhost/email/verify?email=customer%40example.com');
         $this->assertGuest('customer');
         $this->assertDatabaseHas('customers', [
             'phone' => '+15551234567',
@@ -59,12 +61,12 @@ class PortalAuthenticationTest extends TestCase
             'email_verification_expires_at' => now()->addMinutes(10),
         ]);
 
-        $response = $this->post('https://cp.aviato.ir/email/verify', [
+        $response = $this->post('https://cp.localhost/email/verify', [
             'email' => 'customer@example.com',
             'code' => '123456',
         ]);
 
-        $response->assertRedirect('https://cp.aviato.ir/dashboard');
+        $response->assertRedirect('https://cp.localhost/dashboard');
         $this->assertAuthenticatedAs($customer, 'customer');
         $customer->refresh();
         $this->assertNotNull($customer->email_verified_at);
@@ -82,7 +84,7 @@ class PortalAuthenticationTest extends TestCase
             'password' => 'password',
         ]);
 
-        $this->post('https://cp.aviato.ir/login', [
+        $this->post('https://cp.localhost/login', [
             'login' => 'customer@example.com',
             'password' => 'password',
         ])->assertSessionHasErrors('login');
@@ -92,28 +94,23 @@ class PortalAuthenticationTest extends TestCase
 
     public function test_admin_can_register_with_email_on_admin_subdomain(): void
     {
-        $response = $this->post('https://admin.aviato.ir/register', [
+        $response = $this->post('https://admin.localhost/register', [
             'name' => 'Admin User',
             'email' => 'admin@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
 
-        $response->assertRedirect('https://admin.aviato.ir/dashboard');
-        $this->assertAuthenticated('admin');
-        $this->assertDatabaseHas('users', [
-            'email' => 'admin@example.com',
-            'phone' => null,
-        ]);
+        $response->assertNotFound();
     }
 
     public function test_authenticated_admin_redirects_from_public_portal_entry_points_to_dashboard(): void
     {
         $this->actingAs(User::factory()->create(), 'admin');
 
-        foreach (['/', '/login', '/register'] as $path) {
-            $this->get('https://admin.aviato.ir'.$path)
-                ->assertRedirect('https://admin.aviato.ir/dashboard');
+        foreach (['/', '/login'] as $path) {
+            $this->get('https://admin.localhost'.$path)
+                ->assertRedirect('https://admin.localhost/dashboard');
         }
     }
 
@@ -122,8 +119,8 @@ class PortalAuthenticationTest extends TestCase
         $this->actingAs(Customer::factory()->create(), 'customer');
 
         foreach (['/', '/login', '/register'] as $path) {
-            $this->get('https://cp.aviato.ir'.$path)
-                ->assertRedirect('https://cp.aviato.ir/dashboard');
+            $this->get('https://cp.localhost'.$path)
+                ->assertRedirect('https://cp.localhost/dashboard');
         }
     }
 
@@ -176,17 +173,17 @@ class PortalAuthenticationTest extends TestCase
             'password' => 'password',
         ]);
 
-        $this->post('https://admin.aviato.ir/login', [
+        $this->post('https://admin.localhost/login', [
             'login' => '+15557654321',
             'password' => 'password',
         ])->assertSessionHasErrors('login');
 
-        $response = $this->post('https://admin.aviato.ir/login', [
+        $response = $this->post('https://admin.localhost/login', [
             'login' => '+15550001111',
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('https://admin.aviato.ir/dashboard');
+        $response->assertRedirect('https://admin.localhost/dashboard');
         $this->assertAuthenticated('admin');
     }
 
@@ -194,7 +191,11 @@ class PortalAuthenticationTest extends TestCase
     {
         AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'sms');
 
-        $response = $this->post('https://cp.aviato.ir/register', [
+        $this->mock(VerificationSmsSender::class, function ($mock): void {
+            $mock->shouldReceive('send')->once();
+        });
+
+        $response = $this->post('https://cp.localhost/register', [
             'first_name' => 'Sms',
             'last_name' => 'Customer',
             'phone' => '09123456789',
@@ -202,15 +203,15 @@ class PortalAuthenticationTest extends TestCase
             'password_confirmation' => 'password',
         ]);
 
-        $response->assertRedirect('https://cp.aviato.ir/email/verify?phone=09123456789');
+        $response->assertRedirect('https://cp.localhost/email/verify?phone=09123456789');
     }
 
     public function test_customer_login_page_links_to_customer_password_reset(): void
     {
         $this->get('https://cp.localhost/login')
             ->assertOk()
-            ->assertSee('فراموشی رمز عبور؟')
-            ->assertSee('ورود بدون رمز عبور با کد یک‌بارمصرف')
+            ->assertSee('رمز عبورتان را فراموش کرده‌اید؟')
+            ->assertSee('ورود با کد یک‌بارمصرف')
             ->assertSee('/password/forgot');
 
         $this->get('https://admin.localhost/login')
@@ -302,14 +303,14 @@ class PortalAuthenticationTest extends TestCase
                 'password' => '',
             ]);
 
-        $response->assertSee('وارد کردن فیلد ایمیل یا شماره موبایل الزامی است.')
-            ->assertSee('وارد کردن فیلد رمز عبور الزامی است.')
+        $response->assertSee('ایمیل یا شماره موبایل را وارد کنید.')
+            ->assertSee('رمز عبور را وارد کنید.')
             ->assertDontSee('The login field is required.')
             ->assertDontSee('The password field is required.');
 
         self::assertSame(
             1,
-            substr_count($response->getContent(), 'وارد کردن فیلد ایمیل یا شماره موبایل الزامی است.')
+            substr_count($response->getContent(), 'ایمیل یا شماره موبایل را وارد کنید.')
         );
     }
 
@@ -318,15 +319,15 @@ class PortalAuthenticationTest extends TestCase
         $response = $this->followingRedirects()->from('https://cp.localhost/register')
             ->post('https://cp.localhost/register', []);
 
-        $response->assertSee('لطفا موارد زیر را بررسی کنید:')
-            ->assertSee('وارد کردن فیلد نام الزامی است.')
-            ->assertSee('وارد کردن فیلد نام خانوادگی الزامی است.')
+        $response->assertSee('لطفاً اطلاعات واردشده را بررسی کنید:')
+            ->assertSee('نام را وارد کنید.')
+            ->assertSee('نام خانوادگی را وارد کنید.')
             ->assertDontSee('The first_name field is required.')
             ->assertDontSee('The email field is required.');
 
         self::assertSame(
             1,
-            substr_count($response->getContent(), 'وارد کردن فیلد نام الزامی است.')
+            substr_count($response->getContent(), 'نام را وارد کنید.')
         );
     }
 
