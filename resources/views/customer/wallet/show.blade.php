@@ -217,7 +217,7 @@
             html: @js(trim(view('customer.wallet._transactions', ['transactions' => $transactions, 'wallets' => $wallets])->render())),
             hasPages: @js($transactions->hasPages()),
         })"
-        class="mt-6 min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm shadow-slate-200/60"
+        class="mt-6 min-w-0 rounded-[28px] border border-slate-200 bg-white shadow-sm shadow-slate-200/60"
     >
         <div class="border-b border-slate-200 p-5">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -246,7 +246,7 @@
                     <input
                         type="text"
                         x-model="from"
-                        x-on:focus="openPicker('from')"
+                        x-on:click.stop="openPicker('from')"
                         placeholder="از تاریخ (مثلا 1403/01/01)"
                         class="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10 sm:w-40"
                     >
@@ -291,7 +291,7 @@
                     <input
                         type="text"
                         x-model="to"
-                        x-on:focus="openPicker('to')"
+                        x-on:click.stop="openPicker('to')"
                         placeholder="تا تاریخ (مثلا 1403/01/01)"
                         class="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10 sm:w-40"
                     >
@@ -352,11 +352,11 @@
             </div>
         </div>
 
-        <div class="relative">
+        <div class="relative overflow-hidden rounded-b-[28px]">
             <div
                 x-show="loading"
                 x-cloak
-                class="absolute inset-0 z-40 flex items-center justify-center rounded-b-[28px] bg-white/70"
+                class="absolute inset-0 z-40 flex items-center justify-center bg-white/70"
             >
                 <svg class="size-10 animate-spin text-[#0069FF]" viewBox="0 0 24 24" fill="none">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>

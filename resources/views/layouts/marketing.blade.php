@@ -9,9 +9,9 @@
     <meta property="og:type" content="@yield('og_type', 'website')">
     <meta property="og:title" content="@yield('og_title', trim($__env->yieldContent('title'))) ">
     <meta property="og:description" content="@yield('og_description', trim($__env->yieldContent('description'))) ">
-    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:url" content="@yield('canonical', url()->current())">
     <meta property="og:site_name" content="Aviato">
-    <link rel="canonical" href="{{ url()->current() }}">
+    <link rel="canonical" href="@yield('canonical', url()->current())">
     <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicons/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicons/favicon-16x16.png') }}">

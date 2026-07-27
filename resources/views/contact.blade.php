@@ -2,6 +2,7 @@
 
 @section('title', 'آویاتو: تماس با ما')
 @section('description', 'تماس با آویاتو برای سوال درباره خرید سرور مجازی، انتخاب پلن، پشتیبانی و هماهنگی فروش.')
+@section('canonical', route('contact'))
 
 @php($activePage = 'contact')
 
