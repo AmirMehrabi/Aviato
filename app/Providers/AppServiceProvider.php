@@ -8,6 +8,7 @@ use App\Services\Payments\MellatClientInterface;
 use App\Services\Payments\MellatPaymentGateway;
 use App\Services\Payments\MellatSoapClient;
 use App\Services\Payments\PaymentGatewayManager;
+use App\Services\Payments\ZibalPaymentGateway;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -22,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
             return new PaymentGatewayManager($app, [
                 'mellat' => MellatPaymentGateway::class,
                 'hesabro' => HesabroPaymentGateway::class,
+                'zibal' => ZibalPaymentGateway::class,
                 'dummy' => DummyPaymentGateway::class,
             ]);
         });

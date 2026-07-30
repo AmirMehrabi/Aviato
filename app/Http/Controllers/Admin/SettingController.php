@@ -63,6 +63,7 @@ class SettingController extends Controller
         if ($section === 'payments') {
             $mellatEnabled = (bool) ($data['mellat_payment_enabled'] ?? false);
             $hesabroEnabled = (bool) ($data['hesabro_payment_enabled'] ?? false);
+            $zibalEnabled = (bool) ($data['zibal_payment_enabled'] ?? false);
             $paymentsEnabled = (bool) ($data['payments_enabled'] ?? false);
             if ($mellatEnabled) {
                 $validator = Validator::make([
@@ -84,11 +85,14 @@ class SettingController extends Controller
                     return back()->withErrors($validator)->withInput();
                 }
             }
-            if ($paymentsEnabled && ! $mellatEnabled && ! $hesabroEnabled) {
+            if ($zibalEnabled && trim((string) ($data['zibal_merchant'] ?? '')) === '') {
+                return back()->withErrors(['zibal_merchant' => 'برای فعال‌سازی زیبال، Merchant ID را وارد کنید.'])->withInput();
+            }
+            if ($paymentsEnabled && ! $mellatEnabled && ! $hesabroEnabled && ! $zibalEnabled) {
                 return back()->withErrors(['payments_enabled' => 'برای فعال‌سازی پرداخت آنلاین، حداقل یک درگاه باید فعال باشد.'])->withInput();
             }
             $defaultGateway = $data['default_payment_gateway'] ?? AppSetting::defaultPaymentGateway();
-            if ($paymentsEnabled && (($defaultGateway === 'mellat' && ! $mellatEnabled) || ($defaultGateway === 'hesabro' && ! $hesabroEnabled))) {
+            if ($paymentsEnabled && (($defaultGateway === 'mellat' && ! $mellatEnabled) || ($defaultGateway === 'hesabro' && ! $hesabroEnabled) || ($defaultGateway === 'zibal' && ! $zibalEnabled))) {
                 return back()->withErrors(['default_payment_gateway' => 'درگاه پیش‌فرض باید فعال باشد.'])->withInput();
             }
         }
@@ -148,6 +152,8 @@ class SettingController extends Controller
             'hesabroPaymentEnabled' => AppSetting::hesabroPaymentEnabled(),
             'hesabroClient' => AppSetting::hesabroClient(),
             'hesabroClientId' => AppSetting::hesabroClientId(),
+            'zibalPaymentEnabled' => AppSetting::zibalPaymentEnabled(),
+            'zibalMerchant' => AppSetting::zibalMerchant(),
             'taxEnabled' => AppSetting::taxEnabled(),
             'taxRatePercentage' => AppSetting::taxRatePercentage(),
         ];
@@ -158,7 +164,7 @@ class SettingController extends Controller
         return [
             'general' => ['title' => 'تنظیمات عمومی', 'description' => 'واحد پول و گزینه‌های پایه‌ای که در سراسر پنل و صورتحساب‌ها استفاده می‌شوند.', 'label' => 'پایه'],
             'billing' => ['title' => 'مالی و قیمت‌گذاری', 'description' => 'مالیات، قیمت‌گذاری Hetzner و هزینه‌های مربوط به ساخت ماشین مجازی را مدیریت کنید.', 'label' => 'مالی'],
-            'payments' => ['title' => 'پرداخت آنلاین', 'description' => 'درگاه‌های پرداخت، محیط اجرا و اطلاعات اتصال به بانک ملت و حسابرو.', 'label' => 'پرداخت'],
+            'payments' => ['title' => 'پرداخت آنلاین', 'description' => 'درگاه‌های پرداخت و اطلاعات اتصال به بانک ملت، حسابرو و زیبال.', 'label' => 'پرداخت'],
             'verification' => ['title' => 'تأیید مشتریان', 'description' => 'روش تأیید ثبت‌نام و استعلام برخط کد ملی مشتریان را تنظیم کنید.', 'label' => 'مشتریان'],
             'sms' => ['title' => 'ارسال پیامک', 'description' => 'درگاه پیامک پیش‌فرض و اطلاعات اتصال SMS0098 یا کاوه‌نگار را تنظیم کنید.', 'label' => 'ارتباطات'],
             'email' => ['title' => 'ارسال ایمیل', 'description' => 'اتصال SMTP و مشخصات فرستنده ایمیل‌های سیستم را مدیریت کنید.', 'label' => 'ارتباطات'],
@@ -193,6 +199,8 @@ class SettingController extends Controller
                 'hesabro_client' => ['nullable', 'string', 'max:255'],
                 'hesabro_client_id' => ['nullable', 'string', 'max:255'],
                 'hesabro_client_secret' => ['nullable', 'string', 'max:2000'],
+                'zibal_payment_enabled' => ['nullable', 'boolean'],
+                'zibal_merchant' => ['nullable', 'string', 'max:255'],
             ],
             'verification' => [
                 'customer_verification_mode' => ['required', 'string', Rule::in(array_keys(AppSetting::customerVerificationModes()))],
@@ -255,12 +263,12 @@ class SettingController extends Controller
         }
 
         if ($section === 'payments') {
-            foreach ([['payments_enabled', AppSetting::PAYMENTS_ENABLED], ['default_payment_gateway', AppSetting::DEFAULT_PAYMENT_GATEWAY], ['mellat_payment_enabled', AppSetting::MELLAT_PAYMENT_ENABLED], ['mellat_payment_mode', AppSetting::MELLAT_PAYMENT_MODE], ['mellat_terminal_id', AppSetting::MELLAT_TERMINAL_ID], ['mellat_username', AppSetting::MELLAT_USERNAME], ['hesabro_payment_enabled', AppSetting::HESABRO_PAYMENT_ENABLED], ['hesabro_client', AppSetting::HESABRO_CLIENT], ['hesabro_client_id', AppSetting::HESABRO_CLIENT_ID]] as [$field, $key]) {
+            foreach ([['payments_enabled', AppSetting::PAYMENTS_ENABLED], ['default_payment_gateway', AppSetting::DEFAULT_PAYMENT_GATEWAY], ['mellat_payment_enabled', AppSetting::MELLAT_PAYMENT_ENABLED], ['mellat_payment_mode', AppSetting::MELLAT_PAYMENT_MODE], ['mellat_terminal_id', AppSetting::MELLAT_TERMINAL_ID], ['mellat_username', AppSetting::MELLAT_USERNAME], ['hesabro_payment_enabled', AppSetting::HESABRO_PAYMENT_ENABLED], ['hesabro_client', AppSetting::HESABRO_CLIENT], ['hesabro_client_id', AppSetting::HESABRO_CLIENT_ID], ['zibal_payment_enabled', AppSetting::ZIBAL_PAYMENT_ENABLED], ['zibal_merchant', AppSetting::ZIBAL_MERCHANT]] as [$field, $key]) {
                 $value = $data[$field] ?? false;
                 if ($field === 'hesabro_client') {
                     $value = ltrim(trim((string) $value), '@');
                 }
-                AppSetting::setValue($key, $value, in_array($field, ['payments_enabled', 'mellat_payment_enabled', 'hesabro_payment_enabled'], true) ? 'boolean' : 'string', 'payment');
+                AppSetting::setValue($key, $value, in_array($field, ['payments_enabled', 'mellat_payment_enabled', 'hesabro_payment_enabled', 'zibal_payment_enabled'], true) ? 'boolean' : 'string', 'payment');
             }
         }
     }
@@ -314,6 +322,8 @@ class SettingController extends Controller
             'hesabro_client' => ['nullable', 'string', 'max:255'],
             'hesabro_client_id' => ['nullable', 'string', 'max:255'],
             'hesabro_client_secret' => ['nullable', 'string', 'max:2000'],
+            'zibal_payment_enabled' => ['nullable', 'boolean'],
+            'zibal_merchant' => ['nullable', 'string', 'max:255'],
             'tax_enabled' => ['required', 'boolean'],
             'tax_rate_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
@@ -348,11 +358,13 @@ class SettingController extends Controller
 
         $mellatEnabled = (bool) ($data['mellat_payment_enabled'] ?? false);
         $hesabroEnabled = (bool) ($data['hesabro_payment_enabled'] ?? false);
+        $zibalEnabled = (bool) ($data['zibal_payment_enabled'] ?? false);
         $paymentsEnabled = (bool) ($data['payments_enabled'] ?? false);
         $defaultPaymentGateway = $data['default_payment_gateway'] ?? AppSetting::defaultPaymentGateway();
         $effectiveMellatPassword = ($data['mellat_password'] ?? '') ?: AppSetting::mellatPassword();
         $effectiveHesabroClient = ltrim(trim((string) ($data['hesabro_client'] ?? AppSetting::hesabroClient())), '@');
         $effectiveHesabroSecret = ($data['hesabro_client_secret'] ?? '') ?: AppSetting::hesabroClientSecret();
+        $effectiveZibalMerchant = trim((string) ($data['zibal_merchant'] ?? AppSetting::zibalMerchant()));
 
         if ($mellatEnabled) {
             $mellatValidator = Validator::make([
@@ -386,7 +398,13 @@ class SettingController extends Controller
             }
         }
 
-        if ($paymentsEnabled && ! $mellatEnabled && ! $hesabroEnabled) {
+        if ($zibalEnabled && $effectiveZibalMerchant === '') {
+            return back()
+                ->withErrors(['zibal_merchant' => 'برای فعال‌سازی زیبال، Merchant ID را وارد کنید.'])
+                ->withInput();
+        }
+
+        if ($paymentsEnabled && ! $mellatEnabled && ! $hesabroEnabled && ! $zibalEnabled) {
             return back()
                 ->withErrors(['payments_enabled' => 'برای فعال‌سازی پرداخت آنلاین، حداقل یک درگاه باید فعال باشد.'])
                 ->withInput();
@@ -395,6 +413,7 @@ class SettingController extends Controller
         $defaultGatewayEnabled = match ($defaultPaymentGateway) {
             'mellat' => $mellatEnabled,
             'hesabro' => $hesabroEnabled,
+            'zibal' => $zibalEnabled,
         };
 
         if ($paymentsEnabled && ! $defaultGatewayEnabled) {
@@ -443,6 +462,8 @@ class SettingController extends Controller
         AppSetting::setValue(AppSetting::HESABRO_PAYMENT_ENABLED, $hesabroEnabled, 'boolean', 'payment');
         AppSetting::setValue(AppSetting::HESABRO_CLIENT, $effectiveHesabroClient, 'string', 'payment');
         AppSetting::setValue(AppSetting::HESABRO_CLIENT_ID, $data['hesabro_client_id'] ?? '', 'string', 'payment');
+        AppSetting::setValue(AppSetting::ZIBAL_PAYMENT_ENABLED, $zibalEnabled, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::ZIBAL_MERCHANT, $effectiveZibalMerchant, 'string', 'payment');
         AppSetting::setValue(AppSetting::TAX_ENABLED, (bool) $data['tax_enabled'], 'boolean', 'billing');
         AppSetting::setValue(AppSetting::TAX_RATE_PERCENTAGE, (float) $data['tax_rate_percentage'], 'float', 'billing');
 

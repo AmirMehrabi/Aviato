@@ -13,4 +13,8 @@ return [
     'hesabro' => [
         'base_url' => env('HESABRO_BASE_URL', 'https://api.hesabro.ir'),
     ],
+
+    'zibal' => [
+        'base_url' => env('ZIBAL_BASE_URL', 'https://gateway.zibal.ir'),
+    ],
 ];

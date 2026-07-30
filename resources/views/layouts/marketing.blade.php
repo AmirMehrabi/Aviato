@@ -97,7 +97,7 @@
         <header
             :class="scrolled ? 'h-14 border-slate-200/80 bg-white/95 shadow-lg shadow-slate-950/5' :
                 'h-[4.75rem] border-transparent bg-transparent'"
-            class="fixed inset-x-0 top-0 z-50 border-b border-transparent backdrop-blur transition-all duration-300"
+            class="fixed inset-x-0 top-0 z-50 border-b border-transparent backdrop-blur transition-[height,background-color,border-color,box-shadow] duration-300"
             @mouseleave="solutionsOpen = false">
             <nav class="relative mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
                 <a href="{{ route('home') }}" class="flex min-w-0 items-center" aria-label="آویاتو">
@@ -105,18 +105,18 @@
                         <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
                             x-show="scrolled || ! {{ $darkHeaderTop ? 'true' : 'false' }}"
                             :class="scrolled ? 'h-9 w-20' : 'h-10 w-24'"
-                            class="absolute inset-0 h-10 w-24 object-contain object-right transition-all sm:w-40">
+                            class="absolute inset-0 h-10 w-24 object-contain object-right transition-[height,width] sm:w-40">
                         @if ($darkHeaderTop)
                             <img src="{{ asset('assets/images/aviato_logo_full_white.webp') }}" alt="آویاتو"
                                 x-show="! scrolled" :class="scrolled ? 'h-9 w-20' : 'h-10 w-24'"
-                                class="absolute inset-0 h-10 w-24 object-contain object-right transition-all sm:w-40">
+                                class="absolute inset-0 h-10 w-24 object-contain object-right transition-[height,width] sm:w-40">
                         @endif
                     </span>
                 </a>
 
                 <div :class="scrolled ? 'bg-slate-50/95 ring-slate-200/80 shadow-sm shadow-slate-950/5' :
                     '{{ $darkHeaderTop ? 'bg-white/10 ring-white/10' : 'bg-white/65 ring-sky-100/80 shadow-sm shadow-sky-100/60' }}'"
-                    class="hidden items-center gap-1 rounded-full p-1 text-sm  ring-1 {{ $darkHeaderTop ? 'bg-white/10 ring-white/10' : 'bg-white/65 ring-sky-100/80 shadow-sm shadow-sky-100/60' }} backdrop-blur transition-all duration-300 lg:flex">
+                    class="hidden items-center gap-1 rounded-full p-1 text-sm  ring-1 {{ $darkHeaderTop ? 'bg-white/10 ring-white/10' : 'bg-white/65 ring-sky-100/80 shadow-sm shadow-sky-100/60' }} backdrop-blur transition-[background-color,border-color,box-shadow,color] duration-300 lg:flex">
                     @foreach ($marketingNavItems as $item)
                         @php($isActive = $activePage === $item['key'])
                         @if ($item['key'] === 'solutions')

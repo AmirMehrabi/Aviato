@@ -351,6 +351,139 @@ class CustomerWalletBillingTest extends TestCase
             && str_ends_with($request['callback_url'], '/wallet/payments/1/callback'));
     }
 
+    public function test_customer_can_complete_zibal_top_up_flow_once(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableZibalGateway();
+
+        Http::fake(function ($request) {
+            if ($request->url() === 'https://gateway.zibal.ir/v1/request') {
+                return Http::response([
+                    'result' => 100,
+                    'trackId' => 987654,
+                    'message' => 'success',
+                ]);
+            }
+
+            return Http::response([
+                'result' => 100,
+                'status' => 1,
+                'amount' => 1000000,
+                'orderId' => '1',
+                'refNumber' => 'ZIBAL-REF-1',
+                'cardNumber' => '6037********1234',
+            ]);
+        });
+
+        $payment = app(PaymentService::class)->createTopUp($customer, 1000000, 'شارژ کیف پول توسط مشتری', 'zibal')->refresh();
+
+        $this->assertSame('987654', $payment->authority);
+        $this->assertSame('https://gateway.zibal.ir/start/987654', $payment->gateway_payload['redirect_url']);
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://gateway.zibal.ir/v1/request'
+            && $request['merchant'] === 'zibal-test-merchant'
+            && $request['amount'] === 1000000
+            && str_ends_with($request['callbackUrl'], '/wallet/payments/1/callback')
+            && $request['orderId'] === '1');
+
+        $this->actingAs($customer, 'customer')
+            ->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
+                'trackId' => '987654',
+                'success' => '1',
+                'status' => '2',
+                'orderId' => '1',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_SUCCESSFUL, $payment->status);
+        $this->assertSame('ZIBAL-REF-1', $payment->provider_reference);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+        $this->assertSame(1000000, $customer->wallet()->firstOrFail()->balance);
+        Http::assertSentCount(2);
+
+        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
+            'trackId' => '987654',
+            'success' => '1',
+            'status' => '2',
+            'orderId' => '1',
+        ])->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
+
+        Http::assertSentCount(2);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+    }
+
+    public function test_zibal_callback_mismatch_fails_without_crediting_wallet(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableZibalGateway();
+
+        Http::fake([
+            'https://gateway.zibal.ir/v1/request' => Http::response([
+                'result' => 100,
+                'trackId' => 987654,
+            ]),
+            'https://gateway.zibal.ir/v1/verify' => Http::response([
+                'result' => 100,
+                'amount' => 1000000,
+                'refNumber' => 'ZIBAL-REF-1',
+            ]),
+        ]);
+
+        $payment = app(PaymentService::class)->createTopUp($customer, 1000000, provider: 'zibal')->refresh();
+
+        $this->actingAs($customer, 'customer')
+            ->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
+                'trackId' => 'wrong-track-id',
+                'success' => '1',
+                'status' => '2',
+                'orderId' => (string) $payment->id,
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
+
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => Payment::STATUS_FAILED,
+        ]);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+        Http::assertSentCount(1);
+    }
+
+    public function test_zibal_verify_rejects_amount_mismatch(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableZibalGateway();
+
+        Http::fake([
+            'https://gateway.zibal.ir/v1/request' => Http::response([
+                'result' => 100,
+                'trackId' => 987654,
+            ]),
+            'https://gateway.zibal.ir/v1/verify' => Http::response([
+                'result' => 100,
+                'amount' => 900000,
+                'orderId' => '1',
+                'refNumber' => 'ZIBAL-REF-1',
+            ]),
+        ]);
+
+        $payment = app(PaymentService::class)->createTopUp($customer, 1000000, provider: 'zibal')->refresh();
+
+        $this->actingAs($customer, 'customer')
+            ->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
+                'trackId' => '987654',
+                'success' => '1',
+                'status' => '2',
+                'orderId' => '1',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
+
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => Payment::STATUS_FAILED,
+        ]);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+    }
+
     public function test_hesabro_charge_rejects_mismatched_response(): void
     {
         $customer = Customer::factory()->create(['phone' => '09123456789']);
@@ -889,6 +1022,14 @@ class CustomerWalletBillingTest extends TestCase
         AppSetting::setValue(AppSetting::HESABRO_CLIENT, 'sabz-co', 'string', 'payment');
         AppSetting::setValue(AppSetting::HESABRO_CLIENT_ID, 'client-id', 'string', 'payment');
         AppSetting::setValue(AppSetting::HESABRO_CLIENT_SECRET, 'client-secret', 'string', 'payment');
+    }
+
+    private function enableZibalGateway(): void
+    {
+        AppSetting::setValue(AppSetting::PAYMENTS_ENABLED, true, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::DEFAULT_PAYMENT_GATEWAY, 'zibal', 'string', 'payment');
+        AppSetting::setValue(AppSetting::ZIBAL_PAYMENT_ENABLED, true, 'boolean', 'payment');
+        AppSetting::setValue(AppSetting::ZIBAL_MERCHANT, 'zibal-test-merchant', 'string', 'payment');
     }
 
     private function fakeMellatClient(): void

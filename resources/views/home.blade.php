@@ -61,25 +61,29 @@
 @section('body_class', 'bg-[#F5F8FD]')
 
 @section('content')
-    <section id="top" class="relative isolate flex min-h-[52vh] items-center overflow-hidden px-4 pb-12 pt-24 md:min-h-[58vh] md:px-8 md:pb-16 md:pt-28 lg:px-10">
+    <section id="top" class="relative isolate flex min-h-[58vh] items-center overflow-hidden px-4 pb-12 pt-24 md:min-h-[64vh] md:px-8 md:pb-16 md:pt-28 lg:px-10">
         <div aria-hidden="true" class="absolute inset-0 -z-20 bg-[#F5F8FD]"></div>
-        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center" style="background-image: url('{{ asset('assets/images/hero-section.webp') }}');"></div>
+        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center opacity-90" style="background-image: linear-gradient(90deg, rgba(245,248,253,0.14), rgba(245,248,253,0.88) 76%), url('{{ asset('assets/images/hero-section.webp') }}');"></div>
         <div aria-hidden="true" class="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-white to-white/0"></div>
 
         <div class="mx-auto w-full max-w-7xl">
             <div class="mx-auto max-w-3xl text-center md:mx-0 md:text-right">
-                <h1 class="text-4xl font- font-medium leading-[1.22] text-slate-950 sm:text-5xl md:text-6xl">
-                   زیرساختی پایدار، 
-                    <span class="block text-3xl  sm:text-4xl md:text-5xl font-light  text-gray-800">برای <span class="font-semibold text-[#1976C9]">اوجی</span> بی‌پایان</span>
+                <p class="inline-flex items-center gap-2 text-sm font-bold text-[#2C67C9]">
+                    <span aria-hidden="true" class="h-0.5 w-7 bg-[#2C67C9]"></span>
+                    زیرساخت روشن برای رشد واقعی
+                </p>
+                <h1 class="mt-5 text-4xl font-semibold leading-[1.22] text-slate-950 sm:text-5xl md:text-6xl">
+                    زیرساختی پایدار،
+                    <span class="block text-3xl font-light text-slate-700 sm:text-4xl md:text-5xl">برای <span class="font-semibold text-[#1976C9]">اوجی</span> بی‌پایان</span>
                 </h1>
                 <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-700 md:mx-0 md:text-lg md:leading-9">
                   از اولین راه‌اندازی تا اوج رشد، سرورهایی پایدار برای سرویس‌های همیشه‌روشن.
                 </p>
                 <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row md:justify-start">
-                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
-                        شروع کنید
+                    <a href="#plans" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#0069FF]/20 transition-[transform,background-color,border-color,color,box-shadow] hover:bg-[#0050D0] active:scale-[0.96]">
+                        دیدن پلن‌ها
                     </a>
-                    <a href="{{ route('contact') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/75 px-7 py-3.5 text-sm font-bold text-slate-700 shadow-sm backdrop-blur transition hover:border-[#B8D6FF] hover:bg-white hover:text-[#0069FF]">
+                    <a href="{{ route('contact') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/75 px-7 py-3.5 text-sm font-bold text-slate-700 shadow-sm backdrop-blur transition-[transform,background-color,border-color,color,box-shadow] hover:border-[#B8D6FF] hover:bg-white hover:text-[#0069FF] active:scale-[0.96]">
                         با ما تماس بگیرید
                     </a>
                 </div>
@@ -125,7 +129,7 @@
                     <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">با یک پلن روشن شروع کنید.</h2>
                     <p class="mt-4 leading-8 text-slate-600">منابع، تعداد IP و هزینه ماهانه قبل از خرید مشخص است؛ انتخاب پلن نباید پیچیده باشد.</p>
                 </div>
-                <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9]">همه پلن ها</a>
+                <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-[transform,background-color,border-color,color,box-shadow] hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9] active:scale-[0.96]">همه پلن ها</a>
             </div>
 
             @forelse ($marketingBundles as $bundle)
@@ -171,7 +175,9 @@
                                 {{ $bundle->disk_gb }}GB NVMe
                             </span>
                         </span>
+                        <span class="rounded-2xl bg-white p-3 text-center ring-1 ring-slate-100" dir="ltr">{{ $bundle->ip_count }} IP</span>
                     </div>
+                    <a href="{{ route('customer.register') }}" class="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white transition-[transform,background-color,border-color,color,box-shadow] hover:bg-[#0050D0] active:scale-[0.96]">خرید این پلن</a>
                 </div>
             @empty
                 <div class="mt-10 rounded-[1.75rem] border border-dashed border-slate-200 bg-[#F7FBFF] p-8 text-center">
@@ -185,6 +191,18 @@
                 <div class="mt-10 hidden md:block">
                     <div class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-lg shadow-slate-200/60">
                         <table class="w-full border-separate border-spacing-y-1 text-sm" dir="rtl">
+                            <thead class="text-right text-xs font-bold text-slate-400">
+                                <tr>
+                                    <th scope="col" class="px-6 pb-2 pt-1">پلن</th>
+                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">CPU</th>
+                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">RAM</th>
+                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">NVMe</th>
+                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">IP</th>
+                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">ماهانه</th>
+                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">ساعتی</th>
+                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">شروع</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 @forelse ($marketingBundles as $bundle)
                                     @php
@@ -223,16 +241,20 @@
                                                 {{ $bundle->disk_gb }}GB NVMe
                                             </span>
                                         </td>
+                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->ip_count }} IP</td>
                                         <td class="px-6 py-6 text-center">
                                             <p class="text-lg font-bold text-slate-950">{{ $wallets->format($bundle->monthly_price) }}<span class="text-xs font-bold text-slate-400">/ماهانه</span></p>
                                         </td>
                                         <td class="px-6 py-6 text-center">
                                             <p class="text-lg font-bold text-slate-950">{{ $wallets->format(round($bundle->monthly_price / 720)) }}<span class="text-xs font-bold text-slate-400">/ساعتی</span></p>
                                         </td>
+                                        <td class="px-6 py-6 text-center">
+                                            <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-4 py-2.5 text-xs font-bold text-white transition-[transform,background-color,border-color,color,box-shadow] hover:bg-[#0050D0] active:scale-[0.96]">خرید پلن</a>
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="px-6 py-10 text-center text-slate-500">
+                                        <td colspan="8" class="px-6 py-10 text-center text-slate-500">
                                            فعلا پلنی برای نمایش وجود ندارد.
                                         </td>
                                     </tr>
@@ -257,7 +279,7 @@
 
             <div class="grid gap-4">
                 @foreach ($differenceRows as $row)
-                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
+                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-6">
                         <h3 class="text-xl text-slate-950">{{ $row['title'] }}</h3>
                         <p class="mt-3 text-sm leading-8 text-slate-600">{{ $row['body'] }}</p>
                     </article>
@@ -272,7 +294,7 @@
                 <p class="text-sm font-bold text-[#2C67C9]">کاربردهای رایج</p>
                 <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">برای پروژه امروز، با امکان رشد فردا.</h2>
                 <p class="mt-5 leading-8 text-slate-600">از یک سایت ساده تا سرویس های فنی تر، می توانید با منابع مشخص شروع کنید و بعد متناسب با رشد پروژه تصمیم بگیرید.</p>
-                <a href="{{ route('solutions') }}" class="mt-8 inline-flex rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9]">دیدن کاربردها</a>
+                <a href="{{ route('solutions') }}" class="mt-8 inline-flex rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-[transform,background-color,border-color,color,box-shadow] hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9] active:scale-[0.96]">دیدن کاربردها</a>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -299,7 +321,7 @@
 
             <div class="mt-10 grid gap-4 md:grid-cols-3">
                 @foreach ($steps as $step)
-                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/50">
+                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-6">
                         <p class="text-sm font-bold text-[#2C67C9]">{{ $step['number'] }}</p>
                         <h3 class="mt-7 text-2xl text-slate-950">{{ $step['title'] }}</h3>
                         <p class="mt-4 text-sm leading-8 text-slate-600">{{ $step['body'] }}</p>
@@ -335,7 +357,7 @@
                 <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">پاسخ چند سوال رایج.</h2>
             </div>
 
-            <div class="mt-10 divide-y divide-slate-100 rounded-[1.75rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/50">
+            <div class="mt-10 divide-y divide-slate-100 rounded-[1.75rem] border border-slate-200 bg-white">
                 @foreach ($faqs as $faq)
                     <details class="group p-5 open:bg-white md:p-6" @if ($loop->first) open @endif>
                         <summary class="flex cursor-pointer list-none items-center justify-between gap-5 text-right text-lg text-slate-950">
@@ -360,7 +382,7 @@
                     <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">مقاله‌ها و راهنماها.</h2>
                     <p class="mt-4 leading-8 text-slate-600">مقالاتی درباره زیرساخت ابری، انتخاب سرور مجازی و مدیریت سرویس‌های آنلاین.</p>
                 </div>
-                <a href="{{ route('blog') }}" class="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9]">
+                <a href="{{ route('blog') }}" class="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-[transform,background-color,border-color,color,box-shadow] hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9] active:scale-[0.96]">
                     همه مقاله‌ها
                     <svg class="size-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </a>
@@ -404,8 +426,8 @@
                     <p class="mt-4 max-w-2xl leading-8 text-slate-600">اگر آماده خرید هستید، ثبت نام کنید. اگر هنوز در حال مقایسه هستید، پلن ها و قیمت ها را کامل ببینید.</p>
                 </div>
                 <div class="flex flex-col gap-3 sm:flex-row lg:flex-col">
-                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-xl bg-[#4C86E8] px-7 py-4 text-base font-bold text-white transition hover:bg-[#3E76D6]">خرید ماشین مجازی</a>
-                    <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-7 py-4 text-base font-bold text-slate-700 transition hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9]">دیدن پلن ها و قیمت ها</a>
+                    <a href="{{ route('customer.register') }}" class="inline-flex items-center justify-center rounded-xl bg-[#4C86E8] px-7 py-4 text-base font-bold text-white transition-[transform,background-color,border-color,color,box-shadow] hover:bg-[#3E76D6] active:scale-[0.96]">خرید ماشین مجازی</a>
+                    <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-7 py-4 text-base font-bold text-slate-700 transition-[transform,background-color,border-color,color,box-shadow] hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9] active:scale-[0.96]">دیدن پلن ها و قیمت ها</a>
                 </div>
             </div>
         </div>

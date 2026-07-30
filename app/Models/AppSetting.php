@@ -101,6 +101,10 @@ class AppSetting extends Model
 
     public const HESABRO_CLIENT_SECRET = 'payment.hesabro.client_secret';
 
+    public const ZIBAL_PAYMENT_ENABLED = 'payment.zibal.enabled';
+
+    public const ZIBAL_MERCHANT = 'payment.zibal.merchant';
+
     public const TAX_ENABLED = 'tax.enabled';
 
     public const TAX_RATE_PERCENTAGE = 'tax.rate_percentage';
@@ -220,6 +224,7 @@ class AppSetting extends Model
         return [
             'mellat' => 'بانک ملت',
             'hesabro' => 'حسابرو',
+            'zibal' => 'زیبال',
         ];
     }
 
@@ -285,6 +290,21 @@ class AppSetting extends Model
     public static function hesabroPaymentConfigured(): bool
     {
         return static::hesabroClient() !== '' && static::hesabroClientId() !== '' && static::hesabroClientSecret() !== '';
+    }
+
+    public static function zibalPaymentEnabled(): bool
+    {
+        return filter_var(static::getValue(self::ZIBAL_PAYMENT_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function zibalMerchant(): string
+    {
+        return trim((string) static::getValue(self::ZIBAL_MERCHANT, ''));
+    }
+
+    public static function zibalPaymentConfigured(): bool
+    {
+        return static::zibalMerchant() !== '';
     }
 
     public static function ticketEmailNotificationsEnabled(): bool

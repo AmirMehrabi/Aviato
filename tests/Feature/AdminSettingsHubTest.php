@@ -68,4 +68,24 @@ class AdminSettingsHubTest extends TestCase
 
         $this->assertSame('existing-secret', AppSetting::mellatPassword());
     }
+
+    public function test_admin_can_enable_zibal_and_select_it_as_default_gateway(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin, 'admin')
+            ->patch('https://admin.localhost/settings/payments', [
+                'payments_enabled' => 1,
+                'default_payment_gateway' => 'zibal',
+                'mellat_payment_enabled' => 0,
+                'hesabro_payment_enabled' => 0,
+                'zibal_payment_enabled' => 1,
+                'zibal_merchant' => 'zibal-test-merchant',
+            ])
+            ->assertRedirect('https://admin.localhost/settings/payments');
+
+        $this->assertTrue(AppSetting::zibalPaymentEnabled());
+        $this->assertTrue(AppSetting::zibalPaymentConfigured());
+        $this->assertSame('zibal', AppSetting::defaultPaymentGateway());
+    }
 }
