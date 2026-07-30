@@ -35,29 +35,29 @@
         $activeNav = $activeNav ?? 'dashboard';
         $navGroups = [
             'فضای کاری' => [
-                ['key' => 'projects', 'label' => 'فضاهای کاری', 'route' => route('customer.projects.index', [], false), 'icon' => 'M4 5h7v7H4V5Zm9 0h7v7h-7V5ZM4 14h7v5H4v-5Zm9 0h7v5h-7v-5Z'],
-                ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z'],
+                ['key' => 'projects', 'label' => 'فضاهای کاری', 'route' => route('customer.projects.index', [], false), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
+                ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z'],
             ],
             'مدیریت' => [
                 ...($canViewVms ? [
-                    ['key' => 'servers', 'label' => 'ماشین ها', 'route' => route('customer.servers.index', [], false), 'icon' => 'M5 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7H5V7Zm0 7h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Zm4 3h6'],
-                    ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => route('customer.backups.index', [], false), 'icon' => 'M5 5h14v14H5V5Zm3 10 2.5-3 2 2.3L15 11l3 4H8Z'],
-                    ['key' => 'monitoring', 'label' => 'مانیتورینگ', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M4 19V5m4 14v-7m4 7V8m4 11v-4m4 4V9'],
+                    ['key' => 'servers', 'label' => 'ماشین ها', 'route' => route('customer.servers.index', [], false), 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
+                    ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => route('customer.backups.index', [], false), 'icon' => 'M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 6.5 19H8'],
+                    ['key' => 'monitoring', 'label' => 'مانیتورینگ', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M3 12h4l3-8 4 16 3-8h4'],
                 ] : []),
             ],
             'حساب' => [
-                ['key' => 'profile', 'label' => 'پروفایل', 'route' => route('customer.profile.show', [], false), 'icon' => 'M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm-8 9a8 8 0 0 1 16 0'],
-                ['key' => 'tickets', 'label' => 'تیکت‌ها', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M4 5h16v10H7l-3 3V5Zm5 4h6m-6 3h4'],
-                ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm12 3h4v5h-4a2.5 2.5 0 0 1 0-5Zm1 2.5h.01'],
-                ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm8 0v5h5M8 13h8M8 17h6'],
+                ['key' => 'profile', 'label' => 'پروفایل', 'route' => route('customer.profile.show', [], false), 'icon' => 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5 8a5 5 0 0 1 10 0'],
+                ['key' => 'tickets', 'label' => 'تیکت‌ها', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
+                ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M19 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6M16 13h5v4h-5a2 2 0 0 1 0-4Z'],
+                ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
             ],
             ...(auth('customer')->check() && auth('customer')->user()->isReseller() ? [
                 'فروشندگی' => [
-                    ['key' => 'reseller', 'label' => 'داشبورد فروشندگی', 'route' => route('customer.reseller.dashboard', [], false), 'icon' => 'M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0M19 8v6m3-3h-6'],
-                    ['key' => 'reseller-customers', 'label' => 'مشتریان', 'route' => route('customer.reseller.customers', [], false), 'icon' => 'M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0'],
-                    ['key' => 'reseller-commissions', 'label' => 'کمیسیون‌ها', 'route' => route('customer.reseller.commissions', [], false), 'icon' => 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
-                    ['key' => 'reseller-referral', 'label' => 'لینک معرفی', 'route' => route('customer.reseller.referral', [], false), 'icon' => 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'],
-                    ['key' => 'reseller-withdrawals', 'label' => 'برداشت‌ها', 'route' => route('customer.reseller.withdrawals', [], false), 'icon' => 'M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9'],
+                    ['key' => 'reseller', 'label' => 'داشبورد فروشندگی', 'route' => route('customer.reseller.dashboard', [], false), 'icon' => 'M4 10h16M5 10l1-6h12l1 6M6 10v10h12V10M9 20v-6h6v6'],
+                    ['key' => 'reseller-customers', 'label' => 'مشتریان', 'route' => route('customer.reseller.customers', [], false), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
+                    ['key' => 'reseller-commissions', 'label' => 'کمیسیون‌ها', 'route' => route('customer.reseller.commissions', [], false), 'icon' => 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-15v10M15 9.5A2.5 2.5 0 0 0 12.5 7H11a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9'],
+                    ['key' => 'reseller-referral', 'label' => 'لینک معرفی', 'route' => route('customer.reseller.referral', [], false), 'icon' => 'M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15'],
+                    ['key' => 'reseller-withdrawals', 'label' => 'برداشت‌ها', 'route' => route('customer.reseller.withdrawals', [], false), 'icon' => 'M3 6h18v12H3V6Zm0 4h18M7 15h2M15 14l2 2 2-2M17 11v5'],
                 ],
             ] : []),
         ];
@@ -289,7 +289,7 @@
                                     @click="if (window.innerWidth < 1024) sidebarOpen = false"
                                     class="flex items-center gap-2.5 px-3 py-2 transition {{ $isActive ? 'bg-white/90 text-[#031B4E] shadow-sm shadow-black/10' : ($item['route'] ? 'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' : 'cursor-default text-[#6F86B5] opacity-70') }}"
                                 >
-                                    <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                         <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
                                     <span>{{ $item['label'] }}</span>
