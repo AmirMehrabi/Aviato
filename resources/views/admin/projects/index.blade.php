@@ -84,12 +84,12 @@ document.addEventListener('alpine:init', () => {
     </form>
 
     <section x-ref="results" class="mt-6">
-        <x-admin.index-table :columns="[
-            ['label' => 'فضای کاری'],
+        <x-admin.index-table :sort="$sort" :columns="[
+            ['label' => 'فضای کاری', 'sort' => 'name'],
             ['label' => 'مالک'],
-            ['label' => 'منابع'],
+            ['label' => 'منابع', 'sort' => 'virtual_machines_count'],
             ['label' => 'مسئول پرداخت'],
-            ['label' => 'تاریخ ایجاد'],
+            ['label' => 'تاریخ ایجاد', 'sort' => 'created_at'],
             ['label' => 'عملیات', 'class' => 'text-left'],
         ]">
             @forelse ($projects as $project)
@@ -119,7 +119,7 @@ document.addEventListener('alpine:init', () => {
                     <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $project->created_at?->format('Y/m/d') }}</td>
                     <td class="px-5 py-4">
                         <div class="flex justify-end gap-2">
-                            <a href="{{ route('admin.projects.show', $project) }}" class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white">مشاهده</a>
+                            <x-admin.icon-action :href="route('admin.projects.show', $project)" label="مشاهده فضای کاری" icon="view" tone="primary" />
                         </div>
                     </td>
                 </tr>

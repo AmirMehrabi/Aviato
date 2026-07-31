@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminTablePreferenceController;
 use App\Http\Controllers\Admin\ApiActivityController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\CloudImageController;
@@ -114,6 +115,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.notifications.read');
 
         Route::get('search', [SearchController::class, '__invoke'])->name('admin.search');
+        Route::put('table-preferences/{tableKey}', [AdminTablePreferenceController::class, 'update'])
+            ->name('admin.table-preferences.update');
+        Route::delete('table-preferences/{tableKey}', [AdminTablePreferenceController::class, 'destroy'])
+            ->name('admin.table-preferences.destroy');
 
         Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
         Route::get('settings/{section}', [SettingController::class, 'section'])

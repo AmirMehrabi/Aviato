@@ -24,6 +24,7 @@ use App\Services\VirtualMachineDeletionService;
 use App\Services\VirtualMachineIpReassignmentService;
 use App\Services\VmTransferService;
 use App\Services\WalletService;
+use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -60,9 +61,11 @@ class VirtualMachineController extends Controller
                 VirtualMachine::STATUS_DELETED,
             ])],
             'search' => ['nullable', 'string', 'max:255'],
+            'sort' => ['nullable', 'string', 'max:80'],
+            'direction' => ['nullable', 'in:asc,desc'],
         ]);
 
-        $vms = VirtualMachine::query()
+        $query = VirtualMachine::query()
             ->notDeleted()
             ->with(['customer', 'project.owner', 'creator', 'proxmoxServer', 'infrastructureLocation', 'bundle', 'cloudImage'])
             ->when($filters['customer_id'] ?? null, fn ($query, int $customerId) => $query->where('customer_id', $customerId))
@@ -74,14 +77,16 @@ class VirtualMachineController extends Controller
                         ->orWhere('hostname', 'like', "%{$search}%")
                         ->orWhere('ip_address', 'like', "%{$search}%");
                 });
-            })
-            ->latest()
-            ->paginate(12)
+            });
+
+        $sort = AdminTableSort::apply($query, $request, 'virtual-machines');
+        $vms = $query->paginate(12)
             ->withQueryString();
 
         return view('admin.virtual-machines.index', [
             'vms' => $vms,
             'filters' => $filters,
+            'sort' => $sort,
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id'),
             'projects' => Project::query()->orderBy('name')->pluck('name', 'id'),
             'proxmoxServers' => ProxmoxServer::query()->where('is_active', true)->orderBy('name')->get(),

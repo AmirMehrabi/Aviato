@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ResourceRate;
+use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,10 +12,14 @@ use Illuminate\Validation\Rule;
 
 class ResourceRateController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $query = ResourceRate::query();
+        $sort = AdminTableSort::apply($query, $request, 'billing-rates');
+
         return view('admin.billing.rates.index', [
-            'rates' => ResourceRate::query()->orderBy('resource')->get(),
+            'rates' => $query->get(),
+            'sort' => $sort,
         ]);
     }
 

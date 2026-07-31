@@ -18,10 +18,10 @@
 
     <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table class="min-w-full text-right text-sm">
-            <thead class="bg-slate-50 text-xs font-black text-slate-500"><tr><th class="px-4 py-3">زمان</th><th class="px-4 py-3">مشتری</th><th class="px-4 py-3">درخواست</th><th class="px-4 py-3">وضعیت</th><th class="px-4 py-3">زمان پاسخ</th><th class="px-4 py-3">Request ID</th></tr></thead>
+            <thead class="bg-slate-50 text-xs font-black text-slate-500"><tr><x-admin.sortable-heading label="زمان" column="created_at" :sort="$sort" /><th class="px-4 py-3">مشتری</th><x-admin.sortable-heading label="درخواست" column="route" :sort="$sort" /><x-admin.sortable-heading label="وضعیت" column="status_code" :sort="$sort" /><x-admin.sortable-heading label="زمان پاسخ" column="duration_ms" :sort="$sort" /><th class="px-4 py-3">Request ID</th></tr></thead>
             <tbody class="divide-y divide-slate-100">
                 @forelse ($logs as $log)
-                    <tr><td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ $log->created_at?->format('Y/m/d H:i:s') }}</td><td class="px-4 py-3 font-bold">{{ $log->customer?->name ?? 'ناشناس' }}</td><td class="px-4 py-3" dir="ltr">{{ $log->method }} {{ $log->route }}</td><td class="px-4 py-3 font-black {{ $log->status_code < 400 ? 'text-emerald-600' : 'text-red-600' }}">{{ $log->status_code }}</td><td class="px-4 py-3" dir="ltr">{{ $log->duration_ms }} ms</td><td class="px-4 py-3 font-mono text-xs text-slate-500" dir="ltr">{{ $log->request_id }}</td></tr>
+                    <tr><td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ $log->created_at?->format('Y/m/d H:i:s') }}</td><td class="px-4 py-3 font-bold">{{ $log->customer?->name ?? 'ناشناس' }}</td><td class="px-4 py-3" dir="ltr">{{ $log->method }} {{ $log->route }}</td><td class="px-4 py-3"><x-admin.status-badge :value="$log->status_code < 400 ? 'successful' : 'failed'" :label="(string) $log->status_code" /></td><td class="px-4 py-3" dir="ltr">{{ $log->duration_ms }} ms</td><td class="px-4 py-3 font-mono text-xs text-slate-500" dir="ltr">{{ $log->request_id }}</td></tr>
                 @empty
                     <tr><td colspan="6" class="px-4 py-12 text-center text-slate-500">هنوز فعالیتی ثبت نشده است.</td></tr>
                 @endforelse

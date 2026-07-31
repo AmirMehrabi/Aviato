@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Services\BillingService;
 use App\Services\WalletService;
+use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,10 +28,11 @@ class CustomerController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:active,suspended'],
             'verification' => ['nullable', 'in:verified,unverified'],
-            'sort' => ['nullable', 'in:latest,oldest,name'],
+            'sort' => ['nullable', 'string', 'max:80'],
+            'direction' => ['nullable', 'in:asc,desc'],
         ]);
 
-        $customers = Customer::query()
+        $query = Customer::query()
             ->with('wallet')
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
@@ -41,16 +43,16 @@ class CustomerController extends Controller
             })
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when(($filters['verification'] ?? null) === 'verified', fn ($query) => $query->whereNotNull('email_verified_at'))
-            ->when(($filters['verification'] ?? null) === 'unverified', fn ($query) => $query->whereNull('email_verified_at'))
-            ->when(($filters['sort'] ?? 'latest') === 'oldest', fn ($query) => $query->oldest())
-            ->when(($filters['sort'] ?? 'latest') === 'name', fn ($query) => $query->orderBy('name'))
-            ->when(! in_array($filters['sort'] ?? 'latest', ['oldest', 'name'], true), fn ($query) => $query->latest())
-            ->paginate(12)
+            ->when(($filters['verification'] ?? null) === 'unverified', fn ($query) => $query->whereNull('email_verified_at'));
+
+        $sort = AdminTableSort::apply($query, $request, 'customers');
+        $customers = $query->paginate(12)
             ->withQueryString();
 
         return view('admin.customers.index', [
             'customers' => $customers,
             'filters' => $filters,
+            'sort' => $sort,
             'stats' => [
                 'total' => Customer::count(),
                 'active' => Customer::where('status', Customer::STATUS_ACTIVE)->count(),

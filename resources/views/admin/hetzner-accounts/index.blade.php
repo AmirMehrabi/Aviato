@@ -21,9 +21,9 @@
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <h2 class="text-lg font-black">{{ $account->name }}</h2>
-                        <p class="mt-1 text-xs text-slate-500">اتصال: {{ \App\Support\AdminUi::status($account->connection_status) }} / همگام‌سازی: {{ \App\Support\AdminUi::status($account->sync_status) }}</p>
+                        <div class="mt-2 flex flex-wrap gap-2"><x-admin.status-badge :value="$account->connection_status" /><x-admin.status-badge :value="$account->sync_status" /></div>
                     </div>
-                    <span class="rounded-md px-2 py-1 text-xs font-black {{ $account->is_active ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-500' }}">{{ $account->is_active ? 'Active' : 'Inactive' }}</span>
+                    <x-admin.status-badge :value="$account->is_active ? 'active' : 'inactive'" />
                 </div>
                 <div class="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
                     <div class="rounded-lg bg-slate-50 p-3"><b>{{ $account->locations_count }}</b><br>Locations</div>
@@ -34,9 +34,9 @@
                     <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{{ $account->sync_error }}</p>
                 @endif
                 <div class="mt-5 flex flex-wrap gap-2">
-                    <a href="{{ route('admin.hetzner-accounts.show', $account) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700">Open</a>
-                    <form method="POST" action="{{ route('admin.hetzner-accounts.sync', $account) }}">@csrf<button class="rounded-lg border border-[#B8D6FF] px-4 py-2 text-sm font-black text-[#0069FF]">همگام‌سازی</button></form>
-                    <form method="POST" action="{{ route('admin.hetzner-accounts.test', $account) }}">@csrf<button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700">آزمایش اتصال</button></form>
+                    <x-admin.icon-action :href="route('admin.hetzner-accounts.show', $account)" label="نمایش حساب" icon="view" tone="primary" />
+                    <form method="POST" action="{{ route('admin.hetzner-accounts.sync', $account) }}">@csrf <x-admin.icon-action type="submit" label="همگام‌سازی حساب" icon="sync" tone="warning" /></form>
+                    <form method="POST" action="{{ route('admin.hetzner-accounts.test', $account) }}">@csrf <x-admin.icon-action type="submit" label="آزمایش اتصال" icon="test" tone="info" /></form>
                 </div>
             </div>
         @empty

@@ -112,12 +112,13 @@ document.addEventListener('alpine:init', () => {
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs font-black text-slate-500">
                         <tr>
-                            <th class="px-4 py-3 text-right">تیکت</th>
+                            <x-admin.sortable-heading label="تیکت" column="subject" :sort="$sort" />
                             <th class="px-4 py-3 text-right">مشتری</th>
                             <th class="px-4 py-3 text-right">مسیر</th>
                             <th class="px-4 py-3 text-right">مسئول</th>
-                            <th class="px-4 py-3 text-right">وضعیت</th>
-                            <th class="px-4 py-3 text-right">آخرین فعالیت</th>
+                            <x-admin.sortable-heading label="وضعیت" column="status" :sort="$sort" />
+                            <x-admin.sortable-heading label="آخرین فعالیت" column="last_activity_at" :sort="$sort" />
+                            <th class="px-4 py-3 text-right">عملیات</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -126,15 +127,17 @@ document.addEventListener('alpine:init', () => {
                                 <td class="px-4 py-4">
                                     <a href="{{ route('admin.tickets.show', $ticket) }}" class="font-black text-slate-950">{{ $ticket->subject }}</a>
                                     <p class="mt-1 text-xs font-bold text-slate-400" dir="ltr">{{ $ticket->number }}</p>
+                                    <div class="mt-2"><x-admin.status-badge :value="$ticket->priority" :label="$priorities[$ticket->priority] ?? $ticket->priority" :tone="$ticket->priority === 'urgent' ? 'danger' : ($ticket->priority === 'high' ? 'warning' : 'neutral')" /></div>
                                 </td>
                                 <td class="px-4 py-4 font-bold text-slate-700">{{ $ticket->customer?->name ?? '—' }}</td>
                                 <td class="px-4 py-4 text-slate-600">{{ $ticket->category?->name ?? '—' }}<p class="mt-1 text-xs text-slate-400">{{ $ticket->supportTeam?->name ?? 'بدون تیم' }}</p></td>
                                 <td class="px-4 py-4 font-bold text-slate-700">{{ $ticket->assignee?->name ?? 'خودکار / بدون مسئول' }}</td>
-                                <td class="px-4 py-4"><span class="rounded-lg bg-[#EBF3FF] px-2.5 py-1 text-xs font-black text-[#0069FF]">{{ $statuses[$ticket->status] ?? $ticket->status }}</span></td>
+                                <td class="px-4 py-4"><x-admin.status-badge :value="$ticket->status" :label="$statuses[$ticket->status] ?? $ticket->status" /></td>
                                 <td class="px-4 py-4 text-xs font-bold text-slate-400" dir="ltr">{{ $ticket->last_activity_at?->format('Y-m-d H:i') ?? $ticket->created_at?->format('Y-m-d H:i') }}</td>
+                                <td class="px-4 py-4"><x-admin.icon-action :href="route('admin.tickets.show', $ticket)" label="مشاهده تیکت" icon="view" tone="primary" /></td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="px-4 py-10 text-center text-sm font-bold text-slate-500">تیکتی پیدا نشد.</td></tr>
+                            <tr><td colspan="7" class="px-4 py-10 text-center text-sm font-bold text-slate-500">تیکتی پیدا نشد.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

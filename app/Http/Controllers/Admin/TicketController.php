@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\User;
 use App\Services\Tickets\TicketService;
+use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,9 +27,11 @@ class TicketController extends Controller
             'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'ticket_category_id' => ['nullable', 'integer', 'exists:ticket_categories,id'],
             'search' => ['nullable', 'string', 'max:255'],
+            'sort' => ['nullable', 'string', 'max:80'],
+            'direction' => ['nullable', 'in:asc,desc'],
         ]);
 
-        $tickets = Ticket::query()
+        $query = Ticket::query()
             ->with(['customer', 'category', 'supportTeam', 'assignee', 'virtualMachine'])
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['priority'] ?? null, fn ($query, string $priority) => $query->where('priority', $priority))
@@ -40,15 +43,16 @@ class TicketController extends Controller
                         ->orWhere('number', 'like', "%{$search}%")
                         ->orWhereHas('customer', fn ($query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
                 });
-            })
-            ->latest('last_activity_at')
-            ->latest()
-            ->paginate(15)
+            });
+
+        $sort = AdminTableSort::apply($query, $request, 'tickets');
+        $tickets = $query->paginate(15)
             ->withQueryString();
 
         return view('admin.tickets.index', [
             'tickets' => $tickets,
             'filters' => $filters,
+            'sort' => $sort,
             'statuses' => Ticket::statuses(),
             'priorities' => Ticket::priorities(),
             'categories' => TicketCategory::query()->orderBy('name')->pluck('name', 'id'),

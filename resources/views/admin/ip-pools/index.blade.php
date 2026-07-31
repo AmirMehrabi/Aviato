@@ -34,7 +34,7 @@
                                 <h2 class="truncate text-lg font-black text-slate-950 transition group-hover:text-[#0069FF]">{{ $pool->name }}</h2>
                                 <p class="mt-1 truncate text-xs font-bold text-slate-500">{{ $pool->proxmoxServer?->name ?: 'بدون Proxmox' }} · {{ $pool->node ?: 'all nodes' }}</p>
                             </div>
-                            <span class="shrink-0 rounded-md px-2.5 py-1 text-xs font-black {{ $pool->is_active ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-500' }}">{{ $pool->is_active ? 'فعال' : 'غیرفعال' }}</span>
+                            <x-admin.status-badge :value="$pool->is_active ? 'active' : 'inactive'" />
                         </div>
 
                         <div class="mt-4 space-y-1 font-mono text-xs text-slate-500" dir="ltr">

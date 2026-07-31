@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Services\BillingService;
+use App\Support\AdminTableSort;
 use App\Support\Jalali;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -27,9 +28,11 @@ class ProjectController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:120'],
             'owner' => ['nullable', 'integer', 'exists:customers,id'],
+            'sort' => ['nullable', 'string', 'max:80'],
+            'direction' => ['nullable', 'in:asc,desc'],
         ]);
 
-        $projects = Project::query()
+        $query = Project::query()
             ->with(['owner'])
             ->withCount(['members', 'virtualMachines'])
             ->when($filters['search'] ?? null, function ($query, string $search): void {
@@ -43,15 +46,16 @@ class ProjectController extends Controller
                         });
                 });
             })
-            ->when($filters['owner'] ?? null, fn ($query, int $owner) => $query->where('owner_customer_id', $owner))
-            ->orderByDesc('is_default')
-            ->latest()
-            ->paginate(20)
+            ->when($filters['owner'] ?? null, fn ($query, int $owner) => $query->where('owner_customer_id', $owner));
+
+        $sort = AdminTableSort::apply($query, $request, 'projects');
+        $projects = $query->paginate(20)
             ->withQueryString();
 
         return view('admin.projects.index', [
             'projects' => $projects,
             'filters' => $filters,
+            'sort' => $sort,
             'owners' => Customer::query()
                 ->whereHas('ownedProjects')
                 ->orderBy('name')

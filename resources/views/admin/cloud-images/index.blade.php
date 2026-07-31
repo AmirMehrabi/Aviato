@@ -18,7 +18,7 @@
                         <h2 class="text-lg font-black">{{ $image->name }}</h2>
                         <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ ucfirst((string) $image->os_family) }} {{ $image->os_version }} · {{ $image->slug }}</p>
                     </div>
-                    <span class="rounded-md px-2 py-1 text-xs font-black {{ $image->is_active ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-500' }}">{{ $image->is_active ? 'فعال' : 'غیرفعال' }}</span>
+                    <x-admin.status-badge :value="$image->is_active ? 'active' : 'inactive'" />
                 </div>
                 <div class="mt-5 space-y-2 text-sm text-slate-600">
                     <p><span class="font-black text-slate-800">Proxmox:</span> {{ $image->proxmoxServer?->name }}</p>
@@ -30,18 +30,18 @@
                         <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs" dir="ltr">
                             <div class="flex items-center justify-between gap-2">
                                 <span class="font-black">{{ $mapping->node }} · VMID {{ $mapping->template_vmid }}</span>
-                                <span class="{{ $mapping->is_enabled ? 'text-emerald-700' : 'text-slate-400' }}">{{ $mapping->is_enabled ? 'enabled' : 'disabled' }}</span>
+                                <x-admin.status-badge :value="$mapping->is_enabled ? 'enabled' : 'disabled'" />
                             </div>
                             <p class="mt-1 text-slate-500">{{ $mapping->storage ?: 'default storage' }} · {{ $mapping->network_bridge }} · {{ $mapping->verified_at ? 'verified '.$mapping->verified_at->diffForHumans() : 'not verified' }}</p>
                         </div>
                     @endforeach
                 </div>
                 <div class="mt-4 flex items-center gap-2">
-                    <a class="inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700" href="{{ route('admin.cloud-images.edit', $image) }}">ویرایش</a>
+                    <x-admin.icon-action :href="route('admin.cloud-images.edit', $image)" label="ویرایش Cloud Image" icon="edit" tone="primary" />
                     <form method="POST" action="{{ route('admin.cloud-images.destroy', $image) }}" onsubmit="return confirm('آیا از حذف این Cloud Image مطمئن هستید؟ این عمل قابل بازگشت نیست.');">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="inline-flex rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-black text-red-700 transition hover:bg-red-100">حذف</button>
+                        <x-admin.icon-action type="submit" label="حذف Cloud Image" icon="delete" tone="danger" />
                     </form>
                 </div>
             </article>

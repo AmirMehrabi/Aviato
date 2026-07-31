@@ -5,19 +5,25 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\IncidentRequest;
 use App\Models\Incident;
+use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class IncidentController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         Gate::authorize('viewAny', Incident::class);
 
+        $query = Incident::query();
+        $sort = AdminTableSort::apply($query, $request, 'incidents');
+
         return view('admin.incidents.index', [
-            'incidents' => Incident::query()->latest('started_at')->paginate(20),
+            'incidents' => $query->paginate(20)->withQueryString(),
+            'sort' => $sort,
         ]);
     }
 

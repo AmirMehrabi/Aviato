@@ -151,13 +151,13 @@ document.addEventListener('alpine:init', () => {
                     <thead class="bg-slate-50 text-xs font-black text-slate-500">
                         <tr>
                             <th class="px-5 py-4"></th>
-                            <th class="px-5 py-4">VM</th>
+                            <x-admin.sortable-heading label="VM" column="display_name" :sort="$sort" />
                             <th class="px-5 py-4">فضای کاری</th>
                             <th class="px-5 py-4">مالک فضای کاری</th>
                             <th class="px-5 py-4">ایجادکننده</th>
                             <th class="px-5 py-4">مشتری صورتحساب</th>
-                            <th class="px-5 py-4">منابع</th>
-                            <th class="px-5 py-4">وضعیت</th>
+                            <x-admin.sortable-heading label="منابع" column="cpu_cores" :sort="$sort" />
+                            <x-admin.sortable-heading label="وضعیت" column="status" :sort="$sort" />
                             <th class="px-5 py-4">هزینه ماهانه فعلی</th>
                             <th class="px-5 py-4">عملیات</th>
                         </tr>
@@ -185,26 +185,13 @@ document.addEventListener('alpine:init', () => {
                                 <td class="px-5 py-4">{{ $vm->creator?->name ?: '—' }}</td>
                                 <td class="px-5 py-4"><a class="font-bold text-[#0069FF]" href="{{ route('admin.customers.show', $vm->customer) }}">{{ $vm->customer?->name ?: '—' }}</a></td>
                                 <td class="px-5 py-4">{{ $vm->cpu_cores }} CPU / {{ $vm->ram_gb }}GB / {{ $vm->disk_gb }}GB</td>
-                                <td class="px-5 py-4">
-    @if($vm->status === 'running')
-        <span class="rounded-md bg-[#EBF3FF] px-2.5 py-1 text-xs font-black text-[#0069FF]">روشن</span>
-    @elseif($vm->status === 'stopped')
-        <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">خاموش</span>
-    @elseif($vm->status === 'suspended')
-        <span class="rounded-md bg-red-50 px-2.5 py-1 text-xs font-black text-red-600">تعلیق</span>
-    @elseif($vm->status === 'deleting')
-        <span class="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700">در حال حذف</span>
-    @elseif($vm->status === 'deleted')
-        <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-500">حذف شده</span>
-    @else
-        <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{{ \App\Support\AdminUi::status($vm->status) }}</span>
-    @endif
-</td>
+                                <td class="px-5 py-4"><x-admin.status-badge :value="$vm->status" /></td>
                                 <td class="px-5 py-4 font-black">{{ $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }}</td>
                                 <td class="px-5 py-4">
-                                    <a class="font-black text-[#0069FF]" href="{{ route('admin.virtual-machines.show', $vm) }}">نمایش</a>
-                                    <span class="mx-1 text-slate-300">·</span>
-                                    <a class="font-black text-purple-600" href="{{ route('admin.virtual-machines.transfer.show', $vm) }}">انتقال</a>
+                                    <div class="flex gap-1.5">
+                                        <x-admin.icon-action :href="route('admin.virtual-machines.show', $vm)" label="نمایش ماشین مجازی" icon="view" tone="primary" />
+                                        <x-admin.icon-action :href="route('admin.virtual-machines.transfer.show', $vm)" label="انتقال ماشین مجازی" icon="transfer" tone="purple" />
+                                    </div>
                                 </td>
                             </tr>
                         @empty

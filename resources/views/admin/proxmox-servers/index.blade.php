@@ -89,8 +89,6 @@
         @forelse ($servers as $server)
             @php
                 $counts = $server->last_status['counts'] ?? [];
-                $connectionColor = ['online' => 'bg-[#EBF3FF] text-[#0069FF] ring-[#B8D6FF]', 'offline' => 'bg-red-50 text-red-700 ring-red-200', 'unknown' => 'bg-slate-100 text-slate-600 ring-slate-200'][$server->connection_status] ?? 'bg-slate-100 text-slate-600 ring-slate-200';
-                $syncColor = ['synced' => 'bg-[#EBF3FF] text-[#0069FF]', 'pending' => 'bg-amber-50 text-amber-700', 'failed' => 'bg-red-50 text-red-700'][$server->sync_status] ?? 'bg-slate-100 text-slate-600';
                 $serverPayload = [
                     'name' => $server->name,
                     'cluster' => $server->cluster_name ?: '',
@@ -113,10 +111,10 @@
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $connectionColor }}">{{ \App\Support\AdminUi::status($server->connection_status) }}</span>
-                                <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $syncColor }}">{{ \App\Support\AdminUi::status($server->sync_status) }}</span>
+                                <x-admin.status-badge :value="$server->connection_status" />
+                                <x-admin.status-badge :value="$server->sync_status" />
                                 @if($server->maintenance_mode)
-                                    <span class="rounded-md bg-sky-50 px-2.5 py-1 text-xs font-black text-sky-700">حالت نگهداری</span>
+                                    <x-admin.status-badge value="monitoring" label="حالت نگهداری" />
                                 @endif
                             </div>
                             <h2 class="mt-4 truncate text-xl font-black text-slate-950">{{ $server->name }}</h2>
@@ -166,9 +164,9 @@
                     @endif
 
                     <div class="flex flex-wrap gap-2 pt-1">
-                        <a href="{{ route('admin.proxmox-servers.show', $server) }}" class="flex-1 rounded-lg bg-[#0069FF] px-4 py-3 text-center text-sm font-black text-white transition hover:bg-[#0050D0]">نمایش</a>
-                        <a href="{{ route('admin.proxmox-servers.edit', $server) }}" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">ویرایش</a>
-                        <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 transition hover:bg-amber-100">همگام‌سازی</button></form>
+                        <x-admin.icon-action :href="route('admin.proxmox-servers.show', $server)" label="نمایش سرور" icon="view" tone="primary" />
+                        <x-admin.icon-action :href="route('admin.proxmox-servers.edit', $server)" label="ویرایش سرور" icon="edit" />
+                        <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <x-admin.icon-action type="submit" label="همگام‌سازی سرور" icon="sync" tone="warning" /></form>
                     </div>
                 </div>
             </article>

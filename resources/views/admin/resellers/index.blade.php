@@ -89,11 +89,6 @@ document.addEventListener('alpine:init', () => {
                 <option value="active" @selected(($filters['status'] ?? '') === 'active')>فعال</option>
                 <option value="suspended" @selected(($filters['status'] ?? '') === 'suspended')>تعلیق شده</option>
             </select>
-            <select name="sort" @change="fetchNow()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
-                <option value="latest" @selected(($filters['sort'] ?? 'latest') === 'latest')>جدیدترین</option>
-                <option value="oldest" @selected(($filters['sort'] ?? '') === 'oldest')>قدیمی‌ترین</option>
-                <option value="name" @selected(($filters['sort'] ?? '') === 'name')>نام</option>
-            </select>
         </div>
     </form>
 
@@ -102,13 +97,14 @@ document.addEventListener('alpine:init', () => {
             <table class="min-w-full divide-y divide-slate-100 text-sm">
                 <thead class="bg-slate-50 text-right text-xs font-bold uppercase tracking-wider text-slate-500">
                     <tr>
-                        <th class="px-4 py-3">نام</th>
-                        <th class="px-4 py-3">کد فروشنده</th>
+                        <x-admin.sortable-heading label="نام" column="name" :sort="$sort" />
+                        <x-admin.sortable-heading label="کد فروشنده" column="reseller_code" :sort="$sort" />
                         <th class="px-4 py-3">کمیسیون</th>
                         <th class="px-4 py-3">روش پرداخت</th>
-                        <th class="px-4 py-3">مشتریان</th>
-                        <th class="px-4 py-3">کل درآمد</th>
-                        <th class="px-4 py-3">وضعیت</th>
+                        <x-admin.sortable-heading label="مشتریان" column="active_customers_count" :sort="$sort" />
+                        <x-admin.sortable-heading label="کل درآمد" column="reseller_commissions_sum_commission_amount" :sort="$sort" />
+                        <x-admin.sortable-heading label="وضعیت" column="reseller_status" :sort="$sort" />
+                        <th class="px-4 py-3">عملیات</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -132,16 +128,13 @@ document.addEventListener('alpine:init', () => {
                             <td class="whitespace-nowrap px-4 py-3 font-bold">{{ number_format($reseller->active_customers_count) }}</td>
                             <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $money->format($reseller->reseller_commissions_sum_commission_amount ?? 0) }}</td>
                             <td class="whitespace-nowrap px-4 py-3">
-                                @if ($reseller->reseller_status === 'active')
-                                    <span class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">فعال</span>
-                                @else
-                                    <span class="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-bold text-red-700">تعلیق</span>
-                                @endif
+                                <x-admin.status-badge :value="$reseller->reseller_status" />
                             </td>
+                            <td class="whitespace-nowrap px-4 py-3"><x-admin.icon-action :href="route('admin.resellers.show', $reseller)" label="مدیریت فروشنده" icon="settings" tone="primary" /></td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-12 text-center text-sm text-slate-400">هنوز فروشنده‌ای ثبت نشده است.</td>
+                            <td colspan="8" class="px-4 py-12 text-center text-sm text-slate-400">هنوز فروشنده‌ای ثبت نشده است.</td>
                         </tr>
                     @endforelse
                 </tbody>

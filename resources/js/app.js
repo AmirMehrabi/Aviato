@@ -1,4 +1,32 @@
 import Alpine from 'alpinejs';
+
+document.addEventListener('click', async (event) => {
+    const link = event.target.closest('[data-admin-sort-link]');
+
+    if (! link) {
+        return;
+    }
+
+    event.preventDefault();
+
+    try {
+        await fetch(link.dataset.preferenceUrl, {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+            },
+            body: JSON.stringify({
+                column: link.dataset.sortColumn,
+                direction: link.dataset.sortDirection,
+            }),
+        });
+    } finally {
+        window.location.assign(link.href);
+    }
+});
 import RFB from '@novnc/novnc';
 import { Editor } from '@toast-ui/editor';
 import '@toast-ui/editor/dist/toastui-editor.css';

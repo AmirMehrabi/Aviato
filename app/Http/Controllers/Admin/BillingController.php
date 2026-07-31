@@ -11,6 +11,7 @@ use App\Models\UsageSettlement;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\WalletService;
+use App\Support\AdminTableSort;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -70,9 +71,11 @@ class BillingController extends Controller
         $this->searchCustomer($query, $request, true);
         $query->when($request->filled('status'), fn (Builder $q) => $q->where('status', $request->string('status')))
             ->when($request->filled('provider'), fn (Builder $q) => $q->where('provider', $request->string('provider')));
+        $sort = AdminTableSort::apply($query, $request, 'billing-payments');
 
         return view('admin.billing.payments.index', [
-            'payments' => $query->latest()->paginate(25)->withQueryString(),
+            'payments' => $query->paginate(25)->withQueryString(),
+            'sort' => $sort,
             'providers' => Payment::query()->distinct()->orderBy('provider')->pluck('provider'),
             'from' => $from, 'to' => $to, 'wallets' => $this->wallets,
         ]);
@@ -98,9 +101,11 @@ class BillingController extends Controller
         $query = WalletTransaction::query()->with(['customer', 'createdBy'])->whereBetween('created_at', [$from, $to]);
         $this->searchCustomer($query, $request);
         $query->when($request->filled('type'), fn (Builder $q) => $q->where('type', $request->string('type')));
+        $sort = AdminTableSort::apply($query, $request, 'billing-transactions');
 
         return view('admin.billing.transactions.index', [
-            'transactions' => $query->latest()->paginate(25)->withQueryString(),
+            'transactions' => $query->paginate(25)->withQueryString(),
+            'sort' => $sort,
             'from' => $from, 'to' => $to, 'wallets' => $this->wallets,
         ]);
     }
@@ -118,9 +123,11 @@ class BillingController extends Controller
         $query = Invoice::query()->with('customer')->withCount('items')->whereBetween('issued_at', [$from, $to]);
         $this->searchCustomer($query, $request);
         $query->when($request->filled('status'), fn (Builder $q) => $q->where('status', $request->string('status')));
+        $sort = AdminTableSort::apply($query, $request, 'billing-invoices');
 
         return view('admin.billing.invoices.index', [
-            'invoices' => $query->latest('issued_at')->paginate(25)->withQueryString(),
+            'invoices' => $query->paginate(25)->withQueryString(),
+            'sort' => $sort,
             'from' => $from, 'to' => $to, 'wallets' => $this->wallets,
         ]);
     }
@@ -143,9 +150,11 @@ class BillingController extends Controller
                 ? $q->whereNotNull('settled_at')
                 : $q->whereNull('settled_at');
         });
+        $sort = AdminTableSort::apply($query, $request, 'billing-usage');
 
         return view('admin.billing.usage.index', [
-            'settlements' => $query->latest('service_date')->paginate(25)->withQueryString(),
+            'settlements' => $query->paginate(25)->withQueryString(),
+            'sort' => $sort,
             'unsettledAmount' => UsageAccrual::query()->whereNull('settled_at')->sum('amount'),
             'from' => $from, 'to' => $to, 'wallets' => $this->wallets,
         ]);
@@ -164,9 +173,11 @@ class BillingController extends Controller
         $query->when($request->filled('q'), fn (Builder $q) => $q->whereHas('customer', fn (Builder $c) => $this->customerSearch($c, $request->string('q')->toString())))
             ->when($request->string('state')->toString() === 'negative', fn (Builder $q) => $q->where('balance', '<', 0))
             ->when($request->string('state')->toString() === 'locked', fn (Builder $q) => $q->where('is_locked', true));
+        $sort = AdminTableSort::apply($query, $request, 'billing-wallets');
 
         return view('admin.billing.wallets.index', [
-            'walletRows' => $query->orderBy('balance')->paginate(25)->withQueryString(),
+            'walletRows' => $query->paginate(25)->withQueryString(),
+            'sort' => $sort,
             'wallets' => $this->wallets,
         ]);
     }

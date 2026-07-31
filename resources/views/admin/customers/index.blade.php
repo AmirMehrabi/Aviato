@@ -94,28 +94,22 @@ document.addEventListener('alpine:init', () => {
                 <option value="verified" @selected(($filters['verification'] ?? '') === 'verified')>تایید شده</option>
                 <option value="unverified" @selected(($filters['verification'] ?? '') === 'unverified')>تایید نشده</option>
             </select>
-            <select name="sort" @change="fetchNow()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
-                <option value="latest" @selected(($filters['sort'] ?? 'latest') === 'latest')>جدیدترین</option>
-                <option value="oldest" @selected(($filters['sort'] ?? '') === 'oldest')>قدیمی‌ترین</option>
-                <option value="name" @selected(($filters['sort'] ?? '') === 'name')>نام</option>
-            </select>
             <a href="{{ route('admin.customers.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
         </div>
     </form>
 
     <section x-ref="results" class="mt-6">
-        <x-admin.index-table :columns="[
-            ['label' => 'مشتری'],
-            ['label' => 'تماس'],
-            ['label' => 'وضعیت'],
+        <x-admin.index-table :sort="$sort" :columns="[
+            ['label' => 'مشتری', 'sort' => 'name'],
+            ['label' => 'تماس', 'sort' => 'email'],
+            ['label' => 'وضعیت', 'sort' => 'status'],
             ['label' => 'کیف پول'],
-            ['label' => 'تاریخ ایجاد'],
+            ['label' => 'تاریخ ایجاد', 'sort' => 'created_at'],
             ['label' => 'عملیات', 'class' => 'text-left'],
         ]">
             @forelse ($customers as $customer)
                 @php
                     $credit = $customer->wallet?->balance ?? 0;
-                    $statusClass = $customer->status === 'suspended' ? 'bg-red-50 text-red-700 ring-red-200' : 'bg-[#EBF3FF] text-[#0069FF] ring-[#B8D6FF]';
                 @endphp
                 <tr class="transition hover:bg-slate-50/80">
                     <td class="px-5 py-4">
@@ -132,7 +126,7 @@ document.addEventListener('alpine:init', () => {
                         <p class="mt-1 text-xs text-slate-500">{{ $customer->phone ?: '—' }}</p>
                     </td>
                     <td class="px-5 py-4">
-                        <span class="rounded-md px-2.5 py-1 text-xs font-black ring-1 {{ $statusClass }}">{{ $customer->status === 'suspended' ? 'تعلیق شده' : 'فعال' }}</span>
+                        <x-admin.status-badge :value="$customer->status" />
                         <p class="mt-2 text-xs text-slate-500">{{ $customer->national_code_verified_at ? 'حساب تایید شده' : 'حساب تایید نشده' }}</p>
                     </td>
                     <td class="px-5 py-4">
@@ -141,17 +135,17 @@ document.addEventListener('alpine:init', () => {
                     </td>
                     <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $customer->created_at?->format('Y/m/d') }}</td>
                     <td class="px-5 py-4">
-                        <div class="flex justify-end gap-2">
-                            <a href="{{ route('admin.customers.show', $customer) }}" class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white">نمایش</a>
-                            <a href="{{ route('admin.customers.edit', $customer) }}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-700">ویرایش</a>
+                        <div class="flex justify-end gap-1.5">
+                            <x-admin.icon-action :href="route('admin.customers.show', $customer)" label="نمایش مشتری" icon="view" tone="primary" />
+                            <x-admin.icon-action :href="route('admin.customers.edit', $customer)" label="ویرایش مشتری" icon="edit" />
                             <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}" target="_blank">
                                 @csrf
-                                <button class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-black text-sky-700">ورود به‌جای مشتری</button>
+                                <x-admin.icon-action type="submit" label="ورود به‌جای مشتری" icon="login" tone="info" />
                             </form>
                             @if($customer->status === 'suspended')
-                                <form method="POST" action="{{ route('admin.customers.activate', $customer) }}">@csrf @method('PATCH') <button class="rounded-lg bg-[#EBF3FF] px-3 py-2 text-xs font-black text-[#0069FF]">فعال‌سازی</button></form>
+                                <form method="POST" action="{{ route('admin.customers.activate', $customer) }}">@csrf @method('PATCH') <x-admin.icon-action type="submit" label="فعال‌سازی مشتری" icon="activate" tone="success" /></form>
                             @else
-                                <form method="POST" action="{{ route('admin.customers.suspend', $customer) }}">@csrf @method('PATCH') <button class="rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-700">تعلیق</button></form>
+                                <form method="POST" action="{{ route('admin.customers.suspend', $customer) }}">@csrf @method('PATCH') <x-admin.icon-action type="submit" label="تعلیق مشتری" icon="suspend" tone="danger" /></form>
                             @endif
                         </div>
                     </td>

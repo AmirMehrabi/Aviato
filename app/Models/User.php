@@ -31,6 +31,11 @@ class User extends Authenticatable
         return $this->hasMany(Ticket::class, 'assigned_user_id');
     }
 
+    public function adminTablePreferences(): HasMany
+    {
+        return $this->hasMany(AdminTablePreference::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

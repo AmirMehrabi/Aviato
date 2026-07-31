@@ -11,6 +11,7 @@ use App\Models\ResellerWithdrawalRequest;
 use App\Models\UsageSettlement;
 use App\Services\ResellerService;
 use App\Services\WalletService;
+use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,10 +28,11 @@ class ResellerController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:active,suspended'],
-            'sort' => ['nullable', 'in:latest,oldest,name'],
+            'sort' => ['nullable', 'string', 'max:80'],
+            'direction' => ['nullable', 'in:asc,desc'],
         ]);
 
-        $resellers = Customer::query()
+        $query = Customer::query()
             ->where('is_reseller', true)
             ->withCount(['activeResellerAssignments as active_customers_count'])
             ->withSum('resellerCommissions', 'commission_amount')
@@ -42,16 +44,16 @@ class ResellerController extends Controller
                 });
             })
             ->when(($filters['status'] ?? null) === 'active', fn ($query) => $query->where('reseller_status', 'active'))
-            ->when(($filters['status'] ?? null) === 'suspended', fn ($query) => $query->where('reseller_status', 'suspended'))
-            ->when(($filters['sort'] ?? 'latest') === 'oldest', fn ($query) => $query->oldest())
-            ->when(($filters['sort'] ?? 'latest') === 'name', fn ($query) => $query->orderBy('name'))
-            ->when(! in_array($filters['sort'] ?? 'latest', ['oldest', 'name'], true), fn ($query) => $query->latest())
-            ->paginate(12)
+            ->when(($filters['status'] ?? null) === 'suspended', fn ($query) => $query->where('reseller_status', 'suspended'));
+
+        $sort = AdminTableSort::apply($query, $request, 'resellers');
+        $resellers = $query->paginate(12)
             ->withQueryString();
 
         return view('admin.resellers.index', [
             'resellers' => $resellers,
             'filters' => $filters,
+            'sort' => $sort,
             'stats' => [
                 'total' => Customer::where('is_reseller', true)->count(),
                 'active' => Customer::where('is_reseller', true)->where('reseller_status', 'active')->count(),
