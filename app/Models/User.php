@@ -36,6 +36,11 @@ class User extends Authenticatable
         return $this->hasMany(AdminTablePreference::class);
     }
 
+    public function adminDashboardWarningDismissals(): HasMany
+    {
+        return $this->hasMany(AdminDashboardWarningDismissal::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\UsageSettlement;
 use App\Models\User;
+use App\Models\VirtualMachine;
 use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -98,6 +99,55 @@ class AdminBillingCenterTest extends TestCase
             ->assertSee('REF-DASHBOARD')
             ->assertSee('Billing Customer')
             ->assertSee('در انتظار');
+    }
+
+    public function test_admin_can_act_on_dismiss_and_restore_dashboard_warnings(): void
+    {
+        $vm = VirtualMachine::create([
+            'customer_id' => $this->customer->id,
+            'project_id' => $this->customer->ensureDefaultProject()->id,
+            'name' => 'failed-dashboard-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_STOPPED,
+            'provisioning_status' => VirtualMachine::PROVISION_FAILED,
+        ]);
+
+        $response = $this->get('https://admin.localhost/dashboard')
+            ->assertOk()
+            ->assertSee('هشدارهای بحرانی')
+            ->assertSee('failed-dashboard-vm')
+            ->assertSee('تلاش دوباره')
+            ->assertSee(route('admin.virtual-machines.retry-provisioning', $vm));
+
+        preg_match('/name="warning_key" value="([a-f0-9]{64})"/', $response->getContent(), $matches);
+        $this->assertArrayHasKey(1, $matches);
+
+        $this->post('https://admin.localhost/dashboard/warnings/dismiss', [
+            'warning_key' => $matches[1],
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $this->assertDatabaseHas('admin_dashboard_warning_dismissals', [
+            'user_id' => $this->admin->id,
+            'warning_key' => $matches[1],
+        ]);
+        $this->get('https://admin.localhost/dashboard')
+            ->assertOk()
+            ->assertDontSee('failed-dashboard-vm')
+            ->assertSee('نمایش 1 هشدار بسته‌شده');
+
+        $this->delete('https://admin.localhost/dashboard/warnings/dismissals')
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseMissing('admin_dashboard_warning_dismissals', [
+            'user_id' => $this->admin->id,
+        ]);
+        $this->get('https://admin.localhost/dashboard')
+            ->assertOk()
+            ->assertSee('failed-dashboard-vm');
     }
 
     public function test_admin_can_view_printable_invoice_and_export_csv(): void

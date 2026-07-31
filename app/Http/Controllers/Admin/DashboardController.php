@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ContactSubmission;
-use App\Models\Invoice;
-use App\Models\IpAddress;
+use App\Models\AdminDashboardWarningDismissal;
 use App\Models\Payment;
 use App\Models\ProxmoxServer;
 use App\Models\Ticket;
@@ -13,23 +11,25 @@ use App\Models\VirtualMachine;
 use App\Models\VmBackup;
 use App\Models\VmUpgradeOrder;
 use App\Models\Wallet;
-use App\Models\WalletTransaction;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class DashboardController extends Controller
 {
     public function __construct(private readonly WalletService $wallets) {}
 
-    public function __invoke(): View
+    public function __invoke(Request $request): View
     {
         $vmBase = VirtualMachine::query()->notDeleted();
-        $totalVms = (clone $vmBase)->count();
-        $runningVms = (clone $vmBase)->where('status', VirtualMachine::STATUS_RUNNING)->count();
-        $pendingProvisioning = (clone $vmBase)->where('provisioning_status', VirtualMachine::PROVISION_PENDING)->count();
-        $failedProvisioning = (clone $vmBase)->where('provisioning_status', VirtualMachine::PROVISION_FAILED)->count();
-        $deletingVms = (clone $vmBase)->where('status', VirtualMachine::STATUS_DELETING)->count();
+        $vmCounts = (clone $vmBase)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0) as running', [VirtualMachine::STATUS_RUNNING])
+            ->selectRaw('COALESCE(SUM(CASE WHEN provisioning_status = ? THEN 1 ELSE 0 END), 0) as provisioning_pending', [VirtualMachine::PROVISION_PENDING])
+            ->selectRaw('COALESCE(SUM(CASE WHEN provisioning_status = ? THEN 1 ELSE 0 END), 0) as provisioning_failed', [VirtualMachine::PROVISION_FAILED])
+            ->first();
         $staleDeleteAttempts = (clone $vmBase)
             ->where('status', VirtualMachine::STATUS_DELETING)
             ->where(function ($query): void {
@@ -39,13 +39,18 @@ class DashboardController extends Controller
             })
             ->count();
 
-        $proxmoxTotal = ProxmoxServer::query()->count();
-        $proxmoxOnline = ProxmoxServer::query()->where('connection_status', ProxmoxServer::CONNECTION_ONLINE)->count();
-        $proxmoxOffline = ProxmoxServer::query()->where('connection_status', ProxmoxServer::CONNECTION_OFFLINE)->count();
-        $proxmoxPendingSync = ProxmoxServer::query()->where('sync_status', ProxmoxServer::SYNC_PENDING)->count();
-        $negativeWallets = Wallet::query()->where('balance', '<', 0)->count();
-        $lockedWallets = Wallet::query()->where('is_locked', true)->count();
-        $pendingPayments = Payment::query()->where('status', Payment::STATUS_PENDING)->count();
+        $proxmoxCounts = ProxmoxServer::query()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('COALESCE(SUM(CASE WHEN connection_status = ? THEN 1 ELSE 0 END), 0) as online', [ProxmoxServer::CONNECTION_ONLINE])
+            ->selectRaw('COALESCE(SUM(CASE WHEN connection_status = ? THEN 1 ELSE 0 END), 0) as offline', [ProxmoxServer::CONNECTION_OFFLINE])
+            ->selectRaw('COALESCE(SUM(CASE WHEN sync_status IN (?, ?) THEN 1 ELSE 0 END), 0) as sync_attention', [ProxmoxServer::SYNC_PENDING, ProxmoxServer::SYNC_FAILED])
+            ->first();
+        $walletCounts = Wallet::query()
+            ->selectRaw('COALESCE(SUM(CASE WHEN balance < 0 THEN 1 ELSE 0 END), 0) as negative')
+            ->selectRaw('COALESCE(SUM(CASE WHEN is_locked = 1 THEN 1 ELSE 0 END), 0) as locked')
+            ->selectRaw('ABS(COALESCE(SUM(CASE WHEN balance < 0 THEN balance ELSE 0 END), 0)) as negative_total')
+            ->first();
+
         $paymentPeriodStart = now()->subDays(29)->startOfDay();
         $paymentPeriodEnd = now();
         $paymentPeriod = Payment::query()->whereBetween('created_at', [$paymentPeriodStart, $paymentPeriodEnd]);
@@ -56,145 +61,118 @@ class DashboardController extends Controller
         $successfulPaymentCount = (clone $successfulPaymentQuery)->count();
         $successfulPaymentAmount = (int) (clone $successfulPaymentQuery)->sum('amount');
         $paymentAttemptCount = (clone $paymentPeriod)->count();
-        $failedPaymentCount = (clone $paymentPeriod)->whereIn('status', [Payment::STATUS_FAILED, Payment::STATUS_CANCELLED])->count();
-        $paymentSuccessRate = $paymentAttemptCount > 0 ? (int) round(($successfulPaymentCount / $paymentAttemptCount) * 100) : 0;
-        $averagePaymentAmount = $successfulPaymentCount > 0 ? (int) round($successfulPaymentAmount / $successfulPaymentCount) : 0;
+        $failedPaymentCount = (clone $paymentPeriod)
+            ->whereIn('status', [Payment::STATUS_FAILED, Payment::STATUS_CANCELLED])
+            ->count();
+        $pendingPayments = Payment::query()->where('status', Payment::STATUS_PENDING)->count();
+        $paymentSuccessRate = $paymentAttemptCount > 0
+            ? (int) round(($successfulPaymentCount / $paymentAttemptCount) * 100)
+            : 0;
         $todaySuccessfulPaymentAmount = (int) Payment::query()
             ->where('status', Payment::STATUS_SUCCESSFUL)
             ->whereNotNull('paid_at')
             ->where('paid_at', '>=', now()->startOfDay())
             ->sum('amount');
-        $paymentTrendByDay = (clone $successfulPaymentQuery)
-            ->selectRaw('DATE(paid_at) as day, SUM(amount) as amount, COUNT(*) as count')
-            ->groupByRaw('DATE(paid_at)')
-            ->get()
-            ->keyBy('day');
-        $paymentTrendLabels = [];
-        $paymentTrendData = [];
-        $paymentTrendCounts = [];
-        for ($i = 0; $i < 30; $i++) {
-            $day = $paymentPeriodStart->copy()->addDays($i);
-            $key = $day->toDateString();
-            $paymentTrendLabels[] = $day->format('M/d');
-            $paymentTrendData[] = (int) ($paymentTrendByDay[$key]?->amount ?? 0);
-            $paymentTrendCounts[] = (int) ($paymentTrendByDay[$key]?->count ?? 0);
-        }
         $recentGatewayPayments = Payment::query()
             ->with('customer')
             ->latest()
-            ->limit(8)
+            ->limit(5)
             ->get()
             ->map(fn (Payment $payment): array => [
-                'id' => $payment->id,
                 'customer' => $payment->customer?->name ?: 'بدون مشتری',
                 'amount' => (int) $payment->amount,
                 'status' => $payment->status,
                 'provider' => $payment->provider,
                 'reference' => $payment->provider_reference ?: $payment->authority,
-                'at' => $payment->paid_at ?: $payment->created_at,
                 'url' => route('admin.billing.payments.show', $payment),
             ]);
-        $failedBackups = VmBackup::query()->where('status', VmBackup::STATUS_FAILED)->count();
-        $pendingUpgrades = VmUpgradeOrder::query()
-            ->whereIn('status', [VmUpgradeOrder::STATUS_PENDING, VmUpgradeOrder::STATUS_APPLYING])
-            ->count();
-        $newContacts = ContactSubmission::query()->where('status', ContactSubmission::STATUS_NEW)->count();
 
-        $todayRevenue = (int) WalletTransaction::query()
-            ->where('amount', '>', 0)
-            ->where('created_at', '>=', now()->startOfDay())
-            ->sum('amount');
-        $monthRevenue = (int) WalletTransaction::query()
-            ->where('amount', '>', 0)
-            ->where('created_at', '>=', now()->startOfMonth())
-            ->sum('amount');
-        $monthInvoiceSum = (int) Invoice::query()
-            ->where('status', Invoice::STATUS_ISSUED)
-            ->where('created_at', '>=', now()->startOfMonth())
-            ->sum('total_amount');
-        $monthInvoiceCount = Invoice::query()
-            ->where('status', Invoice::STATUS_ISSUED)
-            ->where('created_at', '>=', now()->startOfMonth())
-            ->count();
-        $negativeWalletTotal = abs((int) Wallet::query()->where('balance', '<', 0)->sum('balance'));
-
-        $ticketsOpen = Ticket::query()->where('status', Ticket::STATUS_OPEN)->count();
-        $ticketsPending = Ticket::query()->where('status', Ticket::STATUS_PENDING)->count();
-        $ticketByPriority = [
-            'urgent' => Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])->where('priority', Ticket::PRIORITY_URGENT)->count(),
-            'high' => Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])->where('priority', Ticket::PRIORITY_HIGH)->count(),
-            'normal' => Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])->where('priority', Ticket::PRIORITY_NORMAL)->count(),
-            'low' => Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])->where('priority', Ticket::PRIORITY_LOW)->count(),
-        ];
-        $recentTickets = Ticket::query()
+        $ticketSource = Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING]);
+        $ticketStats = (clone $ticketSource)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('COALESCE(SUM(CASE WHEN priority = ? THEN 1 ELSE 0 END), 0) as urgent', [Ticket::PRIORITY_URGENT])
+            ->selectRaw('COALESCE(SUM(CASE WHEN priority = ? THEN 1 ELSE 0 END), 0) as high', [Ticket::PRIORITY_HIGH])
+            ->first();
+        $recentTickets = (clone $ticketSource)
             ->with('customer')
-            ->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_PENDING])
             ->orderByRaw("CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
             ->latest()
             ->limit(5)
             ->get()
-            ->map(fn (Ticket $t) => [
-                'number' => $t->number,
-                'subject' => $t->subject,
-                'customer' => $t->customer?->name ?? '—',
-                'priority' => $t->priority,
-                'priority_label' => Ticket::priorities()[$t->priority] ?? $t->priority,
-                'status' => $t->status,
-                'status_label' => Ticket::statuses()[$t->status] ?? $t->status,
-                'time' => $t->last_activity_at?->diffForHumans() ?? $t->created_at->diffForHumans(),
+            ->map(fn (Ticket $ticket): array => [
+                'number' => $ticket->number,
+                'subject' => $ticket->subject,
+                'customer' => $ticket->customer?->name ?? '—',
+                'priority' => $ticket->priority,
+                'status' => $ticket->status,
+                'status_label' => Ticket::statuses()[$ticket->status] ?? $ticket->status,
+                'time' => $ticket->last_activity_at?->diffForHumans() ?? $ticket->created_at->diffForHumans(),
             ]);
 
-        $attentionItems = $this->attentionItems();
-        $resourceTotals = $this->resourceTotals();
-        $capacityRows = $this->capacityRows($resourceTotals);
-        $recentActivity = $this->recentActivity();
+        $allWarnings = $this->attentionItems();
+        $dismissedKeys = AdminDashboardWarningDismissal::query()
+            ->where('user_id', $request->user('admin')->id)
+            ->pluck('warning_key');
+        $visibleWarnings = $allWarnings
+            ->reject(fn (array $warning): bool => $dismissedKeys->contains($warning['key']))
+            ->values();
+        $dismissedActiveCount = $allWarnings
+            ->whereIn('key', $dismissedKeys)
+            ->count();
 
-        $readyScore = $this->readinessScore($proxmoxTotal, $proxmoxOnline, $proxmoxOffline, $failedProvisioning, $failedBackups, $staleDeleteAttempts);
+        $proxmoxTotal = (int) ($proxmoxCounts?->total ?? 0);
+        $proxmoxOnline = (int) ($proxmoxCounts?->online ?? 0);
+        $proxmoxOffline = (int) ($proxmoxCounts?->offline ?? 0);
+        $proxmoxSyncAttention = (int) ($proxmoxCounts?->sync_attention ?? 0);
+        $totalVms = (int) ($vmCounts?->total ?? 0);
+        $runningVms = (int) ($vmCounts?->running ?? 0);
+        $pendingProvisioning = (int) ($vmCounts?->provisioning_pending ?? 0);
+        $failedProvisioning = (int) ($vmCounts?->provisioning_failed ?? 0);
+        $ticketsTotal = (int) ($ticketStats?->total ?? 0);
+        $urgentTickets = (int) ($ticketStats?->urgent ?? 0);
 
         return view('admin.dashboard', [
             'statusStrip' => [
                 [
                     'label' => 'زیرساخت',
                     'value' => "{$proxmoxOnline}/{$proxmoxTotal}",
-                    'sub' => $proxmoxOffline > 0 ? $proxmoxOffline.' آفلاین' : 'همه آنلاین',
-                    'tone' => $proxmoxOffline > 0 ? 'red' : ($proxmoxPendingSync > 0 ? 'amber' : 'green'),
+                    'sub' => $proxmoxOffline > 0 ? $proxmoxOffline.' آفلاین' : ($proxmoxSyncAttention > 0 ? $proxmoxSyncAttention.' نیازمند همگام‌سازی' : 'همه آنلاین'),
+                    'tone' => $proxmoxOffline > 0 ? 'red' : ($proxmoxSyncAttention > 0 ? 'amber' : 'green'),
                     'url' => route('admin.proxmox-servers.index'),
                 ],
                 [
-                    'label' => 'VM Fleet',
+                    'label' => 'ماشین‌های مجازی',
                     'value' => "{$runningVms}/{$totalVms}",
-                    'sub' => $failedProvisioning > 0 ? $failedProvisioning.' ساخت ناموفق' : ($pendingProvisioning > 0 ? $pendingProvisioning.' در صف' : 'همه فعال'),
+                    'sub' => $failedProvisioning > 0 ? $failedProvisioning.' آماده‌سازی ناموفق' : ($pendingProvisioning > 0 ? $pendingProvisioning.' در صف ساخت' : 'بدون خطای ساخت'),
                     'tone' => $failedProvisioning > 0 ? 'red' : ($pendingProvisioning > 0 ? 'amber' : 'green'),
                     'url' => route('admin.virtual-machines.index'),
                 ],
                 [
-                    'label' => 'وصول درگاه',
-                    'value' => $this->wallets->format($successfulPaymentAmount),
-                    'sub' => $successfulPaymentCount.' پرداخت موفق در ۳۰ روز',
-                    'tone' => 'green',
-                    'url' => route('admin.billing.payments.index', ['status' => Payment::STATUS_SUCCESSFUL]),
-                ],
-                [
                     'label' => 'تیکت‌ها',
-                    'value' => $ticketsOpen + $ticketsPending,
-                    'sub' => $ticketByPriority['urgent'] > 0 ? $ticketByPriority['urgent'].' فوری' : 'بدون فوری',
-                    'tone' => $ticketByPriority['urgent'] > 0 ? 'red' : (($ticketsOpen + $ticketsPending) > 0 ? 'amber' : 'green'),
+                    'value' => $ticketsTotal,
+                    'sub' => $urgentTickets > 0 ? $urgentTickets.' فوری' : 'بدون تیکت فوری',
+                    'tone' => $urgentTickets > 0 ? 'red' : ($ticketsTotal > 0 ? 'amber' : 'green'),
                     'url' => route('admin.tickets.index'),
                 ],
                 [
-                    'label' => 'هشدارها',
-                    'value' => $attentionItems->count(),
-                    'sub' => $attentionItems->where('tone', 'red')->count().' بحرانی',
-                    'tone' => $attentionItems->where('tone', 'red')->count() > 0 ? 'red' : ($attentionItems->count() > 0 ? 'amber' : 'green'),
-                    'url' => '#operations-section',
+                    'label' => 'پرداخت‌ها',
+                    'value' => $pendingPayments + $failedPaymentCount,
+                    'sub' => $pendingPayments.' در انتظار · '.$failedPaymentCount.' ناموفق',
+                    'tone' => $failedPaymentCount > 0 ? 'red' : ($pendingPayments > 0 ? 'amber' : 'green'),
+                    'url' => route('admin.billing.payments.index'),
+                ],
+                [
+                    'label' => 'هشدارهای فعال',
+                    'value' => $allWarnings->count(),
+                    'sub' => $allWarnings->where('tone', 'red')->count().' بحرانی',
+                    'tone' => $allWarnings->where('tone', 'red')->isNotEmpty() ? 'red' : ($allWarnings->isNotEmpty() ? 'amber' : 'green'),
+                    'url' => '#critical-warnings',
                 ],
             ],
-            'paymentTrend' => [
-                'labels' => $paymentTrendLabels,
-                'amounts' => $paymentTrendData,
-                'counts' => $paymentTrendCounts,
-                'period_label' => '۳۰ روز اخیر',
-            ],
+            'criticalAlerts' => $visibleWarnings,
+            'activeWarningCount' => $allWarnings->count(),
+            'dismissedActiveCount' => $dismissedActiveCount,
+            'serverHealth' => $this->serverRows(),
             'paymentSummary' => [
                 'successful_amount' => $successfulPaymentAmount,
                 'successful_count' => $successfulPaymentCount,
@@ -202,35 +180,42 @@ class DashboardController extends Controller
                 'pending_count' => $pendingPayments,
                 'failed_count' => $failedPaymentCount,
                 'success_rate' => $paymentSuccessRate,
-                'average_amount' => $averagePaymentAmount,
+                'negative_wallets' => (int) ($walletCounts?->negative ?? 0),
+                'negative_total' => $this->wallets->format((int) ($walletCounts?->negative_total ?? 0)),
+                'locked_wallets' => (int) ($walletCounts?->locked ?? 0),
             ],
             'recentGatewayPayments' => $recentGatewayPayments,
-            'serverHealth' => $capacityRows,
-            'criticalAlerts' => $attentionItems->where('tone', '!=', 'blue')->take(6)->values(),
-            'ticketStats' => [
-                'open' => $ticketsOpen,
-                'pending' => $ticketsPending,
-                'by_priority' => $ticketByPriority,
-            ],
             'recentTickets' => $recentTickets,
-            'financial' => [
-                'today_revenue' => $todayRevenue,
-                'month_revenue' => $monthRevenue,
-                'month_invoices' => $monthInvoiceCount,
-                'month_invoice_sum' => $monthInvoiceSum,
-                'negative_wallets' => $negativeWallets,
-                'negative_total' => $this->wallets->format($negativeWalletTotal),
-                'pending_payments' => $pendingPayments,
-                'locked_wallets' => $lockedWallets,
-            ],
-            'recentActivity' => $recentActivity,
-            'health' => [
-                'proxmox_total' => $proxmoxTotal,
-                'proxmox_online' => $proxmoxOnline,
-                'ready_score' => $readyScore,
-            ],
             'wallets' => $this->wallets,
         ]);
+    }
+
+    public function dismissWarning(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'warning_key' => ['required', 'string', 'size:64'],
+        ]);
+        $warning = $this->attentionItems()->firstWhere('key', $data['warning_key']);
+
+        if (! $warning) {
+            return back()->with('status', 'این هشدار دیگر فعال نیست.');
+        }
+
+        AdminDashboardWarningDismissal::query()->updateOrCreate([
+            'user_id' => $request->user('admin')->id,
+            'warning_key' => $data['warning_key'],
+        ]);
+
+        return back()->with('status', 'هشدار برای حساب شما بسته شد.');
+    }
+
+    public function restoreWarnings(Request $request): RedirectResponse
+    {
+        AdminDashboardWarningDismissal::query()
+            ->where('user_id', $request->user('admin')->id)
+            ->delete();
+
+        return back()->with('status', 'هشدارهای بسته‌شده دوباره نمایش داده شدند.');
     }
 
     private function attentionItems(): Collection
@@ -245,13 +230,17 @@ class DashboardController extends Controller
             ->limit(4)
             ->get()
             ->each(fn (VirtualMachine $vm) => $items->push([
+                'key' => $this->warningKey('vm-provisioning', $vm->id, $vm->updated_at?->getTimestamp()),
                 'priority' => 100,
                 'tone' => 'red',
-                'label' => 'Provisioning failed',
-                'title' => $vm->name,
-                'meta' => ($vm->customer?->name ?: 'بدون مشتری').' - '.($vm->proxmoxServer?->name ?: 'بدون Proxmox'),
-                'url' => route('admin.virtual-machines.show', $vm),
-                'action' => 'بررسی و Retry',
+                'label' => 'آماده‌سازی ناموفق',
+                'title' => $vm->display_name,
+                'meta' => ($vm->customer?->name ?: 'بدون مشتری').' · '.($vm->proxmoxServer?->name ?: 'بدون سرور میزبان'),
+                'details_url' => route('admin.virtual-machines.show', $vm),
+                'action_url' => route('admin.virtual-machines.retry-provisioning', $vm),
+                'action_method' => 'POST',
+                'action_label' => 'تلاش دوباره',
+                'confirmation' => 'آماده‌سازی این ماشین دوباره در صف قرار بگیرد؟',
             ]));
 
         VirtualMachine::query()
@@ -267,13 +256,17 @@ class DashboardController extends Controller
             ->limit(4)
             ->get()
             ->each(fn (VirtualMachine $vm) => $items->push([
+                'key' => $this->warningKey('vm-delete', $vm->id, $vm->updated_at?->getTimestamp()),
                 'priority' => 95,
                 'tone' => 'red',
-                'label' => 'Delete attention',
-                'title' => $vm->name,
-                'meta' => $vm->delete_error ?: 'حذف بیش از ۱۵ دقیقه درگیر است',
-                'url' => route('admin.virtual-machines.show', $vm),
-                'action' => 'مشاهده حذف',
+                'label' => 'حذف متوقف‌شده',
+                'title' => $vm->display_name,
+                'meta' => $vm->delete_error ?: 'فرایند حذف بیش از ۱۵ دقیقه طول کشیده است',
+                'details_url' => route('admin.virtual-machines.show', $vm),
+                'action_url' => route('admin.virtual-machines.destroy', $vm),
+                'action_method' => 'DELETE',
+                'action_label' => 'تلاش دوباره برای حذف',
+                'confirmation' => 'فرایند حذف این ماشین دوباره در صف قرار بگیرد؟',
             ]));
 
         ProxmoxServer::query()
@@ -286,13 +279,17 @@ class DashboardController extends Controller
             ->limit(4)
             ->get()
             ->each(fn (ProxmoxServer $server) => $items->push([
+                'key' => $this->warningKey('proxmox-sync', $server->id, $server->updated_at?->getTimestamp()),
                 'priority' => $server->connection_status === ProxmoxServer::CONNECTION_OFFLINE ? 90 : 70,
                 'tone' => $server->connection_status === ProxmoxServer::CONNECTION_OFFLINE ? 'red' : 'amber',
-                'label' => 'Proxmox',
+                'label' => $server->connection_status === ProxmoxServer::CONNECTION_OFFLINE ? 'سرور آفلاین' : 'همگام‌سازی ناقص',
                 'title' => $server->name,
-                'meta' => $server->connection_status.' / '.$server->sync_status,
-                'url' => route('admin.proxmox-servers.show', $server),
-                'action' => 'Sync',
+                'meta' => $server->sync_error ?: $this->serverStatusMeta($server),
+                'details_url' => route('admin.proxmox-servers.show', $server),
+                'action_url' => route('admin.proxmox-servers.sync', $server),
+                'action_method' => 'POST',
+                'action_label' => 'همگام‌سازی',
+                'confirmation' => null,
             ]));
 
         VmBackup::query()
@@ -302,29 +299,37 @@ class DashboardController extends Controller
             ->limit(4)
             ->get()
             ->each(fn (VmBackup $backup) => $items->push([
+                'key' => $this->warningKey('backup-failed', $backup->id, $backup->updated_at?->getTimestamp()),
                 'priority' => 80,
                 'tone' => 'amber',
-                'label' => 'Backup failed',
-                'title' => $backup->virtualMachine?->name ?: 'Backup #'.$backup->id,
-                'meta' => $backup->error ?: ($backup->storage ?: 'بدون storage'),
-                'url' => $backup->virtualMachine ? route('admin.virtual-machines.show', $backup->virtualMachine) : route('admin.virtual-machines.index'),
-                'action' => 'مشاهده VM',
+                'label' => 'بکاپ ناموفق',
+                'title' => $backup->virtualMachine?->display_name ?: 'بکاپ شماره '.$backup->id,
+                'meta' => $backup->error ?: ($backup->storage ?: 'جزئیات خطا ثبت نشده است'),
+                'details_url' => $backup->virtualMachine ? route('admin.virtual-machines.show', $backup->virtualMachine) : route('admin.virtual-machines.index'),
+                'action_url' => null,
+                'action_method' => null,
+                'action_label' => null,
+                'confirmation' => null,
             ]));
 
         VmUpgradeOrder::query()
-            ->with(['virtualMachine.customer'])
+            ->with('virtualMachine.customer')
             ->whereIn('status', [VmUpgradeOrder::STATUS_PENDING, VmUpgradeOrder::STATUS_APPLYING, VmUpgradeOrder::STATUS_FAILED])
             ->latest()
             ->limit(4)
             ->get()
             ->each(fn (VmUpgradeOrder $order) => $items->push([
+                'key' => $this->warningKey('upgrade', $order->id, $order->updated_at?->getTimestamp()),
                 'priority' => $order->status === VmUpgradeOrder::STATUS_FAILED ? 85 : 55,
-                'tone' => $order->status === VmUpgradeOrder::STATUS_FAILED ? 'red' : 'blue',
-                'label' => 'Upgrade '.$order->status,
-                'title' => $order->virtualMachine?->name ?: 'Upgrade #'.$order->id,
-                'meta' => $order->failure_reason ?: $this->wallets->format((int) $order->estimated_monthly_delta).' تغییر ماهانه',
-                'url' => $order->virtualMachine ? route('admin.virtual-machines.show', $order->virtualMachine) : route('admin.virtual-machines.index'),
-                'action' => 'پیگیری',
+                'tone' => $order->status === VmUpgradeOrder::STATUS_FAILED ? 'red' : 'amber',
+                'label' => $order->status === VmUpgradeOrder::STATUS_FAILED ? 'ارتقای ناموفق' : 'ارتقای در حال انجام',
+                'title' => $order->virtualMachine?->display_name ?: 'درخواست ارتقا شماره '.$order->id,
+                'meta' => $order->failure_reason ?: $this->wallets->format((int) $order->estimated_monthly_delta).' تغییر هزینه ماهانه',
+                'details_url' => $order->virtualMachine ? route('admin.virtual-machines.show', $order->virtualMachine) : route('admin.virtual-machines.index'),
+                'action_url' => null,
+                'action_method' => null,
+                'action_label' => null,
+                'confirmation' => null,
             ]));
 
         Wallet::query()
@@ -336,147 +341,77 @@ class DashboardController extends Controller
             ->limit(4)
             ->get()
             ->each(fn (Wallet $wallet) => $items->push([
+                'key' => $this->warningKey('wallet', $wallet->id, $wallet->updated_at?->getTimestamp()),
                 'priority' => $wallet->balance < 0 ? 75 : 45,
                 'tone' => $wallet->balance < 0 ? 'red' : 'amber',
-                'label' => $wallet->is_locked ? 'Wallet locked' : 'Wallet negative',
-                'title' => $wallet->customer?->name ?: 'Customer #'.$wallet->customer_id,
+                'label' => $wallet->is_locked ? 'کیف پول قفل‌شده' : 'کیف پول منفی',
+                'title' => $wallet->customer?->name ?: 'مشتری شماره '.$wallet->customer_id,
                 'meta' => $this->wallets->format((int) $wallet->balance),
-                'url' => $wallet->customer ? route('admin.customers.show', $wallet->customer) : route('admin.customers.index'),
-                'action' => 'مالی مشتری',
+                'details_url' => $wallet->customer ? route('admin.customers.show', $wallet->customer) : route('admin.customers.index'),
+                'action_url' => null,
+                'action_method' => null,
+                'action_label' => null,
+                'confirmation' => null,
             ]));
 
         return $items->sortByDesc('priority')->take(10)->values();
     }
 
-    private function resourceTotals(): array
+    private function serverRows(): Collection
     {
-        $row = VirtualMachine::query()
-            ->notDeleted()
-            ->selectRaw('COUNT(*) as total, COALESCE(SUM(cpu_cores), 0) as cpu, COALESCE(SUM(ram_gb), 0) as ram, COALESCE(SUM(disk_gb), 0) as disk, COALESCE(SUM(ip_count), 0) as ips')
-            ->first();
-
-        return [
-            'total' => (int) ($row?->total ?? 0),
-            'cpu' => (int) ($row?->cpu ?? 0),
-            'ram' => (int) ($row?->ram ?? 0),
-            'disk' => (int) ($row?->disk ?? 0),
-            'ips' => (int) ($row?->ips ?? 0),
-            'available_ips' => IpAddress::query()->where('status', IpAddress::STATUS_AVAILABLE)->count(),
-            'assigned_ips' => IpAddress::query()->where('status', IpAddress::STATUS_ASSIGNED)->count(),
-        ];
-    }
-
-    private function capacityRows(array $resourceTotals): array
-    {
-        $serverRows = ProxmoxServer::query()
+        return ProxmoxServer::query()
             ->withCount(['virtualMachines as live_vms_count' => fn ($query) => $query->notDeleted()])
-            ->orderBy('datacenter')
-            ->orderBy('name')
+            ->orderByRaw("CASE connection_status WHEN 'offline' THEN 1 WHEN 'unknown' THEN 2 ELSE 3 END")
+            ->orderByRaw("CASE sync_status WHEN 'failed' THEN 1 WHEN 'pending' THEN 2 ELSE 3 END")
             ->limit(6)
             ->get()
             ->map(fn (ProxmoxServer $server): array => [
                 'name' => $server->name,
-                'value' => $server->connection_status === ProxmoxServer::CONNECTION_ONLINE ? 100 : ($server->connection_status === ProxmoxServer::CONNECTION_UNKNOWN ? 45 : 12),
-                'detail' => ($server->datacenter ?: 'بدون دیتاسنتر').' - '.$server->live_vms_count.' VM',
-                'color' => $server->connection_status === ProxmoxServer::CONNECTION_ONLINE ? 'bg-[#0069FF]' : ($server->connection_status === ProxmoxServer::CONNECTION_UNKNOWN ? 'bg-amber-500' : 'bg-red-500'),
-            ])
-            ->all();
-
-        if ($serverRows !== []) {
-            return $serverRows;
-        }
-
-        return [
-            [
-                'name' => 'IP Pool',
-                'value' => $this->percentage($resourceTotals['assigned_ips'], max($resourceTotals['assigned_ips'] + $resourceTotals['available_ips'], 1)),
-                'detail' => $resourceTotals['available_ips'].' IP آزاد',
-                'color' => 'bg-[#0069FF]',
-            ],
-        ];
+                'status' => match ($server->connection_status) {
+                    ProxmoxServer::CONNECTION_ONLINE => 'آنلاین',
+                    ProxmoxServer::CONNECTION_OFFLINE => 'آفلاین',
+                    default => 'نامشخص',
+                },
+                'status_class' => match ($server->connection_status) {
+                    ProxmoxServer::CONNECTION_ONLINE => 'bg-emerald-50 text-emerald-700',
+                    ProxmoxServer::CONNECTION_OFFLINE => 'bg-red-50 text-red-700',
+                    default => 'bg-amber-50 text-amber-700',
+                },
+                'dot_class' => match ($server->connection_status) {
+                    ProxmoxServer::CONNECTION_ONLINE => 'bg-emerald-500',
+                    ProxmoxServer::CONNECTION_OFFLINE => 'bg-red-500',
+                    default => 'bg-amber-500',
+                },
+                'detail' => ($server->datacenter ?: 'بدون دیتاسنتر').' · '.$server->live_vms_count.' ماشین',
+                'sync' => match ($server->sync_status) {
+                    ProxmoxServer::SYNC_SYNCED => 'همگام',
+                    ProxmoxServer::SYNC_FAILED => 'همگام‌سازی ناموفق',
+                    default => 'در انتظار همگام‌سازی',
+                },
+                'synced_at' => $server->synced_at?->diffForHumans() ?: 'هنوز همگام نشده',
+                'url' => route('admin.proxmox-servers.show', $server),
+                'sync_url' => route('admin.proxmox-servers.sync', $server),
+            ]);
     }
 
-    private function recentActivity(): Collection
+    private function warningKey(string $type, int $id, ?int $updatedAt): string
     {
-        $transactions = WalletTransaction::query()
-            ->with('customer')
-            ->latest()
-            ->limit(4)
-            ->get()
-            ->map(fn (WalletTransaction $transaction): array => [
-                'time' => $transaction->created_at,
-                'tone' => $transaction->amount >= 0 ? 'blue' : 'red',
-                'title' => $transaction->description ?: 'Wallet transaction',
-                'meta' => ($transaction->customer?->name ?: 'بدون مشتری').' - '.$this->wallets->format((int) $transaction->amount),
-                'url' => $transaction->customer ? route('admin.customers.show', $transaction->customer) : route('admin.customers.index'),
-            ]);
-
-        $payments = Payment::query()
-            ->with('customer')
-            ->latest()
-            ->limit(4)
-            ->get()
-            ->map(fn (Payment $payment): array => [
-                'time' => $payment->created_at,
-                'tone' => $payment->status === Payment::STATUS_SUCCESSFUL ? 'blue' : ($payment->status === Payment::STATUS_FAILED ? 'red' : 'amber'),
-                'title' => 'Payment '.$payment->status,
-                'meta' => ($payment->customer?->name ?: 'بدون مشتری').' - '.$this->wallets->format((int) $payment->amount),
-                'url' => $payment->customer ? route('admin.customers.show', $payment->customer) : route('admin.customers.index'),
-            ]);
-
-        $vms = VirtualMachine::query()
-            ->notDeleted()
-            ->with('customer')
-            ->latest()
-            ->limit(4)
-            ->get()
-            ->map(fn (VirtualMachine $vm): array => [
-                'time' => $vm->created_at,
-                'tone' => $vm->provisioning_status === VirtualMachine::PROVISION_FAILED ? 'red' : 'blue',
-                'title' => 'VM '.$vm->name,
-                'meta' => ($vm->customer?->name ?: 'بدون مشتری').' - '.$vm->status.' / '.$vm->provisioning_status,
-                'url' => route('admin.virtual-machines.show', $vm),
-            ]);
-
-        $contacts = ContactSubmission::query()
-            ->latest()
-            ->limit(4)
-            ->get()
-            ->map(fn (ContactSubmission $contact): array => [
-                'time' => $contact->created_at,
-                'tone' => $contact->status === ContactSubmission::STATUS_NEW ? 'amber' : 'blue',
-                'title' => 'درخواست تماس '.$contact->name,
-                'meta' => trim(($contact->need_type ?: 'تماس').' - '.($contact->phone ?: $contact->email ?: 'بدون راه ارتباط')),
-                'url' => null,
-            ]);
-
-        return $transactions
-            ->concat($payments)
-            ->concat($vms)
-            ->concat($contacts)
-            ->sortByDesc('time')
-            ->take(8)
-            ->values();
+        return hash('sha256', implode('|', [$type, $id, $updatedAt ?? 0]));
     }
 
-    private function readinessScore(int $total, int $online, int $offline, int $failedProvisioning, int $failedBackups, int $staleDeletes): int
+    private function serverStatusMeta(ProxmoxServer $server): string
     {
-        if ($total === 0) {
-            return 0;
-        }
+        $connection = match ($server->connection_status) {
+            ProxmoxServer::CONNECTION_ONLINE => 'اتصال آنلاین',
+            ProxmoxServer::CONNECTION_OFFLINE => 'اتصال آفلاین',
+            default => 'وضعیت اتصال نامشخص',
+        };
+        $sync = match ($server->sync_status) {
+            ProxmoxServer::SYNC_SYNCED => 'همگام',
+            ProxmoxServer::SYNC_FAILED => 'همگام‌سازی ناموفق',
+            default => 'در انتظار همگام‌سازی',
+        };
 
-        $score = $this->percentage($online, $total);
-        $score -= min(35, ($offline * 10) + ($failedProvisioning * 5) + ($failedBackups * 3) + ($staleDeletes * 8));
-
-        return max(0, min(100, $score));
-    }
-
-    private function percentage(int|float $value, int|float $total): int
-    {
-        if ($total <= 0) {
-            return 0;
-        }
-
-        return max(0, min(100, (int) round(($value / $total) * 100)));
+        return $connection.' · '.$sync;
     }
 }

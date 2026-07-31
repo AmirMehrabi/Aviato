@@ -109,6 +109,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
     Route::middleware('auth:admin')->group(function () use ($adminHome) {
         Route::get($adminHome, AdminDashboardController::class)->name('admin.dashboard');
+        Route::post('dashboard/warnings/dismiss', [AdminDashboardController::class, 'dismissWarning'])
+            ->name('admin.dashboard.warnings.dismiss');
+        Route::delete('dashboard/warnings/dismissals', [AdminDashboardController::class, 'restoreWarnings'])
+            ->name('admin.dashboard.warnings.restore');
         Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])
             ->name('admin.notifications.mark-all-read');
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])
