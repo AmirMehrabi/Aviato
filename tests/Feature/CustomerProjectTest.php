@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\ProjectMember;
+use App\Models\ProxmoxServer;
 use App\Models\User;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
@@ -298,8 +299,73 @@ class CustomerProjectTest extends TestCase
             ->assertOk()
             ->assertSee('فضای کاری فعال')
             ->assertSee('Production Servers')
-            ->assertSee('این داشبورد، ماشین‌ها، هزینه‌ها و دسترسی‌های مربوط به همین فضا را نمایش می‌دهد.')
+            ->assertSee('هنوز ماشینی ندارید')
             ->assertSee('مدیریت فضاهای کاری');
+    }
+
+    public function test_dashboard_prioritizes_vm_status_and_console_actions(): void
+    {
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $customer->wallet()->update(['balance' => 1000000]);
+        $server = ProxmoxServer::create([
+            'name' => 'Dashboard Proxmox',
+            'datacenter' => 'THR-1',
+            'host' => 'pve.local',
+            'port' => 8006,
+            'realm' => 'pam',
+            'username' => 'root',
+            'api_token_id' => 'root@pam!panel',
+            'api_token_secret' => 'secret',
+            'verify_tls' => false,
+            'is_active' => true,
+            'maintenance_mode' => false,
+        ]);
+        $runningVm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'project_id' => $project->id,
+            'proxmox_server_id' => $server->id,
+            'vmid' => 101,
+            'name' => 'dashboard-running-vm',
+            'hostname' => 'dashboard-running-vm',
+            'node' => 'pve1',
+            'ip_address' => '192.168.10.10',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+        VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'project_id' => $project->id,
+            'proxmox_server_id' => $server->id,
+            'vmid' => 102,
+            'name' => 'dashboard-stopped-vm',
+            'hostname' => 'dashboard-stopped-vm',
+            'node' => 'pve1',
+            'ip_address' => '192.168.10.11',
+            'cpu_cores' => 4,
+            'ram_gb' => 8,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_STOPPED,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        $this->actingAs($customer, 'customer')
+            ->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertSee('ماشین‌های من')
+            ->assertSee('dashboard-running-vm')
+            ->assertSee('dashboard-stopped-vm')
+            ->assertSee('باز کردن کنسول')
+            ->assertSee(route('customer.servers.console.show', $runningVm, false))
+            ->assertSee('خاموش')
+            ->assertSee('مدیریت ماشین')
+            ->assertSee('شارژ کیف پول')
+            ->assertDontSee('آخرین تراکنش ها');
     }
 
     public function test_project_member_can_see_project_vm_but_non_member_cannot_guess_it(): void

@@ -373,7 +373,7 @@
                     </div>
 
                     <div class="flex shrink-0 items-center gap-2">
-                        @if ($canManageVms)
+                        @if ($canManageVms && ! View::hasSection('primary_actions_in_content'))
                         <a href="{{ route('customer.servers.create', [], false) }}" class="group inline-flex size-11 items-center justify-center rounded-xl border border-[#00A67E]/20 bg-[#00A67E] text-white shadow-lg shadow-[#00A67E]/20 transition hover:-translate-y-0.5 hover:bg-[#008F6E] hover:shadow-[#00A67E]/30 sm:w-auto sm:px-3.5" aria-label="ساخت ماشین">
                             <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
@@ -382,7 +382,7 @@
                         </a>
                         @endif
 
-                        @if($canViewBilling)
+                        @if($canViewBilling && ! View::hasSection('primary_actions_in_content'))
                         <div class="relative">
                             <button
                                 type="button"
@@ -520,8 +520,14 @@
             </div>
 
             <div class="px-4 pb-8 pt-4 md:px-6 lg:px-8">
-                <div class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-                    <div class="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                @hasSection('compact_header')
+                    <div class="mb-4 flex min-w-0 flex-col gap-1">
+                        <h1 class="text-xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
+                        <p class="text-sm leading-6 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>
+                    </div>
+                @else
+                    <div class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                        <div class="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                         <div class="min-w-0">
                             <nav class="flex flex-wrap items-center gap-2 text-xs font-black text-slate-400" aria-label="breadcrumb">
                                 <a href="{{ route('dashboard', [], false) }}" class="transition hover:text-[#0069FF]">کنسول ابری</a>
@@ -550,8 +556,9 @@
                         {{-- <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex w-fit shrink-0 items-center justify-center rounded-xl bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
                             ساخت ماشین
                         </a> --}}
+                        </div>
                     </div>
-                </div>
+                @endif
 
                 @if (session('status'))
                     <div class="mb-6 w-full rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>

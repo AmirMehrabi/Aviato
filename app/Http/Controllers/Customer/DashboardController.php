@@ -33,17 +33,8 @@ class DashboardController extends Controller
 
         $wallet = $this->wallets->walletFor($activeProject->owner);
         $virtualMachines = $canViewVms
-            ? $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks', 'infrastructureLocation', 'cloudImage'])->latest()->get()
+            ? $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks', 'proxmoxServer'])->latest()->get()
             : collect();
-        $transactions = $wallet->transactions()
-            ->where(function ($query) use ($activeProject): void {
-                $query->where('metadata->project_id', $activeProject->id)
-                    ->orWhereNull('metadata->project_id');
-            })
-            ->with('createdBy')
-            ->latest()
-            ->limit(5)
-            ->get();
         $monthlyCostFor = function (VirtualMachine $vm): int {
             if ($vm->isActionLocked()) {
                 return 0;
@@ -59,24 +50,27 @@ class DashboardController extends Controller
             'pending' => $virtualMachines->where('provisioning_status', VirtualMachine::PROVISION_PENDING)->count(),
             'failed' => $virtualMachines->where('provisioning_status', VirtualMachine::PROVISION_FAILED)->count(),
             'deleting' => $virtualMachines->where('status', VirtualMachine::STATUS_DELETING)->count(),
-            'monthly_spend' => $virtualMachines->sum($monthlyCostFor),
+            'monthly_spend' => $canViewBilling ? $virtualMachines->sum($monthlyCostFor) : 0,
             'unbilled_accrued' => 0,
         ];
-        $pendingUsage = $canViewVms
-            ? $virtualMachines
-                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
-                ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount'])
-            : $this->usageBilling->projectPendingUsage($activeProject->id);
+        $pendingUsage = ! $canViewBilling
+            ? 0
+            : ($canViewVms
+                ? $virtualMachines
+                    ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                    ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount'])
+                : $this->usageBilling->projectPendingUsage($activeProject->id));
         $summary['unbilled_accrued'] = $pendingUsage;
-        $latestInvoice = $activeProject->owner->invoices()
-            ->whereHas('items', function ($query) use ($activeProject): void {
-                $query->where('meta->project_id', $activeProject->id)
-                    ->orWhereNull('meta->project_id');
-            })
-            ->latest('period_start')
-            ->first();
+        $invoiceQuery = $canViewBilling
+            ? $activeProject->owner->invoices()
+                ->whereHas('items', function ($query) use ($activeProject): void {
+                    $query->where('meta->project_id', $activeProject->id)
+                        ->orWhereNull('meta->project_id');
+                })
+            : null;
+        $latestInvoice = $invoiceQuery ? (clone $invoiceQuery)->latest('period_start')->first() : null;
 
-        $vmRows = $virtualMachines->map(function (VirtualMachine $vm) use ($monthlyCostFor): array {
+        $vmRows = $virtualMachines->map(function (VirtualMachine $vm): array {
             $status = match ($vm->status) {
                 VirtualMachine::STATUS_RUNNING => 'روشن',
                 VirtualMachine::STATUS_STOPPED => 'خاموش',
@@ -86,7 +80,7 @@ class DashboardController extends Controller
             };
             $statusClass = match ($vm->status) {
                 VirtualMachine::STATUS_RUNNING => 'bg-emerald-50 text-emerald-700',
-                VirtualMachine::STATUS_SUSPENDED => 'bg-red-50 text-red-600',
+                VirtualMachine::STATUS_STOPPED, VirtualMachine::STATUS_SUSPENDED => 'bg-red-50 text-red-700',
                 VirtualMachine::STATUS_DELETING => 'bg-amber-50 text-amber-700',
                 default => 'bg-slate-100 text-slate-700',
             };
@@ -102,56 +96,45 @@ class DashboardController extends Controller
                 VirtualMachine::PROVISION_FAILED => 'bg-red-50 text-red-600',
                 default => 'bg-slate-100 text-slate-600',
             };
-            $monthlyCost = $monthlyCostFor($vm);
-            $extraDiskMonthlyCost = $vm->disks->where('status', VmDisk::STATUS_READY)
-                ->sum(fn ($disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth()));
             $needsAttention = $vm->provisioning_status === VirtualMachine::PROVISION_FAILED
                 || $vm->deleteAttemptIsStale()
                 || ($vm->isDeleting() && $vm->delete_failed_at !== null);
+            $consoleReady = $vm->isRunning()
+                && $vm->isProxmox()
+                && ! $vm->isLxc()
+                && $vm->proxmoxServer
+                && filled($vm->node)
+                && filled($vm->vmid)
+                && $vm->provisioning_status === VirtualMachine::PROVISION_READY
+                && ! $vm->isActionLocked();
 
             return [
-                'id' => $vm->uuid,
                 'name' => $vm->display_name,
                 'ip' => $vm->ip_address ?: 'بدون IP',
                 'hostname' => $vm->hostname ?: '-',
-                'region' => $vm->infrastructureLocation?->name ?: ($vm->node ?: 'نامشخص'),
-                'image' => $vm->cloudImage?->name ?: 'سیستم عامل نامشخص',
-                'plan' => $vm->bundle?->name ?: sprintf('%d vCPU / %dGB', $vm->cpu_cores, $vm->ram_gb),
                 'status' => $status,
                 'statusClass' => $statusClass,
                 'provisioningStatus' => $provisioningStatus,
                 'provisioningClass' => $provisioningClass,
-                'dot' => $vm->status === VirtualMachine::STATUS_RUNNING ? 'bg-emerald-500' : ($needsAttention ? 'bg-red-500' : 'bg-slate-400'),
+                'dot' => match ($vm->status) {
+                    VirtualMachine::STATUS_RUNNING => 'bg-emerald-500',
+                    VirtualMachine::STATUS_STOPPED, VirtualMachine::STATUS_SUSPENDED => 'bg-red-500',
+                    VirtualMachine::STATUS_DELETING => 'bg-amber-500',
+                    default => $needsAttention ? 'bg-red-500' : 'bg-slate-400',
+                },
                 'cpu' => $vm->cpu_cores.' هسته',
                 'ram' => $vm->ram_gb.' گیگ',
-                'disk' => $vm->disk_gb.' گیگ',
-                'extraDiskCount' => $vm->disks->where('status', VmDisk::STATUS_READY)->count(),
-                'extraDiskMonthlyCost' => $extraDiskMonthlyCost,
-                'cost' => $monthlyCost,
-                'billingHint' => $vm->isRunning() ? 'CPU و RAM فعال' : 'دیسک و IP پایدار',
                 'needsAttention' => $needsAttention,
-                'isLocked' => $vm->isActionLocked(),
+                'consoleReady' => $consoleReady,
                 'url' => route('customer.servers.show', $vm, false),
+                'consoleUrl' => route('customer.servers.console.show', $vm, false),
             ];
         })->sortByDesc(fn (array $vm): int => $vm['needsAttention'] ? 2 : ($vm['provisioningStatus'] === 'در حال آماده سازی' ? 1 : 0))->values();
 
         $dashboardStats = [
             'total' => $virtualMachines->count(),
-            'cpu' => $virtualMachines->sum('cpu_cores'),
-            'ram' => $virtualMachines->sum('ram_gb'),
-            'disk' => $virtualMachines->sum('disk_gb'),
-            'monthly_spend' => $vmRows->sum('cost'),
+            'monthly_spend' => $summary['monthly_spend'],
         ];
-
-        $notifications = [
-            ['title' => 'وضعیت کیف پول', 'body' => $wallet->balance < 0 ? 'کیف پول وارد محدوده بدهی شده است و بهتر است آن را شارژ کنید.' : 'کیف پول فعال است و تراکنش ها در لحظه ثبت می شوند.', 'tone' => $wallet->balance < 0 ? 'bg-red-500' : 'bg-emerald-500', 'url' => route('customer.wallet.show', ['topup' => 1], false), 'action' => $wallet->balance < 0 ? 'افزایش اعتبار' : 'مشاهده کیف پول'],
-            ['title' => 'آخرین صورتحساب', 'body' => $latestInvoice ? 'آخرین صورتحساب شما با شماره '.$latestInvoice->number.' آماده مشاهده است.' : 'هنوز صورتحساب ماهانه ای برای حساب شما صادر نشده است.', 'tone' => 'bg-amber-500', 'url' => $latestInvoice ? route('customer.invoices.show', $latestInvoice, false) : route('customer.invoices.index', [], false), 'action' => 'مشاهده صورتحساب'],
-        ];
-
-        if ($summary['failed'] > 0) {
-            $failedVm = $vmRows->first(fn (array $vm): bool => $vm['provisioningStatus'] === 'ناموفق');
-            $notifications[] = ['title' => 'نیازمند بررسی', 'body' => $summary['failed'].' ماشین آماده سازی ناموفق دارد.', 'tone' => 'bg-red-500', 'url' => $failedVm['url'] ?? route('customer.servers.index', [], false), 'action' => 'بررسی ماشین'];
-        }
 
         return view('customer.dashboard', [
             'customer' => $customer,
@@ -159,21 +142,13 @@ class DashboardController extends Controller
             'activeMembership' => $this->projects->membership($activeProject, $customer),
             'projects' => $this->projects->projectsFor($customer),
             'wallet' => $wallet,
-            'transactions' => $transactions,
             'wallets' => $this->wallets,
             'virtualMachines' => $virtualMachines,
             'summary' => $summary,
             'pendingUsage' => $pendingUsage,
             'vmRows' => $vmRows,
             'dashboardStats' => $dashboardStats,
-            'notifications' => $notifications,
             'latestInvoice' => $latestInvoice,
-            'invoiceCount' => $activeProject->owner->invoices()
-                ->whereHas('items', function ($query) use ($activeProject): void {
-                    $query->where('meta->project_id', $activeProject->id)
-                        ->orWhereNull('meta->project_id');
-                })
-                ->count(),
             'canViewVms' => $canViewVms,
             'canViewBilling' => $canViewBilling,
             'canManageVms' => $canManageVms,
