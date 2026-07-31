@@ -21,6 +21,38 @@
 @endsection
 
 @section('content')
+    @if($quotaBlock)
+        <section class="mx-auto max-w-3xl rounded-2xl border border-amber-200 bg-white p-6 shadow-sm shadow-slate-200/60 sm:p-8" aria-labelledby="quota-block-title">
+            <div class="flex size-12 items-center justify-center rounded-xl bg-amber-50 text-amber-700" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" class="size-6" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.7 2.8 17a2 2 0 0 0 1.74 3h14.92a2 2 0 0 0 1.74-3L13.7 3.7a2 2 0 0 0-3.4 0Z"/>
+                </svg>
+            </div>
+            <p class="mt-5 text-xs font-black text-amber-700">فضای کاری: {{ $activeProject->name }}</p>
+            <h1 id="quota-block-title" class="mt-2 text-2xl font-black text-slate-950">{{ $quotaBlock['title'] }}</h1>
+            <p class="mt-3 text-sm font-bold leading-8 text-slate-600">{{ $quotaBlock['message'] }}</p>
+
+            <dl class="mt-6 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                <div>
+                    <dt class="font-bold text-slate-500">مالک و مسئول سهمیه</dt>
+                    <dd class="mt-1 font-black text-slate-950">{{ $quotaOwner?->name ?: 'مالک فضای کاری' }}</dd>
+                </div>
+                <div>
+                    <dt class="font-bold text-slate-500">نقش شما</dt>
+                    <dd class="mt-1 font-black text-slate-950">{{ (int) $quotaOwner?->id === (int) $customer->id ? 'مالک' : 'عضو فضای کاری' }}</dd>
+                </div>
+            </dl>
+
+            <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+                @if($quotaBlock['show_profile_action'])
+                    <a href="{{ route('customer.profile.show', [], false) }}" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">تأیید کد ملی حساب</a>
+                @else
+                    <a href="{{ route('customer.projects.index', [], false) }}" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">انتخاب فضای کاری دیگر</a>
+                @endif
+                <a href="{{ route('dashboard', [], false) }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">بازگشت به داشبورد</a>
+            </div>
+        </section>
+    @else
     <section
         x-data="customerVmCreate({
             walletBalance: @js($wallet->balance),
@@ -348,6 +380,7 @@
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">دسترسی اولیه</span><span class="text-left font-black text-slate-950">قابل تنظیم هنگام ساخت</span></div>
                         <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3"><span class="font-bold text-slate-500">پلن</span><span class="text-left font-black text-slate-950" x-text="selectedBundle?.name || '—'"></span></div>
                         <div class="flex items-center justify-between gap-3"><span class="font-bold text-slate-500">منابع</span><span class="text-left font-black text-slate-950" dir="ltr" x-text="`${form.cpu_cores} CPU / ${form.ram_gb}GB / ${form.disk_gb}GB`"></span></div>
+                        <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3"><span class="font-bold text-slate-500">مسئول سهمیه و پرداخت</span><span class="text-left font-black text-slate-950">{{ $quotaOwner?->name ?: 'مالک فضای کاری' }}</span></div>
                     </div>
 
                     <div class="mt-4 rounded-2xl border border-[#D7E8FF] bg-white p-5 shadow-sm shadow-[#0069FF]/10">
@@ -373,19 +406,6 @@
                             <p class="text-xs font-black text-amber-800">ظرفیت IP محدود است</p>
                             <p class="mt-2 text-xs leading-6 text-amber-800">در حال حاضر IP آزاد برای این نسخه وجود ندارد. تا آزاد شدن یا اضافه شدن IP جدید، امکان ساخت ماشین مجازی وجود ندارد.</p>
                         </div>
-                        @if (! $quota['can_create'])
-                            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                                <p class="text-xs font-black text-amber-800">امکان ساخت ماشین مجازی جدید وجود ندارد</p>
-                                <p class="mt-2 text-xs leading-6 text-amber-800">
-                                    @if (! $quota['verified'])
-                                        برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.
-                                    @else
-                                        در حال حاضر ظرفیت ساخت ماشین مجازی برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.
-                                    @endif
-                                </p>
-                            </div>
-                        @endif
-
                     </div>
                 </div>
 
@@ -394,9 +414,10 @@
                         <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
                         <span x-text="submitting ? 'در حال ثبت درخواست...' : 'ساخت ماشین مجازی'"></span>
                     </button>
-                    <a x-show="walletNeedsTopUp" x-cloak :href="walletUrl" class="mt-3 inline-flex w-full justify-center rounded-xl border border-[#B8D6FF] bg-[#F2F8FF] px-4 py-3 text-sm font-black text-[#0069FF]">افزایش موجودی کیف پول</a>
-                    @if (! $quota['can_create'] && ! $quota['verified'])
-                        <a href="{{ route('customer.profile.show', [], false) }}" class="mt-3 inline-flex w-full justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">تایید کد ملی در پروفایل</a>
+                    @if($canViewBilling)
+                        <a x-show="walletNeedsTopUp" x-cloak :href="walletUrl" class="mt-3 inline-flex w-full justify-center rounded-xl border border-[#B8D6FF] bg-[#F2F8FF] px-4 py-3 text-sm font-black text-[#0069FF]">افزایش موجودی کیف پول</a>
+                    @else
+                        <p x-show="walletNeedsTopUp" x-cloak class="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-center text-xs font-bold leading-6 text-slate-600">موجودی این فضا را مالک یا عضو دارای دسترسی مالی مدیریت می‌کند.</p>
                     @endif
                 </div>
             </div>
@@ -705,4 +726,5 @@
         };
     }
     </script>
+    @endif
 @endsection

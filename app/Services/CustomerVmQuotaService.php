@@ -9,7 +9,7 @@ use App\Models\VirtualMachine;
 class CustomerVmQuotaService
 {
     /**
-     * @return array{verified: bool, limit: int, active_count: int, cooldown_count: int, used: int, remaining: int|null, cooldown_days: int, can_create: bool, message: string|null}
+     * @return array{verified: bool, limit: int, active_count: int, cooldown_count: int, used: int, remaining: int|null, cooldown_days: int, can_create: bool, blocking_code: string|null, message: string|null}
      */
     public function snapshot(Customer $customer): array
     {
@@ -24,6 +24,9 @@ class CustomerVmQuotaService
         $canCreate = $verified
             ? ($limit <= 0 || $used < $limit)
             : ($limit > 0 && $used < $limit);
+        $blockingCode = $canCreate
+            ? null
+            : ($verified ? 'verified_limit_reached' : 'owner_verification_required');
 
         return [
             'verified' => $verified,
@@ -34,6 +37,7 @@ class CustomerVmQuotaService
             'remaining' => $remaining,
             'cooldown_days' => $cooldownDays,
             'can_create' => $canCreate,
+            'blocking_code' => $blockingCode,
             'message' => $canCreate ? null : $this->blockedMessage($verified),
         ];
     }
@@ -56,9 +60,9 @@ class CustomerVmQuotaService
     private function blockedMessage(bool $verified): string
     {
         if ($verified) {
-            return 'در حال حاضر ظرفیت ساخت ماشین مجازی برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.';
+            return 'سقف ساخت ماشین مجازی برای مالک فضای کاری تکمیل شده است.';
         }
 
-        return 'برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.';
+        return 'تأیید کد ملی مالک فضای کاری برای ساخت ماشین مجازی بیشتر لازم است.';
     }
 }

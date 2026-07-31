@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\ProjectMember;
 use App\Models\VirtualMachine;
@@ -13,7 +14,7 @@ use Tests\TestCase;
 
 class PublicApiTest extends TestCase
 {
-    use RefreshDatabase, FundsCustomerWallet;
+    use FundsCustomerWallet, RefreshDatabase;
 
     public function test_customer_can_create_and_revoke_an_api_key(): void
     {
@@ -126,6 +127,23 @@ class PublicApiTest extends TestCase
         Sanctum::actingAs($customer, ['vm:create']);
         $this->getJson('/api/v1/projects/'.$project->uuid.'/virtual-machines')
             ->assertForbidden();
+    }
+
+    public function test_vm_options_exposes_stable_owner_quota_blocking_code(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 0, 'integer', 'customer');
+
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $token = $customer->createToken('VM reader', ['vm:read'])->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/projects/'.$project->uuid.'/virtual-machines/options')
+            ->assertOk()
+            ->assertJsonPath('data.can_create', false)
+            ->assertJsonPath('data.blocking_code', 'owner_verification_required')
+            ->assertJsonPath('data.quota.blocking_code', 'owner_verification_required')
+            ->assertJsonPath('data.blocking_reason', 'تأیید کد ملی مالک فضای کاری برای ساخت ماشین مجازی بیشتر لازم است.');
     }
 
     public function test_vm_list_and_detail_never_expose_passwords_or_cross_project_records(): void

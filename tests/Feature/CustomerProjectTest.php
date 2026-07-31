@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\ProjectMember;
+use App\Models\User;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
+use App\Models\VmTransfer;
 use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
 use Carbon\CarbonImmutable;
@@ -43,7 +45,7 @@ class CustomerProjectTest extends TestCase
 
         $project = $customer->ownedProjects()->where('name', 'Production Servers')->firstOrFail();
 
-        $response->assertRedirect($this->customerBaseUrl.'/projects/'.$project->uuid);
+        $response->assertRedirect($this->customerBaseUrl.'/dashboard');
         $response->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id);
         $this->assertDatabaseHas('project_members', [
             'project_id' => $project->id,
@@ -106,11 +108,174 @@ class CustomerProjectTest extends TestCase
 
         $this->post($this->customerBaseUrl.'/projects/switch', [
             'project_id' => $accessible->id,
-        ])->assertSessionHas(ProjectAccessService::SESSION_KEY, $accessible->id);
+        ])->assertRedirect($this->customerBaseUrl.'/dashboard')
+            ->assertSessionHas(ProjectAccessService::SESSION_KEY, $accessible->id);
 
         $this->post($this->customerBaseUrl.'/projects/switch', [
             'project_id' => $outsider->id,
         ])->assertNotFound();
+    }
+
+    public function test_opening_workspace_management_does_not_change_active_workspace(): void
+    {
+        $customer = Customer::factory()->create();
+        $default = $customer->ensureDefaultProject();
+        $managed = $customer->ownedProjects()->create([
+            'name' => 'Managed Workspace',
+            'slug' => 'managed-workspace',
+            'is_default' => false,
+        ]);
+        $managed->members()->create([
+            'customer_id' => $customer->id,
+            'role' => ProjectMember::ROLE_OWNER,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+
+        $this->withSession([ProjectAccessService::SESSION_KEY => $default->id])
+            ->get($this->customerBaseUrl.'/projects/'.$managed->uuid)
+            ->assertOk()
+            ->assertSee('در حال مدیریت یک فضای کاری غیرفعال هستید')
+            ->assertSessionHas(ProjectAccessService::SESSION_KEY, $default->id);
+    }
+
+    public function test_only_owner_can_set_default_without_switching_active_workspace(): void
+    {
+        $owner = Customer::factory()->create();
+        $admin = Customer::factory()->create();
+        $active = $owner->ensureDefaultProject();
+        $candidate = $owner->ownedProjects()->create([
+            'name' => 'New Default',
+            'slug' => 'new-default',
+            'is_default' => false,
+        ]);
+        $candidate->members()->create([
+            'customer_id' => $owner->id,
+            'role' => ProjectMember::ROLE_OWNER,
+        ]);
+        $candidate->members()->create([
+            'customer_id' => $admin->id,
+            'role' => ProjectMember::ROLE_ADMIN,
+        ]);
+
+        $this->actingAs($admin, 'customer');
+        $this->patch($this->customerBaseUrl.'/projects/'.$candidate->uuid.'/default')->assertNotFound();
+
+        $this->actingAs($owner, 'customer');
+        $this->withSession([ProjectAccessService::SESSION_KEY => $active->id])
+            ->patch($this->customerBaseUrl.'/projects/'.$candidate->uuid.'/default')
+            ->assertSessionHas(ProjectAccessService::SESSION_KEY, $active->id)
+            ->assertSessionHas('status');
+
+        $this->assertFalse($active->fresh()->is_default);
+        $this->assertTrue($candidate->fresh()->is_default);
+    }
+
+    public function test_owner_can_delete_empty_non_default_workspace_and_active_session_falls_back(): void
+    {
+        $owner = Customer::factory()->create();
+        $default = $owner->ensureDefaultProject();
+        $project = $owner->ownedProjects()->create([
+            'name' => 'Disposable Workspace',
+            'slug' => 'disposable-workspace',
+            'is_default' => false,
+        ]);
+        $project->members()->create([
+            'customer_id' => $owner->id,
+            'role' => ProjectMember::ROLE_OWNER,
+        ]);
+
+        $this->actingAs($owner, 'customer');
+        $this->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->delete($this->customerBaseUrl.'/projects/'.$project->uuid, [
+                'confirmation' => 'Disposable Workspace',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/projects')
+            ->assertSessionHas(ProjectAccessService::SESSION_KEY, $default->id);
+
+        $this->assertDatabaseMissing('projects', ['id' => $project->id]);
+    }
+
+    public function test_workspace_deletion_is_blocked_for_default_or_non_empty_workspace(): void
+    {
+        $owner = Customer::factory()->create();
+        $default = $owner->ensureDefaultProject();
+        $project = $owner->ownedProjects()->create([
+            'name' => 'Busy Workspace',
+            'slug' => 'busy-workspace',
+            'is_default' => false,
+        ]);
+        $project->members()->create([
+            'customer_id' => $owner->id,
+            'role' => ProjectMember::ROLE_OWNER,
+        ]);
+        VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'project_id' => $project->id,
+            'name' => 'busy-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+        ]);
+
+        $this->actingAs($owner, 'customer');
+        $this->delete($this->customerBaseUrl.'/projects/'.$default->uuid, [
+            'confirmation' => $default->name,
+        ])->assertSessionHasErrors('delete');
+        $this->delete($this->customerBaseUrl.'/projects/'.$project->uuid, [
+            'confirmation' => $project->name,
+        ])->assertSessionHasErrors('delete');
+
+        $this->assertDatabaseHas('projects', ['id' => $default->id]);
+        $this->assertDatabaseHas('projects', ['id' => $project->id]);
+    }
+
+    public function test_deleting_workspace_preserves_completed_transfer_history(): void
+    {
+        $owner = Customer::factory()->create();
+        $default = $owner->ensureDefaultProject();
+        $project = $owner->ownedProjects()->create([
+            'name' => 'Transferred Workspace',
+            'slug' => 'transferred-workspace',
+            'is_default' => false,
+        ]);
+        $project->members()->create([
+            'customer_id' => $owner->id,
+            'role' => ProjectMember::ROLE_OWNER,
+        ]);
+        $vm = VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'project_id' => $project->id,
+            'name' => 'transferred-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_DELETED,
+            'deleted_at' => now(),
+        ]);
+        $transfer = VmTransfer::create([
+            'virtual_machine_id' => $vm->id,
+            'from_customer_id' => $owner->id,
+            'to_customer_id' => $owner->id,
+            'from_project_id' => $project->id,
+            'to_project_id' => $default->id,
+            'initiated_by_user_id' => User::factory()->create()->id,
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($owner, 'customer');
+        $this->delete($this->customerBaseUrl.'/projects/'.$project->uuid, [
+            'confirmation' => $project->name,
+        ])->assertSessionHas('status');
+
+        $this->assertDatabaseHas('vm_transfers', [
+            'id' => $transfer->id,
+            'from_project_id' => null,
+            'to_project_id' => $default->id,
+        ]);
     }
 
     public function test_dashboard_explains_the_active_workspace_context(): void

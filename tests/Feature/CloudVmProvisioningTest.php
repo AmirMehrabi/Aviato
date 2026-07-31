@@ -10,10 +10,12 @@ use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\IpAddress;
 use App\Models\IpPool;
+use App\Models\ProjectMember;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\IpPoolService;
+use App\Services\ProjectAccessService;
 use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
@@ -24,7 +26,7 @@ use Tests\TestCase;
 
 class CloudVmProvisioningTest extends TestCase
 {
-    use RefreshDatabase, FundsCustomerWallet;
+    use FundsCustomerWallet, RefreshDatabase;
 
     private string $customerBaseUrl = 'https://cp.localhost';
 
@@ -560,12 +562,14 @@ class CloudVmProvisioningTest extends TestCase
                 'login_username' => 'ubuntu',
             ])
             ->assertRedirect($this->customerBaseUrl.'/servers/create')
-            ->assertSessionHas('error', 'برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.');
+            ->assertSessionHas('error', 'برای ادامه، کد ملی حساب خود را تأیید کنید.');
 
         $this->get($this->customerBaseUrl.'/servers/create')
             ->assertOk()
-            ->assertSee('برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.', false)
-            ->assertSee('تایید کد ملی در پروفایل', false);
+            ->assertSee('برای ساخت ماشین، تأیید حساب لازم است', false)
+            ->assertSee('برای ادامه، کد ملی حساب خود را تأیید کنید.', false)
+            ->assertSee('تأیید کد ملی حساب', false)
+            ->assertDontSee('customerVmCreate({', false);
 
         $this->get($this->customerBaseUrl.'/profile')
             ->assertOk()
@@ -780,11 +784,13 @@ class CloudVmProvisioningTest extends TestCase
         $this->actingAs($customer, 'customer');
         $this->get($this->customerBaseUrl.'/servers/create')
             ->assertOk()
-            ->assertSee('برای ساخت ماشین مجازی بیشتر، کد ملی‌تان را در پروفایل تایید کنید.', false)
-            ->assertSee('تایید کد ملی در پروفایل', false)
+            ->assertSee('برای ساخت ماشین، تأیید حساب لازم است', false)
+            ->assertSee('برای ادامه، کد ملی حساب خود را تأیید کنید.', false)
+            ->assertSee('تأیید کد ملی حساب', false)
             ->assertDontSee('quota.limit > 0', false)
             ->assertDontSee('حساب هنوز با کد ملی تایید نشده است.')
-            ->assertDontSee('هزینه اولیه ساخت');
+            ->assertDontSee('هزینه اولیه ساخت')
+            ->assertDontSee('customerVmCreate({', false);
     }
 
     public function test_create_page_shows_limited_availability_message_when_verified_customer_is_quota_blocked(): void
@@ -817,11 +823,40 @@ class CloudVmProvisioningTest extends TestCase
         $this->actingAs($customer, 'customer');
         $this->get($this->customerBaseUrl.'/servers/create')
             ->assertOk()
-            ->assertSee('در حال حاضر ظرفیت ساخت ماشین مجازی برای این حساب محدود است و امکان ساخت ماشین جدید وجود ندارد.', false)
-            ->assertDontSee('تایید کد ملی در پروفایل')
+            ->assertSee('سقف ساخت ماشین این فضای کاری تکمیل شده است', false)
+            ->assertSee('ظرفیت ساخت ماشین برای حساب مالک این فضای کاری تکمیل شده است.', false)
+            ->assertDontSee('تأیید کد ملی حساب')
             ->assertDontSee('quota.limit > 0', false)
             ->assertDontSee('حساب با کد ملی تایید شده است.')
-            ->assertDontSee('هزینه اولیه ساخت');
+            ->assertDontSee('هزینه اولیه ساخت')
+            ->assertDontSee('customerVmCreate({', false);
+    }
+
+    public function test_member_sees_owner_aware_verification_blocker_without_profile_action(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 0, 'integer', 'customer');
+
+        $owner = Customer::factory()->create(['name' => 'Workspace Owner']);
+        $member = Customer::factory()->create(['name' => 'Workspace Member']);
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $member->id,
+            'role' => ProjectMember::ROLE_MEMBER,
+        ]);
+        $owner->wallet()->update(['balance' => 10000000]);
+
+        $this->actingAs($member, 'customer');
+        $this->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/servers/create')
+            ->assertOk()
+            ->assertSee('این فضای کاری هنوز آماده ساخت ماشین نیست', false)
+            ->assertSee('Workspace Owner', false)
+            ->assertSee('حساب شما مشکلی ندارد و لازم نیست پروفایل خود را تغییر دهید.', false)
+            ->assertSee('انتخاب فضای کاری دیگر', false)
+            ->assertDontSee('تأیید کد ملی حساب', false)
+            ->assertDontSee('افزایش اعتبار', false)
+            ->assertDontSee('تراکنش ها', false)
+            ->assertDontSee('customerVmCreate({', false);
     }
 
     public function test_create_page_shows_wallet_top_up_message_only_as_a_blocker(): void

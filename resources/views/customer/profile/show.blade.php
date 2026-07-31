@@ -72,7 +72,11 @@
                             {{ $quota['limit'] > 0 ? $quota['used'].' / '.$quota['limit'] : ($quota['verified'] ? $quota['used'].' / بدون سقف' : 'نیازمند تایید') }}
                         </p>
                         @if ($quota['message'])
-                            <p class="mt-2 text-xs font-bold leading-6 text-red-600">{{ $quota['message'] }}</p>
+                            <p class="mt-2 text-xs font-bold leading-6 text-red-600">
+                                {{ $quota['blocking_code'] === 'owner_verification_required'
+                                    ? 'برای افزایش سقف ساخت ماشین مجازی، کد ملی حساب خود را تأیید کنید.'
+                                    : $quota['message'] }}
+                            </p>
                         @endif
                     </div>
                 </dl>

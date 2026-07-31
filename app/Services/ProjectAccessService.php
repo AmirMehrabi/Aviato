@@ -82,6 +82,21 @@ class ProjectAccessService
         return (bool) $this->membership($project, $customer)?->canManageMembers();
     }
 
+    public function canRenameProject(Project $project, Customer $customer): bool
+    {
+        return $this->canManageMembers($project, $customer);
+    }
+
+    public function canSetDefaultProject(Project $project, Customer $customer): bool
+    {
+        return (int) $project->owner_customer_id === (int) $customer->id;
+    }
+
+    public function canDeleteProject(Project $project, Customer $customer): bool
+    {
+        return (int) $project->owner_customer_id === (int) $customer->id;
+    }
+
     public function canViewBilling(Project $project, Customer $customer): bool
     {
         return (bool) $this->membership($project, $customer)?->canViewBilling();

@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Services\ProjectAccessService;
+use App\Services\ProjectLifecycleService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +19,7 @@ class ProjectController extends Controller
 {
     public function __construct(
         private readonly ProjectAccessService $projects,
+        private readonly ProjectLifecycleService $lifecycle,
         private readonly WalletService $wallets,
     ) {}
 
@@ -46,7 +48,7 @@ class ProjectController extends Controller
     {
         $customer = $request->user('customer');
         abort_unless($this->projects->membership($project->loadMissing(['members.customer', 'owner']), $customer), 404);
-        $this->projects->switch($request, $customer, $project);
+        $activeProject = $this->projects->activeProject($request, $customer);
         $visibleVirtualMachineCount = $this->projects->visibleVms($project, $customer)->count();
 
         return view('customer.projects.show', [
@@ -56,8 +58,12 @@ class ProjectController extends Controller
             'projects' => $this->projects->projectsFor($customer),
             'project' => $project->load(['owner', 'members.customer']),
             'visibleVirtualMachineCount' => $visibleVirtualMachineCount,
-            'activeProject' => $project,
-            'activeMembership' => $this->projects->membership($project, $customer),
+            'activeProject' => $activeProject,
+            'activeMembership' => $this->projects->membership($activeProject, $customer),
+            'projectMembership' => $this->projects->membership($project, $customer),
+            'deletionBlockers' => $this->projects->canDeleteProject($project, $customer)
+                ? $this->lifecycle->deletionBlockers($project, $customer)
+                : [],
             'invoiceCount' => $customer->invoices()->count(),
         ]);
     }
@@ -80,14 +86,14 @@ class ProjectController extends Controller
         ]);
         $this->projects->switch($request, $customer, $project);
 
-        return redirect()->route('customer.projects.show', $project)->with('status', 'فضای کاری ساخته شد.');
+        return redirect()->route('dashboard')->with('status', 'فضای کاری ساخته و فعال شد.');
     }
 
     public function update(Request $request, Project $project): RedirectResponse
     {
         $customer = $request->user('customer');
         $project->loadMissing(['members', 'owner']);
-        abort_unless($this->projects->canManageMembers($project, $customer), 404);
+        abort_unless($this->projects->canRenameProject($project, $customer), 404);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -98,7 +104,45 @@ class ProjectController extends Controller
             'slug' => $this->uniqueSlug($project->owner, $data['name'], $project),
         ]);
 
-        return back()->with('status', 'نام فضای کاری تغییر کرد.');
+        return redirect()->route('customer.projects.show', $project)->with('status', 'نام فضای کاری تغییر کرد.');
+    }
+
+    public function setDefault(Request $request, Project $project): RedirectResponse
+    {
+        $customer = $request->user('customer');
+        abort_unless($this->projects->canSetDefaultProject($project, $customer), 404);
+
+        $this->lifecycle->setDefault($project, $customer);
+
+        return redirect()->route('customer.projects.show', $project)
+            ->with('status', 'فضای کاری پیش‌فرض تغییر کرد.');
+    }
+
+    public function destroy(Request $request, Project $project): RedirectResponse
+    {
+        $customer = $request->user('customer');
+        abort_unless($this->projects->canDeleteProject($project, $customer), 404);
+
+        $request->validate([
+            'confirmation' => ['required', 'string', Rule::in([$project->name])],
+        ], [
+            'confirmation.in' => 'نام فضای کاری دقیقاً با نام فعلی آن یکسان نیست.',
+        ]);
+
+        $blockers = $this->lifecycle->deletionBlockers($project, $customer);
+        if ($blockers !== []) {
+            return redirect()->route('customer.projects.show', $project)
+                ->withErrors(['delete' => reset($blockers)]);
+        }
+
+        $wasActive = (int) $request->session()->get(ProjectAccessService::SESSION_KEY) === (int) $project->id;
+        $replacement = $this->lifecycle->delete($project, $customer);
+
+        if ($wasActive) {
+            $request->session()->put(ProjectAccessService::SESSION_KEY, $replacement->id);
+        }
+
+        return redirect()->route('customer.projects.index')->with('status', 'فضای کاری حذف شد.');
     }
 
     public function switch(Request $request): RedirectResponse
@@ -110,7 +154,7 @@ class ProjectController extends Controller
         $project = Project::query()->with('members')->findOrFail($data['project_id']);
         $this->projects->switch($request, $customer, $project);
 
-        return back()->with('status', 'فضای کاری فعال تغییر کرد.');
+        return redirect()->route('dashboard')->with('status', 'فضای کاری فعال تغییر کرد.');
     }
 
     public function storeMember(Request $request, Project $project): RedirectResponse

@@ -24,6 +24,7 @@
         $activeMembership = $activeMembership ?? $projectAccess->membership($activeProject, $customer);
         $canViewVms = $canViewVms ?? $projectAccess->canViewVms($activeProject, $customer);
         $canManageVms = $canManageVms ?? $projectAccess->canManageVms($activeProject, $customer);
+        $canViewBilling = $canViewBilling ?? $projectAccess->canViewBilling($activeProject, $customer);
         $workspaceRoleLabels = ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'];
         $activeWorkspaceRole = $workspaceRoleLabels[$activeMembership?->role ?? 'member'] ?? 'عضو';
         $customerInitial = mb_substr($customer->name ?? 'م', 0, 1);
@@ -48,8 +49,10 @@
             'حساب' => [
                 ['key' => 'profile', 'label' => 'پروفایل', 'route' => route('customer.profile.show', [], false), 'icon' => 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5 8a5 5 0 0 1 10 0'],
                 ['key' => 'tickets', 'label' => 'تیکت‌ها', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
-                ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M19 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6M16 13h5v4h-5a2 2 0 0 1 0-4Z'],
-                ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
+                ...($canViewBilling ? [
+                    ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M19 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6M16 13h5v4h-5a2 2 0 0 1 0-4Z'],
+                    ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
+                ] : []),
             ],
             ...(auth('customer')->check() && auth('customer')->user()->isReseller() ? [
                 'فروشندگی' => [
@@ -67,10 +70,13 @@
             ['title' => 'تیکت‌ها', 'description' => 'درخواست‌های پشتیبانی و پاسخ‌ها', 'url' => route('customer.tickets.index', [], false), 'type' => 'صفحه'],
             ['title' => 'تیکت جدید', 'description' => 'ثبت درخواست جدید برای پشتیبانی', 'url' => route('customer.tickets.create', [], false), 'type' => 'عملیات'],
             ['title' => 'پروفایل', 'description' => 'کد ملی، سطح حساب و سهمیه ساخت', 'url' => route('customer.profile.show', [], false), 'type' => 'صفحه'],
-            ['title' => 'کیف پول', 'description' => 'موجودی، تراکنش ها و افزایش اعتبار', 'url' => route('customer.wallet.show', [], false), 'type' => 'صفحه'],
-            ['title' => 'افزایش اعتبار', 'description' => 'شارژ سریع کیف پول', 'url' => route('customer.wallet.show', ['topup' => 1], false), 'type' => 'عملیات'],
-            ['title' => 'صورتحساب ها', 'description' => 'بایگانی و جزئیات فاکتورهای ماهانه', 'url' => route('customer.invoices.index', [], false), 'type' => 'صفحه'],
         ];
+
+        if ($canViewBilling) {
+            $searchBaseItems[] = ['title' => 'کیف پول', 'description' => 'موجودی، تراکنش ها و افزایش اعتبار', 'url' => route('customer.wallet.show', [], false), 'type' => 'صفحه'];
+            $searchBaseItems[] = ['title' => 'افزایش اعتبار', 'description' => 'شارژ سریع کیف پول', 'url' => route('customer.wallet.show', ['topup' => 1], false), 'type' => 'عملیات'];
+            $searchBaseItems[] = ['title' => 'صورتحساب ها', 'description' => 'بایگانی و جزئیات فاکتورهای ماهانه', 'url' => route('customer.invoices.index', [], false), 'type' => 'صفحه'];
+        }
 
         if ($canViewVms) {
             $searchBaseItems[] = ['title' => 'سرورها', 'description' => 'فهرست ماشین های ابری و وضعیت آنها', 'url' => route('customer.servers.index', [], false), 'type' => 'صفحه'];
@@ -84,7 +90,7 @@
         }
     @endphp
 
-    @if ($walletIsDepleted)
+    @if ($walletIsDepleted && $canViewBilling)
         <div class="border-b border-red-200 bg-red-50 px-4 py-3 text-red-900 sm:px-6 lg:px-8">
             <div class="mx-auto flex max-w-[1600px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div class="flex items-start gap-3">
@@ -231,7 +237,7 @@
                             <span class="min-w-0 flex-1">
                                 <span class="block text-[10px] font-black text-[#8FA6D2]">فضای کاری فعال</span>
                                 <span class="mt-1 block truncate text-sm font-black text-white">{{ $activeProject->name }}</span>
-                                <span class="mt-1 block truncate text-[10px] font-bold text-[#9DB4DC]">{{ $activeWorkspaceRole }} · اطلاعات این فضا</span>
+                                <span class="mt-1 block truncate text-[10px] font-bold text-[#9DB4DC]">{{ $activeWorkspaceRole }} · مالک: {{ $activeProject->owner?->name }}</span>
                             </span>
                             <svg class="mt-1 size-4 shrink-0 text-[#8FA6D2] transition" :class="workspaceOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -249,18 +255,20 @@
                                     $projectMembership = $project->members->firstWhere('customer_id', $customer->id);
                                     $projectRole = $workspaceRoleLabels[$projectMembership?->role ?? 'member'] ?? 'عضو';
                                     $isActiveWorkspace = (int) $activeProject->id === (int) $project->id;
+                                    $workspaceState = $isActiveWorkspace ? 'فضای فعال' : 'ورود به فضای کاری';
                                 @endphp
                                 <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
                                     @csrf
                                     <input type="hidden" name="project_id" value="{{ $project->id }}">
-                                    <button type="submit" @click="workspaceOpen = false" class="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-right transition {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
+                                    <button type="submit" @click="workspaceOpen = false" aria-label="{{ $workspaceState }} {{ $project->name }}" class="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
                                         <span class="grid size-8 shrink-0 place-items-center rounded-lg {{ $isActiveWorkspace ? 'bg-[#0069FF] text-white' : 'bg-slate-100 text-slate-500' }} text-xs font-black">{{ mb_substr($project->name, 0, 1) }}</span>
                                         <span class="min-w-0 flex-1">
                                             <span class="flex items-center gap-2">
                                                 <span class="truncate text-sm font-black text-slate-900">{{ $project->name }}</span>
                                                 @if($isActiveWorkspace)<span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-[#0069FF]">فعال</span>@endif
+                                                @if($project->is_default)<span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700">پیش‌فرض</span>@endif
                                             </span>
-                                            <span class="mt-1 block truncate text-[11px] font-bold text-slate-500">{{ $projectRole }} · {{ number_format($project->members_count ?? $project->members->count()) }} عضو</span>
+                                            <span class="mt-1 block truncate text-[11px] font-bold text-slate-500">نقش شما: {{ $projectRole }} · مالک: {{ $project->owner?->name }}</span>
                                         </span>
                                         @if($isActiveWorkspace)<span class="mt-1 text-sm font-black text-[#0069FF]" aria-hidden="true">✓</span>@endif
                                     </button>
@@ -308,6 +316,7 @@
             <div class="mt-5 border-t border-white/10 pt-4 lg:px-3">
                 <p class="px-3 text-[10px] font-black text-[#5F79AA]">مصرف</p>
                 <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
+                    @if($canViewBilling)
                     <div class="flex items-center justify-between gap-3">
                         <span class="text-xs font-bold text-[#9DB4DC]">موجودی</span>
                         <span class="rounded px-1.5 py-0.5 text-[10px] font-black {{ $wallet->is_locked ? 'bg-red-400/15 text-red-200' : 'bg-emerald-400/15 text-emerald-200' }}">{{ $wallet->is_locked ? 'قفل' : 'فعال' }}</span>
@@ -316,6 +325,10 @@
                     <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-3 inline-flex w-full items-center justify-center rounded-md bg-[#00A67E] px-3 py-2 text-sm font-black text-white transition hover:bg-[#008F6E]">
                         افزایش اعتبار
                     </a>
+                    @else
+                        <p class="text-xs font-black text-white">مدیریت مالی با مالک فضاست</p>
+                        <p class="mt-2 truncate text-[11px] font-bold text-[#9DB4DC]">{{ $activeProject->owner?->name }}</p>
+                    @endif
                 </div>
             </div>
 
@@ -369,6 +382,7 @@
                         </a>
                         @endif
 
+                        @if($canViewBilling)
                         <div class="relative">
                             <button
                                 type="button"
@@ -406,6 +420,7 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
 
                         <div class="relative">
                             <button
@@ -444,8 +459,10 @@
                                 <div class="mt-3 space-y-1">
                                     <a href="{{ route('dashboard', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">داشبورد</a>
                                     <a href="{{ route('customer.profile.show', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">پروفایل</a>
+                                    @if($canViewBilling)
                                     <a href="{{ route('customer.wallet.show', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">کیف پول</a>
                                     <a href="{{ route('customer.invoices.index', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">صورتحساب ها</a>
+                                    @endif
                                     <form method="POST" action="{{ route('customer.logout', [], false) }}" class="pt-2">
                                         @csrf
                                         <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-right text-sm font-black text-red-600 transition hover:bg-red-50">

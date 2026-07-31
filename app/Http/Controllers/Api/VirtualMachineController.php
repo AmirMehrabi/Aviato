@@ -76,6 +76,7 @@ class VirtualMachineController extends Controller
                 'wallet' => ['balance' => (int) $wallet->balance, 'currency' => AppSetting::currency(), 'display_amount' => $this->wallets->format((int) $wallet->balance)],
                 'quota' => $quota,
                 'can_create' => $this->projects->canManageVms($project, $customer) && $quota['can_create'] && ! $wallet->is_locked,
+                'blocking_code' => $wallet->is_locked ? 'wallet_locked' : $quota['blocking_code'],
                 'blocking_reason' => $wallet->is_locked ? ($wallet->lock_reason ?: 'Wallet is locked.') : ($quota['message'] ?? null),
             ],
             'meta' => ['request_id' => $request->attributes->get('api_request_id')],
@@ -131,7 +132,12 @@ class VirtualMachineController extends Controller
         $quota = $this->quota->snapshot($project->owner);
         $wallet = $this->wallets->walletFor($project->owner);
         if (! $quota['can_create']) {
-            return $this->error($quota['message'] ?: 'VM creation is not available.', 'quota_exceeded', 422);
+            return $this->error(
+                $quota['message'] ?: 'VM creation is not available.',
+                'quota_exceeded',
+                422,
+                ['blocking_code' => $quota['blocking_code']],
+            );
         }
         if ($wallet->is_locked) {
             return $this->error($wallet->lock_reason ?: 'The project wallet is locked.', 'wallet_locked', 422);
@@ -189,7 +195,7 @@ class VirtualMachineController extends Controller
             abort(404);
         }
 
-return $this->projects->visibleVms($project, $customer)->whereKey($vm->id)->firstOrFail();
+        return $this->projects->visibleVms($project, $customer)->whereKey($vm->id)->firstOrFail();
     }
 
     private function resolveLocation(CloudImage $image, ?int $id): ?InfrastructureLocation
@@ -216,7 +222,7 @@ return $this->projects->visibleVms($project, $customer)->whereKey($vm->id)->firs
             $nodes = collect([$image->node]);
         }
 
-return $nodes->sum(fn ($node) => $this->ipPools->availableCountFor((int) $image->proxmox_server_id, $node));
+        return $nodes->sum(fn ($node) => $this->ipPools->availableCountFor((int) $image->proxmox_server_id, $node));
     }
 
     private function effectivePrice(VmBundle $bundle, InfrastructureLocation $location): int
@@ -235,9 +241,15 @@ return $nodes->sum(fn ($node) => $this->ipPools->availableCountFor((int) $image-
         return max((int) ceil($price / 2), AppSetting::vmCreationChargeAmount($price));
     }
 
-    private function error(string $message, string $code, int $status): JsonResponse
+    /**
+     * @param  array<string, mixed>  $details
+     */
+    private function error(string $message, string $code, int $status, array $details = []): JsonResponse
     {
-        return response()->json(['error' => ['code' => $code, 'message' => $message], 'meta' => ['request_id' => request()->attributes->get('api_request_id')]], $status);
+        return response()->json([
+            'error' => array_merge(['code' => $code, 'message' => $message], $details),
+            'meta' => ['request_id' => request()->attributes->get('api_request_id')],
+        ], $status);
     }
 
     private function validationError($validator): JsonResponse

@@ -51,12 +51,12 @@
                             <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
                                 @csrf
                                 <input type="hidden" name="project_id" value="{{ $project->id }}">
-                                <button class="rounded-lg bg-[#031B4E] px-4 py-2 text-sm font-black text-white transition hover:bg-[#0A2A66]">فعال کردن</button>
+                                <button class="rounded-lg bg-[#031B4E] px-4 py-2 text-sm font-black text-white transition hover:bg-[#0A2A66] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">ورود به فضای کاری</button>
                             </form>
                         @endunless
-                        <a href="{{ route('customer.projects.show', $project, false) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50">باز کردن</a>
+                        <a href="{{ route('customer.projects.show', $project, false) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">مدیریت</a>
                         @if($isActive)
-                            <span class="rounded-lg bg-[#EBF3FF] px-4 py-2 text-sm font-black text-[#0069FF]">فعال</span>
+                            <span class="rounded-lg bg-[#EBF3FF] px-4 py-2 text-sm font-black text-[#0069FF]">فضای فعال</span>
                         @endif
                     </div>
                 </article>

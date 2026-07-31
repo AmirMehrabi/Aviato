@@ -11,12 +11,28 @@
 
 @php
     $activeNav = 'projects';
-    $canManageMembers = $activeMembership?->canManageMembers() ?? false;
+    $canManageMembers = $projectMembership?->canManageMembers() ?? false;
     $ownerPays = (int) $project->owner_customer_id === (int) $customer->id;
+    $isOwner = $ownerPays;
+    $isActive = (int) $activeProject->id === (int) $project->id;
     $roleLabels = ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'];
 @endphp
 
 @section('content')
+    @unless($isActive)
+        <section class="mb-5 flex flex-col gap-4 rounded-lg border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="inactive-workspace-title">
+            <div>
+                <h2 id="inactive-workspace-title" class="font-black text-amber-950">در حال مدیریت یک فضای کاری غیرفعال هستید</h2>
+                <p class="mt-1 text-sm font-bold leading-7 text-amber-800">تغییرات این صفحه برای «{{ $project->name }}» ذخیره می‌شود، اما منابع منو هنوز مربوط به «{{ $activeProject->name }}» است.</p>
+            </div>
+            <form method="POST" action="{{ route('customer.projects.switch', [], false) }}" class="shrink-0">
+                @csrf
+                <input type="hidden" name="project_id" value="{{ $project->id }}">
+                <button class="w-full rounded-lg bg-[#031B4E] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0A2A66] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] sm:w-auto">ورود به این فضای کاری</button>
+            </form>
+        </section>
+    @endunless
+
     <section class="grid gap-5 lg:grid-cols-4">
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <p class="text-xs font-black tracking-wide text-slate-500">مالک</p>
@@ -25,7 +41,7 @@
         </article>
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <p class="text-xs font-black tracking-wide text-slate-500">نقش شما</p>
-            <p class="mt-2 text-xl font-black text-slate-950">{{ $roleLabels[$activeMembership?->role ?? 'member'] ?? 'عضو' }}</p>
+            <p class="mt-2 text-xl font-black text-slate-950">{{ $roleLabels[$projectMembership?->role ?? 'member'] ?? 'عضو' }}</p>
             <p class="mt-1 text-sm font-bold text-slate-500">{{ $canManageMembers ? 'امکان مدیریت اعضا دارید' : 'دسترسی شما محدود است' }}</p>
         </article>
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
@@ -36,7 +52,11 @@
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <p class="text-xs font-black tracking-wide text-slate-500">ماشین‌ها</p>
             <p class="mt-2 text-xl font-black text-slate-950">{{ number_format($visibleVirtualMachineCount ?? $project->virtualMachines->count()) }}</p>
-            <a href="{{ route('customer.servers.index', [], false) }}" class="mt-1 inline-flex text-sm font-black text-[#0069FF]">مشاهده ماشین‌ها</a>
+            @if($isActive)
+                <a href="{{ route('customer.servers.index', [], false) }}" class="mt-1 inline-flex text-sm font-black text-[#0069FF]">مشاهده ماشین‌ها</a>
+            @else
+                <p class="mt-1 text-sm font-bold text-slate-500">برای مشاهده، ابتدا وارد این فضا شوید</p>
+            @endif
         </article>
     </section>
 
@@ -99,7 +119,62 @@
                 @else
                     <p class="mt-4 rounded-lg bg-slate-50 p-4 text-sm font-bold leading-7 text-slate-500">فقط مالک یا مدیر این فضای کاری می‌تواند نام آن را تغییر دهد.</p>
                 @endif
+
+                <div class="mt-5 border-t border-slate-100 pt-5">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 class="font-black text-slate-950">فضای کاری پیش‌فرض</h3>
+                            <p class="mt-1 text-sm font-bold leading-7 text-slate-500">پس از ورود، این فضا به‌صورت پیش‌فرض انتخاب می‌شود. تغییر آن، فضای فعال فعلی را عوض نمی‌کند.</p>
+                        </div>
+                        @if($project->is_default)
+                            <span class="w-fit shrink-0 rounded-lg bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">پیش‌فرض</span>
+                        @elseif($isOwner)
+                            <form method="POST" action="{{ route('customer.projects.default', $project, false) }}">
+                                @csrf
+                                @method('PATCH')
+                                <button class="rounded-lg border border-[#0069FF] px-4 py-2 text-sm font-black text-[#0069FF] transition hover:bg-[#EBF3FF]">انتخاب به‌عنوان پیش‌فرض</button>
+                            </form>
+                        @else
+                            <span class="text-sm font-bold text-slate-500">فقط مالک می‌تواند این گزینه را تغییر دهد.</span>
+                        @endif
+                    </div>
+                </div>
             </div>
+
+            @if($isOwner)
+                <div class="rounded-lg border border-red-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                    <h2 class="text-lg font-black text-red-700">حذف فضای کاری</h2>
+                    <p class="mt-2 text-sm font-bold leading-7 text-slate-600">حذف دائمی است. فقط فضای کاری غیرپیش‌فرض و خالی را می‌توانید حذف کنید؛ سوابق مالی و انتقال‌های تکمیل‌شده حفظ می‌شوند.</p>
+
+                    @if($deletionBlockers !== [])
+                        <div class="mt-4 rounded-lg bg-red-50 p-4" role="status">
+                            <p class="text-sm font-black text-red-800">این فضای کاری اکنون قابل حذف نیست:</p>
+                            <ul class="mt-2 list-inside list-disc space-y-1 text-sm font-bold leading-7 text-red-700">
+                                @foreach($deletionBlockers as $blocker)
+                                    <li>{{ $blocker }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @else
+                        <form method="POST" action="{{ route('customer.projects.destroy', $project, false) }}" class="mt-4" onsubmit="return confirm('فضای کاری «{{ addslashes($project->name) }}» برای همیشه حذف شود؟')">
+                            @csrf
+                            @method('DELETE')
+                            <label class="block">
+                                <span class="text-sm font-black text-slate-700">برای تأیید، نام «{{ $project->name }}» را وارد کنید</span>
+                                <input name="confirmation" autocomplete="off" class="mt-2 w-full rounded-xl border border-red-200 px-4 py-3 focus:border-red-500 focus:outline-none" aria-describedby="delete-workspace-help">
+                            </label>
+                            <p id="delete-workspace-help" class="mt-2 text-xs font-bold text-slate-500">نام باید دقیقاً یکسان باشد.</p>
+                            @error('delete')
+                                <p class="mt-2 text-sm font-bold text-red-600" role="alert">{{ $message }}</p>
+                            @enderror
+                            @error('confirmation')
+                                <p class="mt-2 text-sm font-bold text-red-600" role="alert">{{ $message }}</p>
+                            @enderror
+                            <button class="mt-4 rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">حذف دائمی فضای کاری</button>
+                        </form>
+                    @endif
+                </div>
+            @endif
         </div>
 
         <aside class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">

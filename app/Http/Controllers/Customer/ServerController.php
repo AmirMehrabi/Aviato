@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Jobs\RebuildCloudVirtualMachine;
 use App\Models\AppSetting;
 use App\Models\CloudImage;
+use App\Models\Customer;
 use App\Models\InfrastructureLocation;
+use App\Models\Project;
 use App\Models\ProxmoxServer;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
@@ -235,6 +237,7 @@ class ServerController extends Controller
         abort_unless($this->projects->canManageVms($activeProject, $customer), 404);
         $quota = $this->quota->snapshot($activeProject->owner);
         $wallet = $this->wallets->walletFor($activeProject->owner);
+        $quotaBlock = $this->quotaBlock($activeProject, $customer, $quota);
         $this->syncProxmoxLocations();
         $locations = InfrastructureLocation::query()
             ->with(['proxmoxServer', 'hetznerAccount', 'bundleMappings' => fn ($query) => $query->where('is_active', true)])
@@ -260,6 +263,9 @@ class ServerController extends Controller
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'quota' => $quota,
+            'quotaBlock' => $quotaBlock,
+            'quotaOwner' => $activeProject->owner,
+            'canViewBilling' => $this->projects->canViewBilling($activeProject, $customer),
             'bundles' => VmBundle::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')
@@ -342,7 +348,7 @@ class ServerController extends Controller
         if (! $quota['can_create']) {
             return back()
                 ->withInput($this->safeCreateInput($request))
-                ->with('error', $quota['message'] ?? 'ساخت ماشین مجازی برای این حساب فعلا مجاز نیست.');
+                ->with('error', $this->quotaBlock($activeProject, $customer, $quota)['message']);
         }
 
         if ($wallet->is_locked) {
@@ -399,6 +405,44 @@ class ServerController extends Controller
                 ->withInput($this->safeCreateInput($request))
                 ->with('error', 'ساخت ماشین مجازی ممکن نیست. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
+    }
+
+    /**
+     * @param  array{blocking_code: string|null, can_create: bool}  $quota
+     * @return array{title: string, message: string, show_profile_action: bool}|null
+     */
+    private function quotaBlock(Project $project, Customer $viewer, array $quota): ?array
+    {
+        if ($quota['can_create']) {
+            return null;
+        }
+
+        $isOwner = (int) $project->owner_customer_id === (int) $viewer->id;
+        $verificationRequired = $quota['blocking_code'] === 'owner_verification_required';
+
+        if ($verificationRequired && $isOwner) {
+            return [
+                'title' => 'برای ساخت ماشین، تأیید حساب لازم است',
+                'message' => 'برای ادامه، کد ملی حساب خود را تأیید کنید.',
+                'show_profile_action' => true,
+            ];
+        }
+
+        if ($verificationRequired) {
+            $ownerName = $project->owner?->name ?: 'مالک فضای کاری';
+
+            return [
+                'title' => 'این فضای کاری هنوز آماده ساخت ماشین نیست',
+                'message' => "سقف ساخت ماشین «{$project->name}» به حساب مالک آن، {$ownerName}، وابسته است. مالک فضای کاری باید کد ملی حساب خود را تأیید کند. حساب شما مشکلی ندارد و لازم نیست پروفایل خود را تغییر دهید.",
+                'show_profile_action' => false,
+            ];
+        }
+
+        return [
+            'title' => 'سقف ساخت ماشین این فضای کاری تکمیل شده است',
+            'message' => 'ظرفیت ساخت ماشین برای حساب مالک این فضای کاری تکمیل شده است. برای ادامه با مالک فضای کاری هماهنگ کنید یا فضای کاری دیگری را انتخاب کنید.',
+            'show_profile_action' => false,
+        ];
     }
 
     private function availableImageIpCount(CloudImage $image): int
