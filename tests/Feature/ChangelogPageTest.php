@@ -11,6 +11,8 @@ class ChangelogPageTest extends TestCase
     {
         $this->get('/changelog')
             ->assertOk()
+            ->assertSee('نسخه 0.9.9')
+            ->assertSee('پنج‌شنبه پانزدهم مرداد ۱۴۰۵')
             ->assertSee('نسخه 0.8.5')
             ->assertSee('نسخه 0.8.6');
     }
