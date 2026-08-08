@@ -26,6 +26,7 @@
         </header>
         
 
+
         <section class="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5" aria-label="خلاصه وضعیت">
             @foreach ($statusStrip as $item)
                 @php
