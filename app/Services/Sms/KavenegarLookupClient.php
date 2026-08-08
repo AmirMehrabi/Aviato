@@ -9,6 +9,13 @@ use Throwable;
 
 class KavenegarLookupClient
 {
+    public static function nameToken(string $name): string
+    {
+        $parts = preg_split('/\s+/u', trim($name), 2);
+
+        return $parts[0] ?? '';
+    }
+
     public function sendVerificationCode(string $phone, string $code): void
     {
         $apiKey = (string) AppSetting::getValue(AppSetting::KAVENEGAR_API_KEY, '');

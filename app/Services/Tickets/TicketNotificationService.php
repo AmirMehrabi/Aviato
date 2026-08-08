@@ -100,7 +100,7 @@ class TicketNotificationService
                 $phone,
                 (string) AppSetting::getValue($templateSettingKey, ''),
                 $ticket->number,
-                $token2,
+                KavenegarLookupClient::nameToken($token2),
                 $token3,
             );
         } catch (Throwable $exception) {

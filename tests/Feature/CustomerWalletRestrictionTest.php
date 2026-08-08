@@ -32,7 +32,11 @@ class CustomerWalletRestrictionTest extends TestCase
 
     public function test_threshold_balance_sends_notification_without_locking_wallet_access(): void
     {
-        $customer = Customer::factory()->create(['phone' => '09123456789']);
+        $customer = Customer::factory()->create([
+            'name' => 'علی رضایی',
+            'first_name' => '',
+            'phone' => '09123456789',
+        ]);
         $customer->wallet()->update(['balance' => 750000]);
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_THRESHOLD, 750000, 'integer', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, true, 'boolean', 'billing');
@@ -42,7 +46,7 @@ class CustomerWalletRestrictionTest extends TestCase
         $client = Mockery::mock(KavenegarLookupClient::class);
         $client->shouldReceive('sendLookup')
             ->once()
-            ->with('09123456789', 'wallet-alert', Mockery::type('string'));
+            ->with('09123456789', 'wallet-alert', 'علی');
         $this->app->instance(KavenegarLookupClient::class, $client);
 
         app(CustomerWalletAlertService::class)->handleWalletBalanceChange($customer);
