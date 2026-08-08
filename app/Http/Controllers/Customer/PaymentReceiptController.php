@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
 use App\Models\Payment;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
@@ -42,6 +43,7 @@ class PaymentReceiptController extends Controller
             'wallets' => $this->wallets,
             'payment' => $payment,
             'gatewayLabel' => $this->gateways->labelFor($payment->provider),
+            'company' => AppSetting::companyProfile(),
         ]);
     }
 }

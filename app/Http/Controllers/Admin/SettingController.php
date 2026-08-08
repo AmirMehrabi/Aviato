@@ -248,6 +248,21 @@ class SettingController extends Controller
 
     private function persistSection(string $section, array $data): void
     {
+        if ($section === 'general') {
+            $company = AppSetting::companyProfile();
+            $data += [
+                'company_name' => $company['name'],
+                'company_national_id' => $company['national_id'],
+                'company_registration_number' => $company['registration_number'],
+                'company_economic_code' => $company['economic_code'],
+                'company_phone' => $company['phone'],
+                'company_email' => $company['email'],
+                'company_address' => $company['address'],
+                'company_postal_code' => $company['postal_code'],
+            ];
+            $data['company_name'] = trim((string) $data['company_name']) ?: (string) config('app.name', 'آویاتو');
+        }
+
         $definitions = [
             'general' => [
                 ['currency', AppSetting::BILLING_CURRENCY, 'string', 'billing'],

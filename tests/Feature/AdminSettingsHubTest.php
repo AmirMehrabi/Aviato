@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\AppSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminSettingsHubTest extends TestCase
@@ -43,6 +45,36 @@ class AdminSettingsHubTest extends TestCase
             ->assertSessionHas('status');
 
         $this->assertSame('USD', AppSetting::currency());
+    }
+
+    public function test_admin_can_configure_company_identity_and_receipt_logo(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin, 'admin')
+            ->patch('https://admin.localhost/settings/general', [
+                'currency' => 'IRR',
+                'company_name' => 'شرکت زیرساخت ابری آویاتو',
+                'company_logo' => UploadedFile::fake()->image('aviato-logo.png', 400, 160),
+                'company_national_id' => '14001234567',
+                'company_registration_number' => '123456',
+                'company_economic_code' => '411111111111',
+                'company_phone' => '02112345678',
+                'company_email' => 'billing@aviato.ir',
+                'company_address' => 'تهران، خیابان نمونه، پلاک ۱',
+                'company_postal_code' => '1234567890',
+            ])
+            ->assertRedirect('https://admin.localhost/settings/general')
+            ->assertSessionHas('status');
+
+        $profile = AppSetting::companyProfile();
+
+        $this->assertSame('شرکت زیرساخت ابری آویاتو', $profile['name']);
+        $this->assertSame('14001234567', $profile['national_id']);
+        $this->assertSame('billing@aviato.ir', $profile['email']);
+        $this->assertStringContainsString('/storage/company/', $profile['logo_url']);
+        Storage::disk('public')->assertExists(AppSetting::getValue(AppSetting::COMPANY_LOGO_PATH));
     }
 
     public function test_payment_section_preserves_secret_when_password_is_blank(): void

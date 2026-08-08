@@ -136,6 +136,10 @@ class CustomerWalletBillingTest extends TestCase
     public function test_customer_can_view_successful_payment_receipt_from_wallet_and_receipts_tab(): void
     {
         $customer = Customer::factory()->create();
+        AppSetting::setValue(AppSetting::COMPANY_NAME, 'شرکت زیرساخت ابری آویاتو', 'string', 'company');
+        AppSetting::setValue(AppSetting::COMPANY_NATIONAL_ID, '14001234567', 'string', 'company');
+        AppSetting::setValue(AppSetting::COMPANY_PHONE, '02112345678', 'string', 'company');
+        AppSetting::setValue(AppSetting::COMPANY_ADDRESS, 'تهران، خیابان نمونه، پلاک ۱', 'string', 'company');
         $wallet = $customer->wallet()->firstOrFail();
         $paidAt = CarbonImmutable::parse('2026-08-08 10:30:00', 'Asia/Tehran');
         $payment = Payment::create([
@@ -204,6 +208,10 @@ class CustomerWalletBillingTest extends TestCase
             ->assertSee('RECEIPT-REF-1')
             ->assertSee('RECEIPT-AUTH-1')
             ->assertSee('چاپ یا ذخیره PDF')
+            ->assertSee('شرکت زیرساخت ابری آویاتو')
+            ->assertSee('14001234567')
+            ->assertSee('مشخصات دارنده کیف پول')
+            ->assertSee('جمع مبلغ پرداخت‌شده')
             ->assertSee(Jalali::format($paidAt));
 
         $this->get($this->customerBaseUrl.'/wallet')
