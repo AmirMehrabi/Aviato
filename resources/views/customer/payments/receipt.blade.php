@@ -84,7 +84,6 @@
                         <thead class="bg-slate-100 text-xs font-black text-slate-600">
                             <tr>
                                 <th class="border-l border-slate-300 px-3 py-3">تاریخ پرداخت</th>
-                                <th class="border-l border-slate-300 px-3 py-3">درگاه</th>
                                 <th class="border-l border-slate-300 px-3 py-3">شماره مرجع درگاه</th>
                                 <th class="px-3 py-3">شناسه پرداخت</th>
                             </tr>
@@ -92,7 +91,6 @@
                         <tbody>
                             <tr class="font-bold text-slate-900">
                                 <td class="border-l border-t border-slate-300 px-3 py-3" dir="ltr">{{ \App\Support\Jalali::format($payment->paid_at) }}</td>
-                                <td class="border-l border-t border-slate-300 px-3 py-3">{{ $gatewayLabel }}</td>
                                 <td class="border-l border-t border-slate-300 px-3 py-3 font-mono" dir="ltr">{{ $payment->provider_reference ?: '—' }}</td>
                                 <td class="border-t border-slate-300 px-3 py-3 font-mono" dir="ltr">{{ $payment->authority ?: '—' }}</td>
                             </tr>

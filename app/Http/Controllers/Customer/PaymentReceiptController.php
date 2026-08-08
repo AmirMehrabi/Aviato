@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Payment;
-use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -16,7 +15,6 @@ class PaymentReceiptController extends Controller
     public function __construct(
         private readonly WalletService $wallets,
         private readonly ProjectAccessService $projects,
-        private readonly PaymentGatewayManager $gateways,
     ) {}
 
     public function show(Request $request, Payment $payment): View
@@ -42,7 +40,6 @@ class PaymentReceiptController extends Controller
             'wallet' => $this->wallets->walletFor($activeProject->owner),
             'wallets' => $this->wallets,
             'payment' => $payment,
-            'gatewayLabel' => $this->gateways->labelFor($payment->provider),
             'company' => AppSetting::companyProfile(),
         ]);
     }
