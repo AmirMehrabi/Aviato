@@ -107,6 +107,7 @@ class SettingController extends Controller
         return [
             'currency' => AppSetting::currency(),
             'currencies' => AppSetting::supportedCurrencies(),
+            'companyProfile' => AppSetting::companyProfile(),
             'verificationMode' => AppSetting::customerVerificationMode(),
             'verificationModes' => AppSetting::customerVerificationModes(),
             'nationalCodeVerificationEnabled' => AppSetting::nationalCodeVerificationEnabled(),
@@ -178,6 +179,15 @@ class SettingController extends Controller
         return match ($section) {
             'general' => [
                 'currency' => ['required', 'string', Rule::in(array_keys(AppSetting::supportedCurrencies()))],
+                'company_name' => ['nullable', 'string', 'max:255'],
+                'company_logo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+                'company_national_id' => ['nullable', 'string', 'max:50'],
+                'company_registration_number' => ['nullable', 'string', 'max:50'],
+                'company_economic_code' => ['nullable', 'string', 'max:50'],
+                'company_phone' => ['nullable', 'string', 'max:50'],
+                'company_email' => ['nullable', 'email', 'max:255'],
+                'company_address' => ['nullable', 'string', 'max:1000'],
+                'company_postal_code' => ['nullable', 'string', 'max:30'],
             ],
             'billing' => [
                 'tax_enabled' => ['required', 'boolean'],
@@ -239,7 +249,17 @@ class SettingController extends Controller
     private function persistSection(string $section, array $data): void
     {
         $definitions = [
-            'general' => [['currency', AppSetting::BILLING_CURRENCY, 'string', 'billing']],
+            'general' => [
+                ['currency', AppSetting::BILLING_CURRENCY, 'string', 'billing'],
+                ['company_name', AppSetting::COMPANY_NAME, 'string', 'company'],
+                ['company_national_id', AppSetting::COMPANY_NATIONAL_ID, 'string', 'company'],
+                ['company_registration_number', AppSetting::COMPANY_REGISTRATION_NUMBER, 'string', 'company'],
+                ['company_economic_code', AppSetting::COMPANY_ECONOMIC_CODE, 'string', 'company'],
+                ['company_phone', AppSetting::COMPANY_PHONE, 'string', 'company'],
+                ['company_email', AppSetting::COMPANY_EMAIL, 'string', 'company'],
+                ['company_address', AppSetting::COMPANY_ADDRESS, 'string', 'company'],
+                ['company_postal_code', AppSetting::COMPANY_POSTAL_CODE, 'string', 'company'],
+            ],
             'billing' => [
                 ['tax_enabled', AppSetting::TAX_ENABLED, 'boolean', 'billing'], ['tax_rate_percentage', AppSetting::TAX_RATE_PERCENTAGE, 'float', 'billing'],
                 ['vm_creation_charge_enabled', AppSetting::VM_CREATION_CHARGE_ENABLED, 'boolean', 'billing'], ['vm_creation_charge_percentage', AppSetting::VM_CREATION_CHARGE_PERCENTAGE, 'float', 'billing'],
@@ -254,6 +274,15 @@ class SettingController extends Controller
 
         foreach ($definitions[$section] ?? [] as [$field, $key, $type, $group]) {
             AppSetting::setValue($key, $data[$field] ?? false, $type, $group);
+        }
+
+        if ($section === 'general' && isset($data['company_logo'])) {
+            AppSetting::setValue(
+                AppSetting::COMPANY_LOGO_PATH,
+                $data['company_logo']->store('company', 'public'),
+                'string',
+                'company',
+            );
         }
 
         foreach (['sms0098_password' => [AppSetting::SMS0098_PASSWORD, 'sms0098'], 'kavenegar_api_key' => [AppSetting::KAVENEGAR_API_KEY, 'kavenegar'], 'smtp_password' => [AppSetting::SMTP_PASSWORD, 'smtp'], 'mellat_password' => [AppSetting::MELLAT_PASSWORD, 'payment'], 'hesabro_client_secret' => [AppSetting::HESABRO_CLIENT_SECRET, 'payment'], 'national_code_verification_token' => [AppSetting::NATIONAL_CODE_VERIFICATION_TOKEN, 'customer']] as $field => [$key, $group]) {

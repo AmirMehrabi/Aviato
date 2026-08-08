@@ -15,7 +15,7 @@
             <h1 class="mt-2 text-2xl font-black text-slate-950">{{ $sectionMeta['title'] }}</h1>
             <p class="mt-2 text-sm leading-7 text-slate-500">{{ $sectionMeta['description'] }}</p>
 
-            <form method="POST" action="{{ route('admin.settings.section.update', $section) }}" class="mt-7 space-y-6">
+            <form method="POST" action="{{ route('admin.settings.section.update', $section) }}" enctype="multipart/form-data" class="mt-7 space-y-6">
                 @csrf @method('PATCH')
                 @include('admin.settings.sections.'.$section)
                 <div class="flex items-center gap-3 border-t border-slate-100 pt-5">

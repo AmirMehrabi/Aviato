@@ -5,11 +5,30 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['key', 'value', 'type', 'group'])]
 class AppSetting extends Model
 {
     public const BILLING_CURRENCY = 'billing.currency';
+
+    public const COMPANY_NAME = 'company.name';
+
+    public const COMPANY_LOGO_PATH = 'company.logo_path';
+
+    public const COMPANY_NATIONAL_ID = 'company.national_id';
+
+    public const COMPANY_REGISTRATION_NUMBER = 'company.registration_number';
+
+    public const COMPANY_ECONOMIC_CODE = 'company.economic_code';
+
+    public const COMPANY_PHONE = 'company.phone';
+
+    public const COMPANY_EMAIL = 'company.email';
+
+    public const COMPANY_ADDRESS = 'company.address';
+
+    public const COMPANY_POSTAL_CODE = 'company.postal_code';
 
     public const CUSTOMER_VERIFICATION_MODE = 'customer.verification.mode';
 
@@ -142,6 +161,28 @@ class AppSetting extends Model
             'EUR' => 'EUR - Euro',
             'AED' => 'AED - UAE Dirham',
             'TRY' => 'TRY - Turkish Lira',
+        ];
+    }
+
+    /**
+     * @return array{name: string, logo_url: string, national_id: string, registration_number: string, economic_code: string, phone: string, email: string, address: string, postal_code: string}
+     */
+    public static function companyProfile(): array
+    {
+        $logoPath = trim((string) static::getValue(self::COMPANY_LOGO_PATH, ''));
+
+        return [
+            'name' => (string) static::getValue(self::COMPANY_NAME, config('app.name', 'آویاتو')),
+            'logo_url' => $logoPath !== ''
+                ? Storage::disk('public')->url($logoPath)
+                : asset('assets/images/aviato_logo_full_color.webp'),
+            'national_id' => (string) static::getValue(self::COMPANY_NATIONAL_ID, ''),
+            'registration_number' => (string) static::getValue(self::COMPANY_REGISTRATION_NUMBER, ''),
+            'economic_code' => (string) static::getValue(self::COMPANY_ECONOMIC_CODE, ''),
+            'phone' => (string) static::getValue(self::COMPANY_PHONE, ''),
+            'email' => (string) static::getValue(self::COMPANY_EMAIL, config('mail.from.address', '')),
+            'address' => (string) static::getValue(self::COMPANY_ADDRESS, ''),
+            'postal_code' => (string) static::getValue(self::COMPANY_POSTAL_CODE, ''),
         ];
     }
 
