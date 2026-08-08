@@ -29,6 +29,27 @@ class PaymentGatewayManager
         return $this->container->make($class);
     }
 
+    public function labelFor(string $provider): string
+    {
+        $class = $this->gateways[$provider] ?? null;
+
+        return $class === null
+            ? $provider
+            : $this->container->make($class)->label();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function labels(): array
+    {
+        return collect($this->gateways)
+            ->mapWithKeys(fn (string $class, string $provider): array => [
+                $provider => $this->container->make($class)->label(),
+            ])
+            ->all();
+    }
+
     /**
      * @return array<string, string>
      */

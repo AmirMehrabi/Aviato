@@ -26,6 +26,9 @@
                 </div>
                 <div class="shrink-0 text-left">
                     <p class="break-words text-lg font-black {{ $transaction->amount >= 0 ? 'text-emerald-700' : 'text-rose-600' }}">{{ $wallets->format($transaction->amount) }}</p>
+                    @if ($transaction->reference instanceof \App\Models\Payment && $transaction->reference->type === \App\Models\Payment::TYPE_TOP_UP && $transaction->reference->isSuccessful())
+                        <a href="{{ route('customer.payments.receipt.show', $transaction->reference, false) }}" class="mt-2 inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-[#0069FF] transition hover:border-[#B8D6FF] hover:bg-[#F2F8FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">مشاهده رسید پرداخت</a>
+                    @endif
                 </div>
             </div>
         </article>

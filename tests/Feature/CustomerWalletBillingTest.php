@@ -19,6 +19,7 @@ use App\Services\ProjectAccessService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
+use App\Support\Jalali;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -59,7 +60,9 @@ class CustomerWalletBillingTest extends TestCase
 
         $this->get($this->customerBaseUrl.'/wallet?payment_id='.$payment->id)
             ->assertOk()
-            ->assertSee('پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.');
+            ->assertSee('پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.')
+            ->assertSee('مشاهده رسید پرداخت')
+            ->assertSee('/payments/'.$payment->id.'/receipt', false);
 
         $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
             'RefId' => $payment->authority,
@@ -128,6 +131,123 @@ class CustomerWalletBillingTest extends TestCase
             'amount' => 3000000,
             'currency' => 'IRR',
         ]);
+    }
+
+    public function test_customer_can_view_successful_payment_receipt_from_wallet_and_receipts_tab(): void
+    {
+        $customer = Customer::factory()->create();
+        $wallet = $customer->wallet()->firstOrFail();
+        $paidAt = CarbonImmutable::parse('2026-08-08 10:30:00', 'Asia/Tehran');
+        $payment = Payment::create([
+            'customer_id' => $customer->id,
+            'wallet_id' => $wallet->id,
+            'provider' => 'mellat',
+            'type' => Payment::TYPE_TOP_UP,
+            'status' => Payment::STATUS_SUCCESSFUL,
+            'amount' => 3000000,
+            'currency' => 'IRR',
+            'authority' => 'RECEIPT-AUTH-1',
+            'provider_reference' => 'RECEIPT-REF-1',
+            'description' => 'شارژ کیف پول',
+            'paid_at' => $paidAt,
+        ]);
+        WalletTransaction::create([
+            'customer_id' => $customer->id,
+            'wallet_id' => $wallet->id,
+            'type' => WalletTransaction::TYPE_CREDIT,
+            'amount' => $payment->amount,
+            'balance_before' => 0,
+            'balance_after' => $payment->amount,
+            'description' => 'شارژ کیف پول از طریق بانک ملت',
+            'reference_type' => $payment->getMorphClass(),
+            'reference_id' => $payment->id,
+            'metadata' => ['category' => 'wallet_top_up'],
+        ]);
+
+        $pendingPayment = Payment::create([
+            'customer_id' => $customer->id,
+            'wallet_id' => $wallet->id,
+            'provider' => 'mellat',
+            'type' => Payment::TYPE_TOP_UP,
+            'status' => Payment::STATUS_PENDING,
+            'amount' => 1000000,
+            'currency' => 'IRR',
+            'authority' => 'PENDING-AUTH-1',
+        ]);
+        $nonTopUpPayment = Payment::create([
+            'customer_id' => $customer->id,
+            'wallet_id' => $wallet->id,
+            'provider' => 'mellat',
+            'type' => 'refund',
+            'status' => Payment::STATUS_SUCCESSFUL,
+            'amount' => 1000000,
+            'currency' => 'IRR',
+            'authority' => 'REFUND-AUTH-1',
+            'paid_at' => $paidAt,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+
+        $this->get($this->customerBaseUrl.'/invoices?tab=receipts')
+            ->assertOk()
+            ->assertSee('رسیدهای پرداخت')
+            ->assertSee($payment->receiptNumber())
+            ->assertSee('300,000 تومان')
+            ->assertSee('بانک ملت')
+            ->assertDontSee($pendingPayment->receiptNumber())
+            ->assertDontSee($nonTopUpPayment->receiptNumber());
+
+        $this->get($this->customerBaseUrl.'/payments/'.$payment->id.'/receipt')
+            ->assertOk()
+            ->assertSee($payment->receiptNumber())
+            ->assertSee('300,000 تومان')
+            ->assertSee('RECEIPT-REF-1')
+            ->assertSee('RECEIPT-AUTH-1')
+            ->assertSee('چاپ یا ذخیره PDF')
+            ->assertSee(Jalali::format($paidAt));
+
+        $this->get($this->customerBaseUrl.'/wallet')
+            ->assertOk()
+            ->assertSee('مشاهده رسید پرداخت')
+            ->assertSee('/payments/'.$payment->id.'/receipt', false);
+
+        $this->get($this->customerBaseUrl.'/payments/'.$pendingPayment->id.'/receipt')->assertNotFound();
+        $this->get($this->customerBaseUrl.'/payments/'.$nonTopUpPayment->id.'/receipt')->assertNotFound();
+    }
+
+    public function test_financial_member_can_view_owner_receipt_but_unrelated_customer_cannot(): void
+    {
+        $owner = Customer::factory()->create();
+        $billingMember = Customer::factory()->create();
+        $unrelatedCustomer = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $billingMember->id,
+            'role' => ProjectMember::ROLE_BILLING,
+        ]);
+        $payment = Payment::create([
+            'customer_id' => $owner->id,
+            'wallet_id' => $owner->wallet()->firstOrFail()->id,
+            'provider' => 'zibal',
+            'type' => Payment::TYPE_TOP_UP,
+            'status' => Payment::STATUS_SUCCESSFUL,
+            'amount' => 2500000,
+            'currency' => 'IRT',
+            'authority' => 'ZIBAL-TRACK-1',
+            'provider_reference' => 'ZIBAL-REF-1',
+            'paid_at' => now(),
+        ]);
+
+        $this->actingAs($billingMember, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/payments/'.$payment->id.'/receipt')
+            ->assertOk()
+            ->assertSee('2,500,000 تومان')
+            ->assertSee('زیبال');
+
+        $this->actingAs($unrelatedCustomer, 'customer')
+            ->get($this->customerBaseUrl.'/payments/'.$payment->id.'/receipt')
+            ->assertNotFound();
     }
 
     public function test_billing_workspace_member_can_top_up_owner_wallet(): void

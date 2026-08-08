@@ -45,6 +45,7 @@ class WalletController extends Controller
         $selectedType = $filters['type'] ?? 'all';
         $paymentNotice = $this->paymentNotice($request, $activeProject->owner->id);
         $transactions = $wallet->transactions()
+            ->with('reference')
             ->where(function ($query) use ($activeProject): void {
                 $query->where('metadata->project_id', $activeProject->id)
                     ->orWhereNull('metadata->project_id');
@@ -121,6 +122,7 @@ class WalletController extends Controller
         $to = $parseDate($filters['to'] ?? null, null);
 
         $transactions = $wallet->transactions()
+            ->with('reference')
             ->where(function ($query) use ($activeProject): void {
                 $query->where('metadata->project_id', $activeProject->id)
                     ->orWhereNull('metadata->project_id');
@@ -162,7 +164,7 @@ class WalletController extends Controller
     }
 
     /**
-     * @return array{tone: string, message: string}|null
+     * @return array{tone: string, message: string, receipt_url?: string}|null
      */
     private function paymentNotice(Request $request, int $ownerCustomerId): ?array
     {
@@ -185,6 +187,7 @@ class WalletController extends Controller
             Payment::STATUS_SUCCESSFUL => [
                 'tone' => 'success',
                 'message' => 'پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.',
+                'receipt_url' => route('customer.payments.receipt.show', $payment, false),
             ],
             Payment::STATUS_FAILED, Payment::STATUS_CANCELLED => [
                 'tone' => 'error',

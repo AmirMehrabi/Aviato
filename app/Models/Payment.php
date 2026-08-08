@@ -53,6 +53,11 @@ class Payment extends Model
         return $this->status === self::STATUS_SUCCESSFUL;
     }
 
+    public function receiptNumber(): string
+    {
+        return sprintf('RCP-%08d', $this->id);
+    }
+
     protected function casts(): array
     {
         return [

@@ -41,6 +41,7 @@ use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\MonitoringController;
 use App\Http\Controllers\Customer\PaymentController;
+use App\Http\Controllers\Customer\PaymentReceiptController;
 use App\Http\Controllers\Customer\ProfileController;
 use App\Http\Controllers\Customer\ProjectController;
 use App\Http\Controllers\Customer\ResellerController as CustomerResellerController;
@@ -408,6 +409,8 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');
         Route::get('wallet/payments/{payment}/gateway', [PaymentController::class, 'showGateway'])->name('customer.wallet.payments.gateway.show');
         Route::post('wallet/payments/{payment}/gateway', [PaymentController::class, 'submitGateway'])->name('customer.wallet.payments.gateway.store');
+
+        Route::get('payments/{payment}/receipt', [PaymentReceiptController::class, 'show'])->name('customer.payments.receipt.show');
 
         Route::get('invoices', [InvoiceController::class, 'index'])->name('customer.invoices.index');
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('customer.invoices.show');

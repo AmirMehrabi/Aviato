@@ -51,7 +51,7 @@
                 ['key' => 'tickets', 'label' => 'تیکت‌ها', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
                 ...($canViewBilling ? [
                     ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M19 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6M16 13h5v4h-5a2 2 0 0 1 0-4Z'],
-                    ['key' => 'invoices', 'label' => 'صورتحساب ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
+                    ['key' => 'invoices', 'label' => 'صورتحساب‌ها و پرداخت‌ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
                 ] : []),
             ],
             ...(auth('customer')->check() && auth('customer')->user()->isReseller() ? [
@@ -75,7 +75,7 @@
         if ($canViewBilling) {
             $searchBaseItems[] = ['title' => 'کیف پول', 'description' => 'موجودی، تراکنش ها و افزایش اعتبار', 'url' => route('customer.wallet.show', [], false), 'type' => 'صفحه'];
             $searchBaseItems[] = ['title' => 'افزایش اعتبار', 'description' => 'شارژ سریع کیف پول', 'url' => route('customer.wallet.show', ['topup' => 1], false), 'type' => 'عملیات'];
-            $searchBaseItems[] = ['title' => 'صورتحساب ها', 'description' => 'بایگانی و جزئیات فاکتورهای ماهانه', 'url' => route('customer.invoices.index', [], false), 'type' => 'صفحه'];
+            $searchBaseItems[] = ['title' => 'صورتحساب‌ها و پرداخت‌ها', 'description' => 'صورتحساب‌های مصرف و رسیدهای پرداخت کیف پول', 'url' => route('customer.invoices.index', [], false), 'type' => 'صفحه'];
         }
 
         if ($canViewVms) {
@@ -461,7 +461,7 @@
                                     <a href="{{ route('customer.profile.show', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">پروفایل</a>
                                     @if($canViewBilling)
                                     <a href="{{ route('customer.wallet.show', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">کیف پول</a>
-                                    <a href="{{ route('customer.invoices.index', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">صورتحساب ها</a>
+                                    <a href="{{ route('customer.invoices.index', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">صورتحساب‌ها و پرداخت‌ها</a>
                                     @endif
                                     <form method="POST" action="{{ route('customer.logout', [], false) }}" class="pt-2">
                                         @csrf
