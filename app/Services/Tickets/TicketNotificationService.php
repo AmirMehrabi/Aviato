@@ -27,6 +27,10 @@ class TicketNotificationService
             $ticket->category?->name ?? 'پشتیبانی',
         );
 
+        if ($ticket->created_by_user_id) {
+            $this->notifyDatabase($ticket->customer, $ticket, 'ticket_created_for_customer', 'تیکت جدید برای شما ثبت شد', $ticket->subject);
+        }
+
         $recipients = $ticket->assignee
             ? collect([$ticket->assignee])
             : ($ticket->supportTeam?->activeUsers ?? User::query()->orderBy('name')->get());

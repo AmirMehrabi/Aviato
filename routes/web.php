@@ -40,6 +40,7 @@ use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\MonitoringController;
+use App\Http\Controllers\Customer\NotificationController as CustomerNotificationController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\PaymentReceiptController;
 use App\Http\Controllers\Customer\ProfileController;
@@ -116,6 +117,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.dashboard.warnings.restore');
         Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])
             ->name('admin.notifications.mark-all-read');
+        Route::get('notifications', [NotificationController::class, 'index'])
+            ->name('admin.notifications.index');
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])
             ->name('admin.notifications.read');
 
@@ -147,6 +150,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->names('admin.infrastructure-locations');
 
         Route::post('tickets/{ticket}/reply', [AdminTicketController::class, 'reply'])->name('admin.tickets.reply');
+        Route::post('tickets/{ticket}/seen', [AdminTicketController::class, 'seen'])->name('admin.tickets.seen');
         Route::patch('tickets/{ticket}/assignment', [AdminTicketController::class, 'assignment'])->name('admin.tickets.assignment');
         Route::patch('tickets/{ticket}/status', [AdminTicketController::class, 'status'])->name('admin.tickets.status');
         Route::get('tickets/{ticket}/attachments/{attachment}', [AdminTicketAttachmentController::class, 'show'])->name('admin.tickets.attachments.show');
@@ -361,6 +365,9 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
     Route::middleware(['auth:customer', 'customer.wallet.access'])->group(function () use ($customerHome) {
         Route::get($customerHome, DashboardController::class)->name('dashboard');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
+        Route::get('notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');
+        Route::post('notifications/mark-all-read', [CustomerNotificationController::class, 'markAllRead'])->name('customer.notifications.mark-all-read');
+        Route::post('notifications/{notification}/read', [CustomerNotificationController::class, 'markRead'])->name('customer.notifications.read');
         Route::post('profile/api-tokens', [ApiTokenController::class, 'store'])->name('customer.profile.api-tokens.store');
         Route::delete('profile/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('customer.profile.api-tokens.destroy');
         Route::patch('profile/national-code', [ProfileController::class, 'updateNationalCode'])->name('customer.profile.national-code.update');
@@ -400,6 +407,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::get('monitoring/servers/{virtualMachine}/metrics', [MonitoringController::class, 'metrics'])->name('customer.monitoring.metrics');
         });
         Route::post('tickets/{ticket}/reply', [TicketController::class, 'reply'])->name('customer.tickets.reply');
+        Route::post('tickets/{ticket}/seen', [TicketController::class, 'seen'])->name('customer.tickets.seen');
         Route::patch('tickets/{ticket}/close', [TicketController::class, 'close'])->name('customer.tickets.close');
         Route::patch('tickets/{ticket}/reopen', [TicketController::class, 'reopen'])->name('customer.tickets.reopen');
         Route::get('tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'show'])->name('customer.tickets.attachments.show');

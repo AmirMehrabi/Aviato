@@ -53,35 +53,31 @@ window.addEventListener('DOMContentLoaded', () => {
 
         const editor = new Editor({
             el: container,
-            height: '360px',
+            height: '320px',
             initialEditType: 'wysiwyg',
             previewStyle: 'tab',
             initialValue: textarea.value || '',
             usageStatistics: false,
-            toolbarItems: [
-                ['heading', 'bold', 'italic', 'strike'],
-                ['hr', 'quote'],
-                ['ul', 'ol', 'task'],
-                ['link', 'code', 'codeblock'],
-            ],
+            toolbarItems: [],
+            hideModeSwitch: true,
         });
 
         const commands = [
-            { label: 'B', title: 'Bold', command: 'bold', className: 'font-black' },
-            { label: 'I', title: 'Italic', command: 'italic', className: 'italic' },
-            { label: 'H', title: 'Heading', command: 'heading' },
-            { label: '•', title: 'Bullet list', command: 'bulletList' },
-            { label: '1.', title: 'Ordered list', command: 'orderedList' },
-            { label: '“”', title: 'Quote', command: 'blockQuote' },
-            { label: '<>', title: 'Code', command: 'code' },
-            { label: 'Link', title: 'Link', command: 'addLink' },
+            { label: 'ضخیم', title: 'متن ضخیم', command: 'bold', className: 'font-black' },
+            { label: 'مورب', title: 'متن مورب', command: 'italic', className: 'italic' },
+            { label: 'عنوان', title: 'عنوان', command: 'heading' },
+            { label: '• فهرست', title: 'فهرست نشانه‌دار', command: 'bulletList' },
+            { label: '۱. فهرست', title: 'فهرست شماره‌دار', command: 'orderedList' },
+            { label: 'نقل‌قول', title: 'نقل‌قول', command: 'blockQuote' },
+            { label: 'کد', title: 'کد', command: 'code' },
         ];
 
         commands.forEach((item) => {
             const button = document.createElement('button');
             button.type = 'button';
             button.title = item.title;
-            button.className = `grid h-9 min-w-9 place-items-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] ${item.className || ''}`;
+            button.setAttribute('aria-label', item.title);
+            button.className = `grid min-h-10 min-w-10 place-items-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-black text-slate-700 transition-colors duration-150 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] ${item.className || ''}`;
             button.textContent = item.label;
             button.addEventListener('click', () => editor.exec(item.command));
             toolbar.append(button);
@@ -91,9 +87,10 @@ window.addEventListener('DOMContentLoaded', () => {
         if (attachmentInput) {
             const attachButton = document.createElement('button');
             attachButton.type = 'button';
-            attachButton.title = 'Attach files';
-            attachButton.className = 'mr-auto inline-flex h-9 items-center gap-2 rounded-lg border border-[#B8D6FF] bg-white px-3 text-xs font-black text-[#0069FF] transition hover:bg-[#EBF3FF]';
-            attachButton.textContent = 'Attach file';
+            attachButton.title = 'افزودن فایل';
+            attachButton.setAttribute('aria-label', 'افزودن فایل');
+            attachButton.className = 'mr-auto inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#B8D6FF] bg-white px-3 text-xs font-black text-[#0069FF] transition-colors duration-150 hover:bg-[#EBF3FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]';
+            attachButton.textContent = 'افزودن فایل';
             attachButton.addEventListener('click', () => attachmentInput.click());
             toolbar.append(attachButton);
 
@@ -103,7 +100,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
             attachmentInput.addEventListener('change', () => {
                 const names = Array.from(attachmentInput.files || []).map((file) => `${file.name} (${Math.ceil(file.size / 1024)} KB)`);
-                fileSummary.textContent = names.length ? `Attached: ${names.join('، ')}` : '';
+                fileSummary.textContent = names.length ? `فایل‌های انتخاب‌شده: ${names.join('، ')}` : '';
                 fileSummary.classList.toggle('hidden', names.length === 0);
             });
         }
@@ -208,15 +205,71 @@ window.customerVmConsole = function customerVmConsole(config) {
     };
 };
 
-window.adminNotificationDropdown = function adminNotificationDropdown(config) {
+window.notificationCenter = function notificationCenter(config) {
     return {
-        items: config.items || [],
+        open: false,
+        items: [],
         unreadCount: Number(config.unreadCount || 0),
         csrf: config.csrf || '',
+        feedUrl: config.feedUrl || '',
         markReadUrlTemplate: config.markReadUrlTemplate || '',
         markAllReadUrl: config.markAllReadUrl || '',
+        loading: false,
         markingAll: false,
         markingIds: {},
+        error: '',
+        announcement: '',
+
+        async toggle() {
+            if (this.open) {
+                this.close();
+                return;
+            }
+
+            this.open = true;
+            window.dispatchEvent(new CustomEvent('notification-center-open'));
+            await this.load();
+        },
+
+        close(restoreFocus = false) {
+            this.open = false;
+            if (restoreFocus) {
+                this.$nextTick(() => this.$refs.trigger?.focus());
+            }
+        },
+
+        async load() {
+            if (this.loading) return;
+
+            this.loading = true;
+            this.error = '';
+
+            try {
+                const response = await fetch(this.feedUrl, {
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                const data = await response.json();
+                if (! response.ok) throw new Error(data?.message || 'Unable to load notifications.');
+
+                this.items = data.items || [];
+                this.setUnreadCount(data.unread_count || 0);
+            } catch (error) {
+                this.error = 'بارگذاری اعلان‌ها انجام نشد. اتصال را بررسی و دوباره تلاش کنید.';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        setUnreadCount(count) {
+            this.unreadCount = Number(count || 0);
+            window.dispatchEvent(new CustomEvent('notification-unread-changed', {
+                detail: { count: this.unreadCount },
+            }));
+        },
 
         isUnread(notification) {
             return ! notification.read;
@@ -237,9 +290,7 @@ window.adminNotificationDropdown = function adminNotificationDropdown(config) {
                 this.unreadCount -= 1;
             }
 
-            window.dispatchEvent(new CustomEvent('admin-notification-unread-changed', {
-                detail: { count: this.unreadCount },
-            }));
+            this.setUnreadCount(this.unreadCount);
         },
 
         async markAllRead() {
@@ -269,10 +320,10 @@ window.adminNotificationDropdown = function adminNotificationDropdown(config) {
                 this.items.forEach((notification) => {
                     notification.read = true;
                 });
-                this.unreadCount = Number(data.unread_count ?? 0);
-                window.dispatchEvent(new CustomEvent('admin-notification-unread-changed', {
-                    detail: { count: this.unreadCount },
-                }));
+                this.setUnreadCount(data.unread_count ?? 0);
+                this.announcement = 'همه اعلان‌ها خوانده شدند.';
+            } catch (error) {
+                this.error = 'خواندن همه اعلان‌ها انجام نشد. دوباره تلاش کنید.';
             } finally {
                 this.markingAll = false;
             }
@@ -307,10 +358,8 @@ window.adminNotificationDropdown = function adminNotificationDropdown(config) {
                 }
 
                 this.setNotificationRead(notificationId);
-                this.unreadCount = Number(data.unread_count ?? this.unreadCount);
-                window.dispatchEvent(new CustomEvent('admin-notification-unread-changed', {
-                    detail: { count: this.unreadCount },
-                }));
+                this.setUnreadCount(data.unread_count ?? this.unreadCount);
+                this.announcement = 'اعلان خوانده شد.';
 
                 if (navigateTo) {
                     window.location.assign(navigateTo);
@@ -321,7 +370,7 @@ window.adminNotificationDropdown = function adminNotificationDropdown(config) {
                     return;
                 }
 
-                console.error(error);
+                this.error = 'خواندن اعلان انجام نشد. دوباره تلاش کنید.';
             } finally {
                 const next = { ...this.markingIds };
                 delete next[notificationId];
@@ -329,11 +378,46 @@ window.adminNotificationDropdown = function adminNotificationDropdown(config) {
             }
         },
 
-        openNotification(notification) {
+        openNotification(event, notification) {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            event.preventDefault();
             this.markRead(notification.id, notification.url);
+        },
+
+        formatDate(value) {
+            if (! value) return '';
+
+            return new Intl.DateTimeFormat('fa-IR', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+            }).format(new Date(value));
         },
     };
 };
+
+window.addEventListener('DOMContentLoaded', () => {
+    const seenTarget = document.querySelector('[data-ticket-seen-url]');
+    if (! seenTarget) return;
+
+    fetch(seenTarget.dataset.ticketSeenUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({}),
+    }).then((response) => response.ok ? response.json() : Promise.reject())
+        .then((data) => window.dispatchEvent(new CustomEvent('notification-unread-changed', {
+            detail: { count: Number(data.notification_unread_count || 0) },
+        })))
+        .catch(() => {});
+});
 
 window.walletTransactions = function walletTransactions(config) {
     return {

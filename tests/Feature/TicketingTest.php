@@ -136,6 +136,105 @@ class TicketingTest extends TestCase
             ->assertSee('وضعیت تیکت')
             ->assertSee('Public customer text')
             ->assertDontSee('Private escalation note');
+
+        $this->assertSame(0, $customer->fresh()->notifications()->count());
+    }
+
+    public function test_admin_reply_is_unread_for_customer_until_ticket_is_seen(): void
+    {
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $category = TicketCategory::query()->firstOrFail();
+
+        $this->actingAs($customer, 'customer')->post('https://cp.localhost/tickets', [
+            'ticket_category_id' => $category->id,
+            'subject' => 'Reply visibility',
+            'priority' => Ticket::PRIORITY_NORMAL,
+            'body' => 'Initial customer request',
+        ]);
+        $ticket = Ticket::query()->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->post('https://admin.localhost/tickets/'.$ticket->number.'/reply', [
+            'body' => 'A public support response',
+            'mode' => 'public',
+        ])->assertRedirect();
+
+        $adminMessage = $ticket->messages()->where('author_type', User::class)->latest()->firstOrFail();
+        $this->assertNull($adminMessage->seen_by_customer_at);
+        $this->assertSame(1, $customer->fresh()->unreadNotifications()->count());
+
+        $this->actingAs($customer, 'customer')
+            ->get('https://cp.localhost/tickets?attention=unread')
+            ->assertOk()
+            ->assertSee('پاسخ جدید')
+            ->assertSee('A public support response');
+
+        $this->actingAs($customer, 'customer')
+            ->postJson('https://cp.localhost/tickets/'.$ticket->number.'/seen')
+            ->assertOk()
+            ->assertJson([
+                'unread_replies_count' => 0,
+                'notification_unread_count' => 0,
+            ]);
+
+        $this->assertNotNull($adminMessage->fresh()->seen_by_customer_at);
+        $this->assertSame(0, $customer->fresh()->unreadNotifications()->count());
+    }
+
+    public function test_admin_created_ticket_notifies_customer_in_app(): void
+    {
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $category = TicketCategory::query()->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->post('https://admin.localhost/tickets', [
+            'customer_id' => $customer->id,
+            'ticket_category_id' => $category->id,
+            'subject' => 'Proactive support',
+            'priority' => Ticket::PRIORITY_NORMAL,
+            'body' => 'We opened this ticket for you.',
+        ])->assertRedirect();
+
+        $notification = $customer->fresh()->notifications()->firstOrFail();
+
+        $this->assertSame('ticket_created_for_customer', $notification->data['event']);
+        $this->assertSame('تیکت جدید برای شما ثبت شد', $notification->data['title']);
+        $this->assertStringContainsString('/tickets/', $notification->data['url']);
+    }
+
+    public function test_customer_reply_is_unread_for_admin_until_ticket_is_seen(): void
+    {
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $category = TicketCategory::query()->firstOrFail();
+
+        $this->actingAs($customer, 'customer')->post('https://cp.localhost/tickets', [
+            'ticket_category_id' => $category->id,
+            'subject' => 'Admin unread queue',
+            'priority' => Ticket::PRIORITY_HIGH,
+            'body' => 'Customer needs a response.',
+        ]);
+        $ticket = Ticket::query()->firstOrFail();
+        $customerMessage = $ticket->messages()->where('author_type', Customer::class)->firstOrFail();
+
+        $this->actingAs($admin, 'admin')
+            ->get('https://admin.localhost/tickets?attention=unread')
+            ->assertOk()
+            ->assertSee('Admin unread queue')
+            ->assertSee('پاسخ جدید');
+
+        $this->actingAs($admin, 'admin')
+            ->get('https://admin.localhost/tickets/'.$ticket->number)
+            ->assertOk()
+            ->assertSee('گفتگوی تیکت')
+            ->assertSee('درخواست اولیه مشتری');
+
+        $this->actingAs($admin, 'admin')
+            ->postJson('https://admin.localhost/tickets/'.$ticket->number.'/seen')
+            ->assertOk()
+            ->assertJson(['unread_replies_count' => 0]);
+
+        $this->assertNotNull($customerMessage->fresh()->seen_by_admin_at);
     }
 
     private function vmFor(Customer $customer): VirtualMachine

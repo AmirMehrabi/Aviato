@@ -23,12 +23,10 @@
         \App\Models\Ticket::PRIORITY_URGENT => 'bg-red-50 text-red-700 ring-red-200',
     ];
     $publicMessages = $ticket->messages->where('type', \App\Models\TicketMessage::TYPE_REPLY)->values();
-    $firstMessage = $publicMessages->first();
-    $responses = $publicMessages->slice(1);
 @endphp
 
 @section('content')
-<div class="space-y-5">
+<div class="space-y-5" data-ticket-seen-url="{{ route('customer.tickets.seen', $ticket, false) }}">
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
         <div class="border-b border-slate-200 bg-[#031B4E] p-5 text-white">
             <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -79,36 +77,23 @@
 
     <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <main class="space-y-5">
-            @if($firstMessage)
-                <section class="rounded-2xl border border-[#B8D6FF] bg-[#F8FBFF] p-5 shadow-sm shadow-[#0069FF]/10">
-                    <div class="flex flex-col gap-3 border-b border-[#B8D6FF] pb-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div class="flex items-start gap-3">
-                            <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ mb_substr($firstMessage->author?->name ?? 'م', 0, 1) }}</span>
-                            <div>
-                                <p class="font-black text-slate-950">درخواست اولیه</p>
-                                <p class="mt-1 text-xs font-bold text-slate-500">{{ $firstMessage->author?->name ?? 'مشتری' }} · <span dir="ltr">{{ \App\Support\Jalali::format($firstMessage->created_at) }}</span></p>
-                            </div>
-                        </div>
-                        <span class="w-fit rounded-lg bg-white px-3 py-1.5 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">Ticket body</span>
-                    </div>
-                    <div class="ticket-markdown mt-5 text-sm font-semibold leading-8 text-slate-700">{!! $firstMessage->renderedBody() !!}</div>
-                    @include('customer.tickets._attachments', ['message' => $firstMessage, 'ticket' => $ticket])
-                </section>
-            @endif
-
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <div class="flex items-center justify-between gap-3">
-                    <h2 class="font-black text-slate-950">گفتگو</h2>
-                    <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-500">{{ $responses->count() }} پاسخ</span>
+                    <div>
+                        <h2 class="font-black text-slate-950">گفتگوی پشتیبانی</h2>
+                        <p class="mt-1 text-xs font-bold text-slate-500">پیام‌ها به ترتیب زمان نمایش داده می‌شوند.</p>
+                    </div>
+                    <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-500">{{ $publicMessages->count() }} پیام</span>
                 </div>
 
                 <div class="mt-5 space-y-5">
-                    @forelse($responses as $message)
+                    @forelse($publicMessages as $message)
                         @php
                             $isCustomer = $message->author_type === \App\Models\Customer::class;
                             $bubbleClass = $isCustomer ? 'border-[#B8D6FF] bg-[#F8FBFF]' : 'border-emerald-200 bg-emerald-50';
                             $avatarClass = $isCustomer ? 'bg-[#0069FF]' : 'bg-[#00A67E]';
                             $roleBadge = $isCustomer ? 'bg-[#EBF3FF] text-[#0069FF] ring-[#B8D6FF]' : 'bg-emerald-100 text-emerald-700 ring-emerald-200';
+                            $isInitial = $loop->first;
                         @endphp
                         <article class="rounded-2xl border p-4 {{ $bubbleClass }}">
                             <div class="flex items-start gap-3">
@@ -119,7 +104,7 @@
                                             <p class="font-black text-slate-950">{{ $message->author?->name ?? 'سیستم' }}</p>
                                             <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ \App\Support\Jalali::format($message->created_at) }}</p>
                                         </div>
-                                        <span class="rounded-lg px-2.5 py-1 text-xs font-black ring-1 {{ $roleBadge }}">{{ $isCustomer ? 'پاسخ مشتری' : 'پاسخ پشتیبانی' }}</span>
+                                        <span class="rounded-lg px-2.5 py-1 text-xs font-black ring-1 {{ $roleBadge }}">{{ $isInitial ? 'درخواست اولیه' : ($isCustomer ? 'پاسخ شما' : 'پاسخ پشتیبانی') }}</span>
                                     </div>
                                     <div class="ticket-markdown mt-4 text-sm font-semibold leading-8 text-slate-700">{!! $message->renderedBody() !!}</div>
                                     @include('customer.tickets._attachments', ['message' => $message, 'ticket' => $ticket])
@@ -127,13 +112,13 @@
                             </div>
                         </article>
                     @empty
-                        <div class="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500">هنوز پاسخی ثبت نشده است.</div>
+                        <div class="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500">هنوز پیامی در این گفتگو ثبت نشده است.</div>
                     @endforelse
                 </div>
             </section>
 
             @if($ticket->status !== \App\Models\Ticket::STATUS_CLOSED)
-                <form method="POST" action="{{ route('customer.tickets.reply', $ticket, false) }}" enctype="multipart/form-data" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                <form method="POST" action="{{ route('customer.tickets.reply', $ticket, false) }}" enctype="multipart/form-data" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60" x-data="{ submitting: false }" @submit="submitting = true">
                     @csrf
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -142,8 +127,13 @@
                         </div>
                         <span class="w-fit rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-500">حداکثر ۵ فایل، هر فایل ۲۰MB</span>
                     </div>
+                    @if($errors->any())
+                        <div class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold leading-7 text-red-700" role="alert">پاسخ ارسال نشد. متن پاسخ و فایل‌های پیوست را بررسی کنید.</div>
+                    @endif
                     <div class="mt-4">
-                        <textarea name="body" rows="8" data-ticket-editor class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold"></textarea>
+                        <label for="customer-ticket-reply" class="mb-2 block text-sm font-black text-slate-800">متن پاسخ</label>
+                        <textarea id="customer-ticket-reply" name="body" rows="8" required data-ticket-editor class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold" aria-describedby="customer-ticket-reply-help">{{ old('body') }}</textarea>
+                        <p id="customer-ticket-reply-help" class="mt-2 text-xs font-bold text-slate-500">شرح دقیق و اطلاعات لازم برای بررسی سریع‌تر را بنویسید.</p>
                     </div>
                     <label class="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-7 text-center transition hover:border-[#B8D6FF] hover:bg-[#F8FBFF]">
                         <span class="grid size-12 place-items-center rounded-xl bg-white text-[#0069FF] shadow-sm">
@@ -153,7 +143,7 @@
                         <span class="mt-1 text-xs font-bold text-slate-500">PDF، تصویر، فایل متنی، ZIP و سایر فایل‌های لازم برای بررسی پشتیبانی</span>
                         <input type="file" name="attachments[]" multiple data-ticket-attachments accept="image/*,.pdf,.txt,.log,.csv,.json,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx" class="sr-only">
                     </label>
-                    <button class="mt-4 rounded-xl bg-[#0069FF] px-6 py-3 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">ارسال پاسخ</button>
+                    <button :disabled="submitting" class="mt-4 min-h-11 rounded-xl bg-[#0069FF] px-6 py-3 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition-colors duration-150 hover:bg-[#0050D0] disabled:cursor-wait disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] active:scale-[0.96]" x-text="submitting ? 'در حال ارسال…' : 'ارسال پاسخ'">ارسال پاسخ</button>
                 </form>
             @else
                 <section class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center">

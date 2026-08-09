@@ -174,6 +174,8 @@ class TicketService
             'author_id' => $actor->id,
             'type' => $type,
             'body' => $body,
+            'seen_by_customer_at' => $actor instanceof Customer ? now() : null,
+            'seen_by_admin_at' => $actor instanceof User ? now() : null,
         ]);
     }
 

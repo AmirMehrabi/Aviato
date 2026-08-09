@@ -8,16 +8,21 @@ use App\Models\SupportTeam;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\User;
+use App\Services\Notifications\NotificationInboxService;
 use App\Services\Tickets\TicketService;
 use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class TicketController extends Controller
 {
-    public function __construct(private readonly TicketService $tickets) {}
+    public function __construct(
+        private readonly TicketService $tickets,
+        private readonly NotificationInboxService $notifications,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -26,17 +31,28 @@ class TicketController extends Controller
             'priority' => ['nullable', Rule::in(array_keys(Ticket::priorities()))],
             'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'ticket_category_id' => ['nullable', 'integer', 'exists:ticket_categories,id'],
+            'attention' => ['nullable', Rule::in(['unread', 'unassigned'])],
             'search' => ['nullable', 'string', 'max:255'],
             'sort' => ['nullable', 'string', 'max:80'],
             'direction' => ['nullable', 'in:asc,desc'],
         ]);
 
         $query = Ticket::query()
-            ->with(['customer', 'category', 'supportTeam', 'assignee', 'virtualMachine'])
+            ->with(['customer', 'category', 'supportTeam', 'assignee', 'virtualMachine', 'latestPublicMessage.author'])
+            ->withCount([
+                'publicMessages as unread_replies_count' => fn ($query) => $query
+                    ->where('author_type', Customer::class)
+                    ->whereNull('seen_by_admin_at'),
+            ])
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['priority'] ?? null, fn ($query, string $priority) => $query->where('priority', $priority))
             ->when($filters['assigned_user_id'] ?? null, fn ($query, int $userId) => $query->where('assigned_user_id', $userId))
             ->when($filters['ticket_category_id'] ?? null, fn ($query, int $categoryId) => $query->where('ticket_category_id', $categoryId))
+            ->when(($filters['attention'] ?? null) === 'unread', fn ($query) => $query->whereHas(
+                'publicMessages',
+                fn ($query) => $query->where('author_type', Customer::class)->whereNull('seen_by_admin_at'),
+            ))
+            ->when(($filters['attention'] ?? null) === 'unassigned', fn ($query) => $query->whereNull('assigned_user_id'))
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('subject', 'like', "%{$search}%")
@@ -57,6 +73,15 @@ class TicketController extends Controller
             'priorities' => Ticket::priorities(),
             'categories' => TicketCategory::query()->orderBy('name')->pluck('name', 'id'),
             'agents' => User::query()->orderBy('name')->pluck('name', 'id'),
+            'ticketCounts' => [
+                'open' => Ticket::query()->where('status', Ticket::STATUS_OPEN)->count(),
+                'unread' => Ticket::query()->whereHas(
+                    'publicMessages',
+                    fn ($query) => $query->where('author_type', Customer::class)->whereNull('seen_by_admin_at'),
+                )->count(),
+                'urgent' => Ticket::query()->where('priority', Ticket::PRIORITY_URGENT)->count(),
+                'unassigned' => Ticket::query()->whereNull('assigned_user_id')->count(),
+            ],
         ]);
     }
 
@@ -115,13 +140,31 @@ class TicketController extends Controller
         $data = $request->validate([
             'body' => ['required', 'string', 'min:3'],
             'internal' => ['nullable', 'boolean'],
+            'mode' => ['nullable', Rule::in(['public', 'internal'])],
             'attachments' => ['nullable', 'array', 'max:5'],
             'attachments.*' => ['file', 'max:20480'],
         ]);
 
-        $this->tickets->reply($ticket, $request->user('admin'), $data['body'], $request->file('attachments', []), (bool) ($data['internal'] ?? false));
+        $isInternal = ($data['mode'] ?? null) === 'internal' || (bool) ($data['internal'] ?? false);
 
-        return back()->with('status', ($data['internal'] ?? false) ? 'یادداشت داخلی ثبت شد.' : 'پاسخ ارسال شد.');
+        $this->tickets->reply($ticket, $request->user('admin'), $data['body'], $request->file('attachments', []), $isInternal);
+
+        return back()->with('status', $isInternal ? 'یادداشت داخلی ثبت شد.' : 'پاسخ برای مشتری ارسال شد.');
+    }
+
+    public function seen(Request $request, Ticket $ticket): JsonResponse
+    {
+        $ticket->publicMessages()
+            ->where('author_type', Customer::class)
+            ->whereNull('seen_by_admin_at')
+            ->update(['seen_by_admin_at' => now()]);
+
+        $this->notifications->markTicketRead($request->user('admin'), $ticket);
+
+        return response()->json([
+            'unread_replies_count' => 0,
+            'notification_unread_count' => $request->user('admin')->unreadNotifications()->count(),
+        ]);
     }
 
     public function assignment(Request $request, Ticket $ticket): RedirectResponse

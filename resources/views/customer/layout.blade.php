@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'پنل مشتریان')</title>
     <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicons/favicon-32x32.png') }}">
@@ -34,6 +35,7 @@
             ? app(\App\Services\WalletService::class)->isWalletDepleted($billingOwner)
             : (($wallet->balance ?? 0) <= 0);
         $activeNav = $activeNav ?? 'dashboard';
+        $customerUnreadNotificationsCount = $customer->unreadNotifications()->count();
         $navGroups = [
             'فضای کاری' => [
                 ['key' => 'projects', 'label' => 'فضاهای کاری', 'route' => route('customer.projects.index', [], false), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
@@ -180,6 +182,7 @@
         @keydown.window.ctrl.k.prevent="openSearch()"
         @keydown.window.meta.k.prevent="openSearch()"
         @keydown.window.escape="closePanels(); sidebarOpen = false"
+        @notification-center-open.window="walletOpen = false; profileOpen = false; workspaceOpen = false; searchOpen = false"
         @keydown.window="
             if ($event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes($event.target.tagName)) {
                 $event.preventDefault();
@@ -304,6 +307,9 @@
                                     @if ($item['key'] === 'invoices' && ($invoiceCount ?? null))
                                         <span class="mr-auto rounded px-1.5 py-0.5 text-[10px] font-black {{ $isActive ? 'bg-[#E5F0FF] text-[#0069FF]' : 'bg-white/10 text-[#C7D4EA]' }}">{{ $invoiceCount }}</span>
                                     @endif
+                                    @if ($item['key'] === 'tickets' && $customerUnreadNotificationsCount > 0)
+                                        <span class="mr-auto rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white">{{ number_format($customerUnreadNotificationsCount) }}</span>
+                                    @endif
                                 </a>
                             @endforeach
                         </div>
@@ -373,6 +379,13 @@
                     </div>
 
                     <div class="flex shrink-0 items-center gap-2">
+                        <x-notification-center
+                            :feed-url="route('customer.notifications.index', [], false)"
+                            :mark-read-url-template="route('customer.notifications.read', ['notification' => '__NOTIFICATION__'], false)"
+                            :mark-all-read-url="route('customer.notifications.mark-all-read', [], false)"
+                            :unread-count="$customerUnreadNotificationsCount"
+                        />
+
                         @if ($canManageVms && ! View::hasSection('primary_actions_in_content'))
                         <a href="{{ route('customer.servers.create', [], false) }}" class="group inline-flex size-11 items-center justify-center rounded-xl border border-[#00A67E]/20 bg-[#00A67E] text-white shadow-lg shadow-[#00A67E]/20 transition hover:-translate-y-0.5 hover:bg-[#008F6E] hover:shadow-[#00A67E]/30 sm:w-auto sm:px-3.5" aria-label="ساخت ماشین">
                             <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -383,7 +396,7 @@
                         @endif
 
                         @if($canViewBilling && ! View::hasSection('primary_actions_in_content'))
-                        <div class="relative">
+                        <div class="relative hidden sm:block">
                             <button
                                 type="button"
                                 @click="walletOpen = !walletOpen; profileOpen = false; searchOpen = false"

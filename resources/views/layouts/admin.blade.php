@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'داشبورد آویاتو')</title>
     <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicons/favicon-32x32.png') }}">
@@ -20,16 +21,7 @@
 <body class="overflow-x-hidden bg-[#F5F7FB] text-slate-950">
     @php
         $adminUser = auth('admin')->user();
-        $adminNotifications = $adminUser?->notifications()->latest()->limit(5)->get() ?? collect();
-        $adminNotificationsCount = $adminUser?->notifications()->count() ?? 0;
         $adminUnreadNotificationsCount = $adminUser?->unreadNotifications()->count() ?? 0;
-        $adminNotificationItems = $adminNotifications->map(fn ($notification): array => [
-            'id' => $notification->id,
-            'title' => data_get($notification->data, 'title', 'اعلان'),
-            'body' => data_get($notification->data, 'body', ''),
-            'url' => data_get($notification->data, 'url', route('admin.tickets.index')),
-            'read' => (bool) $notification->read_at,
-        ])->values()->all();
     @endphp
     <script>
     document.addEventListener('alpine:init', () => {
@@ -117,7 +109,8 @@
 
     <div
         x-data="adminLayout({ notificationUnreadCount: {{ $adminUnreadNotificationsCount }} })"
-        @admin-notification-unread-changed.window="notificationUnreadCount = $event.detail.count"
+        @notification-unread-changed.window="notificationUnreadCount = $event.detail.count"
+        @notification-center-open.window="searchOpen = false; profileOpen = false"
         @keydown.window.ctrl.k.prevent="openSearch()"
         @keydown.window.meta.k.prevent="openSearch()"
         @keydown.window.escape="closePanels(); createOpen = false; sidebarOpen = false"
@@ -353,21 +346,13 @@
                     </div>
 
                     <div class="flex items-center gap-1.5">
-                        <button
-                            type="button"
-                            @click="notificationsOpen = !notificationsOpen; searchOpen = false; profileOpen = false"
-                            class="relative flex size-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-                            aria-label="اعلان‌ها"
-                        >
-                            <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <span
-                                x-cloak
-                                x-show="notificationUnreadCount > 0"
-                                class="absolute start-1.5 top-1.5 size-2 rounded-full bg-[#0069FF] ring-2 ring-white"
-                            ></span>
-                        </button>
+                        <x-notification-center
+                            :feed-url="route('admin.notifications.index')"
+                            :mark-read-url-template="route('admin.notifications.read', ['notification' => '__NOTIFICATION__'])"
+                            :mark-all-read-url="route('admin.notifications.mark-all-read')"
+                            :unread-count="$adminUnreadNotificationsCount"
+                            variant="round"
+                        />
 
                         <button
                             type="button"
@@ -380,83 +365,6 @@
                     </div>
                 </div>
             </header>
-
-            <div
-                x-cloak
-                x-show="notificationsOpen"
-                x-transition
-                @click.away="notificationsOpen = false"
-                class="absolute end-4 top-16 z-50 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl md:end-8"
-            >
-                <div
-                    x-data="adminNotificationDropdown({
-                        items: @js($adminNotificationItems),
-                        unreadCount: {{ $adminUnreadNotificationsCount }},
-                        markReadUrlTemplate: @js(route('admin.notifications.read', ['notification' => '__NOTIFICATION__'])),
-                        markAllReadUrl: @js(route('admin.notifications.mark-all-read')),
-                        csrf: @js(csrf_token()),
-                    })"
-                    class="flex h-full flex-col"
-                >
-                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                    <h3 class="text-sm font-black text-slate-900">اعلان‌ها</h3>
-                    <span
-                        class="inline-flex items-center justify-center rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white"
-                        x-text="unreadCount"
-                        x-show="unreadCount > 0"
-                    ></span>
-                    </div>
-                    <div class="max-h-72 overflow-y-auto p-2">
-                        <template x-for="notification in items" :key="notification.id">
-                            <div class="flex items-start gap-3 rounded-lg p-3 transition hover:bg-slate-50">
-                                <button
-                                    type="button"
-                                    class="mt-1 size-2 shrink-0 rounded-full"
-                                    :class="notification.read ? 'bg-slate-300' : 'bg-[#0069FF]'"
-                                    x-show="!notification.read"
-                                    :aria-label="`خواندن اعلان ${notification.title}`"
-                                    @click.stop.prevent="markRead(notification.id)"
-                                ></button>
-                                <span
-                                    class="mt-1 size-2 shrink-0 rounded-full bg-slate-300"
-                                    x-show="notification.read"
-                                ></span>
-                                <button
-                                    type="button"
-                                    class="min-w-0 flex-1 text-right"
-                                    @click.prevent.stop="openNotification(notification)"
-                                >
-                                    <p class="text-sm font-bold text-slate-900" x-text="notification.title"></p>
-                                    <p class="mt-0.5 text-xs leading-5 text-slate-500" x-text="notification.body"></p>
-                                </button>
-                                <button
-                                    type="button"
-                                    class="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-slate-600 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]"
-                                    x-show="!notification.read"
-                                    :disabled="markingIds[notification.id]"
-                                    @click.stop.prevent="markRead(notification.id)"
-                                >
-                                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
-                                    <span>خواندم</span>
-                                </button>
-                            </div>
-                        </template>
-                        <template x-if="items.length === 0">
-                            <p class="px-3 py-8 text-center text-sm font-bold text-slate-400">اعلان جدیدی وجود ندارد.</p>
-                        </template>
-                    </div>
-                    <div class="border-t border-slate-100 px-5 py-3" x-show="unreadCount > 0">
-                        <button
-                            type="button"
-                            class="w-full text-center text-xs font-bold text-[#0069FF] transition hover:text-[#0050D0] disabled:cursor-not-allowed disabled:opacity-50"
-                            :disabled="markingAll"
-                            @click.prevent="markAllRead()"
-                        >خواندن همه</button>
-                    </div>
-                </div>
-            </div>
 
             <div
                 x-cloak

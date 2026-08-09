@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
+use App\Models\User;
+use App\Services\Notifications\NotificationInboxService;
 use App\Services\ProjectAccessService;
 use App\Services\Tickets\TicketService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,6 +22,7 @@ class TicketController extends Controller
         private readonly TicketService $tickets,
         private readonly WalletService $wallets,
         private readonly ProjectAccessService $projects,
+        private readonly NotificationInboxService $notifications,
     ) {}
 
     public function index(Request $request): View
@@ -26,12 +30,22 @@ class TicketController extends Controller
         $customer = $request->user('customer');
         $filters = $request->validate([
             'status' => ['nullable', Rule::in(array_keys(Ticket::statuses()))],
+            'attention' => ['nullable', Rule::in(['unread'])],
             'search' => ['nullable', 'string', 'max:255'],
         ]);
 
         $tickets = $customer->tickets()
-            ->with(['category', 'supportTeam', 'assignee', 'virtualMachine'])
+            ->with(['category', 'supportTeam', 'assignee', 'virtualMachine', 'latestPublicMessage.author'])
+            ->withCount([
+                'publicMessages as unread_replies_count' => fn ($query) => $query
+                    ->where('author_type', User::class)
+                    ->whereNull('seen_by_customer_at'),
+            ])
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
+            ->when(($filters['attention'] ?? null) === 'unread', fn ($query) => $query->whereHas(
+                'publicMessages',
+                fn ($query) => $query->where('author_type', User::class)->whereNull('seen_by_customer_at'),
+            ))
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('subject', 'like', "%{$search}%")
@@ -47,6 +61,15 @@ class TicketController extends Controller
             'tickets' => $tickets,
             'filters' => $filters,
             'statuses' => Ticket::statuses(),
+            'ticketCounts' => [
+                'all' => $customer->tickets()->count(),
+                'open' => $customer->tickets()->where('status', Ticket::STATUS_OPEN)->count(),
+                'unread' => $customer->tickets()->whereHas(
+                    'publicMessages',
+                    fn ($query) => $query->where('author_type', User::class)->whereNull('seen_by_customer_at'),
+                )->count(),
+                'closed' => $customer->tickets()->where('status', Ticket::STATUS_CLOSED)->count(),
+            ],
         ]));
     }
 
@@ -97,6 +120,25 @@ class TicketController extends Controller
         $this->tickets->reply($ticket, $request->user('customer'), $data['body'], $request->file('attachments', []));
 
         return back()->with('status', 'پاسخ شما ثبت شد.');
+    }
+
+    public function seen(Request $request, Ticket $ticket): JsonResponse
+    {
+        $customer = $request->user('customer');
+
+        abort_unless((int) $ticket->customer_id === (int) $customer->id, 404);
+
+        $ticket->publicMessages()
+            ->where('author_type', User::class)
+            ->whereNull('seen_by_customer_at')
+            ->update(['seen_by_customer_at' => now()]);
+
+        $this->notifications->markTicketRead($customer, $ticket);
+
+        return response()->json([
+            'unread_replies_count' => 0,
+            'notification_unread_count' => $customer->unreadNotifications()->count(),
+        ]);
     }
 
     public function close(Request $request, Ticket $ticket): RedirectResponse

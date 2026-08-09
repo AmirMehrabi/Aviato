@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'number',
@@ -102,6 +103,13 @@ class Ticket extends Model
     public function publicMessages(): HasMany
     {
         return $this->messages()->where('type', TicketMessage::TYPE_REPLY);
+    }
+
+    public function latestPublicMessage(): HasOne
+    {
+        return $this->hasOne(TicketMessage::class)
+            ->where('type', TicketMessage::TYPE_REPLY)
+            ->latestOfMany();
     }
 
     public function events(): HasMany

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Customer;
 
 use App\Services\Notifications\NotificationInboxService;
 use Illuminate\Http\JsonResponse;
@@ -13,31 +13,31 @@ class NotificationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $admin = $request->user('admin');
+        $customer = $request->user('customer');
 
-        abort_unless($admin, 403);
+        abort_unless($customer, 403);
 
         return response()->json($this->notifications->feed(
-            $admin,
-            route('admin.tickets.index', [], false),
+            $customer,
+            route('customer.tickets.index', [], false),
         ));
     }
 
     public function markAllRead(Request $request): JsonResponse
     {
-        $admin = $request->user('admin');
+        $customer = $request->user('customer');
 
-        abort_unless($admin, 403);
+        abort_unless($customer, 403);
 
-        return response()->json($this->notifications->markAllRead($admin));
+        return response()->json($this->notifications->markAllRead($customer));
     }
 
     public function markRead(Request $request, string $notification): JsonResponse
     {
-        $admin = $request->user('admin');
+        $customer = $request->user('customer');
 
-        abort_unless($admin, 403);
+        abort_unless($customer, 403);
 
-        return response()->json($this->notifications->markRead($admin, $notification));
+        return response()->json($this->notifications->markRead($customer, $notification));
     }
 }

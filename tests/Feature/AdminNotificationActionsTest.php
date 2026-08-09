@@ -12,6 +12,26 @@ class AdminNotificationActionsTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['portals.admin.domain' => 'admin.localhost']);
+    }
+
+    public function test_admin_can_fetch_latest_notifications(): void
+    {
+        $admin = User::factory()->create();
+        $notificationId = $this->createNotification($admin->id, 'Latest notification');
+
+        $this->actingAs($admin, 'admin')
+            ->getJson('https://admin.localhost/notifications')
+            ->assertOk()
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonPath('items.0.id', $notificationId)
+            ->assertJsonPath('items.0.title', 'Latest notification');
+    }
+
     public function test_admin_can_mark_all_notifications_as_read_without_refreshing(): void
     {
         $admin = User::factory()->create();
