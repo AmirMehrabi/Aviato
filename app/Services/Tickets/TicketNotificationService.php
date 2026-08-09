@@ -19,6 +19,14 @@ class TicketNotificationService
     {
         $ticket->loadMissing('customer', 'category', 'supportTeam.activeUsers', 'assignee');
 
+        $this->notifySms(
+            $ticket->customer->phone,
+            AppSetting::TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE,
+            $ticket,
+            $ticket->customer->name,
+            $ticket->category?->name ?? 'پشتیبانی',
+        );
+
         $recipients = $ticket->assignee
             ? collect([$ticket->assignee])
             : ($ticket->supportTeam?->activeUsers ?? User::query()->orderBy('name')->get());
@@ -26,7 +34,7 @@ class TicketNotificationService
         $recipients->each(function (User $user) use ($ticket): void {
             $this->notifyDatabase($user, $ticket, 'ticket_created', 'تیکت جدید ثبت شد', $ticket->subject);
             $this->notifyEmail($user->email, 'تیکت جدید '.$ticket->number, $this->line($ticket, 'تیکت جدیدی توسط '.$ticket->customer->name.' ثبت شد.'));
-            $this->notifySms($user->phone, AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE, $ticket, $ticket->customer->name, $ticket->category?->name ?? 'Support');
+            $this->notifySms($user->phone, AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE, $ticket, $ticket->customer->name, $ticket->category?->name ?? 'پشتیبانی');
         });
     }
 
@@ -41,7 +49,7 @@ class TicketNotificationService
         $recipients->each(function (User $user) use ($ticket): void {
             $this->notifyDatabase($user, $ticket, 'ticket_customer_reply', 'پاسخ جدید مشتری', $ticket->subject);
             $this->notifyEmail($user->email, 'پاسخ مشتری در '.$ticket->number, $this->line($ticket, 'مشتری در این تیکت پاسخ داد.'));
-            $this->notifySms($user->phone, AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE, $ticket, $ticket->customer->name, $ticket->status);
+            $this->notifySms($user->phone, AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE, $ticket, $ticket->customer->name, $this->statusLabel($ticket));
         });
     }
 
@@ -52,7 +60,16 @@ class TicketNotificationService
 
         $this->notifyDatabase($customer, $ticket, 'ticket_admin_reply', 'پاسخ پشتیبانی', $ticket->subject);
         $this->notifyEmail($customer->email, 'پاسخ پشتیبانی در '.$ticket->number, $this->line($ticket, 'پشتیبانی به تیکت شما پاسخ داد.'));
-        $this->notifySms($customer->phone, AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE, $ticket, 'پشتیبانی', $ticket->status);
+        $this->notifySms($customer->phone, AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE, $ticket, $customer->name, $this->statusLabel($ticket));
+    }
+
+    public function ticketAssigned(Ticket $ticket, User $assignee): void
+    {
+        $ticket->load('category');
+
+        $this->notifyDatabase($assignee, $ticket, 'ticket_assigned', 'تیکت به شما واگذار شد', $ticket->subject);
+        $this->notifyEmail($assignee->email, 'واگذاری تیکت '.$ticket->number, $this->line($ticket, 'این تیکت به شما واگذار شد.'));
+        $this->notifySms($assignee->phone, AppSetting::TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE, $ticket, $assignee->name, $ticket->category?->name ?? 'پشتیبانی');
     }
 
     public function statusChanged(Ticket $ticket): void
@@ -62,7 +79,6 @@ class TicketNotificationService
 
         $this->notifyDatabase($customer, $ticket, 'ticket_status_changed', 'وضعیت تیکت تغییر کرد', Ticket::statuses()[$ticket->status] ?? $ticket->status);
         $this->notifyEmail($customer->email, 'تغییر وضعیت '.$ticket->number, $this->line($ticket, 'وضعیت تیکت شما تغییر کرد.'));
-        $this->notifySms($customer->phone, AppSetting::TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE, $ticket, 'پشتیبانی', $ticket->status);
     }
 
     private function notifyDatabase(User|Customer $recipient, Ticket $ticket, string $type, string $title, string $body): void
@@ -89,19 +105,24 @@ class TicketNotificationService
         }
     }
 
-    private function notifySms(?string $phone, string $templateSettingKey, Ticket $ticket, string $token2, string $token3): void
+    private function notifySms(?string $phone, string $templateSettingKey, Ticket $ticket, string $fullName, string $context): void
     {
         if (! AppSetting::ticketSmsNotificationsEnabled() || blank($phone) || AppSetting::smsGateway() !== 'kavenegar') {
+            return;
+        }
+
+        $template = (string) AppSetting::getValue($templateSettingKey, '');
+        if (blank($template)) {
             return;
         }
 
         try {
             app(KavenegarLookupClient::class)->sendLookup(
                 $phone,
-                (string) AppSetting::getValue($templateSettingKey, ''),
+                $template,
                 $ticket->number,
-                KavenegarLookupClient::nameToken($token2),
-                $token3,
+                token10: $context,
+                token20: $fullName,
             );
         } catch (Throwable $exception) {
             Log::warning('Ticket SMS notification failed.', ['ticket_id' => $ticket->id, 'error' => $exception->getMessage()]);
@@ -128,5 +149,10 @@ class TicketNotificationService
     private function line(Ticket $ticket, string $message): string
     {
         return $message."\n\nTicket: {$ticket->number}\nSubject: {$ticket->subject}";
+    }
+
+    private function statusLabel(Ticket $ticket): string
+    {
+        return Ticket::statuses()[$ticket->status] ?? $ticket->status;
     }
 }

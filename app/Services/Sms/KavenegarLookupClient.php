@@ -24,8 +24,15 @@ class KavenegarLookupClient
         $this->sendLookup($phone, $template, $code);
     }
 
-    public function sendLookup(string $phone, string $template, string $token, ?string $token2 = null, ?string $token3 = null): void
-    {
+    public function sendLookup(
+        string $phone,
+        string $template,
+        string $token,
+        ?string $token2 = null,
+        ?string $token3 = null,
+        ?string $token10 = null,
+        ?string $token20 = null,
+    ): void {
         $apiKey = (string) AppSetting::getValue(AppSetting::KAVENEGAR_API_KEY, '');
 
         if ($apiKey === '' || $template === '') {
@@ -44,6 +51,14 @@ class KavenegarLookupClient
 
         if (filled($token3)) {
             $payload['token3'] = $token3;
+        }
+
+        if (filled($token10)) {
+            $payload['token10'] = $token10;
+        }
+
+        if (filled($token20)) {
+            $payload['token20'] = $token20;
         }
 
         $this->sendPayload($apiKey, $payload);

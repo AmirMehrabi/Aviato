@@ -100,6 +100,7 @@ class TicketService
 
     public function updateAssignment(Ticket $ticket, User $actor, array $data): Ticket
     {
+        $previousAssigneeId = $ticket->assigned_user_id;
         $category = TicketCategory::query()->with('supportTeam')->find($data['ticket_category_id'] ?? $ticket->ticket_category_id);
         $team = isset($data['support_team_id'])
             ? SupportTeam::query()->find($data['support_team_id'])
@@ -120,6 +121,10 @@ class TicketService
             'team_id' => $team?->id,
             'assignee_id' => $assignee?->id,
         ]);
+
+        if ($assignee && $assignee->id !== $previousAssigneeId) {
+            $this->notifications->ticketAssigned($ticket, $assignee);
+        }
 
         return $ticket;
     }
