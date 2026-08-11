@@ -11,6 +11,7 @@ use App\Models\VirtualMachine;
 use App\Models\VmBackup;
 use App\Models\VmBackupPolicy;
 use App\Services\UsageBillingService;
+use App\Services\VmBackupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Tests\Concerns\FundsCustomerWallet;
@@ -18,7 +19,7 @@ use Tests\TestCase;
 
 class CustomerBackupTest extends TestCase
 {
-    use RefreshDatabase, FundsCustomerWallet;
+    use FundsCustomerWallet, RefreshDatabase;
 
     private string $customerBaseUrl = 'https://cp.localhost';
 
@@ -65,6 +66,92 @@ class CustomerBackupTest extends TestCase
         ]);
 
         Bus::assertDispatched(RunVmBackupJob::class);
+    }
+
+    public function test_depleted_customer_cannot_queue_manual_backup(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $vm = $this->readyVm($customer);
+        $customer->wallet()->update(['balance' => 0]);
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/backups')->post($this->customerBaseUrl.'/backups/servers/'.$vm->uuid)
+            ->assertRedirect($this->customerBaseUrl.'/backups')
+            ->assertSessionHas('error', 'برای ثبت بکاپ، ابتدا کیف پول را شارژ کنید.');
+
+        $this->assertDatabaseCount('vm_backups', 0);
+        Bus::assertNotDispatched(RunVmBackupJob::class);
+    }
+
+    public function test_depleted_customer_cannot_enable_but_can_disable_backup_policy(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->readyVm($customer);
+        $customer->wallet()->update(['balance' => 0]);
+
+        $payload = [
+            'is_enabled' => '1',
+            'frequency' => VmBackupPolicy::FREQUENCY_DAILY,
+            'preferred_time' => '03:30',
+            'retention_count' => 4,
+            'backup_storage' => 'local',
+        ];
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/backups')->patch($this->customerBaseUrl.'/backups/servers/'.$vm->uuid.'/policy', $payload)
+            ->assertRedirect($this->customerBaseUrl.'/backups')
+            ->assertSessionHas('error', 'برای ثبت بکاپ، ابتدا کیف پول را شارژ کنید.');
+
+        $this->assertDatabaseMissing('vm_backup_policies', ['virtual_machine_id' => $vm->id]);
+
+        $policy = VmBackupPolicy::create([
+            'virtual_machine_id' => $vm->id,
+            'is_enabled' => true,
+            'frequency' => VmBackupPolicy::FREQUENCY_DAILY,
+            'preferred_time' => '03:30',
+            'retention_count' => 4,
+            'backup_storage' => 'local',
+            'mode' => 'snapshot',
+            'compression' => 'zstd',
+            'next_run_at' => now()->addDay(),
+        ]);
+
+        unset($payload['is_enabled']);
+        $this->from($this->customerBaseUrl.'/backups')->patch($this->customerBaseUrl.'/backups/servers/'.$vm->uuid.'/policy', $payload)
+            ->assertRedirect($this->customerBaseUrl.'/backups')
+            ->assertSessionHas('status');
+
+        $this->assertFalse($policy->fresh()->is_enabled);
+        $this->assertNull($policy->fresh()->next_run_at);
+    }
+
+    public function test_due_backup_policy_is_skipped_when_wallet_is_depleted(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $vm = $this->readyVm($customer);
+        $customer->wallet()->update(['balance' => 0]);
+        $policy = VmBackupPolicy::create([
+            'virtual_machine_id' => $vm->id,
+            'is_enabled' => true,
+            'frequency' => VmBackupPolicy::FREQUENCY_DAILY,
+            'preferred_time' => '03:30',
+            'retention_count' => 4,
+            'backup_storage' => 'local',
+            'mode' => 'snapshot',
+            'compression' => 'zstd',
+            'next_run_at' => now()->subMinute(),
+        ]);
+
+        $queued = app(VmBackupService::class)->dispatchDuePolicies();
+
+        $this->assertCount(0, $queued);
+        $this->assertDatabaseCount('vm_backups', 0);
+        $this->assertTrue($policy->fresh()->next_run_at->isFuture());
+        Bus::assertNotDispatched(RunVmBackupJob::class);
     }
 
     public function test_customer_cannot_queue_backup_for_another_customer_vm(): void

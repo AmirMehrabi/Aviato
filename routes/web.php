@@ -362,7 +362,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         ])
         ->name('customer.wallet.payments.callback');
 
-    Route::middleware(['auth:customer', 'customer.wallet.access'])->group(function () use ($customerHome) {
+    Route::middleware('auth:customer')->group(function () use ($customerHome) {
         Route::get($customerHome, DashboardController::class)->name('dashboard');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
         Route::get('notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');

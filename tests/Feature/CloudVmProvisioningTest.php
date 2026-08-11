@@ -470,6 +470,29 @@ class CloudVmProvisioningTest extends TestCase
         Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
     }
 
+    public function test_depleted_customer_cannot_bypass_wallet_guard_with_custom_resources(): void
+    {
+        Bus::fake();
+
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 0]);
+        [$image] = $this->catalog();
+
+        $this->actingAs($customer, 'customer');
+        $this->from($this->customerBaseUrl.'/servers/create')->post($this->customerBaseUrl.'/servers', [
+            'cloud_image_id' => $image->id,
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'login_username' => 'ubuntu',
+        ])->assertRedirect($this->customerBaseUrl.'/servers/create')
+            ->assertSessionHas('error', 'برای ساخت ماشین مجازی، ابتدا کیف پول را شارژ کنید.');
+
+        $this->assertDatabaseCount('virtual_machines', 0);
+        $this->assertDatabaseCount('ip_addresses', 0);
+        Bus::assertNotDispatched(ProvisionCloudVirtualMachine::class);
+    }
+
     public function test_enabled_vm_creation_charge_is_collected_from_wallet(): void
     {
         Bus::fake();

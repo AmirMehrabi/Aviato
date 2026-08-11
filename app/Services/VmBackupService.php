@@ -12,9 +12,12 @@ use RuntimeException;
 
 class VmBackupService
 {
+    public function __construct(private readonly WalletService $wallets) {}
+
     public function queueManualBackup(VirtualMachine $vm): VmBackup
     {
         $this->assertBackupable($vm);
+        $this->assertWalletCanStart($vm);
         $this->assertNoRunningBackup($vm);
 
         $backup = VmBackup::create([
@@ -31,6 +34,10 @@ class VmBackupService
 
     public function updatePolicy(VirtualMachine $vm, array $data): VmBackupPolicy
     {
+        if ((bool) ($data['is_enabled'] ?? false)) {
+            $this->assertWalletCanStart($vm);
+        }
+
         $policy = $vm->backupPolicy()->firstOrNew(['virtual_machine_id' => $vm->id]);
         $policy->fill([
             'is_enabled' => (bool) ($data['is_enabled'] ?? false),
@@ -74,6 +81,7 @@ class VmBackupService
 
                     try {
                         $this->assertBackupable($vm);
+                        $this->assertWalletCanStart($vm);
                         $this->assertNoRunningBackup($vm);
                     } catch (RuntimeException) {
                         $policy->scheduleNext();
@@ -182,6 +190,16 @@ class VmBackupService
 
         if ($vm->provisioning_status !== VirtualMachine::PROVISION_READY) {
             throw new RuntimeException('Backups are available after provisioning is ready.');
+        }
+    }
+
+    private function assertWalletCanStart(VirtualMachine $vm): void
+    {
+        $vm->loadMissing(['project.owner', 'customer']);
+        $billingCustomer = $vm->project?->owner ?? $vm->customer;
+
+        if ($billingCustomer && $this->wallets->isWalletDepleted($billingCustomer)) {
+            throw new RuntimeException('برای ثبت بکاپ، ابتدا کیف پول را شارژ کنید.');
         }
     }
 

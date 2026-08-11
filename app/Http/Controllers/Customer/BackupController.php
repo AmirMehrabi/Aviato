@@ -13,6 +13,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use RuntimeException;
 
 class BackupController extends Controller
 {
@@ -56,6 +57,8 @@ class BackupController extends Controller
             $this->backups->queueManualBackup($virtualMachine);
 
             return back()->with('status', 'Backup queued.');
+        } catch (RuntimeException $exception) {
+            return back()->with('error', $exception->getMessage());
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -77,7 +80,11 @@ class BackupController extends Controller
         ]);
         $data['is_enabled'] = $request->boolean('is_enabled');
 
-        $this->backups->updatePolicy($virtualMachine, $data);
+        try {
+            $this->backups->updatePolicy($virtualMachine, $data);
+        } catch (RuntimeException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
 
         return back()->with('status', 'Backup policy updated.');
     }

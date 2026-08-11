@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\EnsureCustomerVmAccess;
-use App\Http\Middleware\EnsureCustomerWalletAccess;
 use App\Http\Middleware\EnsurePortalHost;
 use App\Http\Middleware\EnsureResellerActive;
 use App\Http\Middleware\EnsureUserRole;
@@ -26,7 +25,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'portal.host' => EnsurePortalHost::class,
-            'customer.wallet.access' => EnsureCustomerWalletAccess::class,
             'customer.vm.access' => EnsureCustomerVmAccess::class,
             'reseller.active' => EnsureResellerActive::class,
             'role' => EnsureUserRole::class,

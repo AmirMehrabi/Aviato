@@ -1066,7 +1066,8 @@ class CustomerWalletBillingTest extends TestCase
 
         $this->actingAs($customer, 'customer');
         $this->get($this->customerBaseUrl.'/dashboard')
-            ->assertRedirect($this->customerBaseUrl.'/suspended');
+            ->assertOk()
+            ->assertSee('موجودی کیف پول منفی است');
 
         app(WalletService::class)->credit($customer, 2000, 'شارژ آزمایشی');
 

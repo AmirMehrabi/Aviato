@@ -19,6 +19,31 @@ class CustomerWalletRestrictionTest extends TestCase
 
     private string $customerBaseUrl = 'https://cp.localhost';
 
+    public function test_new_customer_with_empty_wallet_can_explore_the_portal(): void
+    {
+        $customer = Customer::factory()->create();
+
+        $this->actingAs($customer, 'customer');
+
+        $this->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertSee('کیف پول شما خالی است');
+        $this->get($this->customerBaseUrl.'/profile')->assertOk();
+        $this->get($this->customerBaseUrl.'/servers/create')->assertOk();
+        $this->get($this->customerBaseUrl.'/tickets')->assertOk();
+    }
+
+    public function test_negative_wallet_can_still_open_dashboard(): void
+    {
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => -1000]);
+
+        $this->actingAs($customer, 'customer')
+            ->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertSee('موجودی کیف پول منفی است');
+    }
+
     public function test_positive_balance_below_notification_threshold_does_not_block_navigation(): void
     {
         $customer = Customer::factory()->create();

@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\WalletTransaction;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
+use App\Services\UsageBalanceService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use Carbon\Carbon;
@@ -23,6 +24,7 @@ class WalletController extends Controller
         private readonly WalletService $wallets,
         private readonly ProjectAccessService $projects,
         private readonly UsageBillingService $usageBilling,
+        private readonly UsageBalanceService $usageBalances,
         private readonly PaymentGatewayManager $paymentGateways,
     ) {}
 
@@ -151,6 +153,7 @@ class WalletController extends Controller
         $activeProject = $this->projects->activeProject($request, $customer);
         $wallet = $this->wallets->walletFor($activeProject->owner);
         $pendingUsage = $this->usageBilling->projectPendingUsage($activeProject->id);
+        $effectiveBalance = $this->usageBalances->effectiveBalance($activeProject->owner);
 
         return view('customer.suspension.notice', [
             'customer' => $customer,
@@ -160,6 +163,7 @@ class WalletController extends Controller
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'pendingUsage' => $pendingUsage,
+            'effectiveBalance' => $effectiveBalance,
         ]);
     }
 

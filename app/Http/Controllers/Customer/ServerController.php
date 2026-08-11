@@ -363,6 +363,12 @@ class ServerController extends Controller
                 ->with('error', 'برای ساخت ماشین مجازی موجودی کیف پول باید حداقل '.$this->wallets->format($minimumCreateBalance).' باشد.');
         }
 
+        if (! $bundle && $this->wallets->isWalletDepleted($activeProject->owner)) {
+            return back()
+                ->withInput($this->safeCreateInput($request))
+                ->with('error', 'برای ساخت ماشین مجازی، ابتدا کیف پول را شارژ کنید.');
+        }
+
         $image->loadMissing('nodeMappings');
         if ($location->isProxmox() && $this->availableImageIpCount($image) < 1) {
             return back()
