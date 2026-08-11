@@ -49,7 +49,10 @@ return new class extends Migration
             $table->foreignId('virtual_machine_id')->constrained('virtual_machines')->cascadeOnDelete();
             $table->timestamps();
 
-            $table->unique(['project_member_id', 'virtual_machine_id']);
+            $table->unique(
+                ['project_member_id', 'virtual_machine_id'],
+                'project_member_vm_unique'
+            );
         });
 
         DB::table('customers')->orderBy('id')->select('id', 'name')->chunk(500, function ($customers): void {
