@@ -64,6 +64,12 @@ use Illuminate\Support\Str;
     'delete_task_id',
     'last_billed_at',
     'unbilled_amount',
+    'network_accounting_enabled_override',
+    'network_included_bytes_monthly_override',
+    'network_overage_price_override',
+    'network_overage_price_unit_bytes_override',
+    'network_usage_direction_override',
+    'network_billing_timezone_override',
 ])]
 class VirtualMachine extends Model
 {
@@ -191,6 +197,11 @@ class VirtualMachine extends Model
         return $this->hasMany(VmTransfer::class);
     }
 
+    public function networkBillingPeriods(): HasMany
+    {
+        return $this->hasMany(VmNetworkBillingPeriod::class);
+    }
+
     public function pendingUpgradeOrders(): HasMany
     {
         return $this->hasMany(VmUpgradeOrder::class)
@@ -312,6 +323,10 @@ class VirtualMachine extends Model
             'delete_failed_at' => 'datetime',
             'last_billed_at' => 'datetime',
             'unbilled_amount' => 'integer',
+            'network_accounting_enabled_override' => 'boolean',
+            'network_included_bytes_monthly_override' => 'integer',
+            'network_overage_price_override' => 'integer',
+            'network_overage_price_unit_bytes_override' => 'integer',
         ];
     }
 }

@@ -7,6 +7,8 @@ use App\Models\HetznerAccount;
 use App\Models\VirtualMachine;
 use App\Services\HetznerCatalogSyncService;
 use App\Services\InvoiceService;
+use App\Services\NetworkUsageIngestionService;
+use App\Services\NetworkUsageReconciliationService;
 use App\Services\ProxmoxService;
 use App\Services\StaleVirtualMachineCleanupService;
 use App\Services\UsageBillingService;
@@ -49,6 +51,27 @@ Artisan::command('billing:generate-monthly-invoices', function (InvoiceService $
 
     $this->info(sprintf('Generated %d monthly invoice(s).', $generated->count()));
 })->purpose('Generate monthly customer usage invoices');
+
+Artisan::command('network-usage:sync {--from= : UTC ISO-8601 backfill start} {--to= : UTC ISO-8601 backfill end} {--max-pages=100}', function (NetworkUsageIngestionService $ingestion) {
+    $stats = $ingestion->sync($this->option('from'), $this->option('to'), max(1, (int) $this->option('max-pages')));
+    $this->info(sprintf('IPDR sync: %d page(s), %d received, %d changed, %d rated.', $stats['pages'], $stats['received'], $stats['changed'], $stats['rated']));
+
+    return Command::SUCCESS;
+})->purpose('Fetch finalized network usage buckets from IPDR and rate them idempotently');
+
+Artisan::command('network-usage:reconcile {--from= : Required UTC ISO-8601 start} {--to= : Required UTC ISO-8601 end} {--vm= : Optional Aviato VM UUID}', function (NetworkUsageReconciliationService $reconciliation) {
+    if (! $this->option('from') || ! $this->option('to')) {
+        $this->error('--from and --to are required.');
+
+        return Command::INVALID;
+    }
+    $rows = $reconciliation->reconcile($this->option('from'), $this->option('to'), $this->option('vm'));
+    $this->table(['VM UUID', 'IPDR RX', 'Aviato RX', 'IPDR TX', 'Aviato TX', 'IPDR buckets', 'Aviato buckets', 'Result'], array_map(fn (array $row): array => [
+        $row['vm_uuid'], $row['remote_ingress_bytes'], $row['local_ingress_bytes'], $row['remote_egress_bytes'], $row['local_egress_bytes'], $row['remote_bucket_count'], $row['local_bucket_count'], $row['matches'] ? 'MATCH' : 'DIFF',
+    ], $rows));
+
+    return collect($rows)->every('matches') ? Command::SUCCESS : Command::FAILURE;
+})->purpose('Compare Aviato accepted buckets with independent IPDR totals');
 
 Artisan::command('hetzner:sync-catalog {--account= : Limit sync to one Hetzner account ID}', function (HetznerCatalogSyncService $sync) {
     $accountId = $this->option('account');
@@ -331,6 +354,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('billing:charge-usage')->hourly();
+Schedule::command('network-usage:sync')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('api:prune-logs')->dailyAt('00:30');
 Schedule::command('billing:settle-usage')->dailyAt('00:05');
 Schedule::command('hetzner:sync-catalog')->hourlyAt(5);

@@ -359,6 +359,12 @@ class VirtualMachineController extends Controller
         $data = $request->validate([
             'ip_address_id' => ['required', 'integer', 'exists:ip_addresses,id'],
             'sync_to_proxmox' => ['sometimes', 'boolean'],
+            'network_accounting_enabled_override' => ['nullable', 'boolean'],
+            'network_included_bytes_monthly_override' => ['nullable', 'integer', 'min:0'],
+            'network_overage_price_override' => ['nullable', 'integer', 'min:0'],
+            'network_overage_price_unit_bytes_override' => ['nullable', 'integer', 'min:1'],
+            'network_usage_direction_override' => ['nullable', Rule::in(['ingress', 'egress', 'both'])],
+            'network_billing_timezone_override' => ['nullable', 'timezone'],
         ]);
 
         $syncToProxmox = (bool) ($data['sync_to_proxmox'] ?? true);

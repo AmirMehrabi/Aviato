@@ -21,7 +21,12 @@ class VmBundleController extends Controller
 
     public function create(): View
     {
-        return view('admin.billing.bundles.create', ['bundle' => new VmBundle(['ip_count' => 1, 'is_active' => true, 'show_on_marketing' => true])]);
+        return view('admin.billing.bundles.create', ['bundle' => new VmBundle([
+            'ip_count' => 1, 'is_active' => true, 'show_on_marketing' => true,
+            'network_accounting_enabled' => false, 'network_included_bytes_monthly' => 1099511627776,
+            'network_overage_price' => 9000, 'network_overage_price_unit_bytes' => 1073741824,
+            'network_usage_direction' => 'both', 'network_billing_timezone' => 'Asia/Tehran',
+        ])]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -64,11 +69,18 @@ class VmBundleController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'is_active' => ['nullable', 'boolean'],
             'show_on_marketing' => ['nullable', 'boolean'],
+            'network_accounting_enabled' => ['nullable', 'boolean'],
+            'network_included_bytes_monthly' => ['required', 'integer', 'min:0'],
+            'network_overage_price' => ['required', 'integer', 'min:0'],
+            'network_overage_price_unit_bytes' => ['required', 'integer', 'min:1'],
+            'network_usage_direction' => ['required', Rule::in(['ingress', 'egress', 'both'])],
+            'network_billing_timezone' => ['required', 'timezone'],
         ]);
 
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
         $data['is_active'] = $request->boolean('is_active');
         $data['show_on_marketing'] = $request->boolean('show_on_marketing', true);
+        $data['network_accounting_enabled'] = $request->boolean('network_accounting_enabled');
         $data['sort_order'] = $data['sort_order'] ?? 0;
 
         return $data;

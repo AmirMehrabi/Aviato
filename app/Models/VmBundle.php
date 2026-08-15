@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'slug', 'description', 'cpu_cores', 'ram_gb', 'disk_gb', 'ip_count', 'monthly_price', 'hourly_price', 'is_active', 'show_on_marketing', 'sort_order'])]
+#[Fillable(['name', 'slug', 'description', 'cpu_cores', 'ram_gb', 'disk_gb', 'ip_count', 'monthly_price', 'hourly_price', 'is_active', 'show_on_marketing', 'sort_order', 'network_accounting_enabled', 'network_included_bytes_monthly', 'network_overage_price', 'network_overage_price_unit_bytes', 'network_usage_direction', 'network_billing_timezone'])]
 class VmBundle extends Model
 {
     protected static function booted(): void
@@ -55,6 +55,10 @@ class VmBundle extends Model
             'is_active' => 'boolean',
             'show_on_marketing' => 'boolean',
             'sort_order' => 'integer',
+            'network_accounting_enabled' => 'boolean',
+            'network_included_bytes_monthly' => 'integer',
+            'network_overage_price' => 'integer',
+            'network_overage_price_unit_bytes' => 'integer',
         ];
     }
 }

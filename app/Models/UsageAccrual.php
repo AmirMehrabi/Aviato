@@ -33,6 +33,8 @@ class UsageAccrual extends Model
 
     public const CATEGORY_EXTRA_DISK = 'extra_disk_storage';
 
+    public const CATEGORY_NETWORK = 'network_usage';
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

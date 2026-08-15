@@ -117,4 +117,18 @@
         @error('os_template') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
     </label>
 </div>
+@if($vm->exists)
+<div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <h2 class="font-black text-slate-900">بازنویسی حسابداری شبکه</h2>
+    <p class="mt-1 text-xs text-slate-500">مقدار خالی یعنی ارث‌بری از باندل. تغییرات روی دوره‌ای که قبلاً snapshot شده اثر بازگشتی ندارد.</p>
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <label><span class="text-sm font-black text-slate-700">وضعیت</span><select name="network_accounting_enabled_override" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3"><option value="">ارث‌بری از باندل</option><option value="1" @selected(old('network_accounting_enabled_override', $vm->network_accounting_enabled_override) === true)>فعال</option><option value="0" @selected(old('network_accounting_enabled_override', $vm->network_accounting_enabled_override) === false)>غیرفعال</option></select></label>
+        <x-form.input name="network_included_bytes_monthly_override" type="number" label="حجم رایگان (byte)" :value="$vm->network_included_bytes_monthly_override" dir-ltr />
+        <x-form.input name="network_overage_price_override" type="number" label="هزینه واحد (IRR)" :value="$vm->network_overage_price_override" dir-ltr />
+        <x-form.input name="network_overage_price_unit_bytes_override" type="number" label="اندازه واحد (byte)" :value="$vm->network_overage_price_unit_bytes_override" dir-ltr />
+        <label><span class="text-sm font-black text-slate-700">جهت ترافیک</span><select name="network_usage_direction_override" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3"><option value="">ارث‌بری</option><option value="both" @selected(old('network_usage_direction_override', $vm->network_usage_direction_override) === 'both')>ورودی + خروجی</option><option value="egress" @selected(old('network_usage_direction_override', $vm->network_usage_direction_override) === 'egress')>خروجی</option><option value="ingress" @selected(old('network_usage_direction_override', $vm->network_usage_direction_override) === 'ingress')>ورودی</option></select></label>
+        <x-form.input name="network_billing_timezone_override" label="منطقه زمانی" :value="$vm->network_billing_timezone_override" dir-ltr />
+    </div>
+</div>
+@endif
 <div class="mt-6 flex gap-3"><button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره VM</button><a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a></div>
