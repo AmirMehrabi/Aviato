@@ -35,7 +35,6 @@ return [
         ],
     ],
 
-    
     'ipdr' => [
         'url' => env('IPDR_URL'),
         'token' => env('IPDR_TOKEN'),
