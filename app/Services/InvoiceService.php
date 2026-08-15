@@ -118,7 +118,9 @@ class InvoiceService
 
         foreach ($accruals as $accrual) {
             $entries->push([
-                'key' => implode('|', [$accrual->category, $accrual->resource_type, $accrual->resource_id]),
+                'key' => $accrual->category === UsageAccrual::CATEGORY_NETWORK
+                    ? implode('|', [$accrual->category, 'virtual_machine', $accrual->virtual_machine_id])
+                    : implode('|', [$accrual->category, $accrual->resource_type, $accrual->resource_id]),
                 'category' => $accrual->category,
                 'virtual_machine_id' => $accrual->virtual_machine_id,
                 'resource_name' => $accrual->resource_name ?: 'VM',
@@ -211,6 +213,7 @@ class InvoiceService
         $label = $line['resource_name'].match ($category) {
             UsageAccrual::CATEGORY_BACKUP => ' - Backup',
             UsageAccrual::CATEGORY_EXTRA_DISK => ' - Extra Disk',
+            UsageAccrual::CATEGORY_NETWORK => ' - Network',
             default => '',
         };
         $start = $line['period_start'] ? CarbonImmutable::parse($line['period_start'])->format('Y/m/d H:i') : '—';
@@ -231,6 +234,15 @@ class InvoiceService
                 $snapshot['size_gb'] ?? '—',
                 $snapshot['storage'] ?? '—',
             ),
+            UsageAccrual::CATEGORY_NETWORK => sprintf(
+                'مصرف شبکه از %s تا %s | جهت: %s | سهمیه: %s bytes | نرخ: %s IRR / %s bytes',
+                $start,
+                $end,
+                $snapshot['direction'] ?? '—',
+                number_format((int) ($snapshot['included_bytes'] ?? 0)),
+                number_format((int) ($snapshot['price_per_unit'] ?? 0)),
+                number_format((int) ($snapshot['price_unit_bytes'] ?? 0)),
+            ),
             default => sprintf(
                 'بازه مصرف: %s تا %s | منابع: %s vCPU / %sGB RAM / %sGB Disk / %s IP',
                 $start,
@@ -248,8 +260,8 @@ class InvoiceService
             'type' => InvoiceItem::TYPE_VM_USAGE,
             'label' => $label,
             'description' => $description,
-            'quantity' => round($line['hours'], 4),
-            'unit' => 'hour',
+            'quantity' => $category === UsageAccrual::CATEGORY_NETWORK ? 1 : round($line['hours'], 4),
+            'unit' => $category === UsageAccrual::CATEGORY_NETWORK ? 'period' : 'hour',
             'unit_price' => $line['unit_price'],
             'subtotal' => $line['subtotal'],
             'meta' => [
@@ -262,6 +274,7 @@ class InvoiceService
                 'source_ids' => $line['source_ids'],
                 'period_start' => $line['period_start'],
                 'period_end' => $line['period_end'],
+                'category' => $category,
             ],
         ]);
     }

@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\IncidentController as AdminIncidentController;
 use App\Http\Controllers\Admin\IncidentTimelineEventController;
 use App\Http\Controllers\Admin\InfrastructureLocationController;
 use App\Http\Controllers\Admin\IpPoolController;
+use App\Http\Controllers\Admin\NetworkBillingController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
@@ -40,6 +41,7 @@ use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\MonitoringController;
+use App\Http\Controllers\Customer\NetworkUsageController;
 use App\Http\Controllers\Customer\NotificationController as CustomerNotificationController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\PaymentReceiptController;
@@ -241,6 +243,15 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->names('admin.ip-pools');
 
         Route::prefix('billing')->name('admin.billing.')->group(function (): void {
+            Route::get('network', [NetworkBillingController::class, 'index'])->name('network.index');
+            Route::get('network/ipdr', [NetworkBillingController::class, 'ipdr'])->name('network.ipdr');
+            Route::post('network/ipdr/test', [NetworkBillingController::class, 'testConnection'])->name('network.ipdr.test');
+            Route::post('network/ipdr/sync', [NetworkBillingController::class, 'sync'])->name('network.sync');
+            Route::get('network/exceptions', [NetworkBillingController::class, 'exceptions'])->name('network.exceptions');
+            Route::post('network/exceptions/{bucket}/retry', [NetworkBillingController::class, 'retry'])->name('network.exceptions.retry');
+            Route::get('network/reconciliation', [NetworkBillingController::class, 'reconciliation'])->name('network.reconciliation');
+            Route::post('network/reconciliation', [NetworkBillingController::class, 'reconcile'])->name('network.reconcile');
+            Route::get('network/virtual-machines/{virtualMachine}', [NetworkBillingController::class, 'vm'])->name('network.vm');
             Route::get('/', [BillingController::class, 'overview'])->name('overview');
             Route::get('payments', [BillingController::class, 'payments'])->name('payments.index');
             Route::get('payments/{payment}', [BillingController::class, 'payment'])->name('payments.show');
@@ -388,6 +399,8 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::delete('projects/{project}/members/{member}', [ProjectController::class, 'destroyMember'])->name('customer.projects.members.destroy');
 
         Route::middleware('customer.vm.access')->group(function (): void {
+            Route::get('network', [NetworkUsageController::class, 'index'])->name('customer.network.index');
+            Route::get('servers/{virtualMachine}/network', [NetworkUsageController::class, 'show'])->name('customer.network.show');
             Route::get('servers', [ServerController::class, 'index'])->name('customer.servers.index');
             Route::get('servers/create', [ServerController::class, 'create'])->name('customer.servers.create');
             Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');

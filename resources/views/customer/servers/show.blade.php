@@ -178,6 +178,7 @@
                                 <span class="inline-flex flex-1 cursor-not-allowed justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-black text-slate-400">کنسول</span>
                             @endif
                             <a href="{{ $monitoringUrl }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مانیتورینگ</a>
+                            <a href="{{ route('customer.network.show', $server, false) }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">مصرف شبکه</a>
                             <a href="{{ $backupUrl }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">بکاپ ها</a>
                             {{-- <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-50">سرورها</a> --}}
                         </div>
