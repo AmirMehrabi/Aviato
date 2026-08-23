@@ -9,10 +9,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'customer_id',
     'wallet_id',
+    'promotion_code_id',
+    'promotion_redeemer_customer_id',
+    'promotion_project_id',
     'provider',
     'type',
     'status',
     'amount',
+    'promotion_bonus_amount',
     'currency',
     'authority',
     'provider_reference',
@@ -43,6 +47,11 @@ class Payment extends Model
         return $this->belongsTo(Wallet::class);
     }
 
+    public function promotionCode(): BelongsTo
+    {
+        return $this->belongsTo(PromotionCode::class);
+    }
+
     public function isPending(): bool
     {
         return $this->status === self::STATUS_PENDING;
@@ -62,6 +71,7 @@ class Payment extends Model
     {
         return [
             'amount' => 'integer',
+            'promotion_bonus_amount' => 'integer',
             'gateway_payload' => 'array',
             'paid_at' => 'datetime',
             'failed_at' => 'datetime',

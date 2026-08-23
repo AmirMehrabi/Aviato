@@ -201,6 +201,7 @@
                                 ['label' => 'مصرف و تسویه', 'route' => 'admin.billing.usage.index', 'active' => request()->routeIs('admin.billing.usage.*'), 'icon' => 'M4 12a8 8 0 1 0 8-8v8H4Zm8-8a8 8 0 0 1 8 8h-8V4Z'],
                                 ['label' => 'حسابداری شبکه', 'route' => 'admin.billing.network.index', 'active' => request()->routeIs('admin.billing.network.*'), 'icon' => 'M4 12h4l3-8 4 16 3-8h3 M5 20h14'],
                                 ['label' => 'کیف پول‌ها', 'route' => 'admin.billing.wallets.index', 'active' => request()->routeIs('admin.billing.wallets.*'), 'icon' => 'M3 6h16a2 2 0 0 1 2 2v11H3V6Zm0 0V4h14v2 M16 12h5'],
+                                ...($adminUser?->canManagePromotions() ? [['label' => 'پروموشن و کارت هدیه', 'route' => 'admin.promotions.index', 'active' => request()->routeIs('admin.promotions.*'), 'icon' => 'M20 12v10H4V12M2 7h20v5H2V7Zm10 15V7m0 0c-2.5 0-5-1-5-3 0-1.2 1-2 2.3-2C11 2 12 4.5 12 7Zm0 0c2.5 0 5-1 5-3 0-1.2-1-2-2.3-2C13 2 12 4.5 12 7Z']] : []),
                                 ['label' => 'قیمت منابع', 'route' => 'admin.billing.rates.index', 'active' => request()->routeIs('admin.billing.rates.*'), 'icon' => 'M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z'],
                                 ['label' => 'باندل‌ها', 'route' => 'admin.billing.bundles.index', 'active' => request()->routeIs('admin.billing.bundles.*'), 'icon' => 'M16.5 9.4 12 2 7.5 9.4 M3 9.4h18v12H3V9.4Z M7.5 2v7.4 M16.5 2v7.4'],
                                 ['label' => 'فروشندگان', 'route' => 'admin.resellers.index', 'active' => request()->routeIs('admin.resellers.*'), 'icon' => 'M3 9l1.5-5h15L21 9M3 9v12h18V9M9 21v-6h6v6M9 9V5h6v4'],
@@ -211,6 +212,7 @@
                             'items' => [
                                 ['label' => 'فعالیت API', 'route' => 'admin.api-activity.index', 'active' => request()->routeIs('admin.api-activity.*'), 'icon' => 'M4 5h16v14H4V5Zm4 4h8M8 13h5'],
                                 ['label' => 'تنظیمات', 'route' => 'admin.settings.edit', 'active' => request()->routeIs('admin.settings.*'), 'icon' => 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z M12 8V5 M12 16v3 M8 12H5 M16 12h3 M9.2 9.2l-1.8-1.8 M14.8 14.8l1.8 1.8 M9.2 14.8l-1.8 1.8 M14.8 9.2l1.8-1.8'],
+                                ...($adminUser?->isPromotionSuperAdmin() ? [['label' => 'دسترسی پروموشن', 'route' => 'admin.promotion-users.index', 'active' => request()->routeIs('admin.promotion-users.*'), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1 2 2 4-4']] : []),
                             ],
                         ],
                     ];

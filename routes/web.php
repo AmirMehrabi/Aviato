@@ -14,6 +14,8 @@ use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\NetworkBillingController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
+use App\Http\Controllers\Admin\PromotionController;
+use App\Http\Controllers\Admin\PromotionUserController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResellerController;
 use App\Http\Controllers\Admin\ResourceRateController;
@@ -39,6 +41,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Customer\ApiTokenController;
 use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
+use App\Http\Controllers\Customer\GiftCardController;
 use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\MonitoringController;
 use App\Http\Controllers\Customer\NetworkUsageController;
@@ -125,6 +128,28 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.notifications.read');
 
         Route::get('search', [SearchController::class, '__invoke'])->name('admin.search');
+
+        Route::prefix('promotion-admins')->middleware(['promotion.super', 'no-store'])->group(function (): void {
+            Route::get('/', [PromotionUserController::class, 'index'])->name('admin.promotion-users.index');
+            Route::patch('{user}', [PromotionUserController::class, 'update'])->name('admin.promotion-users.update');
+        });
+
+        Route::prefix('billing/promotions')->name('admin.promotions.')->middleware(['promotion.manager', 'no-store'])->group(function (): void {
+            Route::get('/', [PromotionController::class, 'index'])->name('index');
+            Route::get('create', [PromotionController::class, 'create'])->name('create');
+            Route::post('/', [PromotionController::class, 'store'])->name('store');
+            Route::get('{campaign}', [PromotionController::class, 'show'])->name('show');
+            Route::patch('{campaign}/copy', [PromotionController::class, 'updateCopy'])->name('copy.update');
+            Route::post('{campaign}/generate', [PromotionController::class, 'generate'])->name('generate');
+            Route::post('{campaign}/activate', [PromotionController::class, 'activate'])->name('activate');
+            Route::post('{campaign}/pause', [PromotionController::class, 'pause'])->name('pause');
+            Route::post('{campaign}/resume', [PromotionController::class, 'resume'])->name('resume');
+            Route::post('{campaign}/revoke-unused', [PromotionController::class, 'revokeUnused'])->name('revoke-unused');
+            Route::post('{campaign}/allowlist', [PromotionController::class, 'allowlist'])->name('allowlist');
+            Route::get('{campaign}/print', [PromotionController::class, 'print'])->name('print');
+            Route::get('{campaign}/exceptions', [PromotionController::class, 'exceptions'])->name('exceptions');
+            Route::post('exceptions/{exception}/resolve', [PromotionController::class, 'resolveException'])->name('exceptions.resolve');
+        });
         Route::put('table-preferences/{tableKey}', [AdminTablePreferenceController::class, 'update'])
             ->name('admin.table-preferences.update');
         Route::delete('table-preferences/{tableKey}', [AdminTablePreferenceController::class, 'destroy'])
@@ -301,6 +326,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 });
 
 $customerRoutes = function () use ($customerLogin, $customerRegister, $customerHome): void {
+    Route::get('gift-cards/{campaign}', [GiftCardController::class, 'landing'])->middleware('no-store')->name('customer.gift-cards.landing');
     Route::get('impersonate/{token}', CustomerImpersonationController::class)
         ->where('token', '[A-Za-z0-9]{64}')
         ->middleware('throttle:20,1')
@@ -428,6 +454,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::get('wallet', [CustomerWalletController::class, 'show'])->name('customer.wallet.show');
         Route::get('wallet/transactions', [CustomerWalletController::class, 'transactionsJson'])->name('customer.wallet.transactions.json');
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');
+        Route::post('wallet/gift-cards/redeem', [GiftCardController::class, 'redeem'])->name('customer.gift-cards.redeem');
         Route::get('wallet/payments/{payment}/gateway', [PaymentController::class, 'showGateway'])->name('customer.wallet.payments.gateway.show');
         Route::post('wallet/payments/{payment}/gateway', [PaymentController::class, 'submitGateway'])->name('customer.wallet.payments.gateway.store');
 

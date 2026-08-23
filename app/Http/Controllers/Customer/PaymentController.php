@@ -14,6 +14,7 @@ use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 
 class PaymentController extends Controller
 {
@@ -37,6 +38,7 @@ class PaymentController extends Controller
         $data = $request->validate([
             'amount_toman' => ['required', 'integer', 'min:100000', 'max:50000000'],
             'gateway' => ['required', 'string', 'in:'.implode(',', array_keys($this->gateways->available()))],
+            'promotion_code' => ['nullable', 'string', 'max:64'],
         ], [
             'amount_toman.required' => 'مبلغ شارژ را انتخاب یا وارد کنید.',
             'amount_toman.integer' => 'مبلغ شارژ باید یک عدد معتبر باشد.',
@@ -48,6 +50,16 @@ class PaymentController extends Controller
 
         $amount = (int) $data['amount_toman'] * 10;
 
+        if (! empty($data['promotion_code'])) {
+            $customerKey = 'promotion:topup:customer:'.$customer->id;
+            $ipKey = 'promotion:topup:ip:'.sha1((string) $request->ip());
+            if (RateLimiter::tooManyAttempts($customerKey, 5) || RateLimiter::tooManyAttempts($ipKey, 20)) {
+                return back()->withErrors(['promotion_code' => 'تعداد تلاش‌ها بیش از حد مجاز است. لطفاً بعداً دوباره تلاش کنید.'])->withInput();
+            }
+            RateLimiter::hit($customerKey, 600);
+            RateLimiter::hit($ipKey, 3600);
+        }
+
         try {
             $billingCustomer = $activeProject->owner;
             $payment = $this->payments->createTopUp(
@@ -55,6 +67,10 @@ class PaymentController extends Controller
                 $amount,
                 'شارژ کیف پول فضای کاری',
                 $data['gateway'],
+                $data['promotion_code'] ?? null,
+                $customer,
+                $activeProject,
+                $request,
             );
         } catch (PaymentGatewayException $exception) {
             report($exception);

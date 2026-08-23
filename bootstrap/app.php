@@ -2,9 +2,12 @@
 
 use App\Http\Middleware\EnsureCustomerVmAccess;
 use App\Http\Middleware\EnsurePortalHost;
+use App\Http\Middleware\EnsurePromotionManager;
+use App\Http\Middleware\EnsurePromotionSuperAdmin;
 use App\Http\Middleware\EnsureResellerActive;
 use App\Http\Middleware\EnsureUserRole;
 use App\Http\Middleware\LogApiRequest;
+use App\Http\Middleware\NoStoreResponse;
 use App\Models\ApiRequestLog;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -27,8 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal.host' => EnsurePortalHost::class,
             'customer.vm.access' => EnsureCustomerVmAccess::class,
             'reseller.active' => EnsureResellerActive::class,
+            'promotion.manager' => EnsurePromotionManager::class,
+            'promotion.super' => EnsurePromotionSuperAdmin::class,
             'role' => EnsureUserRole::class,
             'api.audit' => LogApiRequest::class,
+            'no-store' => NoStoreResponse::class,
             'abilities' => CheckAbilities::class,
             'ability' => CheckForAnyAbility::class,
         ]);
@@ -52,6 +58,10 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash([
+            'code',
+            'promotion_code',
+        ]);
         $exceptions->shouldRenderJsonWhen(fn (Request $request): bool => $request->is('api/*'));
         $exceptions->render(function (AuthenticationException $exception, Request $request) {
             if (! $request->is('api/*')) {

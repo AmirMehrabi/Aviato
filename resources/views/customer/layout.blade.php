@@ -598,5 +598,6 @@
             <script type="application/json" id="customer-search-data">@yield('search_data', '[]')</script>
         </main>
     </div>
+    @stack('scripts')
 </body>
 </html>

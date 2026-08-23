@@ -9,6 +9,7 @@ use App\Services\HetznerCatalogSyncService;
 use App\Services\InvoiceService;
 use App\Services\NetworkUsageIngestionService;
 use App\Services\NetworkUsageReconciliationService;
+use App\Services\PromotionService;
 use App\Services\ProxmoxService;
 use App\Services\StaleVirtualMachineCleanupService;
 use App\Services\UsageBillingService;
@@ -33,6 +34,12 @@ Artisan::command('api:prune-logs {--days=90 : Keep logs newer than this many day
     $deleted = ApiRequestLog::query()->where('created_at', '<', now()->subDays($days))->delete();
     $this->info(sprintf('Deleted %d API request log(s) older than %d days.', $deleted, $days));
 })->purpose('Prune old public API request audit records');
+
+Artisan::command('promotions:release-reservations', function (PromotionService $promotions): void {
+    $this->info(sprintf('Released %d expired promotion reservation(s).', $promotions->releaseExpiredReservations()));
+})->purpose('Release abandoned promotion-code reservations');
+
+Schedule::command('promotions:release-reservations')->everyMinute()->withoutOverlapping();
 
 Artisan::command('billing:settle-usage {--date= : Service date to settle in YYYY-MM-DD format}', function (UsageBillingService $billing) {
     $date = $this->option('date') ?: now()->subDay()->toDateString();

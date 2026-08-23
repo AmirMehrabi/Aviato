@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Payment;
+use App\Models\PromotionException;
 use App\Models\WalletTransaction;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
@@ -187,10 +188,16 @@ class WalletController extends Controller
             return null;
         }
 
+        $promotionException = PromotionException::query()->where('payment_id', $payment->id)->where('status', 'open')->exists();
+
         return match ($payment->status) {
             Payment::STATUS_SUCCESSFUL => [
-                'tone' => 'success',
-                'message' => 'پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.',
+                'tone' => $promotionException ? 'pending' : 'success',
+                'message' => $promotionException
+                    ? 'پرداخت تایید و مبلغ اصلی به کیف پول افزوده شد؛ پاداش کارت هدیه در حال بررسی است.'
+                    : ($payment->promotion_bonus_amount > 0
+                        ? 'پرداخت تایید شد و مبلغ اصلی به همراه پاداش کارت هدیه به کیف پول افزوده شد.'
+                        : 'پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.'),
                 'receipt_url' => route('customer.payments.receipt.show', $payment, false),
             ],
             Payment::STATUS_FAILED, Payment::STATUS_CANCELLED => [

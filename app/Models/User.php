@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'phone', 'password'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'can_manage_promotions'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -51,6 +51,18 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'can_manage_promotions' => 'boolean',
         ];
+    }
+
+    public function isPromotionSuperAdmin(): bool
+    {
+        return $this->email !== null
+            && in_array(strtolower($this->email), array_map('strtolower', config('promotions.super_admin_emails', [])), true);
+    }
+
+    public function canManagePromotions(): bool
+    {
+        return $this->isPromotionSuperAdmin() || $this->can_manage_promotions;
     }
 }
