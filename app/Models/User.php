@@ -2,22 +2,31 @@
 
 namespace App\Models;
 
+use App\Enums\AdminAbility;
+use App\Enums\AdminRole;
+use App\Support\AdminAccess;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'can_manage_promotions'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'role', 'is_active', 'last_login_at', 'last_login_ip'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    protected $attributes = [
+        'role' => 'admin',
+        'is_active' => true,
+    ];
 
     public function supportTeams(): BelongsToMany
     {
@@ -41,6 +50,16 @@ class User extends Authenticatable
         return $this->hasMany(AdminDashboardWarningDismissal::class);
     }
 
+    public function adminAuditLogs(): HasMany
+    {
+        return $this->hasMany(AdminAuditLog::class, 'actor_user_id');
+    }
+
+    public function scopeSupportAgents(Builder $query): Builder
+    {
+        return $query->where('is_active', true)->whereIn('role', [AdminRole::Admin, AdminRole::Support]);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -51,18 +70,14 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'can_manage_promotions' => 'boolean',
+            'role' => AdminRole::class,
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
         ];
     }
 
-    public function isPromotionSuperAdmin(): bool
+    public function allows(AdminAbility|string $ability): bool
     {
-        return $this->email !== null
-            && in_array(strtolower($this->email), array_map('strtolower', config('promotions.super_admin_emails', [])), true);
-    }
-
-    public function canManagePromotions(): bool
-    {
-        return $this->isPromotionSuperAdmin() || $this->can_manage_promotions;
+        return AdminAccess::allows($this, $ability);
     }
 }

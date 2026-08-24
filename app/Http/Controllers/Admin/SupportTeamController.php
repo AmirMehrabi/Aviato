@@ -9,6 +9,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class SupportTeamController extends Controller
 {
@@ -16,7 +17,7 @@ class SupportTeamController extends Controller
     {
         return view('admin.support.teams.index', [
             'teams' => SupportTeam::query()->with('users')->orderBy('name')->get(),
-            'users' => User::query()->orderBy('name')->get(),
+            'users' => User::query()->supportAgents()->orderBy('name')->get(),
         ]);
     }
 
@@ -27,7 +28,7 @@ class SupportTeamController extends Controller
             'description' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
             'users' => ['nullable', 'array'],
-            'users.*' => ['integer', 'exists:users,id'],
+            'users.*' => ['integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', true)->whereIn('role', ['admin', 'support']))],
         ]);
 
         $team = SupportTeam::query()->create([
@@ -48,7 +49,7 @@ class SupportTeamController extends Controller
             'description' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
             'users' => ['nullable', 'array'],
-            'users.*' => ['integer', 'exists:users,id'],
+            'users.*' => ['integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', true)->whereIn('role', ['admin', 'support']))],
         ]);
 
         $supportTeam->update([

@@ -29,8 +29,8 @@ class NetworkUsageUiTest extends TestCase
         $this->bucket($vm);
         $this->actingAs(User::factory()->create(), 'admin');
 
-        $this->get('https://admin.aviato.ir/billing/network')->assertOk()->assertSee('حسابداری شبکه')->assertSee($vm->display_name);
-        $this->get('https://admin.aviato.ir/billing/network/virtual-machines/'.$vm->uuid)->assertOk()->assertSee('دفتر باکت‌ها')->assertSee('bucket-ui-1');
+        $this->get('https://admin.localhost/billing/network')->assertOk()->assertSee('حسابداری شبکه')->assertSee($vm->display_name);
+        $this->get('https://admin.localhost/billing/network/virtual-machines/'.$vm->uuid)->assertOk()->assertSee('دفتر باکت‌ها')->assertSee('bucket-ui-1');
     }
 
     public function test_customer_sees_network_summary_for_accessible_vm(): void
@@ -39,8 +39,8 @@ class NetworkUsageUiTest extends TestCase
         $this->period($vm);
         $this->actingAs($vm->customer, 'customer');
 
-        $this->get('https://cp.aviato.ir/network')->assertOk()->assertSee($vm->display_name)->assertSee('900');
-        $this->get('https://cp.aviato.ir/servers/'.$vm->uuid.'/network')->assertOk()->assertSee('سهمیه ماهانه');
+        $this->get('https://cp.localhost/network')->assertOk()->assertSee($vm->display_name)->assertSee('900');
+        $this->get('https://cp.localhost/servers/'.$vm->uuid.'/network')->assertOk()->assertSee('سهمیه ماهانه');
     }
 
     public function test_customer_cannot_view_another_projects_vm_network_page(): void
@@ -49,7 +49,7 @@ class NetworkUsageUiTest extends TestCase
         $other = Customer::factory()->create();
         $this->actingAs($other, 'customer');
 
-        $this->get('https://cp.aviato.ir/servers/'.$vm->uuid.'/network')->assertNotFound();
+        $this->get('https://cp.localhost/servers/'.$vm->uuid.'/network')->assertNotFound();
     }
 
     private function meteredVm(): VirtualMachine

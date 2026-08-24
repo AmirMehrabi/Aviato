@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AdminRole;
 use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\PromotionCampaign;
@@ -25,30 +26,26 @@ class PromotionGiftCardTest extends TestCase
 
     public function test_only_authorized_admin_can_manage_promotions(): void
     {
-        $ordinary = User::factory()->create();
-        $manager = User::factory()->create(['can_manage_promotions' => true]);
+        $ordinary = User::factory()->create(['role' => AdminRole::Accountant]);
+        $manager = User::factory()->create(['role' => AdminRole::Admin]);
 
-        $this->actingAs($ordinary, 'admin')->get('https://admin.aviato.ir/billing/promotions')->assertForbidden();
-        $this->actingAs($manager, 'admin')->get('https://admin.aviato.ir/billing/promotions')->assertOk();
+        $this->actingAs($ordinary, 'admin')->get('https://admin.localhost/billing/promotions')->assertForbidden();
+        $this->actingAs($manager, 'admin')->get('https://admin.localhost/billing/promotions')->assertOk();
     }
 
-    public function test_super_admin_can_assign_promotion_permission(): void
+    public function test_legacy_super_admin_permission_endpoint_does_not_exist(): void
     {
-        $super = User::factory()->create(['email' => 'owner@example.com']);
+        $admin = User::factory()->create(['role' => AdminRole::Admin]);
         $target = User::factory()->create();
-        config(['promotions.super_admin_emails' => ['owner@example.com']]);
 
-        $this->actingAs($super, 'admin')
-            ->patch('https://admin.aviato.ir/promotion-admins/'.$target->id, ['can_manage_promotions' => 1])
-            ->assertRedirect();
-
-        $this->assertTrue($target->refresh()->can_manage_promotions);
-        $this->assertDatabaseHas('promotion_events', ['action' => 'permission_updated', 'user_id' => $super->id]);
+        $this->actingAs($admin, 'admin')
+            ->patch('https://admin.localhost/promotion-admins/'.$target->id, ['can_manage_promotions' => 1])
+            ->assertNotFound();
     }
 
     public function test_credit_code_is_encrypted_and_redeemed_once_into_active_workspace_wallet(): void
     {
-        $manager = User::factory()->create(['can_manage_promotions' => true]);
+        $manager = User::factory()->create(['role' => AdminRole::Admin]);
         $customer = Customer::factory()->create();
         $project = $customer->ensureDefaultProject();
         $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, ['credit_amount' => 2_500_000, 'maximum_liability' => 2_500_000]);
@@ -59,13 +56,13 @@ class PromotionGiftCardTest extends TestCase
         $this->assertDatabaseMissing('promotion_codes', ['encrypted_code' => $plain]);
 
         $this->actingAs($customer, 'customer')
-            ->post('https://cp.aviato.ir/wallet/gift-cards/redeem', ['code' => strtolower(str_replace('-', ' ', $plain))])
-            ->assertRedirect('https://cp.aviato.ir/wallet');
+            ->post('https://cp.localhost/wallet/gift-cards/redeem', ['code' => strtolower(str_replace('-', ' ', $plain))])
+            ->assertRedirect('https://cp.localhost/wallet');
 
         $this->assertSame(2_500_000, $customer->wallet()->firstOrFail()->balance);
         $this->assertDatabaseHas('promotion_redemptions', ['promotion_campaign_id' => $campaign->id, 'customer_id' => $customer->id, 'benefit_amount' => 2_500_000]);
 
-        $this->post('https://cp.aviato.ir/wallet/gift-cards/redeem', ['code' => $plain])->assertSessionHasErrors('code');
+        $this->post('https://cp.localhost/wallet/gift-cards/redeem', ['code' => $plain])->assertSessionHasErrors('code');
         $this->assertSame(2_500_000, $customer->wallet()->firstOrFail()->balance);
     }
 
@@ -117,25 +114,25 @@ class PromotionGiftCardTest extends TestCase
         $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, ['audience' => PromotionCampaign::AUDIENCE_NEW, 'credit_amount' => 100_000, 'maximum_liability' => 100_000]);
         $code = app(PromotionService::class)->generateCodes($campaign, $manager)[0];
 
-        $this->actingAs($customer, 'customer')->post('https://cp.aviato.ir/wallet/gift-cards/redeem', ['code' => $code->encrypted_code])->assertSessionHasErrors('code');
+        $this->actingAs($customer, 'customer')->post('https://cp.localhost/wallet/gift-cards/redeem', ['code' => $code->encrypted_code])->assertSessionHasErrors('code');
         $this->assertDatabaseCount('promotion_redemptions', 0);
     }
 
     public function test_sensitive_promotion_pages_are_not_cached_and_print_qr_codes(): void
     {
-        $manager = User::factory()->create(['can_manage_promotions' => true]);
+        $manager = User::factory()->create(['role' => AdminRole::Admin]);
         $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, [
             'credit_amount' => 100_000,
             'maximum_liability' => 100_000,
         ]);
         $code = app(PromotionService::class)->generateCodes($campaign, $manager)[0];
 
-        $this->get('https://cp.aviato.ir/gift-cards/'.$campaign->public_id.'#'.$code->encrypted_code)
+        $this->get('https://cp.localhost/gift-cards/'.$campaign->public_id.'#'.$code->encrypted_code)
             ->assertOk()
             ->assertHeader('Cache-Control', 'max-age=0, no-store, private');
 
         $this->actingAs($manager, 'admin')
-            ->get('https://admin.aviato.ir/billing/promotions/'.$campaign->public_id.'/print')
+            ->get('https://admin.localhost/billing/promotions/'.$campaign->public_id.'/print')
             ->assertOk()
             ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
             ->assertSee('<svg', false)

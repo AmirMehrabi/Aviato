@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminTablePreferenceController;
 use App\Http\Controllers\Admin\ApiActivityController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
@@ -13,9 +14,9 @@ use App\Http\Controllers\Admin\InfrastructureLocationController;
 use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\NetworkBillingController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Admin\PromotionController;
-use App\Http\Controllers\Admin\PromotionUserController;
 use App\Http\Controllers\Admin\ProxmoxServerWebController;
 use App\Http\Controllers\Admin\ResellerController;
 use App\Http\Controllers\Admin\ResourceRateController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Admin\TicketAttachmentController as AdminTicketAttachme
 use App\Http\Controllers\Admin\TicketCategoryController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\UnprovisionedVirtualMachineController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\VirtualMachineConsoleController;
 use App\Http\Controllers\Admin\VirtualMachineController;
 use App\Http\Controllers\Admin\VmBundleController;
@@ -114,8 +116,15 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         ->middleware('auth:admin')
         ->name('admin.logout');
 
-    Route::middleware('auth:admin')->group(function () use ($adminHome) {
+    Route::middleware(['auth:admin', 'admin.active', 'admin.audit', 'admin.route-access'])->group(function () use ($adminHome) {
         Route::get($adminHome, AdminDashboardController::class)->name('admin.dashboard');
+        Route::get('profile', [AdminProfileController::class, 'edit'])->name('admin.profile.edit');
+        Route::patch('profile/password', [AdminProfileController::class, 'updatePassword'])->name('admin.profile.password.update');
+        Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('admin.users.reset-password');
+        Route::delete('users/{user}/sessions', [AdminUserController::class, 'revokeSessions'])->name('admin.users.sessions.destroy');
+        Route::resource('users', AdminUserController::class)->names('admin.users');
+        Route::get('audit-logs', [AuditLogController::class, 'index'])->name('admin.audit.index');
+        Route::get('audit-logs/{auditLog}', [AuditLogController::class, 'show'])->name('admin.audit.show');
         Route::post('dashboard/warnings/dismiss', [AdminDashboardController::class, 'dismissWarning'])
             ->name('admin.dashboard.warnings.dismiss');
         Route::delete('dashboard/warnings/dismissals', [AdminDashboardController::class, 'restoreWarnings'])
@@ -129,12 +138,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
         Route::get('search', [SearchController::class, '__invoke'])->name('admin.search');
 
-        Route::prefix('promotion-admins')->middleware(['promotion.super', 'no-store'])->group(function (): void {
-            Route::get('/', [PromotionUserController::class, 'index'])->name('admin.promotion-users.index');
-            Route::patch('{user}', [PromotionUserController::class, 'update'])->name('admin.promotion-users.update');
-        });
-
-        Route::prefix('billing/promotions')->name('admin.promotions.')->middleware(['promotion.manager', 'no-store'])->group(function (): void {
+        Route::prefix('billing/promotions')->name('admin.promotions.')->middleware(['admin.ability:promotions.manage', 'no-store'])->group(function (): void {
             Route::get('/', [PromotionController::class, 'index'])->name('index');
             Route::get('create', [PromotionController::class, 'create'])->name('create');
             Route::post('/', [PromotionController::class, 'store'])->name('store');

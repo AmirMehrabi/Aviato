@@ -81,6 +81,11 @@ class MarketingBundleVisibilityTest extends TestCase
             'monthly_price' => 790000,
             'is_active' => 1,
             'show_on_marketing' => 0,
+            'network_included_bytes_monthly' => 1099511627776,
+            'network_overage_price' => 9000,
+            'network_overage_price_unit_bytes' => 1073741824,
+            'network_usage_direction' => 'both',
+            'network_billing_timezone' => 'Asia/Tehran',
         ])->assertRedirect('https://admin.localhost/billing/bundles');
 
         $this->assertDatabaseHas('vm_bundles', [

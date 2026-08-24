@@ -201,7 +201,7 @@
                                 ['label' => 'مصرف و تسویه', 'route' => 'admin.billing.usage.index', 'active' => request()->routeIs('admin.billing.usage.*'), 'icon' => 'M4 12a8 8 0 1 0 8-8v8H4Zm8-8a8 8 0 0 1 8 8h-8V4Z'],
                                 ['label' => 'حسابداری شبکه', 'route' => 'admin.billing.network.index', 'active' => request()->routeIs('admin.billing.network.*'), 'icon' => 'M4 12h4l3-8 4 16 3-8h3 M5 20h14'],
                                 ['label' => 'کیف پول‌ها', 'route' => 'admin.billing.wallets.index', 'active' => request()->routeIs('admin.billing.wallets.*'), 'icon' => 'M3 6h16a2 2 0 0 1 2 2v11H3V6Zm0 0V4h14v2 M16 12h5'],
-                                ...($adminUser?->canManagePromotions() ? [['label' => 'پروموشن و کارت هدیه', 'route' => 'admin.promotions.index', 'active' => request()->routeIs('admin.promotions.*'), 'icon' => 'M20 12v10H4V12M2 7h20v5H2V7Zm10 15V7m0 0c-2.5 0-5-1-5-3 0-1.2 1-2 2.3-2C11 2 12 4.5 12 7Zm0 0c2.5 0 5-1 5-3 0-1.2-1-2-2.3-2C13 2 12 4.5 12 7Z']] : []),
+                                ...($adminUser?->role === \App\Enums\AdminRole::Admin ? [['label' => 'پروموشن و کارت هدیه', 'route' => 'admin.promotions.index', 'active' => request()->routeIs('admin.promotions.*'), 'icon' => 'M20 12v10H4V12M2 7h20v5H2V7Zm10 15V7m0 0c-2.5 0-5-1-5-3 0-1.2 1-2 2.3-2C11 2 12 4.5 12 7Zm0 0c2.5 0 5-1 5-3 0-1.2-1-2-2.3-2C13 2 12 4.5 12 7Z']] : []),
                                 ['label' => 'قیمت منابع', 'route' => 'admin.billing.rates.index', 'active' => request()->routeIs('admin.billing.rates.*'), 'icon' => 'M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z'],
                                 ['label' => 'باندل‌ها', 'route' => 'admin.billing.bundles.index', 'active' => request()->routeIs('admin.billing.bundles.*'), 'icon' => 'M16.5 9.4 12 2 7.5 9.4 M3 9.4h18v12H3V9.4Z M7.5 2v7.4 M16.5 2v7.4'],
                                 ['label' => 'فروشندگان', 'route' => 'admin.resellers.index', 'active' => request()->routeIs('admin.resellers.*'), 'icon' => 'M3 9l1.5-5h15L21 9M3 9v12h18V9M9 21v-6h6v6M9 9V5h6v4'],
@@ -212,10 +212,25 @@
                             'items' => [
                                 ['label' => 'فعالیت API', 'route' => 'admin.api-activity.index', 'active' => request()->routeIs('admin.api-activity.*'), 'icon' => 'M4 5h16v14H4V5Zm4 4h8M8 13h5'],
                                 ['label' => 'تنظیمات', 'route' => 'admin.settings.edit', 'active' => request()->routeIs('admin.settings.*'), 'icon' => 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z M12 8V5 M12 16v3 M8 12H5 M16 12h3 M9.2 9.2l-1.8-1.8 M14.8 14.8l1.8 1.8 M9.2 14.8l-1.8 1.8 M14.8 9.2l1.8-1.8'],
-                                ...($adminUser?->isPromotionSuperAdmin() ? [['label' => 'دسترسی پروموشن', 'route' => 'admin.promotion-users.index', 'active' => request()->routeIs('admin.promotion-users.*'), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1 2 2 4-4']] : []),
+                                ['label' => 'کاربران پنل', 'route' => 'admin.users.index', 'active' => request()->routeIs('admin.users.*'), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1 2 2 4-4'],
+                                ['label' => 'ردپای مدیریتی', 'route' => 'admin.audit.index', 'active' => request()->routeIs('admin.audit.*'), 'icon' => 'M12 3a9 9 0 1 0 9 9M12 7v5l3 2'],
                             ],
                         ],
                     ];
+
+                    if ($adminUser?->role !== \App\Enums\AdminRole::Admin) {
+                        $allowedNavRoutes = match ($adminUser?->role) {
+                            \App\Enums\AdminRole::Accountant => ['admin.customers.index', 'admin.projects.index', 'admin.billing.overview', 'admin.billing.payments.index', 'admin.billing.transactions.index', 'admin.billing.invoices.index', 'admin.billing.usage.index', 'admin.billing.wallets.index', 'admin.resellers.index'],
+                            \App\Enums\AdminRole::Support => ['admin.customers.index', 'admin.projects.index', 'admin.virtual-machines.index', 'admin.tickets.index', 'admin.incidents.index'],
+                            \App\Enums\AdminRole::Infrastructure => ['admin.customers.index', 'admin.projects.index', 'admin.proxmox-servers.index', 'admin.hetzner-accounts.index', 'admin.infrastructure-locations.index', 'admin.virtual-machines.index', 'admin.unprovisioned-virtual-machines.index', 'admin.cloud-images.index', 'admin.ip-pools.index', 'admin.billing.network.index'],
+                            default => [],
+                        };
+                        $navGroups = collect($navGroups)->map(function (array $group) use ($allowedNavRoutes): array {
+                            $group['items'] = array_values(array_filter($group['items'], fn (array $item): bool => in_array($item['route'], $allowedNavRoutes, true)));
+
+                            return $group;
+                        })->filter(fn (array $group): bool => $group['items'] !== [])->values()->all();
+                    }
                 @endphp
                 @foreach ($navGroups as $group)
                     @if (isset($group['label']))
@@ -380,17 +395,17 @@
                     <div class="flex items-center gap-3">
                         <span class="grid size-10 place-items-center rounded-full bg-[#0069FF] text-sm font-black text-white">ا</span>
                         <div>
-                            <p class="text-sm font-black text-slate-900">امیر حسینی</p>
-                            <p class="text-xs text-slate-500">مدیر سیستم</p>
+                            <p class="text-sm font-black text-slate-900">{{ $adminUser?->name }}</p>
+                            <p class="text-xs text-slate-500">{{ $adminUser?->role?->label() }}</p>
                         </div>
                     </div>
                 </div>
                 <div class="p-2">
-                    <a href="{{ route('admin.settings.edit') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
+                    <a href="{{ route('admin.profile.edit') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
                         <svg class="size-[18px] text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                             <path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z M12 8V5 M12 16v3 M8 12H5 M16 12h3 M9.2 9.2l-1.8-1.8 M14.8 14.8l1.8 1.8 M9.2 14.8l-1.8 1.8 M14.8 9.2l1.8-1.8" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        تنظیمات
+                        حساب من
                     </a>
                     <form method="POST" action="{{ route('admin.logout') }}">
                         @csrf

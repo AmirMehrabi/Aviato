@@ -72,7 +72,7 @@ class TicketController extends Controller
             'statuses' => Ticket::statuses(),
             'priorities' => Ticket::priorities(),
             'categories' => TicketCategory::query()->orderBy('name')->pluck('name', 'id'),
-            'agents' => User::query()->orderBy('name')->pluck('name', 'id'),
+            'agents' => User::query()->supportAgents()->orderBy('name')->pluck('name', 'id'),
             'ticketCounts' => [
                 'open' => Ticket::query()->where('status', Ticket::STATUS_OPEN)->count(),
                 'unread' => Ticket::query()->whereHas(
@@ -94,7 +94,7 @@ class TicketController extends Controller
             'selectedCustomer' => $customerId ? Customer::query()->find($customerId) : null,
             'categories' => TicketCategory::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'priorities' => Ticket::priorities(),
-            'agents' => User::query()->orderBy('name')->get(),
+            'agents' => User::query()->supportAgents()->orderBy('name')->get(),
         ]);
     }
 
@@ -104,7 +104,7 @@ class TicketController extends Controller
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
             'ticket_category_id' => ['required', 'integer', 'exists:ticket_categories,id'],
             'virtual_machine_id' => ['nullable', 'integer', 'exists:virtual_machines,id'],
-            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', true)->whereIn('role', ['admin', 'support']))],
             'subject' => ['required', 'string', 'max:255'],
             'priority' => ['required', Rule::in(array_keys(Ticket::priorities()))],
             'body' => ['required', 'string', 'min:3'],
@@ -131,7 +131,7 @@ class TicketController extends Controller
             'priorities' => Ticket::priorities(),
             'categories' => TicketCategory::query()->orderBy('name')->get(),
             'teams' => SupportTeam::query()->where('is_active', true)->orderBy('name')->get(),
-            'agents' => User::query()->orderBy('name')->get(),
+            'agents' => User::query()->supportAgents()->orderBy('name')->get(),
         ]);
     }
 
@@ -172,7 +172,7 @@ class TicketController extends Controller
         $data = $request->validate([
             'ticket_category_id' => ['nullable', 'integer', 'exists:ticket_categories,id'],
             'support_team_id' => ['nullable', 'integer', 'exists:support_teams,id'],
-            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', true)->whereIn('role', ['admin', 'support']))],
         ]);
 
         $this->tickets->updateAssignment($ticket, $request->user('admin'), $data);

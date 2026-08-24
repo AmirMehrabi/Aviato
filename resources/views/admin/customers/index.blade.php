@@ -66,7 +66,7 @@ document.addEventListener('alpine:init', () => {
             <h1 class="text-2xl font-black">مشتریان</h1>
             <p class="mt-2 text-sm text-slate-500">مدیریت مشتریان و وضعیت سرویس‌ها</p>
         </div>
-        <a href="{{ route('admin.customers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن مشتری</a>
+        @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)<a href="{{ route('admin.customers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن مشتری</a>@endif
     </div>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -137,6 +137,7 @@ document.addEventListener('alpine:init', () => {
                     <td class="px-5 py-4">
                         <div class="flex justify-end gap-1.5">
                             <x-admin.icon-action :href="route('admin.customers.show', $customer)" label="نمایش مشتری" icon="view" tone="primary" />
+                            @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)
                             <x-admin.icon-action :href="route('admin.customers.edit', $customer)" label="ویرایش مشتری" icon="edit" />
                             <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}" target="_blank">
                                 @csrf
@@ -147,6 +148,7 @@ document.addEventListener('alpine:init', () => {
                             @else
                                 <form method="POST" action="{{ route('admin.customers.suspend', $customer) }}">@csrf @method('PATCH') <x-admin.icon-action type="submit" label="تعلیق مشتری" icon="suspend" tone="danger" /></form>
                             @endif
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -155,7 +157,7 @@ document.addEventListener('alpine:init', () => {
                     <td colspan="6" class="px-5 py-14 text-center">
                         <h2 class="text-xl font-black text-slate-900">مشتری‌ای پیدا نشد</h2>
                         <p class="mt-2 text-slate-500">فیلترها را تغییر دهید یا اولین مشتری را اضافه کنید.</p>
-                        <a href="{{ route('admin.customers.create') }}" class="mt-5 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن مشتری</a>
+                        @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)<a href="{{ route('admin.customers.create') }}" class="mt-5 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن مشتری</a>@endif
                     </td>
                 </tr>
             @endforelse

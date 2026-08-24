@@ -32,7 +32,7 @@ Route::prefix('v1')->middleware(['api.audit', 'auth:sanctum', 'throttle:60,1'])-
 });
 
 Route::domain(config('portals.admin.domain'))
-    ->middleware(['web', 'portal.host:admin', 'auth:admin'])
+    ->middleware(['web', 'portal.host:admin', 'auth:admin', 'admin.active', 'admin.audit', 'admin.route-access'])
     ->name('api.admin.')
     ->group(function () {
         Route::apiResource('proxmox-servers', ProxmoxServerController::class)

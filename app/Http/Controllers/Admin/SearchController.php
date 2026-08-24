@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminRole;
 use App\Http\Controllers\Controller;
 use App\Models\CloudImage;
 use App\Models\Customer;
@@ -135,6 +136,16 @@ class SearchController extends Controller
                     'badgeClass' => $i->is_active ? 'bg-[#EBF3FF] text-[#0069FF]' : '',
                 ])->toArray(),
             ];
+        }
+
+        $allowedLabels = match ($request->user('admin')->role) {
+            AdminRole::Admin => null,
+            AdminRole::Accountant => ['مشتریان'],
+            AdminRole::Support => ['مشتریان', 'ماشین‌های مجازی'],
+            AdminRole::Infrastructure => ['مشتریان', 'ماشین‌های مجازی', 'سرورهای Proxmox', 'IP Pools', 'Cloud Images'],
+        };
+        if ($allowedLabels !== null) {
+            $results = array_values(array_filter($results, fn (array $group): bool => in_array($group['label'], $allowedLabels, true)));
         }
 
         return response()->json(['groups' => $results]);

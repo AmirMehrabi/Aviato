@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Middleware\AuditAdminMutation;
+use App\Http\Middleware\AuthorizeAdminRoute;
+use App\Http\Middleware\EnsureActiveAdmin;
+use App\Http\Middleware\EnsureAdminAbility;
 use App\Http\Middleware\EnsureCustomerVmAccess;
 use App\Http\Middleware\EnsurePortalHost;
-use App\Http\Middleware\EnsurePromotionManager;
-use App\Http\Middleware\EnsurePromotionSuperAdmin;
 use App\Http\Middleware\EnsureResellerActive;
 use App\Http\Middleware\EnsureUserRole;
 use App\Http\Middleware\LogApiRequest;
@@ -30,9 +32,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal.host' => EnsurePortalHost::class,
             'customer.vm.access' => EnsureCustomerVmAccess::class,
             'reseller.active' => EnsureResellerActive::class,
-            'promotion.manager' => EnsurePromotionManager::class,
-            'promotion.super' => EnsurePromotionSuperAdmin::class,
             'role' => EnsureUserRole::class,
+            'admin.active' => EnsureActiveAdmin::class,
+            'admin.ability' => EnsureAdminAbility::class,
+            'admin.route-access' => AuthorizeAdminRoute::class,
+            'admin.audit' => AuditAdminMutation::class,
             'api.audit' => LogApiRequest::class,
             'no-store' => NoStoreResponse::class,
             'abilities' => CheckAbilities::class,

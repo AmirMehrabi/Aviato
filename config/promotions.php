@@ -3,7 +3,6 @@
 return [
     'code_prefix' => 'AVT',
     'code_pepper' => env('PROMOTION_CODE_PEPPER', env('APP_KEY')),
-    'super_admin_emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('PROMOTION_SUPER_ADMIN_EMAILS', ''))))),
     'reservation_minutes' => (int) env('PROMOTION_RESERVATION_MINUTES', 30),
     'default_expiry_days' => (int) env('PROMOTION_DEFAULT_EXPIRY_DAYS', 90),
     'max_credit_amount' => (int) env('PROMOTION_MAX_CREDIT_AMOUNT', 500_000_000),

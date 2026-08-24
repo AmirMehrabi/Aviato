@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Customer;
+use App\Models\User;
+use App\Services\AdminAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -19,7 +23,7 @@ class AuthenticatedSessionController extends Controller
         return view('auth.login', ['portal' => $portal]);
     }
 
-    public function store(Request $request, string $portal): RedirectResponse
+    public function store(Request $request, string $portal, AdminAuditService $audit): RedirectResponse
     {
         App::setLocale('fa');
 
@@ -34,12 +38,24 @@ class AuthenticatedSessionController extends Controller
             $loginColumn => $credentials['login'],
             'password' => $credentials['password'],
         ], $request->boolean('remember'))) {
+            if ($portal === 'admin') {
+                $audit->authentication($request, 'admin.login', 'failed');
+            }
             throw ValidationException::withMessages([
                 'login' => 'ایمیل یا شماره موبایل و رمز عبور با اطلاعات ما مطابقت ندارد.',
             ]);
         }
 
         $user = Auth::guard($portal)->user();
+
+        if ($portal === 'admin' && $user instanceof User && ! $user->is_active) {
+            Auth::guard($portal)->logout();
+            $audit->authentication($request, 'admin.login', 'denied', $user);
+
+            throw ValidationException::withMessages([
+                'login' => 'حساب کاربری شما غیرفعال است.',
+            ]);
+        }
 
         if ($portal === 'customer' && $user instanceof Customer && $user->isSuspended()) {
             Auth::guard($portal)->logout();
@@ -62,15 +78,28 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if ($portal === 'admin' && $user instanceof User) {
+            $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $request->ip()])->save();
+            $audit->authentication($request, 'admin.login', 'success', $user);
+        }
+
         return redirect()->intended($this->portalPath($portal, 'home_path'));
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, AdminAuditService $audit): RedirectResponse
     {
         $routeName = (string) $request->route()?->getName();
         $portal = str_starts_with($routeName, 'customer.') ? 'customer' : 'admin';
         $wasImpersonating = $portal === 'customer'
             && $request->session()->has('impersonated_by_admin_id');
+
+        if ($portal === 'admin' && $request->user('admin') instanceof User) {
+            $audit->authentication($request, 'admin.logout', 'success', $request->user('admin'));
+        }
+
+        if ($portal === 'admin' && $request->hasSession() && Schema::hasTable('admin_session_users')) {
+            DB::table('admin_session_users')->where('session_id', $request->session()->getId())->delete();
+        }
 
         Auth::guard($portal)->logout();
 

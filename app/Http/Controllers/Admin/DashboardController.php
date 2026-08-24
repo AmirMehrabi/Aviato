@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminRole;
 use App\Http\Controllers\Controller;
 use App\Models\AdminDashboardWarningDismissal;
 use App\Models\Payment;
@@ -12,6 +13,7 @@ use App\Models\VmBackup;
 use App\Models\VmUpgradeOrder;
 use App\Models\Wallet;
 use App\Services\WalletService;
+use App\Support\AdminAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,8 +23,12 @@ class DashboardController extends Controller
 {
     public function __construct(private readonly WalletService $wallets) {}
 
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request): View|RedirectResponse
     {
+        if ($request->user('admin')->role !== AdminRole::Admin) {
+            return redirect()->route(AdminAccess::landingRoute($request->user('admin')));
+        }
+
         $vmBase = VirtualMachine::query()->notDeleted();
         $vmCounts = (clone $vmBase)
             ->selectRaw('COUNT(*) as total')
