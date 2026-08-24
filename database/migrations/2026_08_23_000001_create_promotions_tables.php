@@ -64,7 +64,16 @@ return new class extends Migration
                 $table->foreignId('promotion_campaign_id')->constrained()->cascadeOnDelete();
                 $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
                 $table->timestamps();
-                $table->unique(['promotion_campaign_id', 'customer_id']);
+            });
+        }
+
+        $campaignCustomerIndex = 'promo_campaign_customer_unique';
+        $campaignCustomerIndexes = collect(Schema::getIndexes('promotion_campaign_customer'))
+            ->pluck('name');
+
+        if (! $campaignCustomerIndexes->contains($campaignCustomerIndex)) {
+            Schema::table('promotion_campaign_customer', function (Blueprint $table) use ($campaignCustomerIndex): void {
+                $table->unique(['promotion_campaign_id', 'customer_id'], $campaignCustomerIndex);
             });
         }
 
