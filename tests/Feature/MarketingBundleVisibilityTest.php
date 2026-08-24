@@ -93,4 +93,43 @@ class MarketingBundleVisibilityTest extends TestCase
             'show_on_marketing' => 0,
         ]);
     }
+
+    public function test_admin_can_uncheck_marketing_visibility_when_editing_a_bundle(): void
+    {
+        $admin = User::factory()->create();
+        $bundle = VmBundle::create([
+            'name' => 'Public bundle',
+            'slug' => 'public-bundle',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'monthly_price' => 790000,
+            'is_active' => true,
+            'show_on_marketing' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin');
+        $this->put("https://admin.localhost/billing/bundles/{$bundle->id}", [
+            'name' => $bundle->name,
+            'slug' => $bundle->slug,
+            'cpu_cores' => $bundle->cpu_cores,
+            'ram_gb' => $bundle->ram_gb,
+            'disk_gb' => $bundle->disk_gb,
+            'ip_count' => $bundle->ip_count,
+            'monthly_price' => $bundle->monthly_price,
+            'is_active' => 1,
+            'network_included_bytes_monthly' => 1099511627776,
+            'network_overage_price' => 9000,
+            'network_overage_price_unit_bytes' => 1073741824,
+            'network_usage_direction' => 'both',
+            'network_billing_timezone' => 'Asia/Tehran',
+        ])->assertRedirect('https://admin.localhost/billing/bundles');
+
+        $this->assertFalse($bundle->fresh()->show_on_marketing);
+
+        $this->get("https://admin.localhost/billing/bundles/{$bundle->id}/edit")
+            ->assertOk()
+            ->assertDontSee('name="show_on_marketing" value="1" checked', false);
+    }
 }

@@ -79,7 +79,7 @@ class VmBundleController extends Controller
 
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
         $data['is_active'] = $request->boolean('is_active');
-        $data['show_on_marketing'] = $request->boolean('show_on_marketing', true);
+        $data['show_on_marketing'] = $request->boolean('show_on_marketing');
         $data['network_accounting_enabled'] = $request->boolean('network_accounting_enabled');
         $data['sort_order'] = $data['sort_order'] ?? 0;
 
