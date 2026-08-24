@@ -127,7 +127,7 @@
                 <div class="max-w-2xl">
                     <p class="text-sm font-bold text-[#2C67C9]">پلن های ماشین مجازی</p>
                     <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">با یک پلن روشن شروع کنید.</h2>
-                    <p class="mt-4 leading-8 text-slate-600">منابع، تعداد IP و هزینه ماهانه قبل از خرید مشخص است؛ انتخاب پلن نباید پیچیده باشد.</p>
+                    <p class="mt-4 leading-8 text-slate-600">منابع و هزینه ماهانه قبل از خرید کاملا مشخص است؛ انتخاب پلن نباید پیچیده باشد.</p>
                 </div>
                 <a href="{{ route('pricing') }}" class="inline-flex w-fit rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-[transform,background-color,border-color,color,box-shadow] hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9] active:scale-[0.96]">همه پلن ها</a>
             </div>
@@ -156,26 +156,28 @@
 
                     <p class="mt-4 min-h-10 text-sm leading-7 text-slate-600">{{ $bundle->description ?: 'ماشین مجازی آماده برای سایت، فروشگاه، اپلیکیشن و سرویس های آنلاین.' }}</p>
 
-                    <div class="mt-5 grid grid-cols-2 gap-2 text-sm text-slate-700">
-                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">
-                            <span class="inline-flex items-center justify-center gap-1.5">
-                                <img src="{{ asset('assets/icons/cpu-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
-                                {{ $bundle->cpu_cores }} vCPU
+                    <div class="mt-5 grid grid-cols-3 gap-2" dir="ltr">
+                        <div class="flex min-w-0 flex-col items-center rounded-2xl bg-white px-2 py-4 text-center ring-1 ring-slate-100">
+                            <span class="grid size-12 place-items-center rounded-xl bg-[#EEF5FF]">
+                                <img src="{{ asset('assets/icons/cpu-icon.svg') }}" alt="" class="size-7" aria-hidden="true">
                             </span>
-                        </span>
-                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">
-                            <span class="inline-flex items-center justify-center gap-1.5">
-                                <img src="{{ asset('assets/icons/ram-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
-                                {{ $bundle->ram_gb }}GB RAM
+                            <strong class="mt-3 text-base font-bold text-slate-950">{{ $bundle->cpu_cores }}</strong>
+                            <span class="mt-0.5 text-[11px] font-bold text-slate-500">vCPU</span>
+                        </div>
+                        <div class="flex min-w-0 flex-col items-center rounded-2xl bg-white px-2 py-4 text-center ring-1 ring-slate-100">
+                            <span class="grid size-12 place-items-center rounded-xl bg-[#EEF5FF]">
+                                <img src="{{ asset('assets/icons/ram-icon.svg') }}" alt="" class="size-7" aria-hidden="true">
                             </span>
-                        </span>
-                        <span class="rounded-2xl bg-white p-3 ring-1 ring-slate-100" dir="ltr">
-                            <span class="inline-flex items-center justify-center gap-1.5">
-                                <img src="{{ asset('assets/icons/ssd-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
-                                {{ $bundle->disk_gb }}GB NVMe
+                            <strong class="mt-3 text-base font-bold text-slate-950">{{ $bundle->ram_gb }} GB</strong>
+                            <span class="mt-0.5 text-[11px] font-bold text-slate-500">RAM</span>
+                        </div>
+                        <div class="flex min-w-0 flex-col items-center rounded-2xl bg-white px-2 py-4 text-center ring-1 ring-slate-100">
+                            <span class="grid size-12 place-items-center rounded-xl bg-[#EEF5FF]">
+                                <img src="{{ asset('assets/icons/ssd-icon.svg') }}" alt="" class="size-7" aria-hidden="true">
                             </span>
-                        </span>
-                        <span class="rounded-2xl bg-white p-3 text-center ring-1 ring-slate-100" dir="ltr">{{ $bundle->ip_count }} IP</span>
+                            <strong class="mt-3 text-base font-bold text-slate-950">{{ $bundle->disk_gb }} GB</strong>
+                            <span class="mt-0.5 text-[11px] font-bold text-slate-500">NVMe</span>
+                        </div>
                     </div>
                     <a href="{{ route('customer.register') }}" class="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white transition-[transform,background-color,border-color,color,box-shadow] hover:bg-[#0050D0] active:scale-[0.96]">خرید این پلن</a>
                 </div>
@@ -194,10 +196,9 @@
                             <thead class="text-right text-xs font-bold text-slate-400">
                                 <tr>
                                     <th scope="col" class="px-6 pb-2 pt-1">پلن</th>
-                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">CPU</th>
-                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">RAM</th>
-                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">NVMe</th>
-                                    <th scope="col" class="px-6 pb-2 pt-1 text-center">IP</th>
+                                    <th scope="col" class="px-5 pb-2 pt-1 text-center">CPU</th>
+                                    <th scope="col" class="px-5 pb-2 pt-1 text-center">RAM</th>
+                                    <th scope="col" class="px-5 pb-2 pt-1 text-center">NVMe</th>
                                     <th scope="col" class="px-6 pb-2 pt-1 text-center">ماهانه</th>
                                     <th scope="col" class="px-6 pb-2 pt-1 text-center">ساعتی</th>
                                     <th scope="col" class="px-6 pb-2 pt-1 text-center">شروع</th>
@@ -223,25 +224,30 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">
-                                            <span class="inline-flex items-center justify-center gap-1.5">
-                                                <img src="{{ asset('assets/icons/cpu-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
-                                                {{ $bundle->cpu_cores }} vCPU
-                                            </span>
+                                        <td class="px-5 py-5" dir="ltr">
+                                            <div class="flex items-center justify-center gap-3">
+                                                <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-[#EEF5FF] ring-1 ring-[#DCEAFF]">
+                                                    <img src="{{ asset('assets/icons/cpu-icon.svg') }}" alt="" class="size-7" aria-hidden="true">
+                                                </span>
+                                                <span class="text-left"><strong class="block text-lg font-bold text-slate-950">{{ $bundle->cpu_cores }}</strong><span class="text-[11px] font-bold text-slate-500">vCPU</span></span>
+                                            </div>
                                         </td>
-                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">
-                                            <span class="inline-flex items-center justify-center gap-1.5">
-                                                <img src="{{ asset('assets/icons/ram-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
-                                                {{ $bundle->ram_gb }}GB
-                                            </span>
+                                        <td class="px-5 py-5" dir="ltr">
+                                            <div class="flex items-center justify-center gap-3">
+                                                <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-[#EEF5FF] ring-1 ring-[#DCEAFF]">
+                                                    <img src="{{ asset('assets/icons/ram-icon.svg') }}" alt="" class="size-7" aria-hidden="true">
+                                                </span>
+                                                <span class="text-left"><strong class="block text-lg font-bold text-slate-950">{{ $bundle->ram_gb }} GB</strong><span class="text-[11px] font-bold text-slate-500">RAM</span></span>
+                                            </div>
                                         </td>
-                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">
-                                            <span class="inline-flex items-center justify-center gap-1.5">
-                                                <img src="{{ asset('assets/icons/ssd-icon.svg') }}" alt="" class="size-4" aria-hidden="true">
-                                                {{ $bundle->disk_gb }}GB NVMe
-                                            </span>
+                                        <td class="px-5 py-5" dir="ltr">
+                                            <div class="flex items-center justify-center gap-3">
+                                                <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-[#EEF5FF] ring-1 ring-[#DCEAFF]">
+                                                    <img src="{{ asset('assets/icons/ssd-icon.svg') }}" alt="" class="size-7" aria-hidden="true">
+                                                </span>
+                                                <span class="text-left"><strong class="block text-lg font-bold text-slate-950">{{ $bundle->disk_gb }} GB</strong><span class="text-[11px] font-bold text-slate-500">NVMe</span></span>
+                                            </div>
                                         </td>
-                                        <td class="px-6 py-6 text-center font-medium text-slate-700" dir="ltr">{{ $bundle->ip_count }} IP</td>
                                         <td class="px-6 py-6 text-center">
                                             <p class="text-lg font-bold text-slate-950">{{ $wallets->format($bundle->monthly_price) }}<span class="text-xs font-bold text-slate-400">/ماهانه</span></p>
                                         </td>
@@ -254,7 +260,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="px-6 py-10 text-center text-slate-500">
+                                        <td colspan="7" class="px-6 py-10 text-center text-slate-500">
                                            فعلا پلنی برای نمایش وجود ندارد.
                                         </td>
                                     </tr>
