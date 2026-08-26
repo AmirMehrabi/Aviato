@@ -30,7 +30,22 @@ class ReferralRegistrationTest extends TestCase
         $this->actingAs($reseller, 'customer')
             ->get($this->customerBaseUrl.'/reseller/referral')
             ->assertOk()
-            ->assertSee($this->customerBaseUrl.'/register?ref='.$reseller->reseller_code);
+            ->assertSee($this->customerBaseUrl.'/register?ref='.$reseller->reseller_code)
+            ->assertSee('@click="copyReferral()"', false)
+            ->assertSee('navigator.clipboard.writeText(value)', false)
+            ->assertDontSee('x-clipboard', false);
+    }
+
+    public function test_referral_link_uses_current_portal_origin_and_configured_registration_path(): void
+    {
+        config()->set('portals.customer.register_path', 'join');
+        $reseller = Customer::factory()->create();
+        app(ResellerService::class)->enableReseller($reseller, 10.00, 'auto_credit');
+
+        $this->actingAs($reseller, 'customer')
+            ->get($this->customerBaseUrl.'/reseller/referral')
+            ->assertOk()
+            ->assertSee($this->customerBaseUrl.'/join?ref='.$reseller->reseller_code);
     }
 
     public function test_registration_without_verification_immediately_assigns_referred_customer(): void

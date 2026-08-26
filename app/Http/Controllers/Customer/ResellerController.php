@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\RequestWithdrawalRequest;
+use App\Models\Customer;
 use App\Services\ResellerService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -41,7 +42,7 @@ class ResellerController extends Controller
 
         return view('customer.reseller.dashboard', [
             'customer' => $customer,
-            'referralUrl' => route('customer.register', ['ref' => $customer->reseller_code]),
+            'referralUrl' => $this->referralUrl($request, $customer),
             'wallet' => $this->wallets->walletFor($customer),
             'wallets' => $this->wallets,
             'stats' => $stats,
@@ -90,7 +91,7 @@ class ResellerController extends Controller
     {
         $customer = $request->user('customer');
         $customer->load('wallet');
-        $referralUrl = route('customer.register', ['ref' => $customer->reseller_code]);
+        $referralUrl = $this->referralUrl($request, $customer);
 
         return view('customer.reseller.referral', [
             'customer' => $customer,
@@ -127,5 +128,14 @@ class ResellerController extends Controller
         );
 
         return back()->with('status', 'درخواست برداشت ثبت شد و در انتظار بررسی است.');
+    }
+
+    private function referralUrl(Request $request, Customer $customer): string
+    {
+        $registerPath = '/'.trim((string) config('portals.customer.register_path'), '/');
+
+        return $request->getSchemeAndHttpHost().$registerPath.'?'.http_build_query([
+            'ref' => $customer->reseller_code,
+        ]);
     }
 }

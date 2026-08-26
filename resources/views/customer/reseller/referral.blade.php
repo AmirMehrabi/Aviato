@@ -17,9 +17,33 @@
 
         <div class="mt-6">
             <h3 class="text-sm font-bold text-slate-700">لینک ثبت‌نام</h3>
-            <div class="mt-2 flex items-center gap-3">
-                <input type="text" value="{{ $referralUrl }}" readonly class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" x-data x-init="$el.value = '{{ $referralUrl }}'">
-                <button type="button" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white" x-data x-clipboard="$el.previousElementSibling.value">کپی</button>
+            <div
+                class="mt-2 flex items-center gap-3"
+                x-data="{
+                    copied: false,
+                    async copyReferral() {
+                        const value = this.$refs.referralUrl.value;
+                        try {
+                            if (navigator.clipboard && window.isSecureContext) {
+                                await navigator.clipboard.writeText(value);
+                            } else {
+                                this.$refs.referralUrl.select();
+                                document.execCommand('copy');
+                                window.getSelection()?.removeAllRanges();
+                            }
+                            this.copied = true;
+                            setTimeout(() => this.copied = false, 1800);
+                        } catch (error) {
+                            this.$refs.referralUrl.select();
+                        }
+                    },
+                }"
+            >
+                <input x-ref="referralUrl" type="text" value="{{ $referralUrl }}" readonly class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" dir="ltr">
+                <button type="button" @click="copyReferral()" class="min-w-20 rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">
+                    <span x-show="!copied">کپی</span>
+                    <span x-cloak x-show="copied">کپی شد</span>
+                </button>
             </div>
         </div>
 

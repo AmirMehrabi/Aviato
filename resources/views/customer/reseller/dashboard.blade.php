@@ -106,9 +106,33 @@
 
     <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 class="text-lg font-black">لینک معرفی شما</h2>
-        <div class="mt-4 flex items-center gap-3">
-            <input type="text" value="{{ $referralUrl }}" readonly class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" x-data x-init="$el.value = '{{ $referralUrl }}'">
-            <button type="button" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white" x-data x-clipboard="$el.previousElementSibling.value">کپی</button>
+        <div
+            class="mt-4 flex items-center gap-3"
+            x-data="{
+                copied: false,
+                async copyReferral() {
+                    const value = this.$refs.referralUrl.value;
+                    try {
+                        if (navigator.clipboard && window.isSecureContext) {
+                            await navigator.clipboard.writeText(value);
+                        } else {
+                            this.$refs.referralUrl.select();
+                            document.execCommand('copy');
+                            window.getSelection()?.removeAllRanges();
+                        }
+                        this.copied = true;
+                        setTimeout(() => this.copied = false, 1800);
+                    } catch (error) {
+                        this.$refs.referralUrl.select();
+                    }
+                },
+            }"
+        >
+            <input x-ref="referralUrl" type="text" value="{{ $referralUrl }}" readonly class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" dir="ltr">
+            <button type="button" @click="copyReferral()" class="min-w-20 rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">
+                <span x-show="!copied">کپی</span>
+                <span x-cloak x-show="copied">کپی شد</span>
+            </button>
         </div>
         <p class="mt-2 text-xs text-slate-400">این لینک را با مشتریان خود به اشتراک بگذارید. با ثبت‌نام از طریق این لینک، مشتری به طور خودکار به شما اختصاص داده می‌شود.</p>
     </div>
