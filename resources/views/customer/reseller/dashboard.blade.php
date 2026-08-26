@@ -107,7 +107,7 @@
     <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 class="text-lg font-black">لینک معرفی شما</h2>
         <div class="mt-4 flex items-center gap-3">
-            <input type="text" value="{{ route('customer.register', ['ref' => $customer->reseller_code], false) }}" readonly class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" x-data x-init="$el.value = '{{ route('customer.register', ['ref' => $customer->reseller_code], false) }}'">
+            <input type="text" value="{{ $referralUrl }}" readonly class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" x-data x-init="$el.value = '{{ $referralUrl }}'">
             <button type="button" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white" x-data x-clipboard="$el.previousElementSibling.value">کپی</button>
         </div>
         <p class="mt-2 text-xs text-slate-400">این لینک را با مشتریان خود به اشتراک بگذارید. با ثبت‌نام از طریق این لینک، مشتری به طور خودکار به شما اختصاص داده می‌شود.</p>

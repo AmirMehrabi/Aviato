@@ -58,6 +58,9 @@
 
                     <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading>
                         @csrf
+                        @if ($portal === 'customer' && old('ref', $referralCode ?? '') !== '')
+                            <input type="hidden" name="ref" value="{{ old('ref', $referralCode ?? '') }}">
+                        @endif
 
                         @if (session('status'))
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{{ session('status') }}</div>

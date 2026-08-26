@@ -65,9 +65,12 @@ class CustomerEmailVerificationController extends Controller
             'email_verification_expires_at' => null,
         ])->save();
 
-        $referralCode = $request->session()->pull('referral_code');
-        if ($referralCode) {
-            app(ResellerService::class)->handleReferralRegistration($customer, $referralCode);
+        $pendingReferral = $request->session()->pull('pending_referral');
+        if (is_array($pendingReferral)
+            && (int) ($pendingReferral['customer_id'] ?? 0) === (int) $customer->getKey()
+            && is_string($pendingReferral['code'] ?? null)
+        ) {
+            app(ResellerService::class)->handleReferralRegistration($customer, $pendingReferral['code']);
         }
 
         Auth::guard('customer')->login($customer);

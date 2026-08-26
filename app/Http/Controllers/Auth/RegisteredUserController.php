@@ -19,11 +19,14 @@ use Throwable;
 
 class RegisteredUserController extends Controller
 {
-    public function create(string $portal): View
+    public function create(Request $request, string $portal): View
     {
         return view('auth.register', [
             'portal' => $portal,
             'verificationMode' => $portal === 'customer' ? AppSetting::customerVerificationMode() : 'disabled',
+            'referralCode' => $portal === 'customer'
+                ? trim((string) $request->query('ref', ''))
+                : '',
         ]);
     }
 
@@ -44,6 +47,7 @@ class RegisteredUserController extends Controller
                 ? ['required', 'string', 'max:30', 'regex:/^(\+98|98|0)?9\d{9}$/', Rule::unique($model, 'phone')]
                 : ['nullable', 'required_without:email', 'string', 'max:30', 'regex:/^\+?[0-9][0-9\s().-]{6,29}$/', Rule::unique($model, 'phone')],
             'password' => ['required', 'confirmed', Password::defaults()],
+            'ref' => $portal === 'customer' ? ['nullable', 'string', 'max:32'] : ['prohibited'],
         ]);
 
         $fullName = trim($data['first_name'].' '.$data['last_name']);
@@ -69,9 +73,12 @@ class RegisteredUserController extends Controller
                     ->withErrors(['verification' => $e->getMessage()]);
             }
 
-            $referralCode = $request->query('ref');
+            $referralCode = trim((string) ($data['ref'] ?? ''));
             if ($referralCode) {
-                $request->session()->put('referral_code', $referralCode);
+                $request->session()->put('pending_referral', [
+                    'customer_id' => $account->getKey(),
+                    'code' => $referralCode,
+                ]);
             }
 
             $routeParams = $verificationMode === 'sms'
@@ -83,7 +90,7 @@ class RegisteredUserController extends Controller
                 ->with('status', $verificationMode === 'sms' ? 'کد تایید پیامک ارسال شد.' : 'کد تایید برای ایمیل شما ارسال شد.');
         }
 
-        $referralCode = $request->query('ref');
+        $referralCode = trim((string) ($data['ref'] ?? ''));
         if ($referralCode && $account instanceof Customer) {
             app(ResellerService::class)->handleReferralRegistration($account, $referralCode);
         }

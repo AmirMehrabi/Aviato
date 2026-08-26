@@ -41,6 +41,7 @@ class ResellerController extends Controller
 
         return view('customer.reseller.dashboard', [
             'customer' => $customer,
+            'referralUrl' => route('customer.register', ['ref' => $customer->reseller_code]),
             'wallet' => $this->wallets->walletFor($customer),
             'wallets' => $this->wallets,
             'stats' => $stats,
@@ -89,7 +90,7 @@ class ResellerController extends Controller
     {
         $customer = $request->user('customer');
         $customer->load('wallet');
-        $referralUrl = route('customer.register', ['ref' => $customer->reseller_code], false);
+        $referralUrl = route('customer.register', ['ref' => $customer->reseller_code]);
 
         return view('customer.reseller.referral', [
             'customer' => $customer,
