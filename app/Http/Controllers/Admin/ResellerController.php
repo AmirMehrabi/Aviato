@@ -13,6 +13,7 @@ use App\Services\ResellerService;
 use App\Services\WalletService;
 use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -166,6 +167,41 @@ class ResellerController extends Controller
         );
 
         return back()->with('status', 'مشتری به فروشنده اختصاص داده شد.');
+    }
+
+    public function searchCustomers(Request $request, Customer $customer): JsonResponse
+    {
+        $filters = $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:100'],
+        ]);
+        $search = trim($filters['q']);
+
+        $customers = Customer::query()
+            ->whereKeyNot($customer->getKey())
+            ->where('is_reseller', false)
+            ->whereDoesntHave('assignedToReseller', function ($query) use ($customer): void {
+                $query->where('reseller_id', $customer->getKey())
+                    ->whereNull('unassigned_at');
+            })
+            ->where(function ($query) use ($search): void {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+
+                if (ctype_digit($search)) {
+                    $query->orWhereKey((int) $search);
+                }
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name', 'email', 'phone']);
+
+        return response()->json($customers->map(fn (Customer $result): array => [
+            'id' => $result->getKey(),
+            'name' => $result->name,
+            'email' => $result->email,
+            'phone' => $result->phone,
+        ]));
     }
 
     public function unassignCustomer(Customer $customer, Customer $targetCustomer): RedirectResponse

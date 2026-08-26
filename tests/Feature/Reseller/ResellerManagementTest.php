@@ -98,7 +98,7 @@ class ResellerManagementTest extends TestCase
 
         $this->post($this->adminBaseUrl.'/resellers/'.$reseller->id.'/assign', [
             'customer_id' => $customer->id,
-        ])->assertRedirect();
+        ])->assertRedirect()->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('reseller_customers', [
             'reseller_id' => $reseller->id,
@@ -106,6 +106,70 @@ class ResellerManagementTest extends TestCase
             'assigned_via' => 'admin',
             'unassigned_at' => null,
         ]);
+    }
+
+    public function test_admin_can_search_eligible_customers_for_reseller_assignment(): void
+    {
+        $admin = User::factory()->create();
+        $reseller = Customer::factory()->create();
+        $matchingCustomer = Customer::factory()->create([
+            'name' => 'Searchable Customer',
+            'email' => 'searchable@example.com',
+        ]);
+        $alreadyAssigned = Customer::factory()->create([
+            'name' => 'Searchable Assigned',
+        ]);
+        $otherReseller = Customer::factory()->create([
+            'name' => 'Searchable Reseller',
+        ]);
+        app(ResellerService::class)->enableReseller($reseller, 10.00, 'auto_credit');
+        app(ResellerService::class)->enableReseller($otherReseller, 10.00, 'auto_credit');
+        app(ResellerService::class)->assignCustomer($reseller, $alreadyAssigned, 'admin', $admin);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->getJson($this->adminBaseUrl.'/resellers/'.$reseller->id.'/customers/search?q=Searchable');
+
+        $response->assertOk()
+            ->assertJsonFragment([
+                'id' => $matchingCustomer->id,
+                'name' => 'Searchable Customer',
+                'email' => 'searchable@example.com',
+            ])
+            ->assertJsonMissing(['id' => $alreadyAssigned->id])
+            ->assertJsonMissing(['id' => $otherReseller->id]);
+    }
+
+    public function test_admin_reseller_page_contains_customer_search_selector(): void
+    {
+        $admin = User::factory()->create();
+        $reseller = Customer::factory()->create();
+        app(ResellerService::class)->enableReseller($reseller, 10.00, 'auto_credit');
+
+        $this->actingAs($admin, 'admin')
+            ->get($this->adminBaseUrl.'/resellers/'.$reseller->id)
+            ->assertOk()
+            ->assertSee('fetch(', false)
+            ->assertSee('name="customer_id"', false)
+            ->assertSee('x-model="selectedId"', false);
+    }
+
+    public function test_admin_cannot_assign_another_reseller_as_a_customer(): void
+    {
+        $admin = User::factory()->create();
+        $reseller = Customer::factory()->create();
+        $otherReseller = Customer::factory()->create();
+        app(ResellerService::class)->enableReseller($reseller, 10.00, 'auto_credit');
+        app(ResellerService::class)->enableReseller($otherReseller, 10.00, 'auto_credit');
+
+        $this->actingAs($admin, 'admin')
+            ->from($this->adminBaseUrl.'/resellers/'.$reseller->id)
+            ->post($this->adminBaseUrl.'/resellers/'.$reseller->id.'/assign', [
+                'customer_id' => $otherReseller->id,
+            ])
+            ->assertRedirect($this->adminBaseUrl.'/resellers/'.$reseller->id)
+            ->assertSessionHasErrors('customer_id');
+
+        $this->assertDatabaseCount('reseller_customers', 0);
     }
 
     public function test_admin_can_unassign_customer_from_reseller(): void

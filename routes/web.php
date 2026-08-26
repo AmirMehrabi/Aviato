@@ -318,6 +318,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             Route::patch('/withdrawals/{withdrawal}/approve', [ResellerController::class, 'approveWithdrawal'])->name('withdrawals.approve');
             Route::patch('/withdrawals/{withdrawal}/reject', [ResellerController::class, 'rejectWithdrawal'])->name('withdrawals.reject');
             Route::patch('/withdrawals/{withdrawal}/paid', [ResellerController::class, 'markWithdrawalPaid'])->name('withdrawals.paid');
+            Route::get('/{customer}/customers/search', [ResellerController::class, 'searchCustomers'])->name('customers.search');
             Route::get('/{customer}', [ResellerController::class, 'show'])->name('show');
             Route::put('/{customer}', [ResellerController::class, 'update'])->name('update');
             Route::delete('/{customer}', [ResellerController::class, 'destroy'])->name('destroy');

@@ -75,14 +75,78 @@
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h2 class="text-lg font-black">اختصاص مشتری</h2>
         </div>
-        <form method="POST" action="{{ route('admin.resellers.assign', $customer) }}" class="mt-4">
+        <form
+            method="POST"
+            action="{{ route('admin.resellers.assign', $customer) }}"
+            class="mt-4"
+            x-data="{
+                query: '',
+                selectedId: '',
+                results: [],
+                open: false,
+                loading: false,
+                async search() {
+                    this.selectedId = '';
+                    if (this.query.trim().length < 2) {
+                        this.results = [];
+                        this.open = false;
+                        return;
+                    }
+                    this.loading = true;
+                    try {
+                        const response = await fetch(@js(route('admin.resellers.customers.search', $customer)) + '?q=' + encodeURIComponent(this.query.trim()), {
+                            headers: { 'Accept': 'application/json' },
+                        });
+                        this.results = response.ok ? await response.json() : [];
+                        this.open = true;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                select(result) {
+                    this.selectedId = result.id;
+                    this.query = result.name + (result.email ? ' — ' + result.email : '');
+                    this.results = [];
+                    this.open = false;
+                },
+            }"
+            @click.outside="open = false"
+        >
             @csrf
             <div class="flex items-end gap-3">
-                <div class="flex-1">
+                <div class="relative flex-1">
                     <label for="assign_customer_id" class="block text-sm font-bold text-slate-700">مشتری</label>
-                    <input type="text" id="assign_customer_id" name="customer_id" placeholder="نام، ایمیل یا شماره مشتری..." class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none" required>
+                    <input type="hidden" name="customer_id" x-model="selectedId">
+                    <input
+                        type="search"
+                        id="assign_customer_id"
+                        x-model="query"
+                        @input.debounce.300ms="search()"
+                        @focus="if (results.length) open = true"
+                        @keydown.escape="open = false"
+                        placeholder="نام، ایمیل، شماره تماس یا شناسه مشتری..."
+                        autocomplete="off"
+                        class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none"
+                    >
+                    <div x-cloak x-show="open" class="absolute inset-x-0 top-full z-20 mt-2 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                        <template x-if="loading">
+                            <p class="px-3 py-4 text-center text-sm text-slate-400">در حال جستجو...</p>
+                        </template>
+                        <template x-if="!loading && results.length === 0">
+                            <p class="px-3 py-4 text-center text-sm text-slate-400">مشتری واجد شرایطی پیدا نشد.</p>
+                        </template>
+                        <template x-for="result in results" :key="result.id">
+                            <button type="button" @click="select(result)" class="block w-full rounded-lg px-3 py-2.5 text-right transition hover:bg-[#EBF3FF]">
+                                <span class="block text-sm font-black text-slate-800" x-text="result.name"></span>
+                                <span class="mt-1 block text-xs text-slate-500" dir="ltr" x-text="result.email || result.phone || ('#' + result.id)"></span>
+                            </button>
+                        </template>
+                    </div>
+                    @error('customer_id')
+                        <p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
-                <button type="submit" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0069FF]/90">اختصاص</button>
+                <button type="submit" :disabled="!selectedId" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0069FF]/90 disabled:cursor-not-allowed disabled:opacity-50">اختصاص</button>
             </div>
         </form>
     </div>
