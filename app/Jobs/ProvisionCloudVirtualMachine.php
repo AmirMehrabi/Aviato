@@ -159,6 +159,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'nameserver' => $address ? $ipPools->nameservers($address) : null,
                 'cicustom' => 'vendor=local:snippets/ubuntu-password-login.yml',
                 'network_bridge' => $networkBridge,
+                'vlan_tag' => $vm->vlan_tag,
                 'onboot' => $this->options['onboot'] ?? false,
                 'description' => 'Cloud-init configured by Aviato panel',
             ]);

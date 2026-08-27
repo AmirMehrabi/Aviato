@@ -171,6 +171,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                     'nameserver' => $address ? $ipPools->nameservers($address) : null,
                     'cicustom' => 'vendor=local:snippets/ubuntu-password-login.yml',
                     'network_bridge' => $vm->network_bridge ?: 'vmbr1',
+                    'vlan_tag' => $vm->vlan_tag,
                     'onboot' => false,
                     'description' => $this->identityDescription($vm),
                 ]);

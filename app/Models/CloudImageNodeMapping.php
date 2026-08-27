@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'template_vmid',
     'storage',
     'network_bridge',
+    'vlan_tag',
     'template_version',
     'is_enabled',
     'verified_at',
@@ -40,6 +41,7 @@ class CloudImageNodeMapping extends Model
     {
         return [
             'template_vmid' => 'integer',
+            'vlan_tag' => 'integer',
             'is_enabled' => 'boolean',
             'verified_at' => 'datetime',
             'verification_snapshot' => 'array',

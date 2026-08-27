@@ -342,12 +342,13 @@ class ProxmoxService
         $node = $options['node'];
         $vmid = (int) $options['vmid'];
         $networkBridge = trim((string) ($options['network_bridge'] ?? ''));
+        $vlanTag = $options['vlan_tag'] ?? null;
         $currentConfig = $networkBridge !== '' ? $this->vmConfig($server, $node, $vmid) : [];
 
         $payload = array_filter([
             'cores' => (int) $options['cpu_cores'],
             'memory' => (int) $options['ram_gb'] * 1024,
-            'net0' => $networkBridge !== '' ? $this->qemuNetworkDeviceWithBridge((string) ($currentConfig['net0'] ?? ''), $networkBridge, true) : null,
+            'net0' => $networkBridge !== '' ? $this->qemuNetworkDeviceWithBridge((string) ($currentConfig['net0'] ?? ''), $networkBridge, true, $vlanTag) : null,
             'ciuser' => $options['login_username'] ?? null,
             'cipassword' => $options['login_password'] ?? null,
             'sshkeys' => $this->cloudInitSshKeys($options['ssh_public_key'] ?? null),
@@ -371,12 +372,14 @@ class ProxmoxService
         ];
     }
 
-    private function qemuNetworkDeviceWithBridge(string $currentConfig, string $bridge, bool $firewall = false): string
+    private function qemuNetworkDeviceWithBridge(string $currentConfig, string $bridge, bool $firewall = false, mixed $vlanTag = false): string
     {
+        $manageVlanTag = $vlanTag !== false;
+
         $currentConfig = trim($currentConfig);
 
         if ($currentConfig === '') {
-            return "virtio,bridge={$bridge}".($firewall ? ',firewall=1' : '');
+            return "virtio,bridge={$bridge}".($firewall ? ',firewall=1' : '').(filled($vlanTag) ? ",tag={$vlanTag}" : '');
         }
 
         $parts = array_values(array_filter(
@@ -388,6 +391,8 @@ class ProxmoxService
 
         $hasFirewall = false;
 
+        $hasVlanTag = false;
+
         foreach ($parts as $index => $part) {
             if (str_starts_with($part, 'bridge=')) {
                 $parts[$index] = "bridge={$bridge}";
@@ -398,6 +403,15 @@ class ProxmoxService
                 $parts[$index] = $firewall ? 'firewall=1' : $part;
                 $hasFirewall = true;
             }
+
+            if ($manageVlanTag && str_starts_with($part, 'tag=')) {
+                $hasVlanTag = true;
+                if (filled($vlanTag)) {
+                    $parts[$index] = "tag={$vlanTag}";
+                } else {
+                    unset($parts[$index]);
+                }
+            }
         }
 
         if (! $hasBridge) {
@@ -406,6 +420,10 @@ class ProxmoxService
 
         if ($firewall && ! $hasFirewall) {
             $parts[] = 'firewall=1';
+        }
+
+        if ($manageVlanTag && filled($vlanTag) && ! $hasVlanTag) {
+            $parts[] = "tag={$vlanTag}";
         }
 
         return implode(',', $parts);

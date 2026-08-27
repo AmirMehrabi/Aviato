@@ -41,6 +41,7 @@ class ProxmoxPlacementService
                 'template_vmid' => $image->template_vmid,
                 'storage' => $preferredNode ? null : $image->storage,
                 'network_bridge' => $image->network_bridge ?: 'vmbr1',
+                'vlan_tag' => $image->vlan_tag,
                 'is_enabled' => true,
             ]);
 
@@ -53,6 +54,7 @@ class ProxmoxPlacementService
                     'template_version' => null,
                     'storage' => $legacyMapping->storage,
                     'network_bridge' => $legacyMapping->network_bridge,
+                    'vlan_tag' => $legacyMapping->vlan_tag,
                     'score' => null,
                     'metrics' => [],
                     'rejected_nodes' => [],
@@ -186,6 +188,7 @@ class ProxmoxPlacementService
                 'template_version' => $selected['mapping']->template_version,
                 'storage' => $selected['mapping']->storage,
                 'network_bridge' => $selected['mapping']->network_bridge,
+                'vlan_tag' => $selected['mapping']->vlan_tag,
                 'score' => $selected['score'],
                 'metrics' => $selected['metrics'],
                 'rejected_nodes' => $rejected,

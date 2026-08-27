@@ -266,7 +266,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertSame(array_map('strtolower', $names), VirtualMachine::query()->pluck('hostname')->all());
     }
 
-    public function test_proxmox_cloud_init_encodes_sshkeys_for_api_payload(): void
+    public function test_proxmox_cloud_init_encodes_sshkeys_and_applies_vlan_tag(): void
     {
         [$image] = $this->catalog();
         $server = $image->proxmoxServer;
@@ -290,10 +290,12 @@ class CloudVmProvisioningTest extends TestCase
             'login_username' => 'ubuntu',
             'login_password' => 'secret-password',
             'ssh_public_key' => self::VALID_SSH_PUBLIC_KEY."\n",
-            'network_bridge' => '',
+            'network_bridge' => 'vmbr0',
+            'vlan_tag' => 120,
         ]);
 
         $this->assertSame('ssh-ed25519%20AAAAC3NzaC1lZDI1NTE5AAAAIEaZGz5J0yLGlSd0oJ2vI4%2BHMH8YMft24%2BXUeUd%2FK5Xy%20customer%40example.com', $capturedPayload['sshkeys'] ?? null);
+        $this->assertSame('virtio,bridge=vmbr0,firewall=1,tag=120', $capturedPayload['net0'] ?? null);
         $this->assertArrayNotHasKey('sshkeys', $result['payload']);
         $this->assertArrayNotHasKey('cipassword', $result['payload']);
     }

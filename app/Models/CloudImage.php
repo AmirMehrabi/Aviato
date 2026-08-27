@@ -29,6 +29,7 @@ use Illuminate\Support\Str;
     'storage',
     'disk_device',
     'network_bridge',
+    'vlan_tag',
     'ostype',
     'cloud_init_enabled',
     'min_cpu_cores',
@@ -95,6 +96,7 @@ class CloudImage extends Model
     {
         return [
             'template_vmid' => 'integer',
+            'vlan_tag' => 'integer',
             'provider_metadata' => 'array',
             'min_cpu_cores' => 'integer',
             'min_ram_gb' => 'integer',

@@ -81,8 +81,9 @@ class CloudVmProvisioningService
         $storage = $mapping?->storage ?: (trim((string) ($data['storage'] ?? '')) ?: $image->storage);
         $osTemplate = trim((string) ($data['os_template'] ?? '')) ?: $image->name;
         $networkBridge = $mapping?->network_bridge ?: (trim((string) ($data['network_bridge'] ?? '')) ?: $image->network_bridge);
+        $vlanTag = $mapping?->vlan_tag ?? $image->vlan_tag;
 
-        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $location, $provider, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge, $mapping, $placement): VirtualMachine {
+        $vm = DB::transaction(function () use ($customer, $project, $data, $image, $location, $provider, $server, $bundle, $resources, $password, $username, $sshPublicKey, $node, $storage, $osTemplate, $networkBridge, $vlanTag, $mapping, $placement): VirtualMachine {
             $osPrefix = self::OS_PREFIXES[$image->os_family] ?? 'VM';
             $requestedName = trim((string) ($data['name'] ?? ''));
             $name = $requestedName !== '' ? $requestedName : $this->generateUniqueVmName($bundle, $resources, $osPrefix);
@@ -105,6 +106,7 @@ class CloudVmProvisioningService
                 'storage' => $storage,
                 'os_template' => $osTemplate,
                 'network_bridge' => $networkBridge,
+                'vlan_tag' => $vlanTag,
                 'login_username' => $username,
                 'login_password' => $password,
                 'ssh_public_key' => $sshPublicKey,

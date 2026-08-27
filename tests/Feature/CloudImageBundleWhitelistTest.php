@@ -165,7 +165,7 @@ class CloudImageBundleWhitelistTest extends TestCase
                 'bundle_ids' => [$bundle->id],
                 'node_mappings' => [
                     ['node' => 'srv1', 'template_vmid' => 9000, 'storage' => 'local-lvm', 'network_bridge' => 'vmbr1', 'is_enabled' => 1],
-                    ['node' => 'srv2', 'template_vmid' => 9100, 'storage' => 'local-lvm', 'network_bridge' => 'vmbr1', 'is_enabled' => 1],
+                    ['node' => 'srv2', 'template_vmid' => 9100, 'storage' => 'local-lvm', 'network_bridge' => 'vmbr1', 'vlan_tag' => 120, 'is_enabled' => 1],
                 ],
             ])
             ->assertSessionHasNoErrors()
@@ -179,6 +179,7 @@ class CloudImageBundleWhitelistTest extends TestCase
             'template_vmid' => 9100,
             'storage' => 'local-lvm',
             'network_bridge' => 'vmbr1',
+            'vlan_tag' => 120,
         ]);
     }
 

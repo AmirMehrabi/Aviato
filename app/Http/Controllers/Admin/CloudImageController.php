@@ -117,6 +117,7 @@ class CloudImageController extends Controller
                     'template_vmid' => (string) $mapping->template_vmid,
                     'storage' => $mapping->storage,
                     'network_bridge' => $mapping->network_bridge,
+                    'vlan_tag' => $mapping->vlan_tag,
                     'template_version' => $mapping->template_version,
                     'is_enabled' => $mapping->is_enabled,
                 ])->values()
@@ -156,6 +157,7 @@ class CloudImageController extends Controller
             'storage' => ['nullable', 'string', 'max:255'],
             'disk_device' => ['required', 'string', 'max:32'],
             'network_bridge' => ['nullable', 'string', 'max:64'],
+            'vlan_tag' => ['nullable', 'integer', 'min:1', 'max:4094'],
             'ostype' => ['required', 'string', 'max:32'],
             'cloud_init_enabled' => ['nullable', 'boolean'],
             'min_cpu_cores' => ['required', 'integer', 'min:1', 'max:512'],
@@ -170,6 +172,7 @@ class CloudImageController extends Controller
             'node_mappings.*.template_vmid' => ['nullable', 'integer', 'min:1'],
             'node_mappings.*.storage' => ['nullable', 'string', 'max:255'],
             'node_mappings.*.network_bridge' => ['nullable', 'string', 'max:64'],
+            'node_mappings.*.vlan_tag' => ['nullable', 'integer', 'min:1', 'max:4094'],
             'node_mappings.*.template_version' => ['nullable', 'string', 'max:255'],
             'node_mappings.*.is_enabled' => ['nullable', 'boolean'],
         ]);
@@ -195,6 +198,7 @@ class CloudImageController extends Controller
             $data['template_vmid'] = (int) $primaryMapping['template_vmid'];
             $data['storage'] = $primaryMapping['storage'] ?: null;
             $data['network_bridge'] = $primaryMapping['network_bridge'] ?: 'vmbr1';
+            $data['vlan_tag'] = $primaryMapping['vlan_tag'] ?? null;
         }
 
         if ($data['is_active'] && empty($data['bundle_ids'])) {
@@ -227,6 +231,7 @@ class CloudImageController extends Controller
                     'template_vmid' => $image->template_vmid,
                     'storage' => $image->storage,
                     'network_bridge' => $image->network_bridge ?: 'vmbr1',
+                    'vlan_tag' => $image->vlan_tag,
                     'is_enabled' => true,
                 ]);
             }
@@ -265,6 +270,7 @@ class CloudImageController extends Controller
                     'template_vmid' => $templateVmid,
                     'storage' => $storage,
                     'network_bridge' => $bridge ?: 'vmbr1',
+                    'vlan_tag' => filled($mapping['vlan_tag'] ?? null) ? (int) $mapping['vlan_tag'] : null,
                     'template_version' => trim((string) ($mapping['template_version'] ?? '')) ?: null,
                     'is_enabled' => $enabled,
                     'verified_at' => $enabled ? now() : null,
@@ -283,6 +289,7 @@ class CloudImageController extends Controller
                 'template_vmid' => $primary->template_vmid,
                 'storage' => $primary->storage,
                 'network_bridge' => $primary->network_bridge,
+                'vlan_tag' => $primary->vlan_tag,
             ])->save();
         }
     }

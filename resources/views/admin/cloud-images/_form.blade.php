@@ -37,6 +37,7 @@
                         template_vmid: String(existing.template_vmid || templates[0]?.vmid || ''),
                         storage: existing.storage || storages[0]?.storage || '',
                         network_bridge: existing.network_bridge || bridges.find((item) => item.active)?.iface || bridges[0]?.iface || 'vmbr1',
+                        vlan_tag: existing.vlan_tag ?? '',
                         template_version: existing.template_version || '',
                         is_enabled: existing.is_enabled === true || existing.is_enabled === 1 || existing.is_enabled === '1',
                     };
@@ -156,6 +157,9 @@
                     </label>
                     <label class="text-sm font-bold text-slate-700">Template version
                         <input :name="`node_mappings[${index}][template_version]`" x-model="mapping.template_version" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-left" dir="ltr" placeholder="24.04-v1">
+                    </label>
+                    <label class="text-sm font-bold text-slate-700">VLAN tag (optional)
+                        <input type="number" min="1" max="4094" :name="`node_mappings[${index}][vlan_tag]`" x-model="mapping.vlan_tag" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-left" dir="ltr" placeholder="e.g. 100">
                     </label>
                 </div>
             </article>
