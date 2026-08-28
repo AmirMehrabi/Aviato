@@ -1,0 +1,12 @@
+deploy ALL=(root) NOPASSWD: /usr/bin/rm -f /etc/supervisor/conf.d/aviato-queue-default.conf
+deploy ALL=(root) NOPASSWD: /usr/bin/rm -f /etc/supervisor/conf.d/aviato-queue-deletions.conf
+deploy ALL=(root) NOPASSWD: /usr/bin/rm -f /etc/supervisor/conf.d/aviato-queue-provisioning.conf
+deploy ALL=(root) NOPASSWD: /usr/bin/rm -f /etc/supervisor/conf.d/aviato-queue-backups.conf
+deploy ALL=(root) NOPASSWD: /usr/bin/rm -f /etc/supervisor/conf.d/aviato-queue-upgrades.conf
+deploy ALL=(root) NOPASSWD: /usr/bin/install -m 644 /tmp/aviato-horizon.conf /etc/supervisor/conf.d/aviato-horizon.conf
+deploy ALL=(root) NOPASSWD: /usr/bin/install -m 644 /tmp/aviato-scheduler.conf /etc/supervisor/conf.d/aviato-scheduler.conf
+deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl reread
+deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl update
+deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl restart aviato-horizon\:*
+deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl restart aviato-scheduler\:*
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.3-fpm

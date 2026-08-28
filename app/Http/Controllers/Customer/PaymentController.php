@@ -80,6 +80,13 @@ class PaymentController extends Controller
                 ->withInput();
         }
 
+        if ($payment->promotion_code_id) {
+            $request->session()->put('elecomp_attribution', [
+                'promotion_code_id' => $payment->promotion_code_id,
+                'expires_at' => now()->addDays(7)->timestamp,
+            ]);
+        }
+
         return redirect()->route('customer.wallet.payments.gateway.show', $payment);
     }
 

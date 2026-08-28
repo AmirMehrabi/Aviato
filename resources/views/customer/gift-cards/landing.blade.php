@@ -6,7 +6,14 @@
     <p class="mt-8 text-xs font-black text-[#0069FF]">کارت هدیه آویاتو</p><h1 class="mt-2 text-2xl font-black">{{ $campaign->headline ?: $campaign->name }}</h1>
     <p class="mt-3 text-sm font-bold leading-7 text-slate-500">{{ $campaign->message ?: 'برای اعمال هدیه وارد پنل مشتریان شوید و فضای کاری مقصد را بررسی کنید.' }}</p>
     <div class="mt-5 rounded-2xl bg-[#EEF5FF] p-4 text-sm font-black text-[#0050D0]">{{ $campaign->type === 'wallet_credit' ? app(\App\Services\WalletService::class)->format($campaign->credit_amount) . ' اعتبار مستقیم' : $campaign->percentage.'٪ پاداش افزایش موجودی تا سقف '.app(\App\Services\WalletService::class)->format($campaign->maximum_bonus) }}</div>
-    <a id="continue" href="{{ auth('customer')->check() ? route('customer.wallet.show', ['gift_card' => 1], false) : route('customer.login', [], false) }}" class="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#0069FF] px-5 font-black text-white">ادامه و استفاده از کارت</a>
+    @auth('customer')
+        <a id="continue" href="{{ route('customer.wallet.show', ['gift_card' => 1], false) }}" class="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#0069FF] px-5 font-black text-white">ادامه و استفاده از کارت</a>
+    @else
+        <div class="mt-6 grid gap-2 sm:grid-cols-2">
+            <a id="continue" href="{{ route('customer.gift-cards.continue', [$campaign, 'register'], false) }}" class="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#0069FF] px-5 font-black text-white">ساخت حساب</a>
+            <a href="{{ route('customer.gift-cards.continue', [$campaign, 'login'], false) }}" class="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-200 px-5 font-black text-slate-700">ورود</a>
+        </div>
+    @endauth
     <p class="mt-4 text-xs font-bold text-slate-400">انقضا: {{ \Morilog\Jalali\Jalalian::fromCarbon($campaign->expires_at)->format('Y/m/d H:i') }}</p>
 </main>
 <script>const code=decodeURIComponent(location.hash.slice(1));if(code){sessionStorage.setItem('aviato.gift_card_code',code);sessionStorage.setItem('aviato.gift_card_type',@js($campaign->type));history.replaceState(null,'',location.pathname);}</script>

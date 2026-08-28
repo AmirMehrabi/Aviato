@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repository_root="$(git rev-parse --show-toplevel)"
+cd "$repository_root"
+
+if [[ "$(git branch --show-current)" != "master" ]]; then
+    echo "Deployment refused: check out master first." >&2
+    exit 1
+fi
+
+if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Deployment refused: the working tree has uncommitted changes." >&2
+    exit 1
+fi
+
+git fetch --quiet origin master
+
+local_revision="$(git rev-parse HEAD)"
+remote_revision="$(git rev-parse origin/master)"
+
+if [[ "$local_revision" != "$remote_revision" ]]; then
+    echo "Deployment refused: local master does not match origin/master." >&2
+    exit 1
+fi
+
+echo "Deploying ${local_revision} to production (5.202.19.75)."
+vendor/bin/dep deploy production --revision="$local_revision" -vvv

@@ -35,6 +35,11 @@
         && $server->node
         && $server->vmid
         && $server->template_vmid;
+    $powerActionAvailable = ! $isLocked
+        && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY
+        && ! $server->isLxc();
+    $customerCanStart = $powerActionAvailable && ! $customer->isSuspended();
+    $powerGeneration = (int) data_get($server->desired_state, 'power_generation', 0);
     $formattedMonthlyCost = $server->isDeleting() ? 'متوقف شده' : $wallets->format($monthlyCost);
     $backupFrequency = match ($backupSummary['frequency']) {
         'daily' => 'روزانه',
@@ -183,6 +188,76 @@
                             {{-- <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex flex-1 justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-50">سرورها</a> --}}
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <section
+            class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60"
+            x-data="{ powerDialogOpen: false, submitting: false }"
+            @keydown.window.escape="if (!submitting) powerDialogOpen = false"
+        >
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <p class="text-xs font-black text-[#0069FF]">Power</p>
+                    <h2 class="mt-1 font-black text-slate-950">کنترل روشن و خاموش</h2>
+                    <p class="mt-2 text-sm font-bold leading-7 text-slate-500">
+                        {{ $server->isRunning() ? 'سرور روشن است؛ خاموش کردن با Shutdown امن انجام می‌شود.' : 'سرور خاموش است و می‌توانید آن را دوباره روشن کنید.' }}
+                    </p>
+                    @if (! $server->isRunning() && $customer->isSuspended())
+                        <p class="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">حساب شما تعلیق است؛ تا زمان فعال شدن حساب نمی‌توانید سرور را روشن کنید.</p>
+                    @elseif (! $powerActionAvailable)
+                        <p class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">کنترل برق تا پایان عملیات فعلی این سرور در دسترس نیست.</p>
+                    @endif
+                </div>
+
+                <button
+                    type="button"
+                    @click="powerDialogOpen = true"
+                    @disabled($server->isRunning() ? ! $powerActionAvailable : ! $customerCanStart)
+                    class="inline-flex w-full shrink-0 items-center justify-center rounded-xl px-5 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto {{ $server->isRunning() ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700' }}"
+                >
+                    {{ $server->isRunning() ? 'خاموش کردن سرور' : 'روشن کردن سرور' }}
+                </button>
+            </div>
+
+            <div
+                x-cloak
+                x-show="powerDialogOpen"
+                x-transition.opacity
+                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="customer-power-dialog-title"
+            >
+                <div class="w-full max-w-lg rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/30" @click.outside="if (!submitting) powerDialogOpen = false">
+                    <h3 id="customer-power-dialog-title" class="text-xl font-black text-slate-950">
+                        {{ $server->isRunning() ? 'سرور خاموش شود؟' : 'سرور روشن شود؟' }}
+                    </h3>
+                    <p class="mt-3 text-sm font-bold leading-7 text-slate-600">
+                        @if ($server->isRunning())
+                            با تأیید شما، فرمان خاموش‌سازی امن برای <span class="font-black" dir="ltr">{{ $server->display_name }}</span> ارسال می‌شود.
+                        @else
+                            با تأیید شما، <span class="font-black" dir="ltr">{{ $server->display_name }}</span> روشن و محاسبه کامل منابع دوباره آغاز می‌شود.
+                        @endif
+                    </p>
+
+                    <form
+                        method="POST"
+                        action="{{ $server->isRunning() ? route('customer.servers.stop', $server, false) : route('customer.servers.start', $server, false) }}"
+                        class="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end"
+                        @submit="submitting = true"
+                    >
+                        @csrf
+                        @if ($server->isRunning())
+                            <input type="hidden" name="power_generation" value="{{ $powerGeneration }}">
+                        @endif
+                        <button type="button" @click="powerDialogOpen = false" :disabled="submitting" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto">انصراف</button>
+                        <button type="submit" :disabled="submitting" class="inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-black text-white transition disabled:opacity-60 sm:w-auto {{ $server->isRunning() ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700' }}">
+                            <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                            <span x-text="submitting ? 'در حال ارسال...' : @js($server->isRunning() ? 'تأیید خاموش کردن' : 'تأیید روشن کردن')">{{ $server->isRunning() ? 'تأیید خاموش کردن' : 'تأیید روشن کردن' }}</span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </section>

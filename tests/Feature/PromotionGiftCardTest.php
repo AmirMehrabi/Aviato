@@ -139,6 +139,39 @@ class PromotionGiftCardTest extends TestCase
             ->assertSee($code->encrypted_code);
     }
 
+    public function test_elecomp_landing_accepts_a_valid_code_and_hands_it_to_customer_portal(): void
+    {
+        $manager = User::factory()->create(['role' => AdminRole::Admin]);
+        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, [
+            'audience' => PromotionCampaign::AUDIENCE_NEW,
+            'credit_amount' => 500_000,
+            'maximum_liability' => 500_000,
+        ]);
+        $code = app(PromotionService::class)->generateCodes($campaign, $manager)[0];
+
+        $this->get('https://localhost/e')
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
+            ->assertSee('هدیه‌ات را فعال کن');
+
+        $this->post('https://localhost/e/claim', ['code' => strtolower(str_replace('-', ' ', $code->encrypted_code))])
+            ->assertRedirect('https://cp.localhost/gift-cards/'.$campaign->public_id.'#'.rawurlencode(strtolower(str_replace('-', ' ', $code->encrypted_code))));
+
+        $this->assertDatabaseHas('promotion_events', [
+            'promotion_campaign_id' => $campaign->id,
+            'promotion_code_id' => $code->id,
+            'action' => 'elecomp_code_accepted',
+        ]);
+    }
+
+    public function test_elecomp_claim_rejects_unavailable_codes_without_exposing_details(): void
+    {
+        $this->from('https://localhost/e')
+            ->post('https://localhost/e/claim', ['code' => 'AVT-NOT-A-REAL-CODE'])
+            ->assertRedirect('https://localhost/e')
+            ->assertSessionHasErrors(['code' => 'کد هدیه معتبر یا قابل استفاده نیست.']);
+    }
+
     private function campaign(User $manager, string $type, array $overrides = []): PromotionCampaign
     {
         return PromotionCampaign::create(array_merge([

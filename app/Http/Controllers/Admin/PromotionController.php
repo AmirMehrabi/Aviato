@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\PromotionCampaign;
+use App\Models\PromotionEvent;
 use App\Models\PromotionException;
 use App\Services\PromotionService;
 use App\Services\WalletService;
@@ -82,9 +83,19 @@ class PromotionController extends Controller
     {
         $campaign->loadCount(['codes', 'redemptions'])->load(['createdBy']);
         $codes = $campaign->codes()->latest()->paginate(50);
+        $eventCounts = PromotionEvent::query()->where('promotion_campaign_id', $campaign->id)
+            ->whereIn('action', ['elecomp_code_accepted', 'elecomp_gift_landing_view', 'elecomp_auth_started', 'elecomp_server_created'])
+            ->selectRaw('action, COUNT(*) as aggregate')->groupBy('action')->pluck('aggregate', 'action');
+        $funnel = [
+            ['کد معتبر', (int) ($eventCounts['elecomp_code_accepted'] ?? 0)],
+            ['مشاهده هدیه', (int) ($eventCounts['elecomp_gift_landing_view'] ?? 0)],
+            ['شروع ورود/ثبت‌نام', (int) ($eventCounts['elecomp_auth_started'] ?? 0)],
+            ['استفاده از هدیه', (int) $campaign->redemptions_count],
+            ['ساخت سرور', (int) ($eventCounts['elecomp_server_created'] ?? 0)],
+        ];
         $this->promotions->event('codes_viewed', $campaign, user: $request->user('admin'), request: $request, metadata: ['page' => $codes->currentPage()]);
 
-        return view('admin.promotions.show', compact('campaign', 'codes') + ['wallets' => $this->wallets]);
+        return view('admin.promotions.show', compact('campaign', 'codes', 'funnel') + ['wallets' => $this->wallets]);
     }
 
     public function updateCopy(Request $request, PromotionCampaign $campaign): RedirectResponse

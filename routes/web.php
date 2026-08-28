@@ -60,6 +60,7 @@ use App\Http\Controllers\Customer\TicketAttachmentController;
 use App\Http\Controllers\Customer\TicketController;
 use App\Http\Controllers\Customer\VmUpgradeController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
+use App\Http\Controllers\ElecompController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\SitemapController;
@@ -332,6 +333,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
 $customerRoutes = function () use ($customerLogin, $customerRegister, $customerHome): void {
     Route::get('gift-cards/{campaign}', [GiftCardController::class, 'landing'])->middleware('no-store')->name('customer.gift-cards.landing');
+    Route::get('gift-cards/{campaign}/continue/{action}', [GiftCardController::class, 'continue'])->middleware('no-store')->name('customer.gift-cards.continue');
     Route::get('impersonate/{token}', CustomerImpersonationController::class)
         ->where('token', '[A-Za-z0-9]{64}')
         ->middleware('throttle:20,1')
@@ -440,6 +442,8 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::get('servers/{virtualMachine}/console/session', [ServerConsoleController::class, 'redirectSession'])->name('customer.servers.console.session.redirect');
             Route::post('servers/{virtualMachine}/console/session', [ServerConsoleController::class, 'session'])->name('customer.servers.console.session');
             Route::post('servers/{virtualMachine}/rebuild', [ServerController::class, 'rebuild'])->name('customer.servers.rebuild');
+            Route::post('servers/{virtualMachine}/start', [ServerController::class, 'start'])->name('customer.servers.start');
+            Route::post('servers/{virtualMachine}/stop', [ServerController::class, 'stop'])->name('customer.servers.stop');
             Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->name('customer.servers.show');
             Route::post('servers/{virtualMachine}/upgrades/bundle', [VmUpgradeController::class, 'storeBundle'])->name('customer.servers.upgrades.bundle.store');
             Route::post('servers/{virtualMachine}/upgrades/extra-disk', [VmUpgradeController::class, 'storeExtraDisk'])->name('customer.servers.upgrades.extra-disk.store');
@@ -529,6 +533,9 @@ Route::get('/', function (WalletService $wallets) {
         'latestPosts' => array_slice($posts, 0, 3),
     ]);
 })->name('home');
+
+Route::get('/e', [ElecompController::class, 'index'])->middleware('no-store')->name('elecomp');
+Route::post('/e/claim', [ElecompController::class, 'claim'])->middleware('no-store')->name('elecomp.claim');
 
 Route::get('/pricing', function (WalletService $wallets) {
     return view('pricing', [

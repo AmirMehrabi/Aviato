@@ -5,14 +5,12 @@ namespace Deployer;
 require 'recipe/laravel.php';
 
 set('application', 'aviato');
-set('repository', 'git@github.com:AmirMehrabi/Aviato.git');
+set('repository', 'https://github.com/AmirMehrabi/Aviato.git');
 
 set('keep_releases', 5);
 set('default_timeout', 600);
 
-// You asked for composer update on each deploy.
-// Safer production default is "install", but this does what you asked.
-set('composer_action', 'update');
+set('composer_action', 'install');
 
 set('composer_options', '--verbose --prefer-dist --no-progress --no-interaction --no-dev --optimize-autoloader');
 
@@ -34,13 +32,12 @@ set('writable_mode', 'acl');
 // Used by GitHub Actions or your local computer.
 // This connects to the production server by SSH.
 host('production')
-    ->set('hostname', '5.202.19.100')
+    ->set('hostname', '5.202.19.75')
     ->set('remote_user', 'deploy')
     ->set('deploy_path', '/var/www/html/aviato')
     ->set('branch', 'master');
 
-// Used only when you manually run Deployer from the production server itself.
-// Example: vendor/bin/dep deploy local -vvv
+// Emergency-only host. Run it from /var/www/html/aviato, never from current/.
 localhost('local')
     ->set('deploy_path', '/var/www/html/aviato')
     ->set('branch', 'master');
@@ -48,11 +45,38 @@ localhost('local')
 // Frontend build if package.json exists.
 task('npm:build', function () {
     if (test('[ -f {{release_path}}/package.json ]')) {
-        run('cd {{release_path}} && npm ci && npm run build');
+        run('cd {{release_path}} && npm ci --no-audit --no-fund && npm run build && rm -rf node_modules');
     }
 });
 
 after('deploy:vendors', 'npm:build');
+
+task('deploy:verify_release', function () {
+    run('cd {{release_path}} && php artisan about --only=environment');
+    run('test -f {{release_path}}/public/build/manifest.json');
+});
+
+before('deploy:publish', 'deploy:verify_release');
+
+task('deploy:remember_current', function () {
+    run('if [ -L {{current_path}} ]; then readlink -f {{current_path}} > {{deploy_path}}/.dep/previous_current; else rm -f {{deploy_path}}/.dep/previous_current; fi');
+});
+
+before('deploy:symlink', 'deploy:remember_current');
+
+task('deploy:healthcheck', function () {
+    try {
+        run("curl --fail --silent --show-error --max-time 15 --header 'Host: aviato.ir' http://127.0.0.1/up > /dev/null");
+        run('rm -f {{deploy_path}}/.dep/previous_current');
+    } catch (\Throwable $exception) {
+        run('if [ -s {{deploy_path}}/.dep/previous_current ]; then ln -sfn "$(cat {{deploy_path}}/.dep/previous_current)" {{current_path}}; fi');
+        run('sudo -n /usr/bin/systemctl reload php8.3-fpm');
+
+        throw $exception;
+    }
+});
+
+after('deploy:symlink', 'deploy:healthcheck');
 
 // Laravel recipe already runs php artisan migrate --force.
 // Do not add another migration hook, or migrations may run twice.
@@ -95,7 +119,7 @@ task('supervisor:deploy', function () {
 after('deploy:success', 'supervisor:deploy');
 
 task('php-fpm:reload', function () {
-    run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
+    run('sudo -n /usr/bin/systemctl reload php8.3-fpm');
 });
 
 // task('nginx:s3', function () {

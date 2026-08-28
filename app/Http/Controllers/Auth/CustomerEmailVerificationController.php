@@ -76,7 +76,7 @@ class CustomerEmailVerificationController extends Controller
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
 
-        return redirect('/'.trim(config('portals.customer.home_path'), '/'))
+        return redirect()->intended('/'.trim(config('portals.customer.home_path'), '/'))
             ->with('status', 'حساب شما با موفقیت تایید شد.');
     }
 

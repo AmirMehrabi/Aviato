@@ -19,8 +19,18 @@ class GiftCardController extends Controller
     public function landing(Request $request, PromotionCampaign $campaign): View
     {
         $request->session()->put('url.intended', route('customer.wallet.show', ['gift_card' => 1], false));
+        $this->promotions->event('elecomp_gift_landing_view', $campaign, request: $request);
 
         return view('customer.gift-cards.landing', compact('campaign'));
+    }
+
+    public function continue(Request $request, PromotionCampaign $campaign, string $action): RedirectResponse
+    {
+        abort_unless(in_array($action, ['login', 'register'], true), 404);
+        $request->session()->put('url.intended', route('customer.wallet.show', ['gift_card' => 1], false));
+        $this->promotions->event('elecomp_auth_started', $campaign, customer: $request->user('customer'), request: $request, metadata: ['action' => $action]);
+
+        return redirect()->route($action === 'register' ? 'customer.register' : 'customer.login');
     }
 
     public function redeem(Request $request): RedirectResponse
@@ -40,6 +50,11 @@ class GiftCardController extends Controller
 
         $redemption = $this->promotions->redeemCredit($data['code'], $customer, $project, $request);
 
-        return redirect()->route('customer.wallet.show')->with('status', 'کارت هدیه با موفقیت اعمال شد و '.app(WalletService::class)->format($redemption->benefit_amount).' به کیف پول افزوده شد.');
+        $request->session()->put('elecomp_attribution', ['redemption_id' => $redemption->id, 'expires_at' => now()->addDays(7)->timestamp]);
+
+        return redirect()->route('customer.wallet.show')->with([
+            'status' => 'کارت هدیه با موفقیت اعمال شد و '.app(WalletService::class)->format($redemption->benefit_amount).' به کیف پول افزوده شد.',
+            'promotion_success' => true,
+        ]);
     }
 }

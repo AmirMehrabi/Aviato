@@ -9,6 +9,8 @@ use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\InfrastructureLocation;
 use App\Models\Project;
+use App\Models\PromotionEvent;
+use App\Models\PromotionRedemption;
 use App\Models\ProxmoxServer;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
@@ -18,8 +20,11 @@ use App\Models\VmBundleLocationMapping;
 use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
 use App\Services\CustomerVmQuotaService;
+use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProjectAccessService;
+use App\Services\PromotionService;
+use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmUpgradeService;
@@ -29,6 +34,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -46,6 +52,8 @@ class ServerController extends Controller
         private readonly VmUpgradeService $upgrades,
         private readonly CustomerVmQuotaService $quota,
         private readonly IpPoolService $ipPools,
+        private readonly ProxmoxService $proxmox,
+        private readonly HetznerCloudService $hetzner,
     ) {}
 
     public function index(Request $request): View
@@ -396,6 +404,21 @@ class ServerController extends Controller
                 ? 'درخواست ساخت ماشین مجازی ثبت شد. IP: '.$result['vm']->ip_address
                 : 'درخواست ساخت ماشین مجازی ثبت شد. آماده سازی در پس زمینه شروع شد.';
 
+            $attribution = $request->session()->get('elecomp_attribution');
+            if (is_array($attribution) && (int) ($attribution['expires_at'] ?? 0) >= now()->timestamp) {
+                $redemption = PromotionRedemption::query()
+                    ->where('customer_id', $activeProject->owner_customer_id)
+                    ->when(isset($attribution['redemption_id']), fn ($query) => $query->whereKey((int) $attribution['redemption_id']))
+                    ->when(isset($attribution['promotion_code_id']), fn ($query) => $query->where('promotion_code_id', (int) $attribution['promotion_code_id']))
+                    ->latest('redeemed_at')
+                    ->first();
+
+                if ($redemption && ! PromotionEvent::query()->where('action', 'elecomp_server_created')->where('promotion_campaign_id', $redemption->promotion_campaign_id)->where('customer_id', $customer->id)->exists()) {
+                    app(PromotionService::class)->event('elecomp_server_created', $redemption->campaign, $redemption->code, customer: $customer, request: $request, metadata: ['virtual_machine_id' => $result['vm']->id]);
+                    $request->session()->forget('elecomp_attribution');
+                }
+            }
+
             return redirect()
                 ->route('customer.servers.index')
                 ->with('status', $status)
@@ -659,6 +682,175 @@ class ServerController extends Controller
         }
 
         return $redirect;
+    }
+
+    public function start(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+        $customer = $request->user('customer');
+
+        if ($customer->isSuspended()) {
+            return back()->with('error', 'حساب شما تعلیق است و تا زمان فعال شدن حساب امکان روشن کردن سرور وجود ندارد.');
+        }
+
+        $server->loadMissing(['project.owner', 'customer', 'proxmoxServer', 'infrastructureLocation.hetznerAccount']);
+
+        if ($server->isLxc()) {
+            return back()->with('error', 'عملیات روشن و خاموش کردن برای LXC در حال حاضر در دسترس نیست.');
+        }
+
+        if ($server->isActionLocked() || $server->provisioning_status !== VirtualMachine::PROVISION_READY) {
+            return back()->with('error', 'این سرور در حال انجام عملیات دیگری است و فعلا قابل روشن کردن نیست.');
+        }
+
+        $billingCustomer = $server->project?->owner ?? $server->customer;
+
+        if ($billingCustomer?->isSuspended()) {
+            return back()->with('error', 'حساب مالک فضای کاری تعلیق است و امکان روشن کردن سرور وجود ندارد.');
+        }
+
+        if ($billingCustomer && $this->wallets->isWalletDepleted($billingCustomer)) {
+            return back()->with('error', 'این سرور تا شارژ شدن کیف پول فضای کاری قابل روشن کردن نیست.');
+        }
+
+        if ($server->isRunning()) {
+            return back()->with('status', 'سرور از قبل روشن است.');
+        }
+
+        if ($server->isProxmox() && (! $server->proxmoxServer || ! $server->node || ! $server->vmid)) {
+            return back()->with('error', 'اطلاعات زیرساخت برای روشن کردن سرور کامل نیست.');
+        }
+
+        if ($server->isHetzner() && (! $server->infrastructureLocation?->hetznerAccount || ! $server->remote_id)) {
+            return back()->with('error', 'اطلاعات زیرساخت برای روشن کردن سرور کامل نیست.');
+        }
+
+        $accrued = $this->billing->currentAccrued($server);
+
+        try {
+            if ($server->isHetzner()) {
+                $serverInfo = $this->hetzner->server($server->infrastructureLocation->hetznerAccount, $server->remote_id);
+
+                if (($serverInfo['server']['status'] ?? '') !== 'running') {
+                    $start = $this->hetzner->powerOn($server->infrastructureLocation->hetznerAccount, $server->remote_id);
+                    $this->hetzner->waitForAction($server->infrastructureLocation->hetznerAccount, $start['action']['id'] ?? null, 180);
+                }
+            } else {
+                $remoteStatus = $this->proxmox->vmStatus($server->proxmoxServer, $server->node, (int) $server->vmid);
+
+                if (($remoteStatus['status'] ?? '') !== 'running') {
+                    $start = $this->proxmox->startVm($server->proxmoxServer, $server->node, (int) $server->vmid, [
+                        'source' => 'customer_start',
+                        'virtual_machine_id' => $server->id,
+                        'customer_id' => $customer->getAuthIdentifier(),
+                        'ip' => $request->ip(),
+                    ]);
+
+                    if (! empty($start['task_id'])) {
+                        $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $start['task_id'], 180);
+                    }
+                }
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'روشن کردن سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
+        }
+
+        $server->forceFill([
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'last_started_at' => now(),
+            'last_billed_at' => now(),
+            'unbilled_amount' => $accrued,
+            'desired_state' => array_merge($server->desired_state ?? [], [
+                'status' => VirtualMachine::STATUS_RUNNING,
+                'power_generation' => (int) data_get($server->desired_state, 'power_generation', 0) + 1,
+                'power_intent_at' => now()->toISOString(),
+                'power_intent_source' => 'customer_start',
+            ]),
+        ])->save();
+
+        return back()->with('status', 'سرور روشن شد.');
+    }
+
+    public function stop(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+        $customer = $request->user('customer');
+        $server->loadMissing(['proxmoxServer', 'infrastructureLocation.hetznerAccount']);
+
+        if ($server->isLxc()) {
+            return back()->with('error', 'عملیات روشن و خاموش کردن برای LXC در حال حاضر در دسترس نیست.');
+        }
+
+        $currentGeneration = (int) data_get($server->desired_state, 'power_generation', 0);
+
+        if (! $request->has('power_generation') || $request->integer('power_generation') !== $currentGeneration) {
+            return back()->with('error', 'این درخواست خاموش کردن قدیمی است و اجرا نشد. صفحه را تازه‌سازی کنید.');
+        }
+
+        if ($server->isActionLocked() || $server->provisioning_status !== VirtualMachine::PROVISION_READY) {
+            return back()->with('error', 'این سرور در حال انجام عملیات دیگری است و فعلا قابل خاموش کردن نیست.');
+        }
+
+        if (! $server->isRunning()) {
+            return back()->with('status', 'سرور از قبل خاموش است.');
+        }
+
+        if ($server->isProxmox() && (! $server->proxmoxServer || ! $server->node || ! $server->vmid)) {
+            return back()->with('error', 'اطلاعات زیرساخت برای خاموش کردن سرور کامل نیست.');
+        }
+
+        if ($server->isHetzner() && (! $server->infrastructureLocation?->hetznerAccount || ! $server->remote_id)) {
+            return back()->with('error', 'اطلاعات زیرساخت برای خاموش کردن سرور کامل نیست.');
+        }
+
+        $accrued = $this->billing->currentAccrued($server);
+
+        try {
+            if ($server->isHetzner()) {
+                $shutdown = $this->hetzner->shutdown($server->infrastructureLocation->hetznerAccount, $server->remote_id);
+                $this->hetzner->waitForAction($server->infrastructureLocation->hetznerAccount, $shutdown['action']['id'] ?? null, 180);
+            } else {
+                Log::info('Customer VM shutdown requested', [
+                    'virtual_machine_id' => $server->id,
+                    'customer_id' => $customer->getAuthIdentifier(),
+                    'power_generation' => $currentGeneration,
+                    'ip' => $request->ip(),
+                ]);
+                $shutdown = $this->proxmox->shutdownVm($server->proxmoxServer, $server->node, (int) $server->vmid, context: [
+                    'source' => 'customer_stop',
+                    'virtual_machine_id' => $server->id,
+                    'customer_id' => $customer->getAuthIdentifier(),
+                    'ip' => $request->ip(),
+                ]);
+
+                if (! empty($shutdown['task_id'])) {
+                    $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $shutdown['task_id'], 180);
+                }
+
+                $this->proxmox->waitForVmStopped($server->proxmoxServer, $server->node, (int) $server->vmid, 60);
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'خاموش کردن سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
+        }
+
+        $server->forceFill([
+            'status' => VirtualMachine::STATUS_STOPPED,
+            'last_stopped_at' => now(),
+            'last_billed_at' => now(),
+            'unbilled_amount' => $accrued,
+            'desired_state' => array_merge($server->desired_state ?? [], [
+                'status' => VirtualMachine::STATUS_STOPPED,
+                'power_generation' => $currentGeneration + 1,
+                'power_intent_at' => now()->toISOString(),
+                'power_intent_source' => 'customer_stop',
+            ]),
+        ])->save();
+
+        return back()->with('status', 'سرور خاموش شد.');
     }
 
     public function destroy(Request $request, VirtualMachine $virtualMachine): RedirectResponse

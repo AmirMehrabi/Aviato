@@ -199,6 +199,7 @@ class WalletController extends Controller
                         ? 'پرداخت تایید شد و مبلغ اصلی به همراه پاداش کارت هدیه به کیف پول افزوده شد.'
                         : 'پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.'),
                 'receipt_url' => route('customer.payments.receipt.show', $payment, false),
+                'promotion_success' => $payment->promotion_bonus_amount > 0 && ! $promotionException,
             ],
             Payment::STATUS_FAILED, Payment::STATUS_CANCELLED => [
                 'tone' => 'error',

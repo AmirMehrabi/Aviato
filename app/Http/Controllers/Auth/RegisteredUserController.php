@@ -98,6 +98,6 @@ class RegisteredUserController extends Controller
         Auth::guard($portal)->login($account);
         $request->session()->regenerate();
 
-        return redirect('/'.trim(config("portals.$portal.home_path"), '/'));
+        return redirect()->intended('/'.trim(config("portals.$portal.home_path"), '/'));
     }
 }

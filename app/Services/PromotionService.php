@@ -240,6 +240,20 @@ class PromotionService
         return str_starts_with($normalized, $prefix) ? substr($normalized, strlen($prefix)) : $normalized;
     }
 
+    public function resolveAvailableCode(string $plainCode): PromotionCode
+    {
+        $code = PromotionCode::query()
+            ->with('campaign')
+            ->where('code_digest', $this->digest($plainCode))
+            ->first();
+
+        if (! $code || $code->status !== 'available' || ! $code->campaign?->isAvailable()) {
+            throw ValidationException::withMessages(['code' => 'کد هدیه معتبر یا قابل استفاده نیست.']);
+        }
+
+        return $code;
+    }
+
     public function event(string $action, ?PromotionCampaign $campaign = null, ?PromotionCode $code = null, ?User $user = null, ?Customer $customer = null, ?Request $request = null, array $metadata = []): PromotionEvent
     {
         return PromotionEvent::create([
