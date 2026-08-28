@@ -58,11 +58,11 @@ task('npm:build', function () {
 after('deploy:vendors', 'npm:build');
 
 task('deploy:verify_release', function () {
-    run('test -L {{release_path}}/.env');
-    run('test -s {{deploy_path}}/shared/.env');
-    run("grep -Eq '^APP_KEY=.+$' {{deploy_path}}/shared/.env");
-    run("grep -Eq '^DB_CONNECTION=.+$' {{deploy_path}}/shared/.env");
-    run("grep -Eq '^CACHE_STORE=.+$' {{deploy_path}}/shared/.env");
+    run("test -L {{release_path}}/.env || { echo 'Deployment blocked: release .env is not linked to the shared environment file.' >&2; exit 1; }");
+    run("test -s {{deploy_path}}/shared/.env || { echo 'Deployment blocked: shared/.env is missing or empty.' >&2; exit 1; }");
+    run("grep -Eq '^APP_KEY=.+$' {{deploy_path}}/shared/.env || { echo 'Deployment blocked: APP_KEY is missing or empty in shared/.env. Restore the existing production key; do not generate a new one.' >&2; exit 1; }");
+    run("grep -Eq '^DB_CONNECTION=.+$' {{deploy_path}}/shared/.env || { echo 'Deployment blocked: DB_CONNECTION is missing or empty in shared/.env.' >&2; exit 1; }");
+    run("grep -Eq '^CACHE_STORE=.+$' {{deploy_path}}/shared/.env || { echo 'Deployment blocked: CACHE_STORE is missing or empty in shared/.env.' >&2; exit 1; }");
     run('cd {{release_path}} && php artisan about --only=environment');
     run('cd {{release_path}} && php artisan migrate:status --no-interaction');
     run('test -f {{release_path}}/public/build/manifest.json');
