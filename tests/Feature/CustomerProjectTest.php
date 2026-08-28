@@ -13,6 +13,7 @@ use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class CustomerProjectTest extends TestCase
@@ -453,6 +454,36 @@ class CustomerProjectTest extends TestCase
 
         $this->get($this->customerBaseUrl.'/servers/'.$memberVm->uuid)->assertOk();
         $this->get($this->customerBaseUrl.'/servers/'.$ownerVm->uuid)->assertNotFound();
+    }
+
+    public function test_server_page_hides_credentials_when_password_cannot_be_decrypted(): void
+    {
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $customer->wallet()->update(['balance' => 1000000]);
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'project_id' => $project->id,
+            'name' => 'vm-with-invalid-credentials',
+            'login_username' => 'sensitive-user',
+            'ssh_public_key' => 'sensitive-public-key',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 80,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+        ]);
+
+        DB::table('virtual_machines')->where('id', $vm->id)->update([
+            'login_password' => 'invalid-ciphertext',
+        ]);
+
+        $this->actingAs($customer, 'customer')
+            ->get($this->customerBaseUrl.'/servers/'.$vm->uuid)
+            ->assertOk()
+            ->assertSee('اطلاعات محرمانه اتصال در حال حاضر قابل نمایش نیست')
+            ->assertDontSee('invalid-ciphertext');
     }
 
     public function test_customer_with_specific_vm_access_can_open_workspace(): void

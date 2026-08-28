@@ -14,7 +14,7 @@
 @php
     $activeNav = 'servers';
     $hasIp = filled($server->ip_address);
-    $hasPassword = filled($server->login_password);
+    $hasPassword = filled($loginPassword);
     $hasSshKey = filled($server->ssh_public_key);
     $isLocked = $server->isActionLocked();
     $deleteAttemptIsStale = $server->deleteAttemptIsStale();
@@ -273,6 +273,12 @@
                 </div>
 
                 <div class="mt-5 grid gap-3">
+                    @if ($credentialDecryptionFailed)
+                        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-7 text-amber-800">
+                            اطلاعات محرمانه اتصال در حال حاضر قابل نمایش نیست. لطفاً با پشتیبانی تماس بگیرید.
+                        </div>
+                    @endif
+
                     <div class="flex flex-col gap-3 rounded-2xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div class="min-w-0">
                             <p class="text-xs font-black text-slate-500">IP Address</p>
@@ -284,6 +290,7 @@
                         </button>
                     </div>
 
+                    @unless ($credentialDecryptionFailed)
                     <div class="grid gap-3 md:grid-cols-2">
                         <div class="rounded-2xl border border-slate-200 p-4">
                             <p class="text-xs font-black text-slate-500">Username</p>
@@ -299,9 +306,9 @@
                             <p class="text-xs font-black text-slate-500">Password</p>
                             @if ($hasPassword)
                                 <div class="mt-2 flex items-center gap-2">
-                                    <code class="min-w-0 flex-1 truncate text-left text-base font-black text-slate-950" dir="ltr" x-text="revealPassword ? @js($server->login_password) : '••••••••••••'"></code>
+                                    <code class="min-w-0 flex-1 truncate text-left text-base font-black text-slate-950" dir="ltr" x-text="revealPassword ? @js($loginPassword) : '••••••••••••'"></code>
                                     <button type="button" @click="revealPassword = !revealPassword" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-[#EBF3FF] hover:text-[#0069FF]" x-text="revealPassword ? 'Hide' : 'Show'"></button>
-                                    <button type="button" @click="copy(@js($server->login_password), 'password')" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-[#EBF3FF] hover:text-[#0069FF]">
+                                    <button type="button" @click="copy(@js($loginPassword), 'password')" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-[#EBF3FF] hover:text-[#0069FF]">
                                         <span x-show="copied !== 'password'">Copy</span>
                                         <span x-show="copied === 'password'">Copied</span>
                                     </button>
@@ -311,7 +318,9 @@
                             @endif
                         </div>
                     </div>
+                    @endunless
 
+                    @unless ($credentialDecryptionFailed)
                     <div class="overflow-hidden rounded-2xl border border-slate-200 p-4">
                         <div class="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                             <div class="min-w-0 flex-1">
@@ -328,6 +337,7 @@
                             </button>
                         </div>
                     </div>
+                    @endunless
                 </div>
             </div>
 

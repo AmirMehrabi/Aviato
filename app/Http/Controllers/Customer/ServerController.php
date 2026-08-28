@@ -230,7 +230,7 @@ class ServerController extends Controller
                 'ssh_class' => $server->ip_address && $server->provisioning_status === VirtualMachine::PROVISION_READY ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
                 'hostname' => $server->hostname ?: 'hostname-not-set',
                 'login_username' => $server->login_username ?: '-',
-                'has_password' => filled($server->login_password),
+                'has_password' => filled($server->getRawOriginal('login_password')),
                 'console_ready' => $server->isProxmox() && ! $server->isLxc() && $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === VirtualMachine::PROVISION_READY && ! $server->isActionLocked(),
                 'ssh_command' => $server->ip_address ? 'ssh '.($server->login_username ?: 'root').'@'.$server->ip_address : null,
                 'updated_at' => $server->updated_at?->toISOString(),
@@ -542,6 +542,21 @@ class ServerController extends Controller
             ? 'ssh '.($server->login_username ?: 'root').'@'.$server->ip_address
             : null;
         $latestBackup = $server->backups->first();
+        $loginPassword = null;
+        $credentialDecryptionFailed = false;
+
+        if (filled($server->getRawOriginal('login_password'))) {
+            try {
+                $loginPassword = $server->login_password;
+            } catch (Throwable $exception) {
+                $credentialDecryptionFailed = true;
+
+                Log::warning('Unable to decrypt virtual machine credentials.', [
+                    'virtual_machine_id' => $server->id,
+                    'exception' => $exception::class,
+                ]);
+            }
+        }
 
         return view('customer.servers.show', [
             'customer' => $customer,
@@ -555,6 +570,8 @@ class ServerController extends Controller
             'billing' => $this->billing,
             'monthlyCost' => $monthlyCost,
             'sshCommand' => $sshCommand,
+            'loginPassword' => $loginPassword,
+            'credentialDecryptionFailed' => $credentialDecryptionFailed,
             'statusLabel' => $this->statusLabel($server->status),
             'statusClass' => $this->statusClass($server->status),
             'provisioningLabel' => $this->provisioningLabelForVm($server),

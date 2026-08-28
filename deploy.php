@@ -58,7 +58,13 @@ task('npm:build', function () {
 after('deploy:vendors', 'npm:build');
 
 task('deploy:verify_release', function () {
+    run('test -L {{release_path}}/.env');
+    run('test -s {{deploy_path}}/shared/.env');
+    run("grep -Eq '^APP_KEY=.+$' {{deploy_path}}/shared/.env");
+    run("grep -Eq '^DB_CONNECTION=.+$' {{deploy_path}}/shared/.env");
+    run("grep -Eq '^CACHE_STORE=.+$' {{deploy_path}}/shared/.env");
     run('cd {{release_path}} && php artisan about --only=environment');
+    run('cd {{release_path}} && php artisan migrate:status --no-interaction');
     run('test -f {{release_path}}/public/build/manifest.json');
 });
 
