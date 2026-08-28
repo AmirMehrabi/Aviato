@@ -29,6 +29,12 @@ set('writable_dirs', [
 
 set('writable_mode', 'acl');
 
+task('deploy:prepare_storage', function () {
+    run('mkdir -p {{release_path}}/storage/app/private {{release_path}}/storage/app/public {{release_path}}/storage/framework/cache/data {{release_path}}/storage/framework/sessions {{release_path}}/storage/framework/views {{release_path}}/storage/logs');
+});
+
+after('deploy:shared', 'deploy:prepare_storage');
+
 // Used by GitHub Actions or your local computer.
 // This connects to the production server by SSH.
 host('production')
@@ -42,7 +48,7 @@ localhost('local')
     ->set('deploy_path', '/var/www/html/aviato')
     ->set('branch', 'master');
 
-// Frontend build if package.json exists.
+// Build frontend assets on the production release after fetching from GitHub.
 task('npm:build', function () {
     if (test('[ -f {{release_path}}/package.json ]')) {
         run('cd {{release_path}} && npm ci --no-audit --no-fund && npm run build && rm -rf node_modules');
@@ -70,7 +76,7 @@ task('deploy:healthcheck', function () {
         run('rm -f {{deploy_path}}/.dep/previous_current');
     } catch (\Throwable $exception) {
         run('if [ -s {{deploy_path}}/.dep/previous_current ]; then ln -sfn "$(cat {{deploy_path}}/.dep/previous_current)" {{current_path}}; fi');
-        run('sudo -n /usr/bin/systemctl reload php8.3-fpm');
+        run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
 
         throw $exception;
     }
@@ -119,7 +125,7 @@ task('supervisor:deploy', function () {
 after('deploy:success', 'supervisor:deploy');
 
 task('php-fpm:reload', function () {
-    run('sudo -n /usr/bin/systemctl reload php8.3-fpm');
+    run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
 });
 
 // task('nginx:s3', function () {

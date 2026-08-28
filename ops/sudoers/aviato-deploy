@@ -9,4 +9,4 @@ deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl reread
 deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl update
 deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl restart aviato-horizon\:*
 deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl restart aviato-scheduler\:*
-deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.3-fpm
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.5-fpm
