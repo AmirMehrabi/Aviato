@@ -4,7 +4,7 @@
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>هدیه الکامپ آویاتو | برو روی ابر</title>
     <meta name="description" content="کد هدیه الکامپ آویاتو را فعال کنید و پروژه بعدی‌تان را روی زیرساخت ابری راه‌اندازی کنید.">
-    <meta name="theme-color" content="#F4F0E8"><link rel="canonical" href="{{ url()->current() }}">
+    <meta name="theme-color" content="#07090D"><link rel="canonical" href="{{ url()->current() }}">
     <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any"><link rel="stylesheet" href="{{ asset('assets/fonts.css') }}">
     <style>
         :root{--blue:#1746ff;--lime:#c8ff2e;--ink:#111318;--paper:#f4f0e8;--white:#fff;font-family:Estedad,Vazirmatn,system-ui,sans-serif}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}button,input{font:inherit}a{color:inherit;text-decoration:none}.shell{width:min(1380px,calc(100% - 48px));margin:auto}.topbar{position:absolute;z-index:5;inset:26px 0 auto}.topbar .shell{display:flex;align-items:center;justify-content:space-between;direction:ltr}.logo{width:126px;height:auto}.event-mark{display:flex;align-items:center;gap:10px;font:800 12px/1 system-ui,sans-serif;letter-spacing:.12em}.live-dot{width:9px;height:9px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 5px rgba(200,255,46,.22)}
@@ -13,16 +13,47 @@
         .strip{background:var(--ink);color:white;overflow:hidden}.marquee{display:flex;width:max-content;animation:move 24s linear infinite}.marquee span{padding:17px 20px;font:800 11px/1 system-ui,sans-serif;letter-spacing:.08em;white-space:nowrap}.marquee i{color:var(--lime);font-style:normal}@keyframes move{to{transform:translateX(50%)}}.story{padding:110px 0;background:var(--blue);color:white}.story-grid{display:grid;grid-template-columns:.75fr 1.25fr;gap:90px;align-items:start}.story h2{position:sticky;top:40px;margin:0;font-size:clamp(40px,5vw,74px);line-height:1.12;letter-spacing:-.05em}.steps{border-top:1px solid rgba(255,255,255,.4)}.step{display:grid;grid-template-columns:60px 1fr;gap:24px;padding:36px 0;border-bottom:1px solid rgba(255,255,255,.4)}.step b{font:800 14px/1 system-ui,sans-serif;color:var(--lime)}.step h3{margin:0;font-size:24px}.step p{margin:10px 0 0;color:rgba(255,255,255,.72);line-height:1.9;font-size:14px}.note{padding:26px 0;background:var(--lime)}.note .shell{display:flex;justify-content:space-between;align-items:center;gap:30px;font-size:13px;font-weight:900}.note a{direction:ltr;font:800 11px/1 system-ui,sans-serif;letter-spacing:.12em;border-bottom:1px solid;padding-bottom:3px}
         @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.marquee{animation:none}}@media(max-width:760px){.shell{width:min(100% - 28px,1380px)}.topbar{inset:18px 0 auto}.logo{width:105px}.event-mark{font-size:9px}.hero{min-height:900px;align-items:end}.art{inset:0 0 auto;height:56%;background-position:63% center}.art:after{background:linear-gradient(180deg,transparent 34%,var(--paper) 94%)}.hero-grid{min-height:900px;grid-template-columns:1fr;align-items:end;padding:400px 0 64px}h1{font-size:58px}.lead{font-size:15px;margin-top:20px}.claim{box-shadow:5px 5px 0 var(--ink)}.claim input{height:54px;padding:0 11px;font-size:12px}.claim button{min-width:105px;font-size:12px}.edition{display:none}.story{padding:76px 0}.story-grid{grid-template-columns:1fr;gap:44px}.story h2{position:static}.step{grid-template-columns:38px 1fr;gap:16px}.note .shell{display:block}.note a{display:inline-block;margin-top:12px}}
     </style>
+    <style>
+        :root { --ink:#F5F7FF; --paper:#07090D; }
+        .art { background:radial-gradient(circle at 78% 45%,rgba(23,70,255,.14),transparent 30%),linear-gradient(135deg,#07090D 0%,#0A0D13 100%); }
+        .art::after { background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:72px 72px; }
+        .hero-grid { grid-template-columns:minmax(0,600px) minmax(340px,470px);gap:clamp(40px,7vw,110px);justify-content:space-between; }
+        .poster-wrap { position:relative;display:grid;place-items:center;direction:rtl; }
+        .poster-wrap::before { content:"";position:absolute;inset:8% 4%;z-index:-1;background:rgba(23,70,255,.18);filter:blur(55px); }
+        .hero-poster { display:block;width:100%;max-height:calc(100svh - 175px);object-fit:contain;filter:drop-shadow(0 32px 48px rgba(0,0,0,.55)); }
+        .eyebrow { color:var(--lime); }
+        .eyebrow::before { background:var(--lime); }
+        h1 span { color:#4C70FF; text-shadow:0 0 34px rgba(23,70,255,.42); }
+        .lead { color:#C9CFDA; }
+        .claim { border-color:var(--lime); box-shadow:8px 8px 0 var(--lime); }
+        .claim:focus-within { outline-color:rgba(200,255,46,.18); }
+        .claim input { color:#111318; }
+        .claim button:hover { background:#07090D; }
+        .error { color:#FFD4DE; background:rgba(162,13,50,.3); border-color:#EF5577; }
+        .hint,.edition { color:#8E98AA; }
+        .strip { background:#030407; }
+        .note { color:#07090D; }
+        .note a { color:#07090D; border-color:rgba(7,9,13,.55); }
+        @media(max-width:760px) {
+            .hero { min-height:auto; }
+            .art { height:100%;background:radial-gradient(circle at 50% 23%,rgba(23,70,255,.15),transparent 25%),#07090D; }
+            .art::after { background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);background-size:52px 52px; }
+            .hero-grid { min-height:auto;grid-template-columns:1fr;gap:34px;padding:115px 0 68px; }
+            .poster-wrap { order:-1; }
+            .hero-poster { width:min(76vw,330px);max-height:390px; }
+            .claim { box-shadow:5px 5px 0 var(--lime); }
+        }
+    </style>
 </head>
 <body>
-    <header class="topbar"><div class="shell"><a href="{{ route('home') }}" aria-label="صفحه اصلی آویاتو"><img class="logo" src="{{ asset('assets/images/aviato_logo_full_black.png') }}" alt="آویاتو"></a><div class="event-mark"><span class="live-dot"></span> ELECOMP / SPECIAL DROP</div></div></header>
+    <header class="topbar"><div class="shell"><a href="{{ route('home') }}" aria-label="صفحه اصلی آویاتو"><img class="logo" src="{{ asset('assets/images/aviato_logo_full_white.png') }}" alt="آویاتو"></a><div class="event-mark"><span class="live-dot"></span> ELECOMP / SPECIAL DROP</div></div></header>
     <main>
         <section class="hero"><div class="art" aria-hidden="true"></div><div class="shell hero-grid"><div class="copy">
             <p class="eyebrow">هدیه‌ات را فعال کن · الکامپ ۱۴۰۵</p><h1>کدت رو بزن.<span>برو روی ابر.</span></h1>
             <p class="lead">این یک تخفیف معمولی نیست؛ نقطه‌ی شروع پروژه‌ی بعدی توست. کد روی کارت را وارد کن و هدیه‌ات را بردار.</p>
             <form method="POST" action="{{ route('elecomp.claim') }}" class="claim" id="claim-form">@csrf<label for="elecomp-code" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">کد هدیه</label><input id="elecomp-code" name="code" value="{{ old('code') }}" required maxlength="64" autocomplete="off" spellcheck="false" placeholder="AVT-XXXX-XXXX-XXXX-XXXX" aria-describedby="claim-hint @error('code') claim-error @enderror"><button type="submit">باز کردن هدیه</button></form>
-            @error('code')<p class="error" id="claim-error" role="alert">{{ $message }}</p>@enderror<p class="hint" id="claim-hint">بدون پرداخت بانکی برای اعتبار مستقیم · هر کد فقط یک‌بار</p>
-        </div></div><span class="edition">AVIATO × ELECOMP · 2026</span></section>
+            @error('code')<p class="error" id="claim-error" role="alert">{{ $message }}</p>@enderror<p class="hint" id="claim-hint">هدیه پس از پرداخت موفق فعال می‌شود · هر کد فقط یک‌بار</p>
+        </div><div class="poster-wrap"><img class="hero-poster" src="{{ asset('design-concepts/elecomp-minimal-comparison/minimal-cloud-poster-v2.png') }}" alt="پوستر مینیمال زیرساخت ابری الکامپ"></div></div><span class="edition">AVIATO × ELECOMP · 2026</span></section>
         <div class="strip" aria-hidden="true"><div class="marquee">@for($i=0;$i<3;$i++)<span>YOUR IDEA <i>●</i> OUR CLOUD <i>●</i> READY TO LAUNCH <i>●</i> ELECOMP DROP <i>●</i></span>@endfor</div></div>
         <section class="story"><div class="shell story-grid"><h2>سه حرکت.<br>یک سرور<br>آماده‌ی کار.</h2><div class="steps">
             <article class="step"><b>01</b><div><h3>کارت را بردار</h3><p>کد اختصاصی روی کارت الکامپ فقط برای یک حساب و یک‌بار فعال می‌شود.</p></div></article>

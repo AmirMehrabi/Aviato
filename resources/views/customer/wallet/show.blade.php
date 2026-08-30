@@ -120,7 +120,7 @@
                                 <span class="shrink-0 border-r border-slate-200 pr-4 text-sm font-black text-slate-500">تومان</span>
                             </div>
                             <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs font-bold">
-                                <span class="text-slate-400">حداقل ۱۰۰٬۰۰۰ و حداکثر ۵۰٬۰۰۰٬۰۰۰ تومان</span>
+                                <span class="text-slate-400">حداقل ۲۵۰٬۰۰۰ و حداکثر ۵۰٬۰۰۰٬۰۰۰ تومان</span>
                                 <button x-show="amount" x-cloak type="button" @click="clearAmount()" class="text-slate-500 transition hover:text-rose-600">پاک کردن مبلغ</button>
                             </div>
                             @error('amount_toman')
@@ -457,7 +457,7 @@
                 get canSubmit() {
                     const amount = Number(this.amount);
 
-                    return amount >= 100000 && amount <= 50000000 && Boolean(this.gateway);
+                    return amount >= 250000 && amount <= 50000000 && Boolean(this.gateway);
                 },
             };
         }

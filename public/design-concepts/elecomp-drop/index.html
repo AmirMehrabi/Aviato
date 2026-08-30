@@ -75,12 +75,22 @@
             .note .shell { display:block; }
             .note span:last-child { display:block; margin-top:9px; }
         }
-    </style>
+  </style>
+  <style>
+    :root{--ink:#f5f7ff;--paper:#07090d}
+    .art{background-image:url('./elecomp-cyberpunk-poster.png')}
+    .art::after{background:linear-gradient(90deg,rgba(7,9,13,.99) 2%,rgba(7,9,13,.94) 35%,rgba(7,9,13,.3) 68%,transparent 100%)}
+    .eyebrow{color:var(--lime)}.eyebrow::before{background:var(--lime)}
+    h1 span{color:#4c70ff;text-shadow:0 0 34px rgba(23,70,255,.42)}.lead{color:#c9cfda}
+    .claim{border-color:var(--lime);box-shadow:8px 8px 0 var(--lime)}.claim input{color:#111318}.claim button:hover{background:#07090d}
+    .hint,.edition{color:#8e98aa}.strip{background:#030407}
+    @media(max-width:760px){.art::after{background:linear-gradient(180deg,transparent 34%,var(--paper) 94%)}.claim{box-shadow:5px 5px 0 var(--lime)}}
+  </style>
 </head>
 <body>
     <header class="topbar">
         <div class="shell">
-            <img class="logo" src="/assets/images/aviato_logo_full_black.png" alt="آویاتو">
+            <img class="logo" src="/assets/images/aviato_logo_full_white.png" alt="آویاتو">
             <div class="event-mark"><span class="live-dot"></span> ELECOMP / SPECIAL DROP</div>
         </div>
     </header>

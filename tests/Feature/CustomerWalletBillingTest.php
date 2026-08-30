@@ -410,7 +410,7 @@ class CustomerWalletBillingTest extends TestCase
         $this->actingAs($customer, 'customer')
             ->from($this->customerBaseUrl.'/wallet')
             ->post($this->customerBaseUrl.'/wallet/top-ups', [
-                'amount_toman' => 99999,
+                'amount_toman' => 249999,
                 'gateway' => 'mellat',
             ])
             ->assertRedirect($this->customerBaseUrl.'/wallet')
