@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Elecomp Drop — Aviato concept</title>
+    <link rel="stylesheet" href="/assets/fonts.css">
+    <style>
+        :root { --blue:#1746ff; --lime:#c8ff2e; --ink:#111318; --paper:#f4f0e8; --white:#fff; --line:rgba(17,19,24,.16); font-family:Estedad,Vazirmatn,system-ui,sans-serif; }
+        * { box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        body { margin:0; color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased; }
+        button,input { font:inherit; }
+        a { color:inherit; text-decoration:none; }
+        .shell { width:min(1380px,calc(100% - 48px)); margin:auto; }
+        .topbar { position:absolute; z-index:5; inset:26px 0 auto; }
+        .topbar .shell { display:flex; align-items:center; justify-content:space-between; direction:ltr; }
+        .logo { width:126px; height:auto; }
+        .event-mark { display:flex; align-items:center; gap:10px; font:800 12px/1 system-ui,sans-serif; letter-spacing:.12em; text-transform:uppercase; }
+        .live-dot { width:9px; height:9px; border-radius:50%; background:var(--lime); box-shadow:0 0 0 5px rgba(200,255,46,.22); }
+        .hero { position:relative; min-height:100svh; overflow:hidden; display:grid; align-items:center; isolation:isolate; }
+        .art { position:absolute; z-index:-2; inset:0; background:url('./elecomp-portal.png') center/cover no-repeat; }
+        .art::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,rgba(244,240,232,.98) 2%,rgba(244,240,232,.92) 34%,rgba(244,240,232,.16) 67%,rgba(244,240,232,0) 100%); }
+        .hero-grid { min-height:100svh; display:grid; grid-template-columns:minmax(0,590px) 1fr; align-items:center; direction:ltr; padding:130px 0 80px; }
+        .copy { direction:rtl; }
+        .eyebrow { display:flex; align-items:center; gap:12px; margin:0 0 22px; font-size:12px; font-weight:900; }
+        .eyebrow::before { content:""; width:44px; height:3px; background:var(--blue); }
+        h1 { margin:0; font-size:clamp(56px,7.3vw,108px); line-height:.96; letter-spacing:-.065em; font-weight:900; }
+        h1 span { display:block; color:var(--blue); }
+        .lead { max-width:520px; margin:28px 0 0; font-size:clamp(16px,1.5vw,20px); line-height:2; font-weight:600; }
+        .claim { width:min(530px,100%); margin-top:36px; padding:8px; display:flex; direction:ltr; background:var(--white); border:1.5px solid var(--ink); border-radius:18px; box-shadow:8px 8px 0 var(--ink); }
+        .claim input { min-width:0; flex:1; height:58px; padding:0 18px; border:0; outline:0; direction:ltr; text-align:left; background:transparent; color:var(--ink); font:800 16px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.05em; text-transform:uppercase; }
+        .claim input::placeholder { color:#94928d; }
+        .claim button { flex:none; min-width:148px; border:0; border-radius:11px; color:white; background:var(--blue); cursor:pointer; font-size:14px; font-weight:900; transition:.18s ease; }
+        .claim button:hover { background:var(--ink); }
+        .hint { margin:17px 2px 0; color:#5f5d58; font-size:11px; font-weight:700; }
+        .edition { position:absolute; inset:auto 30px 28px auto; writing-mode:vertical-rl; font:800 11px/1 system-ui,sans-serif; letter-spacing:.17em; text-transform:uppercase; }
+        .strip { background:var(--ink); color:white; overflow:hidden; }
+        .marquee { display:flex; width:max-content; animation:move 24s linear infinite; }
+        .marquee span { padding:17px 20px; font:800 11px/1 system-ui,sans-serif; letter-spacing:.08em; white-space:nowrap; }
+        .marquee i { color:var(--lime); font-style:normal; }
+        @keyframes move { to { transform:translateX(50%); } }
+        .story { padding:110px 0; background:var(--blue); color:white; }
+        .story-grid { display:grid; grid-template-columns:.75fr 1.25fr; gap:90px; align-items:start; }
+        .story h2 { position:sticky; top:40px; margin:0; font-size:clamp(40px,5vw,74px); line-height:1.12; letter-spacing:-.05em; }
+        .steps { border-top:1px solid rgba(255,255,255,.4); }
+        .step { display:grid; grid-template-columns:60px 1fr; gap:24px; padding:36px 0; border-bottom:1px solid rgba(255,255,255,.4); }
+        .step b { font:800 14px/1 system-ui,sans-serif; color:var(--lime); }
+        .step h3 { margin:0; font-size:24px; }
+        .step p { margin:10px 0 0; color:rgba(255,255,255,.72); line-height:1.9; font-size:14px; }
+        .note { padding:26px 0; background:var(--lime); color:var(--ink); }
+        .note .shell { display:flex; justify-content:space-between; align-items:center; gap:30px; font-size:13px; font-weight:900; }
+        .note span:last-child { direction:ltr; font:800 11px/1 system-ui,sans-serif; letter-spacing:.12em; }
+        .toast { position:fixed; z-index:9; left:50%; bottom:28px; translate:-50% 18px; padding:13px 20px; border-radius:99px; background:var(--ink); color:white; opacity:0; pointer-events:none; font-size:12px; font-weight:800; transition:.2s ease; }
+        .toast.show { opacity:1; translate:-50% 0; }
+        @media(max-width:760px) {
+            .shell { width:min(100% - 28px,1380px); }
+            .topbar { inset:18px 0 auto; }
+            .logo { width:105px; }
+            .event-mark { font-size:9px; }
+            .hero { min-height:900px; align-items:end; }
+            .art { inset:0 0 auto; height:56%; background-position:63% center; }
+            .art::after { background:linear-gradient(180deg,rgba(244,240,232,0) 34%,var(--paper) 94%); }
+            .hero-grid { min-height:900px; grid-template-columns:1fr; align-items:end; padding:400px 0 64px; }
+            h1 { font-size:58px; }
+            .lead { font-size:15px; margin-top:20px; }
+            .claim { box-shadow:5px 5px 0 var(--ink); }
+            .claim input { height:54px; padding:0 11px; font-size:12px; }
+            .claim button { min-width:105px; font-size:12px; }
+            .edition { display:none; }
+            .story { padding:76px 0; }
+            .story-grid { grid-template-columns:1fr; gap:44px; }
+            .story h2 { position:static; }
+            .step { grid-template-columns:38px 1fr; gap:16px; }
+            .note .shell { display:block; }
+            .note span:last-child { display:block; margin-top:9px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="shell">
+            <img class="logo" src="/assets/images/aviato_logo_full_black.png" alt="آویاتو">
+            <div class="event-mark"><span class="live-dot"></span> ELECOMP / SPECIAL DROP</div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="art" aria-hidden="true"></div>
+            <div class="shell hero-grid">
+                <div class="copy">
+                    <p class="eyebrow">هدیه‌ی اختصاصی الکامپ ۱۴۰۵</p>
+                    <h1>کدت رو بزن.<span>برو روی ابر.</span></h1>
+                    <p class="lead">این یک تخفیف معمولی نیست؛ نقطه‌ی شروع پروژه‌ی بعدی توست. کد روی کارت را وارد کن و هدیه‌ات را بردار.</p>
+                    <form class="claim" id="claim-form">
+                        <input aria-label="کد هدیه" autocomplete="off" spellcheck="false" placeholder="AVT-XXXX-XXXX-XXXX-XXXX" maxlength="64">
+                        <button type="submit">باز کردن هدیه</button>
+                    </form>
+                    <p class="hint">بدون پرداخت بانکی برای اعتبار مستقیم · هر کد فقط یک‌بار</p>
+                </div>
+            </div>
+            <span class="edition">AVIATO × ELECOMP · 2026</span>
+        </section>
+
+        <div class="strip" aria-hidden="true"><div class="marquee">
+            <span>YOUR IDEA <i>●</i> OUR CLOUD <i>●</i> READY TO LAUNCH <i>●</i> ELECOMP DROP <i>●</i></span>
+            <span>YOUR IDEA <i>●</i> OUR CLOUD <i>●</i> READY TO LAUNCH <i>●</i> ELECOMP DROP <i>●</i></span>
+            <span>YOUR IDEA <i>●</i> OUR CLOUD <i>●</i> READY TO LAUNCH <i>●</i> ELECOMP DROP <i>●</i></span>
+        </div></div>
+
+        <section class="story">
+            <div class="shell story-grid">
+                <h2>سه حرکت.<br>یک سرور<br>آماده‌ی کار.</h2>
+                <div class="steps">
+                    <article class="step"><b>01</b><div><h3>کارت را بردار</h3><p>کد اختصاصی روی کارت الکامپ فقط برای یک حساب و یک‌بار فعال می‌شود.</p></div></article>
+                    <article class="step"><b>02</b><div><h3>هدیه را باز کن</h3><p>کد را همین بالا وارد کن؛ نوع و مقدار هدیه قبل از ادامه شفاف نمایش داده می‌شود.</p></div></article>
+                    <article class="step"><b>03</b><div><h3>چیزی بساز</h3><p>سرور، سیستم‌عامل و موقعیت را انتخاب کن. محیط پروژه‌ات از پنل آماده می‌شود.</p></div></article>
+                </div>
+            </div>
+        </section>
+        <footer class="note"><div class="shell"><span>آویاتو — زیرساخت برای آدم‌هایی که می‌سازند.</span><span>CONCEPT 01 / NOT LIVE</span></div></footer>
+    </main>
+    <div class="toast" id="toast">این فقط پیش‌نمایش طراحی است؛ کدی ارسال نشد.</div>
+    <script>
+        const form = document.querySelector('#claim-form');
+        const input = form.querySelector('input');
+        const toast = document.querySelector('#toast');
+        input.addEventListener('input', () => input.value = input.value.toUpperCase());
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            toast.classList.add('show');
+            window.setTimeout(() => toast.classList.remove('show'), 2600);
+        });
+    </script>
+</body>
+</html>
