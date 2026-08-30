@@ -48,7 +48,11 @@ class PromotionGiftCardTest extends TestCase
         $manager = User::factory()->create(['role' => AdminRole::Admin]);
         $customer = Customer::factory()->create();
         $project = $customer->ensureDefaultProject();
-        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, ['credit_amount' => 2_500_000, 'maximum_liability' => 2_500_000]);
+        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, [
+            'claim_mode' => PromotionCampaign::CLAIM_INSTANT,
+            'credit_amount' => 2_500_000,
+            'maximum_liability' => 2_500_000,
+        ]);
         $codes = app(PromotionService::class)->generateCodes($campaign, $manager);
         $plain = $codes[0]->encrypted_code;
 
@@ -93,6 +97,43 @@ class PromotionGiftCardTest extends TestCase
         $this->assertSame(500_000, $wallet->refresh()->balance);
     }
 
+    public function test_fixed_credit_code_is_only_credited_after_a_successful_payment(): void
+    {
+        $manager = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, [
+            'credit_amount' => 500_000,
+            'maximum_liability' => 500_000,
+        ]);
+        $code = app(PromotionService::class)->generateCodes($campaign, $manager)[0];
+        $wallet = $customer->wallet()->firstOrFail();
+
+        $this->actingAs($customer, 'customer')
+            ->post('https://cp.localhost/wallet/gift-cards/redeem', ['code' => $code->encrypted_code])
+            ->assertSessionHasErrors(['code' => 'این کد باید هنگام افزایش موجودی استفاده شود.']);
+        $this->assertSame(0, $wallet->refresh()->balance);
+
+        $payment = Payment::create([
+            'customer_id' => $customer->id, 'wallet_id' => $wallet->id, 'provider' => 'dummy', 'type' => Payment::TYPE_TOP_UP,
+            'status' => Payment::STATUS_PENDING, 'amount' => 1_000_000, 'currency' => 'IRR', 'authority' => 'FIXED-PAYMENT-1',
+        ]);
+
+        $service = app(PromotionService::class);
+        $service->reserveForPayment($payment, $code->encrypted_code, $customer, $project);
+
+        $this->assertSame('reserved', $code->refresh()->status);
+        $this->assertSame(500_000, $payment->refresh()->promotion_bonus_amount);
+        $this->assertSame(0, $wallet->refresh()->balance);
+
+        $redemption = $service->completePaymentBonus($payment->refresh());
+
+        $this->assertNotNull($redemption);
+        $this->assertSame(500_000, $wallet->refresh()->balance);
+        $this->assertSame('redeemed', $code->refresh()->status);
+        $this->assertSame($payment->id, $redemption->payment_id);
+    }
+
     public function test_expired_reservation_is_released_for_retry(): void
     {
         $manager = User::factory()->create();
@@ -111,7 +152,7 @@ class PromotionGiftCardTest extends TestCase
         $customer = Customer::factory()->create();
         $wallet = $customer->wallet()->firstOrFail();
         Payment::create(['customer_id' => $customer->id, 'wallet_id' => $wallet->id, 'provider' => 'dummy', 'type' => Payment::TYPE_TOP_UP, 'status' => Payment::STATUS_SUCCESSFUL, 'amount' => 1_000_000, 'currency' => 'IRR', 'authority' => 'FUNDED-1', 'paid_at' => now()]);
-        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, ['audience' => PromotionCampaign::AUDIENCE_NEW, 'credit_amount' => 100_000, 'maximum_liability' => 100_000]);
+        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, ['claim_mode' => PromotionCampaign::CLAIM_INSTANT, 'audience' => PromotionCampaign::AUDIENCE_NEW, 'credit_amount' => 100_000, 'maximum_liability' => 100_000]);
         $code = app(PromotionService::class)->generateCodes($campaign, $manager)[0];
 
         $this->actingAs($customer, 'customer')->post('https://cp.localhost/wallet/gift-cards/redeem', ['code' => $code->encrypted_code])->assertSessionHasErrors('code');

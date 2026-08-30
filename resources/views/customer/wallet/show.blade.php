@@ -18,17 +18,6 @@
             <a href="{{ route('customer.servers.create', [], false) }}" class="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-emerald-700 px-6 font-black text-white">ساخت اولین سرور</a>
         </div>
     @endif
-    <section id="gift-card" class="mb-6 rounded-[28px] border border-emerald-200 bg-gradient-to-l from-emerald-50 to-white p-5 shadow-sm sm:p-7">
-        <div class="grid gap-5 lg:grid-cols-[1fr_420px] lg:items-center">
-            <div><p class="text-xs font-black text-emerald-700">کارت هدیه آویاتو</p><h2 class="mt-2 text-2xl font-black text-slate-950">اعتبار هدیه دارید؟</h2><p class="mt-2 text-sm font-bold leading-7 text-slate-500">کد کارت اعتباری را وارد کنید تا مبلغ آن فوراً به کیف پول فضای کاری فعال افزوده شود. کدهای درصدی را پایین‌تر هنگام پرداخت وارد کنید.</p></div>
-            <form method="POST" action="{{ route('customer.gift-cards.redeem', [], false) }}" class="rounded-2xl border border-emerald-200 bg-white p-4">
-                @csrf
-                <label for="gift-credit-code" class="text-sm font-black text-slate-800">کد اعتبار هدیه</label>
-                <div class="mt-2 flex gap-2"><input id="gift-credit-code" name="code" dir="ltr" autocomplete="off" class="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-3 font-mono font-bold uppercase outline-none focus:border-emerald-500" placeholder="AVT-XXXX-XXXX-XXXX-XXXX"><button class="rounded-xl bg-emerald-600 px-5 text-sm font-black text-white">اعمال</button></div>
-                @error('code')<p class="mt-2 text-sm font-bold text-rose-600">{{ $message }}</p>@enderror
-            </form>
-        </div>
-    </section>
     @if ($paymentNotice)
         <div role="status" class="mb-6 flex flex-col gap-3 rounded-2xl border px-5 py-4 text-sm font-bold leading-7 sm:flex-row sm:items-center sm:justify-between {{ $paymentNotice['tone'] === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : ($paymentNotice['tone'] === 'error' ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-amber-200 bg-amber-50 text-amber-800') }}">
             <span>{{ $paymentNotice['message'] }}</span>
@@ -178,9 +167,9 @@
                         @endif
 
                         <div class="mt-6 border-t border-slate-100 pt-6">
-                            <label for="promotion-code" class="text-sm font-black text-slate-800">کد تخفیف کارت هدیه (اختیاری)</label>
-                            <input id="promotion-code" name="promotion_code" dir="ltr" autocomplete="off" class="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 font-mono font-bold uppercase outline-none focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10" placeholder="AVT-XXXX-XXXX-XXXX-XXXX">
-                            <p class="mt-2 text-xs font-bold text-slate-500">کد تا تأیید پرداخت برای ۳۰ دقیقه رزرو می‌شود و پاداش جدا از مبلغ پرداختی در تراکنش‌ها نمایش داده خواهد شد.</p>
+                            <label for="promotion-code" class="text-sm font-black text-slate-800">کد هدیه یا تخفیف (اختیاری)</label>
+                            <input id="promotion-code" name="promotion_code" value="{{ old('promotion_code') }}" dir="ltr" autocomplete="off" class="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 font-mono font-bold uppercase outline-none focus:border-[#0069FF] focus:ring-4 focus:ring-[#0069FF]/10" placeholder="AVT-XXXX-XXXX-XXXX-XXXX">
+                            <p class="mt-2 text-xs font-bold text-slate-500">کد تا تأیید پرداخت برای ۳۰ دقیقه رزرو می‌شود. اعتبار ثابت یا پاداش آن فقط پس از پرداخت موفق، جدا از مبلغ پرداختی به کیف پول افزوده می‌شود.</p>
                             @error('promotion_code')<p class="mt-2 text-sm font-bold text-rose-600">{{ $message }}</p>@enderror
                         </div>
 
@@ -481,7 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const code = sessionStorage.getItem('aviato.gift_card_code');
     const type = sessionStorage.getItem('aviato.gift_card_type');
     if (!code) return;
-    const target = document.getElementById(type === 'top_up_percentage' ? 'promotion-code' : 'gift-credit-code');
+    const target = document.getElementById(type === 'instant' ? 'gift-credit-code' : 'promotion-code');
     if (target) { target.value = code; target.scrollIntoView({ behavior: 'smooth', block: 'center' }); target.focus(); }
     sessionStorage.removeItem('aviato.gift_card_code');
     sessionStorage.removeItem('aviato.gift_card_type');

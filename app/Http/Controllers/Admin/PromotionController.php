@@ -40,6 +40,7 @@ class PromotionController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'type' => ['required', Rule::in([PromotionCampaign::TYPE_CREDIT, PromotionCampaign::TYPE_PERCENTAGE])],
+            'claim_mode' => ['required', Rule::in([PromotionCampaign::CLAIM_PAYMENT_REQUIRED, PromotionCampaign::CLAIM_INSTANT])],
             'audience' => ['required', Rule::in([PromotionCampaign::AUDIENCE_ALL, PromotionCampaign::AUDIENCE_NEW, PromotionCampaign::AUDIENCE_ALLOWLIST])],
             'code_count' => ['required', 'integer', 'min:1', 'max:'.config('promotions.max_batch_size')],
             'credit_amount_toman' => ['nullable', 'integer', 'min:1'],
@@ -65,7 +66,9 @@ class PromotionController extends Controller
         }
 
         $campaign = PromotionCampaign::create([
-            'name' => $data['name'], 'type' => $data['type'], 'audience' => $data['audience'], 'status' => 'draft', 'currency' => 'IRR',
+            'name' => $data['name'], 'type' => $data['type'],
+            'claim_mode' => $data['type'] === PromotionCampaign::TYPE_PERCENTAGE ? PromotionCampaign::CLAIM_PAYMENT_REQUIRED : $data['claim_mode'],
+            'audience' => $data['audience'], 'status' => 'draft', 'currency' => 'IRR',
             'credit_amount' => $data['type'] === PromotionCampaign::TYPE_CREDIT ? $credit : null,
             'percentage' => $data['type'] === PromotionCampaign::TYPE_PERCENTAGE ? $data['percentage'] : null,
             'minimum_top_up' => $data['type'] === PromotionCampaign::TYPE_PERCENTAGE ? $minimum : null,

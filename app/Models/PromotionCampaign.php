@@ -9,12 +9,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['public_id', 'name', 'type', 'audience', 'status', 'currency', 'credit_amount', 'percentage', 'minimum_top_up', 'maximum_bonus', 'code_count', 'maximum_liability', 'headline', 'message', 'terms', 'starts_at', 'expires_at', 'rules_locked_at', 'created_by_id', 'updated_by_id'])]
+#[Fillable(['public_id', 'name', 'type', 'claim_mode', 'audience', 'status', 'currency', 'credit_amount', 'percentage', 'minimum_top_up', 'maximum_bonus', 'code_count', 'maximum_liability', 'headline', 'message', 'terms', 'starts_at', 'expires_at', 'rules_locked_at', 'created_by_id', 'updated_by_id'])]
 class PromotionCampaign extends Model
 {
     public const TYPE_CREDIT = 'wallet_credit';
 
     public const TYPE_PERCENTAGE = 'top_up_percentage';
+
+    public const CLAIM_PAYMENT_REQUIRED = 'payment_required';
+
+    public const CLAIM_INSTANT = 'instant';
 
     public const AUDIENCE_ALL = 'all';
 
@@ -62,6 +66,12 @@ class PromotionCampaign extends Model
         return $this->status === 'active'
             && ($this->starts_at === null || $this->starts_at->lte(now()))
             && $this->expires_at->isFuture();
+    }
+
+    public function requiresPayment(): bool
+    {
+        return $this->type === self::TYPE_PERCENTAGE
+            || $this->claim_mode === self::CLAIM_PAYMENT_REQUIRED;
     }
 
     protected function casts(): array

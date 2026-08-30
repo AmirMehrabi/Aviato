@@ -71,7 +71,7 @@ class PromotionService
             $this->releaseIfExpired($code);
             $this->assertRedeemable($code, $campaign, $project->owner, $wallet);
 
-            if ($campaign->type !== PromotionCampaign::TYPE_CREDIT) {
+            if ($campaign->type !== PromotionCampaign::TYPE_CREDIT || $campaign->requiresPayment()) {
                 throw ValidationException::withMessages(['code' => 'این کد باید هنگام افزایش موجودی استفاده شود.']);
             }
 
@@ -113,11 +113,19 @@ class PromotionService
             $this->releaseIfExpired($code);
             $this->assertRedeemable($code, $campaign, $project->owner, $wallet);
 
-            if ($campaign->type !== PromotionCampaign::TYPE_PERCENTAGE || $payment->amount < (int) $campaign->minimum_top_up) {
+            if (! $campaign->requiresPayment()) {
                 throw ValidationException::withMessages(['promotion_code' => 'کد هدیه معتبر یا قابل استفاده نیست.']);
             }
 
-            $bonus = min(intdiv($payment->amount * $campaign->percentage, 100), $campaign->maximum_bonus);
+            if ($campaign->type === PromotionCampaign::TYPE_PERCENTAGE) {
+                if ($payment->amount < (int) $campaign->minimum_top_up) {
+                    throw ValidationException::withMessages(['promotion_code' => 'کد هدیه معتبر یا قابل استفاده نیست.']);
+                }
+
+                $bonus = min(intdiv($payment->amount * $campaign->percentage, 100), $campaign->maximum_bonus);
+            } else {
+                $bonus = (int) $campaign->credit_amount;
+            }
             $until = now()->addMinutes(config('promotions.reservation_minutes'));
             $code->forceFill(['status' => 'reserved', 'reserved_payment_id' => $payment->id, 'reserved_wallet_id' => $wallet->id, 'reserved_until' => $until])->save();
             $payment->forceFill([
@@ -190,7 +198,7 @@ class PromotionService
         $transaction = $this->wallets->credit(
             $payment->customer,
             $payment->promotion_bonus_amount,
-            'پاداش افزایش موجودی: '.$code->campaign->name,
+            ($code->campaign->type === PromotionCampaign::TYPE_CREDIT ? 'اعتبار هدیه پس از پرداخت: ' : 'پاداش افزایش موجودی: ').$code->campaign->name,
             reference: $redemption,
             metadata: ['category' => 'promotion_top_up_bonus', 'campaign_id' => $code->promotion_campaign_id, 'promotion_code_id' => $code->id, 'payment_id' => $payment->id, 'project_id' => $payment->promotion_project_id],
         );
