@@ -78,7 +78,7 @@ class WalletController extends Controller
             'monthlyCredits' => (int) (clone $baseQuery)->where('amount', '>', 0)->sum('amount'),
             'monthlyCharges' => (int) abs((clone $baseQuery)->where('amount', '<', 0)->sum('amount')),
             'canTopUp' => $this->projects->canViewBilling($activeProject, $customer),
-            'topUpPresets' => [100000, 300000, 1000000, 2500000],
+            'topUpPresets' => [250000, 500000, 1000000, 2500000, 10000000],
             'availablePaymentGateways' => $this->paymentGateways->available(),
             'defaultPaymentGateway' => AppSetting::defaultPaymentGateway(),
             'paymentNotice' => $paymentNotice,
