@@ -1,67 +1,40 @@
-@extends('layouts.marketing')
-
-@section('title', 'هدیه الکامپ آویاتو | زیرساخت پروژه بعدی')
-@section('description', 'کد هدیه الکامپ آویاتو را فعال کنید و پروژه بعدی‌تان را روی سرور ابری با NVMe، IP اختصاصی و پشتیبانی فارسی راه‌اندازی کنید.')
-@section('body_class', 'bg-[#F5F8FD]')
-
-@section('content')
-<section class="relative isolate overflow-hidden px-4 pb-16 pt-28 md:px-8 md:pb-24 md:pt-36 lg:px-10">
-    <div class="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_15%_20%,#DCEEFF_0,transparent_34%),linear-gradient(145deg,#F8FBFF_0%,#EEF5FF_55%,#FFFFFF_100%)]"></div>
-    <div class="absolute -left-24 top-20 -z-10 size-80 rounded-full border-[48px] border-[#0069FF]/5"></div>
-    <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-center">
-        <div>
-            <span class="inline-flex rounded-full border border-blue-200 bg-white/80 px-4 py-2 text-xs font-black text-[#0069FF] shadow-sm">هدیه ویژه الکامپ ۱۴۰۵</span>
-            <h1 class="mt-6 max-w-4xl text-4xl font-black leading-[1.3] text-slate-950 sm:text-5xl lg:text-6xl">هدیه‌ات را فعال کن؛<br><span class="text-[#0069FF]">پروژه بعدی‌ات را بالا بیاور.</span></h1>
-            <p class="mt-6 max-w-2xl text-base font-bold leading-8 text-slate-600 md:text-lg">از API و اپلیکیشن تا محیط تست؛ با منابع روشن، دیسک NVMe، IP اختصاصی و پشتیبانی فارسی شروع کن.</p>
-            <div class="mt-8 grid max-w-2xl grid-cols-3 gap-3 text-center text-xs font-black text-slate-600 sm:text-sm">
-                <div class="rounded-2xl border border-white bg-white/70 p-4 shadow-sm">NVMe پرسرعت</div>
-                <div class="rounded-2xl border border-white bg-white/70 p-4 shadow-sm">IP اختصاصی</div>
-                <div class="rounded-2xl border border-white bg-white/70 p-4 shadow-sm">پشتیبانی فارسی</div>
-            </div>
-        </div>
-
-        <div id="claim" class="rounded-[2rem] border border-blue-100 bg-white p-6 shadow-2xl shadow-blue-200/50 sm:p-8">
-            <p class="text-xs font-black text-[#0069FF]">کارت الکامپ دارید؟</p>
-            <h2 class="mt-2 text-2xl font-black text-slate-950">کد هدیه را وارد کنید</h2>
-            <p class="mt-3 text-sm font-bold leading-7 text-slate-500">مقدار و نوع هدیه پس از بررسی کد نشان داده می‌شود.</p>
-            <form method="POST" action="{{ route('elecomp.claim') }}" class="mt-6" data-claim-form>
-                @csrf
-                <label for="elecomp-code" class="sr-only">کد هدیه</label>
-                <input id="elecomp-code" name="code" value="{{ old('code') }}" required maxlength="64" autocomplete="off" spellcheck="false" dir="ltr" placeholder="AVT-XXXX-XXXX-XXXX-XXXX" class="h-14 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-center font-mono text-base font-black uppercase tracking-wider outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
-                @error('code')<p class="mt-3 text-sm font-bold text-rose-600">{{ $message }}</p>@enderror
-                <button class="mt-4 inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-[#0069FF] px-6 font-black text-white shadow-lg shadow-blue-500/20 transition hover:bg-[#0050D0] active:scale-[.98]">بررسی و فعال‌سازی هدیه</button>
-            </form>
-            <p class="mt-4 text-center text-xs font-bold leading-6 text-slate-400">برای اعتبار مستقیم، پرداخت بانکی لازم نیست. هر کد فقط یک‌بار قابل استفاده است.</p>
-        </div>
-    </div>
-</section>
-
-<section class="bg-white px-4 py-20 md:px-8 lg:px-10">
-    <div class="mx-auto max-w-7xl">
-        <div class="max-w-3xl"><p class="text-sm font-black text-[#0069FF]">زیرساخت برای ساختن</p><h2 class="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">از ایده تا سرویس واقعی، بدون ابهام زیرساختی.</h2></div>
-        <div class="mt-10 grid gap-5 md:grid-cols-3">
-            @foreach ([['API و اپلیکیشن','ماشین مجازی با دسترسی مدیریتی برای Docker، وب‌سرویس و پردازش پس‌زمینه.'],['تست و توسعه','یک محیط جدا برای CI، آزمایش نسخه جدید و تمرین، بدون درگیر کردن سرویس اصلی.'],['AI و پردازش','سرور قابل کنترل برای prototype، worker، صف و ابزارهای داده‌محور.']] as [$title,$body])
-                <article class="rounded-[1.75rem] border border-slate-200 bg-[#FBFDFF] p-6"><span class="grid size-11 place-items-center rounded-xl bg-[#EAF3FF] font-black text-[#0069FF]">{{ $loop->iteration }}</span><h3 class="mt-5 text-xl font-black">{{ $title }}</h3><p class="mt-3 text-sm font-bold leading-7 text-slate-500">{{ $body }}</p></article>
-            @endforeach
-        </div>
-    </div>
-</section>
-
-<section class="bg-[#07172D] px-4 py-20 text-white md:px-8 lg:px-10">
-    <div class="mx-auto max-w-7xl"><p class="text-sm font-black text-blue-300">سه قدم تا شروع</p><h2 class="mt-3 text-3xl font-black">کوتاه، روشن، قابل پیگیری.</h2><div class="mt-10 grid gap-5 md:grid-cols-3">@foreach ([['کدت را وارد کن','QR را اسکن یا کد روی کارت را تایپ کن.'],['حسابت را بساز','ثبت‌نام یا ورود کن تا هدیه به فضای کاری تو متصل شود.'],['سرورت را بساز','پلن، موقعیت و سیستم‌عامل را انتخاب کن و شروع کن.']] as [$title,$body])<article class="rounded-2xl border border-white/10 bg-white/5 p-6"><p class="text-3xl font-black text-blue-300">0{{ $loop->iteration }}</p><h3 class="mt-5 text-xl font-black">{{ $title }}</h3><p class="mt-3 text-sm font-bold leading-7 text-slate-300">{{ $body }}</p></article>@endforeach</div></div>
-</section>
-
-<a href="#claim" class="fixed inset-x-4 bottom-4 z-40 inline-flex min-h-13 items-center justify-center rounded-xl bg-[#0069FF] px-5 font-black text-white shadow-2xl shadow-blue-950/30 md:hidden">فعال‌سازی هدیه</a>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const input = document.getElementById('elecomp-code');
-    const hashCode = decodeURIComponent(location.hash.slice(1));
-    if (hashCode && input) {
-        input.value = hashCode;
-        history.replaceState(null, '', location.pathname);
-        document.getElementById('claim')?.scrollIntoView({behavior: 'smooth', block: 'center'});
-    }
-    input?.addEventListener('input', () => input.value = input.value.toUpperCase());
-});
-</script>
-@endsection
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>هدیه الکامپ آویاتو | برو روی ابر</title>
+    <meta name="description" content="کد هدیه الکامپ آویاتو را فعال کنید و پروژه بعدی‌تان را روی زیرساخت ابری راه‌اندازی کنید.">
+    <meta name="theme-color" content="#F4F0E8"><link rel="canonical" href="{{ url()->current() }}">
+    <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any"><link rel="stylesheet" href="{{ asset('assets/fonts.css') }}">
+    <style>
+        :root{--blue:#1746ff;--lime:#c8ff2e;--ink:#111318;--paper:#f4f0e8;--white:#fff;font-family:Estedad,Vazirmatn,system-ui,sans-serif}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}button,input{font:inherit}a{color:inherit;text-decoration:none}.shell{width:min(1380px,calc(100% - 48px));margin:auto}.topbar{position:absolute;z-index:5;inset:26px 0 auto}.topbar .shell{display:flex;align-items:center;justify-content:space-between;direction:ltr}.logo{width:126px;height:auto}.event-mark{display:flex;align-items:center;gap:10px;font:800 12px/1 system-ui,sans-serif;letter-spacing:.12em}.live-dot{width:9px;height:9px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 5px rgba(200,255,46,.22)}
+        .hero{position:relative;min-height:100svh;overflow:hidden;display:grid;align-items:center;isolation:isolate}.art{position:absolute;z-index:-2;inset:0;background:url('{{ asset('design-concepts/elecomp-drop/elecomp-portal.png') }}') center/cover no-repeat}.art:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(244,240,232,.98) 2%,rgba(244,240,232,.92) 34%,rgba(244,240,232,.16) 67%,transparent 100%)}.hero-grid{min-height:100svh;display:grid;grid-template-columns:minmax(0,590px) 1fr;align-items:center;direction:ltr;padding:130px 0 80px}.copy{direction:rtl}.eyebrow{display:flex;align-items:center;gap:12px;margin:0 0 22px;font-size:12px;font-weight:900}.eyebrow:before{content:"";width:44px;height:3px;background:var(--blue)}h1{margin:0;font-size:clamp(56px,7.3vw,108px);line-height:.96;letter-spacing:-.065em;font-weight:900}h1 span{display:block;color:var(--blue)}.lead{max-width:520px;margin:28px 0 0;font-size:clamp(16px,1.5vw,20px);line-height:2;font-weight:600}
+        .claim{width:min(530px,100%);margin-top:36px;padding:8px;display:flex;direction:ltr;background:white;border:1.5px solid var(--ink);border-radius:18px;box-shadow:8px 8px 0 var(--ink)}.claim:focus-within{outline:4px solid rgba(23,70,255,.18)}.claim input{min-width:0;flex:1;height:58px;padding:0 18px;border:0;outline:0;direction:ltr;text-align:left;background:transparent;color:var(--ink);font:800 16px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em;text-transform:uppercase}.claim input::placeholder{color:#94928d}.claim button{flex:none;min-width:148px;border:0;border-radius:11px;color:white;background:var(--blue);cursor:pointer;font-size:14px;font-weight:900;transition:.18s}.claim button:hover{background:var(--ink)}.claim button:disabled{cursor:wait;opacity:.72}.error{width:min(530px,100%);margin:15px 0 0;padding:11px 14px;color:#a20d32;background:#ffe5ea;border:1px solid #ef9bad;border-radius:11px;font-size:12px;font-weight:800}.hint{margin:17px 2px 0;color:#5f5d58;font-size:11px;font-weight:700}.edition{position:absolute;inset:auto 30px 28px auto;writing-mode:vertical-rl;font:800 11px/1 system-ui,sans-serif;letter-spacing:.17em}
+        .strip{background:var(--ink);color:white;overflow:hidden}.marquee{display:flex;width:max-content;animation:move 24s linear infinite}.marquee span{padding:17px 20px;font:800 11px/1 system-ui,sans-serif;letter-spacing:.08em;white-space:nowrap}.marquee i{color:var(--lime);font-style:normal}@keyframes move{to{transform:translateX(50%)}}.story{padding:110px 0;background:var(--blue);color:white}.story-grid{display:grid;grid-template-columns:.75fr 1.25fr;gap:90px;align-items:start}.story h2{position:sticky;top:40px;margin:0;font-size:clamp(40px,5vw,74px);line-height:1.12;letter-spacing:-.05em}.steps{border-top:1px solid rgba(255,255,255,.4)}.step{display:grid;grid-template-columns:60px 1fr;gap:24px;padding:36px 0;border-bottom:1px solid rgba(255,255,255,.4)}.step b{font:800 14px/1 system-ui,sans-serif;color:var(--lime)}.step h3{margin:0;font-size:24px}.step p{margin:10px 0 0;color:rgba(255,255,255,.72);line-height:1.9;font-size:14px}.note{padding:26px 0;background:var(--lime)}.note .shell{display:flex;justify-content:space-between;align-items:center;gap:30px;font-size:13px;font-weight:900}.note a{direction:ltr;font:800 11px/1 system-ui,sans-serif;letter-spacing:.12em;border-bottom:1px solid;padding-bottom:3px}
+        @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.marquee{animation:none}}@media(max-width:760px){.shell{width:min(100% - 28px,1380px)}.topbar{inset:18px 0 auto}.logo{width:105px}.event-mark{font-size:9px}.hero{min-height:900px;align-items:end}.art{inset:0 0 auto;height:56%;background-position:63% center}.art:after{background:linear-gradient(180deg,transparent 34%,var(--paper) 94%)}.hero-grid{min-height:900px;grid-template-columns:1fr;align-items:end;padding:400px 0 64px}h1{font-size:58px}.lead{font-size:15px;margin-top:20px}.claim{box-shadow:5px 5px 0 var(--ink)}.claim input{height:54px;padding:0 11px;font-size:12px}.claim button{min-width:105px;font-size:12px}.edition{display:none}.story{padding:76px 0}.story-grid{grid-template-columns:1fr;gap:44px}.story h2{position:static}.step{grid-template-columns:38px 1fr;gap:16px}.note .shell{display:block}.note a{display:inline-block;margin-top:12px}}
+    </style>
+</head>
+<body>
+    <header class="topbar"><div class="shell"><a href="{{ route('home') }}" aria-label="صفحه اصلی آویاتو"><img class="logo" src="{{ asset('assets/images/aviato_logo_full_black.png') }}" alt="آویاتو"></a><div class="event-mark"><span class="live-dot"></span> ELECOMP / SPECIAL DROP</div></div></header>
+    <main>
+        <section class="hero"><div class="art" aria-hidden="true"></div><div class="shell hero-grid"><div class="copy">
+            <p class="eyebrow">هدیه‌ات را فعال کن · الکامپ ۱۴۰۵</p><h1>کدت رو بزن.<span>برو روی ابر.</span></h1>
+            <p class="lead">این یک تخفیف معمولی نیست؛ نقطه‌ی شروع پروژه‌ی بعدی توست. کد روی کارت را وارد کن و هدیه‌ات را بردار.</p>
+            <form method="POST" action="{{ route('elecomp.claim') }}" class="claim" id="claim-form">@csrf<label for="elecomp-code" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">کد هدیه</label><input id="elecomp-code" name="code" value="{{ old('code') }}" required maxlength="64" autocomplete="off" spellcheck="false" placeholder="AVT-XXXX-XXXX-XXXX-XXXX" aria-describedby="claim-hint @error('code') claim-error @enderror"><button type="submit">باز کردن هدیه</button></form>
+            @error('code')<p class="error" id="claim-error" role="alert">{{ $message }}</p>@enderror<p class="hint" id="claim-hint">بدون پرداخت بانکی برای اعتبار مستقیم · هر کد فقط یک‌بار</p>
+        </div></div><span class="edition">AVIATO × ELECOMP · 2026</span></section>
+        <div class="strip" aria-hidden="true"><div class="marquee">@for($i=0;$i<3;$i++)<span>YOUR IDEA <i>●</i> OUR CLOUD <i>●</i> READY TO LAUNCH <i>●</i> ELECOMP DROP <i>●</i></span>@endfor</div></div>
+        <section class="story"><div class="shell story-grid"><h2>سه حرکت.<br>یک سرور<br>آماده‌ی کار.</h2><div class="steps">
+            <article class="step"><b>01</b><div><h3>کارت را بردار</h3><p>کد اختصاصی روی کارت الکامپ فقط برای یک حساب و یک‌بار فعال می‌شود.</p></div></article>
+            <article class="step"><b>02</b><div><h3>هدیه را باز کن</h3><p>کد را همین بالا وارد کن؛ نوع و مقدار هدیه قبل از ادامه شفاف نمایش داده می‌شود.</p></div></article>
+            <article class="step"><b>03</b><div><h3>چیزی بساز</h3><p>سرور، سیستم‌عامل و موقعیت را انتخاب کن. محیط پروژه‌ات از پنل آماده می‌شود.</p></div></article>
+        </div></div></section>
+    </main>
+    <footer class="note"><div class="shell"><span>آویاتو — زیرساخت برای آدم‌هایی که می‌سازند.</span><a href="{{ route('home') }}">AVIATO.IR ↗</a></div></footer>
+    <script>
+        const form=document.getElementById('claim-form'),input=document.getElementById('elecomp-code'),hashCode=decodeURIComponent(location.hash.slice(1));
+        if(hashCode&&input){input.value=hashCode.toUpperCase();history.replaceState(null,'',location.pathname);form?.scrollIntoView({behavior:'smooth',block:'center'})}
+        input?.addEventListener('input',()=>input.value=input.value.toUpperCase());form?.addEventListener('submit',()=>{const button=form.querySelector('button');button.disabled=true;button.textContent='در حال بررسی…'});
+    </script>
+</body>
+</html>
