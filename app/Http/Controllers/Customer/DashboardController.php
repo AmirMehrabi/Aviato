@@ -135,12 +135,21 @@ class DashboardController extends Controller
             'total' => $virtualMachines->count(),
             'monthly_spend' => $summary['monthly_spend'],
         ];
+        $projects = $this->projects->projectsFor($customer);
+        $newWorkspaceNotification = $customer->unreadNotifications()
+            ->get()
+            ->first(fn ($notification): bool => data_get($notification->data, 'event') === 'workspace_added');
+        $newWorkspaceProject = $newWorkspaceNotification
+            ? $projects->firstWhere('id', (int) data_get($newWorkspaceNotification->data, 'project_id'))
+            : null;
 
         return view('customer.dashboard', [
             'customer' => $customer,
             'activeProject' => $activeProject,
             'activeMembership' => $this->projects->membership($activeProject, $customer),
-            'projects' => $this->projects->projectsFor($customer),
+            'projects' => $projects,
+            'newWorkspaceProject' => $newWorkspaceProject,
+            'newWorkspaceNotification' => $newWorkspaceNotification,
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'virtualMachines' => $virtualMachines,

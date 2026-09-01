@@ -38,6 +38,12 @@
         $walletIsOverdrawn = $effectiveWalletBalance < 0;
         $activeNav = $activeNav ?? 'dashboard';
         $customerUnreadNotificationsCount = $customer->unreadNotifications()->count();
+        $newWorkspaceIds = $customer->unreadNotifications()
+            ->get()
+            ->filter(fn ($notification) => data_get($notification->data, 'event') === 'workspace_added')
+            ->pluck('data.project_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
         $navGroups = [
             'فضای کاری' => [
                 ['key' => 'projects', 'label' => 'فضاهای کاری', 'route' => route('customer.projects.index', [], false), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
@@ -241,7 +247,7 @@
                         <span class="flex items-start gap-2.5">
                             <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">ف</span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-[10px] font-black text-[#8FA6D2]">فضای کاری فعال</span>
+                                <span class="block text-[10px] font-black text-[#8FA6D2]">انتخاب فضای کاری</span>
                                 <span class="mt-1 block truncate text-sm font-black text-white">{{ $activeProject->name }}</span>
                                 <span class="mt-1 block truncate text-[10px] font-bold text-[#9DB4DC]">{{ $activeWorkspaceRole }} · مالک: {{ $activeProject->owner?->name }}</span>
                             </span>
@@ -253,7 +259,7 @@
 
                     <div id="customer-workspace-menu" x-cloak x-show="workspaceOpen" x-transition class="absolute inset-x-3 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl shadow-slate-950/25">
                         <div class="rounded-lg bg-[#F2F8FF] px-3 py-2.5 text-xs font-bold leading-6 text-[#31527F]">
-                            ماشین‌ها، هزینه‌ها و دسترسی‌های پنل مربوط به فضای کاری انتخاب‌شده است.
+                            فضای کاری محیط مشترک ماشین‌ها، اعضا و پرداخت‌هاست. با تغییر آن، منابع و صورتحساب قابل مشاهده تغییر می‌کند.
                         </div>
                         <div class="mt-2 max-h-64 space-y-1 overflow-y-auto">
                             @foreach($projects as $project)
@@ -261,6 +267,7 @@
                                     $projectMembership = $project->members->firstWhere('customer_id', $customer->id);
                                     $projectRole = $workspaceRoleLabels[$projectMembership?->role ?? 'member'] ?? 'عضو';
                                     $isActiveWorkspace = (int) $activeProject->id === (int) $project->id;
+                                    $isNewWorkspace = in_array((int) $project->id, $newWorkspaceIds, true);
                                     $workspaceState = $isActiveWorkspace ? 'فضای فعال' : 'ورود به فضای کاری';
                                 @endphp
                                 <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
@@ -272,6 +279,7 @@
                                             <span class="flex items-center gap-2">
                                                 <span class="truncate text-sm font-black text-slate-900">{{ $project->name }}</span>
                                                 @if($isActiveWorkspace)<span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-[#0069FF]">فعال</span>@endif
+                                                @if($isNewWorkspace && ! $isActiveWorkspace)<span class="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-700">جدید</span>@endif
                                                 @if($project->is_default)<span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700">پیش‌فرض</span>@endif
                                             </span>
                                             <span class="mt-1 block truncate text-[11px] font-bold text-slate-500">نقش شما: {{ $projectRole }} · مالک: {{ $project->owner?->name }}</span>

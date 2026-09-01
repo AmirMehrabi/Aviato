@@ -2,7 +2,7 @@
 
 @section('title', 'فضاهای کاری')
 @section('header_title', 'فضاهای کاری')
-@section('header_subtitle', 'فضای کاری برای گروه‌بندی ماشین‌ها و اعضاست. هزینه همه ماشین‌های داخل هر فضای کاری با مالک همان فضاست.')
+@section('header_subtitle', 'فضای کاری یک محیط مشترک برای ماشین‌ها، اعضا و پرداخت‌هاست. با تغییر آن، منابع و صورتحسابی که می‌بینید تغییر می‌کند.')
 @section('breadcrumbs')
     <span class="truncate text-slate-700">فضاهای کاری</span>
 @endsection

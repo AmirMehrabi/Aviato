@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectMember;
+use App\Notifications\WorkspaceAddedNotification;
 use App\Services\ProjectAccessService;
 use App\Services\ProjectLifecycleService;
 use App\Services\WalletService;
@@ -157,6 +158,21 @@ class ProjectController extends Controller
         return redirect()->route('dashboard')->with('status', 'فضای کاری فعال تغییر کرد.');
     }
 
+    public function enter(Request $request, Project $project): RedirectResponse
+    {
+        $customer = $request->user('customer');
+        $project->loadMissing('members');
+        $this->projects->switch($request, $customer, $project);
+
+        $customer->unreadNotifications()
+            ->where('data->event', 'workspace_added')
+            ->where('data->project_id', $project->id)
+            ->update(['read_at' => now()]);
+
+        return redirect()->route('dashboard')
+            ->with('status', "اکنون در فضای کاری «{$project->name}» هستید؛ ماشین‌ها، هزینه‌ها و دسترسی‌های پنل به این فضا مربوط است.");
+    }
+
     public function storeMember(Request $request, Project $project): RedirectResponse
     {
         $customer = $request->user('customer');
@@ -183,7 +199,8 @@ class ProjectController extends Controller
             return back()->withInput()->withErrors(['identifier' => 'No customer was found with this email or phone.']);
         }
 
-        $project->members()->updateOrCreate(
+        $existingMembership = $project->members()->where('customer_id', $member->id)->exists();
+        $membership = $project->members()->updateOrCreate(
             ['customer_id' => $member->id],
             [
                 'role' => $member->id === $project->owner_customer_id ? ProjectMember::ROLE_OWNER : $data['role'],
@@ -194,7 +211,15 @@ class ProjectController extends Controller
             ],
         );
 
-        return back()->with('status', 'عضو فضای کاری به‌روزرسانی شد.');
+        if (! $existingMembership && $member->id !== $customer->id) {
+            $member->notify(new WorkspaceAddedNotification($project, $customer, $membership->role));
+        }
+
+        $message = $existingMembership
+            ? "دسترسی {$member->name} در فضای کاری به‌روزرسانی شد."
+            : "{$member->name} به «{$project->name}» اضافه شد و اعلان برای او ارسال شد.";
+
+        return back()->with('status', $message);
     }
 
     public function updateMember(Request $request, Project $project, ProjectMember $member): RedirectResponse

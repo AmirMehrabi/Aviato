@@ -118,6 +118,54 @@ class CustomerProjectTest extends TestCase
         ])->assertNotFound();
     }
 
+    public function test_adding_workspace_member_sends_discoverable_notification(): void
+    {
+        $owner = Customer::factory()->create(['name' => 'Workspace Owner']);
+        $member = Customer::factory()->create(['name' => 'New Member']);
+        $project = $owner->ensureDefaultProject();
+
+        $this->actingAs($owner, 'customer')
+            ->post($this->customerBaseUrl.'/projects/'.$project->uuid.'/members', [
+                'identifier' => $member->email,
+                'role' => ProjectMember::ROLE_MEMBER,
+            ])
+            ->assertSessionHas('status', "New Member به «{$project->name}» اضافه شد و اعلان برای او ارسال شد.");
+
+        $notification = $member->fresh()->unreadNotifications()->sole();
+
+        $this->assertSame('workspace_added', $notification->data['event']);
+        $this->assertSame($project->id, $notification->data['project_id']);
+        $this->assertSame('/projects/'.$project->uuid.'/enter', $notification->data['url']);
+        $this->assertStringContainsString('Workspace Owner', $notification->data['body']);
+    }
+
+    public function test_member_can_enter_new_workspace_from_notification_and_it_is_marked_read(): void
+    {
+        $owner = Customer::factory()->create(['name' => 'Workspace Owner']);
+        $member = Customer::factory()->create();
+        $memberDefault = $member->ensureDefaultProject();
+        $project = $owner->ensureDefaultProject();
+
+        $this->actingAs($owner, 'customer')->post($this->customerBaseUrl.'/projects/'.$project->uuid.'/members', [
+            'identifier' => $member->email,
+            'role' => ProjectMember::ROLE_VIEWER,
+        ]);
+
+        $this->actingAs($member, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $memberDefault->id])
+            ->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertSee('فضای کاری جدید')
+            ->assertSee($project->name);
+
+        $this->actingAs($member, 'customer')
+            ->get($this->customerBaseUrl.'/projects/'.$project->uuid.'/enter')
+            ->assertRedirect($this->customerBaseUrl.'/dashboard')
+            ->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id);
+
+        $this->assertSame(0, $member->fresh()->unreadNotifications()->count());
+    }
+
     public function test_opening_workspace_management_does_not_change_active_workspace(): void
     {
         $customer = Customer::factory()->create();

@@ -46,6 +46,17 @@
 @endsection
 
 @section('content')
+    @if($newWorkspaceProject && (int) $newWorkspaceProject->id !== (int) $activeProject->id)
+        <section class="mb-4 flex flex-col gap-4 rounded-2xl border border-[#B8D6FF] bg-[#EBF3FF] p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="new-workspace-title">
+            <div class="min-w-0">
+                <p class="text-xs font-black text-[#0069FF]">فضای کاری جدید</p>
+                <h2 id="new-workspace-title" class="mt-1 text-lg font-black text-[#031B4E]">شما به «{{ $newWorkspaceProject->name }}» اضافه شده‌اید</h2>
+                <p class="mt-1 text-sm font-bold leading-7 text-[#31527F]">مالک: {{ $newWorkspaceProject->owner?->name }}. ماشین‌ها، اعضا و پرداخت‌های این فضا از فضای فعلی شما جداست.</p>
+            </div>
+            <a href="{{ route('customer.projects.enter', $newWorkspaceProject, false) }}" class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-[#0069FF] px-5 text-sm font-black text-white transition hover:bg-[#0050D0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">ورود به فضای کاری</a>
+        </section>
+    @endif
+
     @php
         $walletIsBlocked = $canViewBilling && ($wallet->is_locked || $wallet->balance < 0);
         $workspaceRoleLabels = ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'];

@@ -178,9 +178,10 @@
         </div>
 
         <aside class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-            <h2 class="text-lg font-black text-slate-950">دعوت عضو</h2>
+            <h2 class="text-lg font-black text-slate-950">افزودن عضو</h2>
             @if($canManageMembers)
-                <form method="POST" action="{{ route('customer.projects.members.store', $project, false) }}" class="mt-4 space-y-4">
+                <p class="mt-2 text-sm font-bold leading-7 text-slate-500">مشتری فوراً عضو می‌شود و اعلانی با لینک ورود به این فضای کاری دریافت می‌کند.</p>
+                <form method="POST" action="{{ route('customer.projects.members.store', $project, false) }}" class="mt-4 space-y-4" x-data="{ role: '{{ old('role', 'member') }}' }">
                     @csrf
                     <label class="block">
                         <span class="text-sm font-black text-slate-700">ایمیل یا موبایل مشتری</span>
@@ -188,12 +189,18 @@
                     </label>
                     <label class="block">
                         <span class="text-sm font-black text-slate-700">نقش</span>
-                        <select name="role" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                        <select name="role" x-model="role" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
                             <option value="admin">مدیر</option>
                             <option value="member" selected>عضو</option>
                             <option value="viewer">فقط مشاهده</option>
                             <option value="billing">مالی</option>
                         </select>
+                        <span class="mt-2 block text-xs font-bold leading-6 text-slate-500">
+                            <span x-show="role === 'admin'">مدیریت اعضا، تنظیمات و همه ماشین‌های فضای کاری</span>
+                            <span x-show="role === 'member'">ساخت و مدیریت ماشین‌های خودش، بدون دسترسی به اعضا و تنظیمات</span>
+                            <span x-show="role === 'viewer'">فقط مشاهده منابعی که برای او تعیین شده است</span>
+                            <span x-show="role === 'billing'">مشاهده صورتحساب و پرداخت‌ها، بدون دسترسی به ماشین‌ها</span>
+                        </span>
                     </label>
                     <button class="w-full rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">افزودن عضو</button>
                 </form>

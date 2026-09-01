@@ -421,6 +421,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::post('storage/access-keys', [StorageController::class, 'storeAccessKey'])->name('customer.storage.access-keys.store');
         Route::delete('storage/access-keys/{key}', [StorageController::class, 'destroyAccessKey'])->name('customer.storage.access-keys.destroy');
         Route::post('projects/switch', [ProjectController::class, 'switch'])->name('customer.projects.switch');
+        Route::get('projects/{project}/enter', [ProjectController::class, 'enter'])->name('customer.projects.enter');
         Route::get('projects', [ProjectController::class, 'index'])->name('customer.projects.index');
         Route::post('projects', [ProjectController::class, 'store'])->name('customer.projects.store');
         Route::get('projects/{project}', [ProjectController::class, 'show'])->name('customer.projects.show');
