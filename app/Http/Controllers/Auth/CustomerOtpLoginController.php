@@ -141,7 +141,7 @@ class CustomerOtpLoginController extends Controller
             'updated_at' => now(),
         ]);
 
-        Auth::guard('customer')->login($customer);
+        Auth::guard('customer')->login($customer, remember: true);
         $request->session()->regenerate();
         $this->clearSession($request);
 

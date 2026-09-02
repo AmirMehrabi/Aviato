@@ -79,10 +79,14 @@
                         </label>
 
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <label class="flex items-center gap-2 text-sm font-bold text-slate-600">
-                                <input type="checkbox" name="remember" class="size-4 rounded border-slate-300 text-[#0069FF] focus:ring-[#0069FF]">
-                                مرا به خاطر بسپار
-                            </label>
+                            @if ($isAdminPortal)
+                                <label class="flex items-center gap-2 text-sm font-bold text-slate-600">
+                                    <input type="checkbox" name="remember" class="size-4 rounded border-slate-300 text-[#0069FF] focus:ring-[#0069FF]">
+                                    مرا به خاطر بسپار
+                                </label>
+                            @else
+                                <p class="text-sm font-bold text-slate-500">ورود شما در این دستگاه حفظ می‌شود.</p>
+                            @endif
 
                             @if (! $isAdminPortal)
                                 <a href="{{ route('customer.password.request', [], false) }}" class="inline-flex items-center justify-center rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-2 text-sm font-black text-[#0069FF] transition hover:border-[#0069FF] hover:bg-white">

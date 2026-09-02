@@ -73,7 +73,7 @@ class CustomerEmailVerificationController extends Controller
             app(ResellerService::class)->handleReferralRegistration($customer, $pendingReferral['code']);
         }
 
-        Auth::guard('customer')->login($customer);
+        Auth::guard('customer')->login($customer, remember: true);
         $request->session()->regenerate();
 
         return redirect()->intended('/'.trim(config('portals.customer.home_path'), '/'))

@@ -19,7 +19,7 @@ use Tests\TestCase;
 
 class PortalAuthenticationTest extends TestCase
 {
-    use RefreshDatabase, FundsCustomerWallet;
+    use FundsCustomerWallet, RefreshDatabase;
     use RefreshDatabase;
 
     public function test_customer_register_requires_email_verification_before_login(): void
@@ -68,6 +68,7 @@ class PortalAuthenticationTest extends TestCase
 
         $response->assertRedirect('https://cp.localhost/dashboard');
         $this->assertAuthenticatedAs($customer, 'customer');
+        $response->assertCookie(Auth::guard('customer')->getRecallerName());
         $customer->refresh();
         $this->assertNotNull($customer->email_verified_at);
         $this->assertNull($customer->email_verification_code);
@@ -155,6 +156,7 @@ class PortalAuthenticationTest extends TestCase
 
         $response->assertRedirect('https://cp.localhost/dashboard');
         $this->assertAuthenticated('customer');
+        $response->assertCookie(Auth::guard('customer')->getRecallerName());
     }
 
     public function test_admin_and_customer_use_separate_auth_models(): void
@@ -185,6 +187,7 @@ class PortalAuthenticationTest extends TestCase
 
         $response->assertRedirect('https://admin.localhost/dashboard');
         $this->assertAuthenticated('admin');
+        $response->assertCookieMissing(Auth::guard('admin')->getRecallerName());
     }
 
     public function test_customer_sms_mode_requires_phone_and_redirects_to_verification(): void
@@ -242,8 +245,10 @@ class PortalAuthenticationTest extends TestCase
             'token' => Hash::make('123456'),
         ]);
 
-        $this->post('https://cp.localhost/login/otp/verify', ['code' => '123456'])
-            ->assertRedirect('https://cp.localhost/dashboard');
+        $response = $this->post('https://cp.localhost/login/otp/verify', ['code' => '123456']);
+
+        $response->assertRedirect('https://cp.localhost/dashboard');
+        $response->assertCookie(Auth::guard('customer')->getRecallerName());
 
         $this->assertAuthenticatedAs($customer, 'customer');
         $this->assertNotNull(DB::table('customer_login_otp_challenges')->where('id', $challenge->id)->first()->consumed_at);

@@ -34,10 +34,12 @@ class AuthenticatedSessionController extends Controller
 
         $loginColumn = filter_var($credentials['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
 
+        $remember = $portal === 'customer' || $request->boolean('remember');
+
         if (! Auth::guard($portal)->attempt([
             $loginColumn => $credentials['login'],
             'password' => $credentials['password'],
-        ], $request->boolean('remember'))) {
+        ], $remember)) {
             if ($portal === 'admin') {
                 $audit->authentication($request, 'admin.login', 'failed');
             }
