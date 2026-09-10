@@ -20,18 +20,17 @@ class BlogController extends Controller
     public function index()
     {
         $posts = $this->getPosts();
-        $featuredPost = $posts[0] ?? null;
-        $regularPosts = collect($posts)
-            ->reject(fn (array $post): bool => $featuredPost && $post['slug'] === $featuredPost['slug'])
-            ->values()
-            ->all();
+        $categories = collect($posts)->pluck('category')->filter()->unique()->values()->all();
+        $selectedCategory = request()->query('category', '');
+        $selectedCategory = is_string($selectedCategory) ? $selectedCategory : '';
 
         return view('blog.index', [
-            'posts' => $posts,
-            'featuredPost' => $featuredPost,
-            'regularPosts' => $regularPosts,
-            'categories' => collect($posts)->pluck('category')->filter()->unique()->values()->all(),
-            'activePage' => 'blog',
+            'posts' => $selectedCategory === '' ? $posts : array_values(array_filter(
+                $posts,
+                fn (array $post): bool => $post['category'] === $selectedCategory,
+            )),
+            'categories' => $categories,
+            'selectedCategory' => $selectedCategory,
         ]);
     }
 

@@ -1,0 +1,94 @@
+.journal {
+    background: #faf9f6;
+    color: #242521;
+    font-family: 'Vazirmatn', var(--font-sans);
+    line-height: 1.8;
+}
+.journal-shell { width: min(100% - 48px, 720px); margin-inline: auto; }
+.journal a { text-underline-offset: 5px; text-decoration-thickness: 1px; }
+.journal a:hover { color: #215ca5; text-decoration: underline; }
+.journal :focus-visible { outline: 2px solid #215ca5; outline-offset: 5px; }
+.journal-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 30px; border-bottom: 1px solid #deded6; }
+.journal-brand { display: flex; align-items: center; gap: 20px; }
+.journal-brand img { width: 92px; height: 38px; object-fit: contain; }
+.journal-brand span { border-inline-start: 1px solid #d0d1c8; padding-inline-start: 20px; color: #66685f; font-size: 13px; }
+.journal-home { font-size: 13px; white-space: nowrap; color: #55584e; }
+.journal-intro { padding-block: 70px 38px; }
+.journal-eyebrow { color: #66685f; font-size: 13px; margin-bottom: 15px; }
+.journal h1 { font-size: clamp(32px, 4.4vw, 46px); font-weight: 800; line-height: 1.65; letter-spacing: -.035em; text-wrap: pretty; }
+.journal-dot { color: #215ca5; }
+.journal-deck { font-size: 20px; line-height: 2; max-width: 580px; margin-top: 18px; color: #55584e; }
+.journal-topics { display: flex; flex-wrap: wrap; gap: 8px 24px; padding-block: 16px; border-block: 1px solid #deded6; font-size: 14px; color: #66685f; }
+.journal-topics a { padding-block: 4px; }
+.journal-topics [aria-current] { color: #215ca5; text-decoration: underline; font-weight: 700; }
+.journal-entry { padding-block: 38px 40px; border-bottom: 1px solid #deded6; }
+.journal-entry:last-child { border-bottom: 0; }
+.journal-meta { font-size: 13px; line-height: 2.1; color: #66685f; }
+.journal-meta span { padding-inline: 8px; color: #97998e; }
+.journal-entry h2 { font-size: clamp(23px, 3vw, 29px); font-weight: 750; line-height: 1.8; margin-top: 10px; text-wrap: pretty; }
+.journal-excerpt { margin-block: 12px 16px; font-size: 18px; line-height: 2.1; color: #505349; }
+.journal-read, .journal-back, .journal-copy { color: #215ca5; font-size: 14px; }
+.journal-read span { display: inline-block; margin-inline-start: 6px; }
+.journal-footer { margin-top: 65px; border-top: 1px solid #deded6; padding-block: 25px 40px; color: #66685f; font-size: 13px; }
+.journal-footer nav { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 12px; }
+.journal-article { padding-top: 36px; }
+.journal-back { display: inline-block; margin-bottom: 45px; }
+.journal-article-header .journal-meta { margin-top: 18px; }
+.journal-article-header { margin-bottom: 35px; }
+.journal-cover { width: 100%; height: auto; margin-bottom: 30px; }
+.journal-contents { border-block: 1px solid #deded6; margin-block: 30px 36px; padding-block: 14px; font-size: 14px; }
+.journal-contents summary { cursor: pointer; color: #55584e; }
+.journal-contents nav { display: grid; gap: 10px; padding-block: 20px 8px; }
+.journal-contents a { color: #215ca5; }
+.journal-contents .journal-subheading { padding-inline-start: 20px; }
+.journal-prose { font-size: 20px; line-height: 2.1; overflow-wrap: anywhere; }
+.journal-prose > h1:first-child { display: none; }
+.journal-prose :where(p, ul, ol, pre, blockquote, table, figure) { margin-block: 1.5em; }
+.journal-prose > :first-child, .journal-prose > h1:first-child + * { margin-top: 0; }
+.journal-prose h2 { font-size: 28px; font-weight: 750; line-height: 1.8; margin-block: 2em .7em; }
+.journal-prose h3 { font-size: 23px; font-weight: 700; line-height: 1.8; margin-block: 1.8em .6em; }
+.journal-prose :where(h2, h3) { scroll-margin-top: 30px; }
+.journal-prose a { color: #215ca5; text-decoration: underline; }
+.journal-prose ul { list-style: disc; padding-inline-start: 1.4em; }
+.journal-prose ol { list-style: decimal; padding-inline-start: 1.4em; }
+.journal-prose li { padding-inline-start: .2em; margin-block: .45em; }
+.journal-prose blockquote { border-inline-start: 3px solid #215ca5; padding-inline-start: 24px; color: #55584e; }
+.journal-prose blockquote p { margin-block: .7em; }
+.journal-prose pre { direction: ltr; text-align: left; overflow-x: auto; background: #edeee8; padding: 20px; font-size: 14px; line-height: 1.8; }
+.journal-prose code { font-family: ui-monospace, monospace; font-size: .8em; background: #edeee8; padding: 2px 5px; direction: ltr; unicode-bidi: isolate; }
+.journal-prose :not(pre) > code { display: inline-block; max-width: 100%; vertical-align: middle; }
+.journal-prose pre code { font-size: inherit; padding: 0; }
+.journal-prose table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 16px; }
+.journal-prose :where(th, td) { text-align: start; padding: 12px 16px; border: 1px solid #d5d7cc; min-width: 110px; }
+.journal-prose th { background: #edeee8; }
+.journal-prose img { max-width: 100%; height: auto; margin-block: 30px; }
+.journal-prose hr { border: 0; border-top: 1px solid #deded6; margin-block: 40px; }
+.journal-article-footer { display: flex; align-items: baseline; flex-wrap: wrap; gap: 16px; justify-content: space-between; border-top: 1px solid #deded6; padding-top: 24px; margin-top: 48px; font-size: 14px; color: #66685f; }
+.journal-copy { cursor: pointer; }
+.journal-copy:hover { text-decoration: underline; text-underline-offset: 5px; }
+.journal-copy-status { display: block; font-size: 12px; }
+.journal-related { margin-top: 55px; }
+.journal-related h2 { font-size: 14px; color: #66685f; margin-bottom: 18px; }
+.journal-related > a { display: block; font-size: 19px; font-weight: 600; padding-block: 10px; }
+.journal-related > a span { color: #215ca5; }
+.journal-empty { padding-block: 50px; }
+.journal-empty h2 { font-size: 23px; font-weight: 700; }
+.journal-empty p { margin-block: 12px; }
+.journal-empty a { color: #215ca5; }
+.journal-skip { position: absolute; top: -100px; right: 24px; padding: 12px; background: #faf9f6; z-index: 10; }
+.journal-skip:focus { top: 12px; }
+@media (max-width: 600px) {
+    .journal-shell { width: calc(100% - 40px); }
+    .journal-header { padding-block: 20px; gap: 12px; }
+    .journal-brand span { display: none; }
+    .journal-intro { padding-top: 44px; }
+    .journal-deck { font-size: 18px; }
+    .journal-topics { gap: 6px 20px; }
+    .journal-entry { padding-block: 30px; }
+    .journal-prose { font-size: 18px; }
+    .journal-prose h2 { font-size: 25px; }
+    .journal-prose h3 { font-size: 21px; }
+    .journal-article h1 { font-size: 30px; }
+    .journal-back { margin-bottom: 30px; }
+    .journal-footer { margin-top: 45px; }
+}
