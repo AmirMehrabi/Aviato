@@ -7,6 +7,7 @@ use App\Models\HetznerAccount;
 use App\Models\VirtualMachine;
 use App\Services\HetznerCatalogSyncService;
 use App\Services\InvoiceService;
+use App\Services\MeteringInventoryService;
 use App\Services\NetworkUsageIngestionService;
 use App\Services\NetworkUsageReconciliationService;
 use App\Services\PromotionService;
@@ -65,6 +66,15 @@ Artisan::command('network-usage:sync {--from= : UTC ISO-8601 backfill start} {--
 
     return Command::SUCCESS;
 })->purpose('Fetch finalized network usage buckets from IPDR and rate them idempotently');
+
+Artisan::command('metering-inventory:refresh', function (MeteringInventoryService $inventory) {
+    $this->info(sprintf('Refreshed metering inventory for %d VM(s).', $inventory->refreshAll()));
+})->purpose('Repair and publish the canonical VM/IP metering inventory');
+
+Artisan::command('network-usage:retry {--limit=500}', function (NetworkUsageIngestionService $ingestion) {
+    $stats = $ingestion->retryUnrated(max(1, (int) $this->option('limit')));
+    $this->info(sprintf('Network usage retry: %d examined, %d rated.', $stats['examined'], $stats['rated']));
+})->purpose('Retry pending or quarantined network usage buckets');
 
 Artisan::command('network-usage:reconcile {--from= : Required UTC ISO-8601 start} {--to= : Required UTC ISO-8601 end} {--vm= : Optional Aviato VM UUID}', function (NetworkUsageReconciliationService $reconciliation) {
     if (! $this->option('from') || ! $this->option('to')) {
@@ -362,6 +372,8 @@ Artisan::command('inspire', function () {
 
 Schedule::command('billing:charge-usage')->hourly();
 Schedule::command('network-usage:sync')->everyTenMinutes()->withoutOverlapping();
+Schedule::command('network-usage:retry')->hourly()->withoutOverlapping();
+Schedule::command('metering-inventory:refresh')->everyMinute()->withoutOverlapping();
 Schedule::command('api:prune-logs')->dailyAt('00:30');
 Schedule::command('billing:settle-usage')->dailyAt('00:05');
 Schedule::command('hetzner:sync-catalog')->hourlyAt(5);

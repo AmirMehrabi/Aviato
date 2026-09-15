@@ -129,4 +129,24 @@ class NetworkUsageIngestionService
             return $bucket->refresh();
         });
     }
+
+    /** @return array{examined:int,rated:int} */
+    public function retryUnrated(int $limit = 500): array
+    {
+        $stats = ['examined' => 0, 'rated' => 0];
+        NetworkUsageBucket::query()->whereIn('processing_status', ['pending', 'quarantined'])->orderBy('id')->limit($limit)->get()->each(function (NetworkUsageBucket $bucket) use (&$stats): void {
+            $stats['examined']++;
+            if (! $bucket->virtual_machine_id) {
+                $vm = VirtualMachine::query()->where('uuid', $bucket->vm_uuid)->first();
+                if ($vm) {
+                    $bucket->forceFill(['virtual_machine_id' => $vm->id, 'processing_status' => 'pending', 'processing_error' => null])->save();
+                }
+            }
+            if ($this->rating->rate($bucket->fresh())) {
+                $stats['rated']++;
+            }
+        });
+
+        return $stats;
+    }
 }

@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsurePortalHost;
 use App\Http\Middleware\EnsureResellerActive;
 use App\Http\Middleware\EnsureUserRole;
 use App\Http\Middleware\LogApiRequest;
+use App\Http\Middleware\MeteringInventoryAuth;
 use App\Http\Middleware\NoStoreResponse;
 use App\Models\ApiRequestLog;
 use Illuminate\Auth\AuthenticationException;
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.route-access' => AuthorizeAdminRoute::class,
             'admin.audit' => AuditAdminMutation::class,
             'api.audit' => LogApiRequest::class,
+            'metering.inventory.auth' => MeteringInventoryAuth::class,
             'no-store' => NoStoreResponse::class,
             'abilities' => CheckAbilities::class,
             'ability' => CheckForAnyAbility::class,

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\VirtualMachine;
+use App\Services\MeteringInventoryService;
 use App\Services\Payments\DummyPaymentGateway;
 use App\Services\Payments\HesabroPaymentGateway;
 use App\Services\Payments\MellatClientInterface;
@@ -9,6 +11,7 @@ use App\Services\Payments\MellatPaymentGateway;
 use App\Services\Payments\MellatSoapClient;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Payments\ZibalPaymentGateway;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -34,6 +37,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $sync = function (VirtualMachine $vm): void {
+            if (Schema::hasTable('metering_inventory_assignments')) {
+                app(MeteringInventoryService::class)->syncVm($vm->fresh()->load('reservedIpAddress'));
+            }
+        };
+        VirtualMachine::saved($sync);
+        VirtualMachine::deleting(function (VirtualMachine $vm): void {
+            if (Schema::hasTable('metering_inventory_assignments')) {
+                app(MeteringInventoryService::class)->closeVm($vm);
+            }
+        });
     }
 }

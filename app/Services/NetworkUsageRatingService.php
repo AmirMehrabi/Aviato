@@ -90,11 +90,13 @@ class NetworkUsageRatingService
         }
         $scopeKey = $vm->project_id ? 'project:'.$vm->project_id : 'customer:'.$customer->id;
         $localDate = $bucket->interval_start->copy()->setTimezone($period->timezone)->toDateString();
-        $accrual = UsageAccrual::query()->firstOrCreate([
+        $identity = [
             'customer_id' => $customer->id, 'scope_key' => $scopeKey,
             'category' => UsageAccrual::CATEGORY_NETWORK, 'resource_type' => 'network_usage_bucket',
-            'resource_id' => $bucket->id, 'service_date' => $localDate,
-        ], [
+            'resource_id' => $bucket->id,
+        ];
+        $accrual = UsageAccrual::query()->where($identity)->whereDate('service_date', $localDate)->first();
+        $accrual ??= UsageAccrual::query()->create($identity + ['service_date' => $localDate] + [
             'project_id' => $vm->project_id, 'virtual_machine_id' => $vm->id, 'resource_name' => $vm->name,
             'period_start' => $bucket->interval_start, 'period_end' => $bucket->interval_end,
             'amount' => 0, 'segments' => [], 'snapshot' => $period->policy_snapshot,

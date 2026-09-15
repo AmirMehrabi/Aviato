@@ -38,6 +38,7 @@ return [
     'ipdr' => [
         'url' => env('IPDR_URL'),
         'token' => env('IPDR_TOKEN'),
+        'inventory_token' => env('IPDR_INVENTORY_TOKEN'),
         'source' => env('IPDR_SOURCE', 'ipdr'),
         'connect_timeout' => env('IPDR_CONNECT_TIMEOUT', 5),
         'timeout' => env('IPDR_REQUEST_TIMEOUT', 30),
