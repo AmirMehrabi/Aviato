@@ -104,7 +104,8 @@ class CustomerVmUpgradeTest extends TestCase
         ]);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
+            $mock->shouldReceive('vmConfig')->once()->andReturn(['cores' => 2, 'memory' => 4096, 'scsi0' => 'local-lvm:40']);
+            $mock->shouldReceive('vmStatus')->twice()->andReturn(['status' => 'running'], ['status' => 'stopped']);
             $mock->shouldReceive('shutdownVm')->once()->andReturn(['task_id' => 'UPID:shutdown']);
             $mock->shouldReceive('waitForVmStopped')->once()->andReturn(['status' => 'stopped']);
             $mock->shouldReceive('updateVmHardware')->once()->andReturn(['task_id' => 'UPID:hardware']);
@@ -126,6 +127,114 @@ class CustomerVmUpgradeTest extends TestCase
         $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
         $this->assertSame('UPID:start', $vm->remote_state['upgrade_restart']['start']['task_id']);
         $this->assertSame(VmUpgradeOrder::STATUS_SUCCEEDED, $order->status);
+    }
+
+    public function test_bundle_upgrade_reconciles_when_proxmox_changed_but_a_later_step_failed(): void
+    {
+        [$customer, $vm, $targetBundle] = $this->upgradeCatalog();
+        $order = VmUpgradeOrder::create([
+            'customer_id' => $customer->id,
+            'virtual_machine_id' => $vm->id,
+            'from_bundle_id' => $vm->vm_bundle_id,
+            'to_bundle_id' => $targetBundle->id,
+            'type' => VmUpgradeOrder::TYPE_BUNDLE,
+            'status' => VmUpgradeOrder::STATUS_PENDING,
+            'before_snapshot' => $vm->desiredStateSnapshot(),
+            'after_snapshot' => [
+                'vm_bundle_id' => $targetBundle->id,
+                'bundle_name' => $targetBundle->name,
+                'cpu_cores' => 4,
+                'ram_gb' => 8,
+                'disk_gb' => 80,
+                'ip_count' => 1,
+            ],
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfig')->once()->andReturn(['cores' => 2, 'memory' => 4096, 'scsi0' => 'local-lvm:40']);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
+            $mock->shouldReceive('updateVmHardware')->once()->andReturn(['task_id' => 'UPID:hardware']);
+            $mock->shouldReceive('waitForTask')->once()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
+            $mock->shouldReceive('resizeDisk')->once()->andThrow(new \RuntimeException('connection lost after request'));
+            $mock->shouldReceive('vmConfig')->once()->andReturn(['cores' => 4, 'memory' => 8192, 'scsi0' => 'local-lvm:80']);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
+        });
+
+        app(ApplyVmUpgradeJob::class, ['orderId' => $order->id])->handle(app(ProxmoxService::class));
+
+        $this->assertSame($targetBundle->id, $vm->refresh()->vm_bundle_id);
+        $this->assertSame(VmUpgradeOrder::STATUS_SUCCEEDED, $order->refresh()->status);
+        $this->assertTrue((bool) data_get($vm->remote_state, 'upgrade_restart.reconciled_after_error'));
+    }
+
+    public function test_bundle_upgrade_with_unknown_remote_outcome_is_queued_for_reconciliation(): void
+    {
+        [$customer, $vm, $targetBundle] = $this->upgradeCatalog();
+        $order = VmUpgradeOrder::create([
+            'customer_id' => $customer->id,
+            'virtual_machine_id' => $vm->id,
+            'from_bundle_id' => $vm->vm_bundle_id,
+            'to_bundle_id' => $targetBundle->id,
+            'type' => VmUpgradeOrder::TYPE_BUNDLE,
+            'status' => VmUpgradeOrder::STATUS_PENDING,
+            'before_snapshot' => $vm->desiredStateSnapshot(),
+            'after_snapshot' => [
+                'vm_bundle_id' => $targetBundle->id,
+                'bundle_name' => $targetBundle->name,
+                'cpu_cores' => 4,
+                'ram_gb' => 8,
+                'disk_gb' => 80,
+                'ip_count' => 1,
+            ],
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfig')->twice()->andThrow(new \RuntimeException('Proxmox unavailable'));
+        });
+
+        app(ApplyVmUpgradeJob::class, ['orderId' => $order->id])->handle(app(ProxmoxService::class));
+
+        $order->refresh();
+        $this->assertSame(VmUpgradeOrder::STATUS_RECONCILIATION_REQUIRED, $order->status);
+        $this->assertNotNull($order->reconcile_after);
+        $this->assertSame($vm->vm_bundle_id, $vm->refresh()->vm_bundle_id);
+    }
+
+    public function test_retried_bundle_upgrade_does_not_repeat_remote_changes_already_applied(): void
+    {
+        [$customer, $vm, $targetBundle] = $this->upgradeCatalog();
+        $order = VmUpgradeOrder::create([
+            'customer_id' => $customer->id,
+            'virtual_machine_id' => $vm->id,
+            'from_bundle_id' => $vm->vm_bundle_id,
+            'to_bundle_id' => $targetBundle->id,
+            'type' => VmUpgradeOrder::TYPE_BUNDLE,
+            'status' => VmUpgradeOrder::STATUS_RECONCILIATION_REQUIRED,
+            'before_snapshot' => $vm->desiredStateSnapshot(),
+            'after_snapshot' => [
+                'vm_bundle_id' => $targetBundle->id,
+                'bundle_name' => $targetBundle->name,
+                'cpu_cores' => 4,
+                'ram_gb' => 8,
+                'disk_gb' => 80,
+                'ip_count' => 1,
+            ],
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $config = ['cores' => 4, 'memory' => 8192, 'scsi0' => 'local-lvm:vm-100-disk-0,size=80G'];
+            $mock->shouldReceive('vmConfig')->twice()->andReturn($config);
+            $mock->shouldReceive('vmStatus')->twice()->andReturn(['status' => 'running']);
+            $mock->shouldNotReceive('shutdownVm');
+            $mock->shouldNotReceive('updateVmHardware');
+            $mock->shouldNotReceive('resizeDisk');
+            $mock->shouldNotReceive('startVm');
+        });
+
+        app(ApplyVmUpgradeJob::class, ['orderId' => $order->id])->handle(app(ProxmoxService::class));
+
+        $this->assertSame($targetBundle->id, $vm->refresh()->vm_bundle_id);
+        $this->assertSame(VmUpgradeOrder::STATUS_SUCCEEDED, $order->refresh()->status);
     }
 
     public function test_apply_extra_disk_job_attaches_next_scsi_disk_and_bills_storage(): void

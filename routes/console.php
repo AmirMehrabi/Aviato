@@ -1,10 +1,12 @@
 <?php
 
+use App\Jobs\ApplyVmUpgradeJob;
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Jobs\ReconcilePendingVirtualMachine;
 use App\Models\ApiRequestLog;
 use App\Models\HetznerAccount;
 use App\Models\VirtualMachine;
+use App\Models\VmUpgradeOrder;
 use App\Services\HetznerCatalogSyncService;
 use App\Services\InvoiceService;
 use App\Services\MeteringInventoryService;
@@ -370,6 +372,36 @@ Artisan::command('inspire', function () {
     $this->comment('Keep shipping.');
 })->purpose('Display an inspiring quote');
 
+Artisan::command('vm-upgrades:reconcile {--limit=100 : Maximum orders to queue}', function (): int {
+    $orders = VmUpgradeOrder::query()
+        ->where(function ($query): void {
+            $query->where(function ($query): void {
+                $query->where('status', VmUpgradeOrder::STATUS_APPLYING)
+                    ->where(function ($query): void {
+                        $query->whereNull('last_attempt_at')
+                            ->orWhere('last_attempt_at', '<=', now()->subMinutes(15));
+                    });
+            })->orWhere(function ($query): void {
+                $query->where('status', VmUpgradeOrder::STATUS_RECONCILIATION_REQUIRED)
+                    ->where(function ($query): void {
+                        $query->whereNull('reconcile_after')
+                            ->orWhere('reconcile_after', '<=', now());
+                    });
+            });
+        })
+        ->orderBy('id')
+        ->limit(max(1, (int) $this->option('limit')))
+        ->get();
+
+    foreach ($orders as $order) {
+        ApplyVmUpgradeJob::dispatch($order->id)->onQueue(ApplyVmUpgradeJob::QUEUE);
+    }
+
+    $this->info(sprintf('Queued %d VM upgrade reconciliation job(s).', $orders->count()));
+
+    return Command::SUCCESS;
+})->purpose('Reconcile stale or indeterminate VM upgrades against the provider');
+
 Schedule::command('billing:charge-usage')->hourly();
 Schedule::command('network-usage:sync')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('network-usage:retry')->hourly()->withoutOverlapping();
@@ -381,3 +413,4 @@ Schedule::command('billing:generate-monthly-invoices')->monthlyOn(1, '00:15');
 Schedule::command('backup:run-due')->everyFifteenMinutes();
 Schedule::command('backup:sync')->hourlyAt(10);
 Schedule::command('virtual-machines:reconcile-pending')->everyTenMinutes();
+Schedule::command('vm-upgrades:reconcile')->everyFiveMinutes()->withoutOverlapping();

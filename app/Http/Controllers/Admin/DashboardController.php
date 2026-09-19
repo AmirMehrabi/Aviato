@@ -320,7 +320,12 @@ class DashboardController extends Controller
 
         VmUpgradeOrder::query()
             ->with('virtualMachine.customer')
-            ->whereIn('status', [VmUpgradeOrder::STATUS_PENDING, VmUpgradeOrder::STATUS_APPLYING, VmUpgradeOrder::STATUS_FAILED])
+            ->whereIn('status', [
+                VmUpgradeOrder::STATUS_PENDING,
+                VmUpgradeOrder::STATUS_APPLYING,
+                VmUpgradeOrder::STATUS_RECONCILIATION_REQUIRED,
+                VmUpgradeOrder::STATUS_FAILED,
+            ])
             ->latest()
             ->limit(4)
             ->get()

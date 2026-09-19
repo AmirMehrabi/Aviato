@@ -10,12 +10,14 @@ use App\Models\VmUpgradeOrder;
 use App\Services\HetznerCloudService;
 use App\Services\ProxmoxService;
 use App\Services\WalletService;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class ApplyVmUpgradeJob implements ShouldQueue
+class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -23,7 +25,26 @@ class ApplyVmUpgradeJob implements ShouldQueue
 
     private const BUNDLE_RESTART_PAUSE_SECONDS = 5;
 
+    public int $timeout = 900;
+
+    public int $tries = 3;
+
+    public array $backoff = [30, 120, 300];
+
+    public int $uniqueFor = 1200;
+
     public function __construct(public int $orderId) {}
+
+    public function uniqueId(): string
+    {
+        return (string) $this->orderId;
+    }
+
+    /** @return array<int, object> */
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping('vm-upgrade-'.$this->orderId))->dontRelease()->expireAfter(1200)];
+    }
 
     public function handle(ProxmoxService $proxmox, ?WalletService $wallets = null, ?HetznerCloudService $hetzner = null): void
     {
@@ -37,12 +58,16 @@ class ApplyVmUpgradeJob implements ShouldQueue
             return;
         }
 
+        $order->forceFill([
+            'status' => VmUpgradeOrder::STATUS_APPLYING,
+            'last_attempt_at' => now(),
+            'reconcile_after' => null,
+        ])->save();
+
         $vm = $order->virtualMachine;
         $billingCustomer = $vm->project?->owner ?? $vm->customer;
 
         try {
-            $order->forceFill(['status' => VmUpgradeOrder::STATUS_APPLYING])->save();
-
             if ($vm->isHetzner()) {
                 if ($order->type !== VmUpgradeOrder::TYPE_BUNDLE) {
                     throw new \RuntimeException('This upgrade type is not supported for Hetzner machines.');
@@ -72,9 +97,12 @@ class ApplyVmUpgradeJob implements ShouldQueue
             }
 
             $config = $proxmox->vmConfig($vm->proxmoxServer, $vm->node, (int) $vm->vmid);
+            if ($order->type === VmUpgradeOrder::TYPE_BUNDLE && ! $this->bundleConfigMatches($vm, $order, $config)) {
+                throw new \RuntimeException('Proxmox configuration does not yet match the requested bundle.');
+            }
             $this->markSucceeded($order->refresh(), $config, $result);
         } catch (Throwable $exception) {
-            $this->markFailed($order->refresh(), $exception);
+            $this->reconcileAfterFailure($order->refresh(), $proxmox, $exception);
         }
     }
 
@@ -139,11 +167,19 @@ class ApplyVmUpgradeJob implements ShouldQueue
             'restart_pause_seconds' => self::BUNDLE_RESTART_PAUSE_SECONDS,
         ];
         $billingBlocked = $billingCustomer ? $wallets->isWalletDepleted($billingCustomer) : false;
+        $diskDevice = (string) data_get($vm->desired_state, 'disk_device', $vm->cloudImage?->disk_device ?: 'scsi0');
+        $config = $proxmox->vmConfig($server, $node, $vmid);
+        $hardwareMatches = $this->hardwareMatches($config, $after);
+        $currentDisk = $this->diskSizeGb($config, $diskDevice)
+            ?? (int) ($order->before_snapshot['disk_gb'] ?? $vm->disk_gb);
+        $targetDisk = (int) ($after['disk_gb'] ?? $vm->disk_gb);
+        $requiresRemoteChange = ! $hardwareMatches || $currentDisk < $targetDisk;
 
         $remoteStatus = $proxmox->vmStatus($server, $node, $vmid);
         $result['status_before_shutdown'] = $remoteStatus;
+        $result['config_before'] = $config;
 
-        if (($remoteStatus['status'] ?? null) !== 'stopped') {
+        if ($requiresRemoteChange && ($remoteStatus['status'] ?? null) !== 'stopped') {
             $shutdown = $proxmox->shutdownVm($server, $node, $vmid, context: [
                 'source' => 'upgrade_job',
                 'virtual_machine_id' => $vm->id,
@@ -152,33 +188,46 @@ class ApplyVmUpgradeJob implements ShouldQueue
             $result['shutdown'] = $shutdown;
             $this->waitForTaskResult($proxmox, $vm, $shutdown, 180);
             $result['status_after_shutdown'] = $proxmox->waitForVmStopped($server, $node, $vmid, 60);
+            $this->checkpoint($order, 'shutdown', $shutdown);
         }
 
-        $hardware = $proxmox->updateVmHardware($server, $node, $vmid, [
-            'cpu_cores' => (int) $after['cpu_cores'],
-            'ram_gb' => (int) $after['ram_gb'],
-        ]);
-        $result['hardware'] = $hardware;
-        $result['task_id'] = $hardware['task_id'] ?? null;
-        $this->waitForTaskResult($proxmox, $vm, $hardware);
+        if (! $hardwareMatches) {
+            $hardware = $proxmox->updateVmHardware($server, $node, $vmid, [
+                'cpu_cores' => (int) $after['cpu_cores'],
+                'ram_gb' => (int) $after['ram_gb'],
+            ]);
+            $result['hardware'] = $hardware;
+            $result['task_id'] = $hardware['task_id'] ?? null;
+            $this->checkpoint($order, 'hardware_submitted', $hardware);
+            $this->waitForTaskResult($proxmox, $vm, $hardware);
+            $this->checkpoint($order, 'hardware_applied', $hardware);
+        } else {
+            $result['hardware_already_applied'] = true;
+        }
 
-        $currentDisk = (int) ($order->before_snapshot['disk_gb'] ?? $vm->disk_gb);
-        $targetDisk = (int) ($after['disk_gb'] ?? $vm->disk_gb);
-        if ($targetDisk > $currentDisk) {
-            $diskDevice = (string) data_get($vm->desired_state, 'disk_device', $vm->cloudImage?->disk_device ?: 'scsi0');
+        if ($currentDisk < $targetDisk) {
             $diskResize = $proxmox->resizeDisk($server, $node, $vmid, $diskDevice, $targetDisk);
             $result['disk_resize'] = $diskResize;
+            $this->checkpoint($order, 'disk_submitted', $diskResize);
             $this->waitForTaskResult($proxmox, $vm, $diskResize);
+            $this->checkpoint($order, 'disk_applied', $diskResize);
+        } elseif ($targetDisk > (int) ($order->before_snapshot['disk_gb'] ?? $vm->disk_gb)) {
+            $result['disk_already_applied'] = true;
         }
 
-        $this->pauseBeforeRestart();
+        if ($requiresRemoteChange) {
+            $this->pauseBeforeRestart();
+        }
 
-        if (! $billingBlocked) {
+        $currentStatus = $proxmox->vmStatus($server, $node, $vmid);
+        if (! $billingBlocked && ($currentStatus['status'] ?? null) !== 'running') {
             $start = $proxmox->startVm($server, $node, $vmid);
             $result['start'] = $start;
+            $this->checkpoint($order, 'start_submitted', $start);
             $this->waitForTaskResult($proxmox, $vm, $start, 180);
+            $this->checkpoint($order, 'started', $start);
         } else {
-            $result['start_skipped_wallet_locked'] = true;
+            $result[$billingBlocked ? 'start_skipped_wallet_locked' : 'already_running'] = true;
         }
 
         return $result;
@@ -262,26 +311,95 @@ class ApplyVmUpgradeJob implements ShouldQueue
             $locked->forceFill([
                 'status' => VmUpgradeOrder::STATUS_SUCCEEDED,
                 'proxmox_task_id' => $result['task_id'] ?? null,
+                'progress' => array_merge($locked->progress ?? [], ['completed_at' => now()->toIso8601String()]),
                 'failure_reason' => null,
+                'reconcile_after' => null,
                 'applied_at' => now(),
             ])->save();
         });
     }
 
-    private function markFailed(VmUpgradeOrder $order, Throwable $exception): void
+    private function reconcileAfterFailure(VmUpgradeOrder $order, ProxmoxService $proxmox, Throwable $exception): void
     {
+        $vm = $order->virtualMachine;
+
+        if ($vm?->isProxmox() && $vm->proxmoxServer && $vm->node && $vm->vmid && $order->type === VmUpgradeOrder::TYPE_BUNDLE) {
+            try {
+                $config = $proxmox->vmConfig($vm->proxmoxServer, (string) $vm->node, (int) $vm->vmid);
+
+                if ($this->bundleConfigMatches($vm, $order, $config)) {
+                    $status = $proxmox->vmStatus($vm->proxmoxServer, (string) $vm->node, (int) $vm->vmid);
+                    $this->markSucceeded($order, $config, [
+                        'reconciled_after_error' => true,
+                        'original_error' => $exception->getMessage(),
+                        'start_skipped_wallet_locked' => ($status['status'] ?? null) !== 'running',
+                    ]);
+
+                    return;
+                }
+            } catch (Throwable) {
+                // The remote outcome is unknown. The scheduled reconciler will try again.
+            }
+        }
+
         DB::transaction(function () use ($order, $exception): void {
             $locked = VmUpgradeOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            if ($locked->disk) {
-                $locked->disk->forceFill(['status' => VmDisk::STATUS_FAILED])->save();
-            }
-
             $locked->forceFill([
-                'status' => VmUpgradeOrder::STATUS_FAILED,
+                'status' => VmUpgradeOrder::STATUS_RECONCILIATION_REQUIRED,
                 'failure_reason' => $exception->getMessage(),
+                'reconcile_after' => now()->addMinutes(2),
             ])->save();
         });
+    }
+
+    /** @param array<string, mixed> $details */
+    private function checkpoint(VmUpgradeOrder $order, string $step, array $details = []): void
+    {
+        $fresh = VmUpgradeOrder::query()->findOrFail($order->id);
+        $progress = $fresh->progress ?? [];
+        $progress[$step] = ['at' => now()->toIso8601String(), 'details' => $details];
+        $fresh->forceFill(['progress' => $progress, 'last_attempt_at' => now()])->save();
+        $order->setRawAttributes($fresh->getAttributes(), true);
+    }
+
+    /** @param array<string, mixed> $config @param array<string, mixed> $after */
+    private function hardwareMatches(array $config, array $after): bool
+    {
+        return (int) ($config['cores'] ?? 0) === (int) ($after['cpu_cores'] ?? 0)
+            && (int) ($config['memory'] ?? 0) === (int) ($after['ram_gb'] ?? 0) * 1024;
+    }
+
+    /** @param array<string, mixed> $config */
+    private function bundleConfigMatches(VirtualMachine $vm, VmUpgradeOrder $order, array $config): bool
+    {
+        $after = $order->after_snapshot;
+        $diskDevice = (string) data_get($vm->desired_state, 'disk_device', $vm->cloudImage?->disk_device ?: 'scsi0');
+        $diskSize = $this->diskSizeGb($config, $diskDevice);
+
+        return $this->hardwareMatches($config, $after)
+            && $diskSize !== null
+            && $diskSize >= (int) ($after['disk_gb'] ?? 0);
+    }
+
+    /** @param array<string, mixed> $config */
+    private function diskSizeGb(array $config, string $device): ?int
+    {
+        $value = $config[$device] ?? null;
+        if (is_array($value)) {
+            $value = $value['size'] ?? null;
+        }
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $disk = (string) $value;
+        if (preg_match('/(?:^|[,=:])size[=:]?(\d+(?:\.\d+)?)G(?:,|$)/i', $disk, $matches) === 1
+            || preg_match('/:(\d+(?:\.\d+)?)G?(?:,|$)/i', $disk, $matches) === 1) {
+            return (int) ceil((float) $matches[1]);
+        }
+
+        return null;
     }
 
     /**

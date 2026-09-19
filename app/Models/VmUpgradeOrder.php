@@ -19,6 +19,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'minimum_wallet_balance',
     'estimated_monthly_delta',
     'proxmox_task_id',
+    'progress',
+    'last_attempt_at',
+    'reconcile_after',
     'failure_reason',
     'applied_at',
 ])]
@@ -37,6 +40,8 @@ class VmUpgradeOrder extends Model
     public const STATUS_SUCCEEDED = 'succeeded';
 
     public const STATUS_FAILED = 'failed';
+
+    public const STATUS_RECONCILIATION_REQUIRED = 'reconciliation_required';
 
     public function customer(): BelongsTo
     {
@@ -65,7 +70,7 @@ class VmUpgradeOrder extends Model
 
     public function isPending(): bool
     {
-        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_APPLYING], true);
+        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_APPLYING, self::STATUS_RECONCILIATION_REQUIRED], true);
     }
 
     protected function casts(): array
@@ -73,9 +78,12 @@ class VmUpgradeOrder extends Model
         return [
             'before_snapshot' => 'array',
             'after_snapshot' => 'array',
+            'progress' => 'array',
             'minimum_wallet_balance' => 'integer',
             'estimated_monthly_delta' => 'integer',
             'applied_at' => 'datetime',
+            'last_attempt_at' => 'datetime',
+            'reconcile_after' => 'datetime',
         ];
     }
 }

@@ -206,7 +206,11 @@ class VirtualMachine extends Model
     public function pendingUpgradeOrders(): HasMany
     {
         return $this->hasMany(VmUpgradeOrder::class)
-            ->whereIn('status', [VmUpgradeOrder::STATUS_PENDING, VmUpgradeOrder::STATUS_APPLYING]);
+            ->whereIn('status', [
+                VmUpgradeOrder::STATUS_PENDING,
+                VmUpgradeOrder::STATUS_APPLYING,
+                VmUpgradeOrder::STATUS_RECONCILIATION_REQUIRED,
+            ]);
     }
 
     public function isRunning(): bool

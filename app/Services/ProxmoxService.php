@@ -1246,8 +1246,8 @@ class ProxmoxService
             $lastStatus = $this->getData($server, "/nodes/{$node}/tasks/{$upid}/status") ?? [];
 
             if (($lastStatus['status'] ?? null) === 'stopped') {
-                $exitStatus = $lastStatus['exitstatus'] ?? 'OK';
-                if ($exitStatus !== 'OK' && ! str_starts_with($exitStatus, 'WARNINGS')) {
+                $exitStatus = trim((string) ($lastStatus['exitstatus'] ?? 'OK'));
+                if (! $this->taskExitStatusSucceeded($exitStatus)) {
                     throw new RuntimeException('Proxmox task failed: '.$exitStatus);
                 }
 
@@ -1258,6 +1258,12 @@ class ProxmoxService
         }
 
         throw new RuntimeException('Timed out waiting for Proxmox task '.$upid.'. Last status: '.json_encode($lastStatus));
+    }
+
+    private function taskExitStatusSucceeded(string $exitStatus): bool
+    {
+        return strcasecmp($exitStatus, 'OK') === 0
+            || preg_match('/^WARNINGS(?:\s*:\s*\d+)?$/i', $exitStatus) === 1;
     }
 
     /**
