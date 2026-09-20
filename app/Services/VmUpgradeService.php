@@ -61,7 +61,7 @@ class VmUpgradeService
     {
         $order = DB::transaction(function () use ($vm, $bundle): VmUpgradeOrder {
             $locked = $this->lockedVm($vm->id);
-            $locked->loadMissing(['bundle', 'project.owner']);
+            $locked->loadMissing(['bundle', 'cloudImage', 'project.owner']);
             $billingCustomer = $locked->project?->owner ?? $locked->customer;
 
             $this->assertVmCanUpgrade($locked);
@@ -185,6 +185,10 @@ class VmUpgradeService
 
         if ($bundle->id === $vm->vm_bundle_id) {
             throw ValidationException::withMessages(['bundle' => 'این باندل همین حالا روی سرور فعال است.']);
+        }
+
+        if (! $vm->cloudImage?->allowedBundles()->whereKey($bundle->id)->exists()) {
+            throw ValidationException::withMessages(['bundle' => 'این باندل برای سیستم عامل این سرور در دسترس نیست.']);
         }
     }
 

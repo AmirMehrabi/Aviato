@@ -365,7 +365,8 @@
                     </div>
                 </article>
 
-                <article class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                @if ($eligibleBundles->isNotEmpty())
+                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <p class="text-xs font-black text-[#0069FF]">Upgrade</p>
@@ -380,24 +381,23 @@
                     <form method="POST" action="{{ route('customer.servers.upgrades.bundle.store', $server, false) }}" class="mt-4 space-y-3" x-data="{ submitting: false }" x-on:submit="submitting = true">
                         @csrf
                         <label class="block text-xs font-black text-slate-500" for="vm_bundle_id">باندل جدید</label>
-                        <select id="vm_bundle_id" name="vm_bundle_id" @disabled($isLocked || $hasPendingUpgrade || $eligibleBundles->isEmpty()) class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold text-slate-800 focus:border-[#0069FF] focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-60">
-                            @forelse ($eligibleBundles as $bundle)
+                        <select id="vm_bundle_id" name="vm_bundle_id" @disabled($isLocked || $hasPendingUpgrade) class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold text-slate-800 focus:border-[#0069FF] focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-60">
+                            @foreach ($eligibleBundles as $bundle)
                                 @php($preview = $bundlePreviews[$bundle->id])
                                 <option value="{{ $bundle->id }}">
                                     {{ $bundle->name }} - {{ $bundle->cpu_cores }} CPU / {{ $bundle->ram_gb }}GB RAM / {{ $bundle->disk_gb }}GB Disk - +{{ $wallets->format($preview['monthly_delta']) }}/ماه
                                 </option>
-                            @empty
-                                <option value="">باندل بزرگتری موجود نیست</option>
-                            @endforelse
+                            @endforeach
                         </select>
                         <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-6 text-amber-800">بعد از ثبت ارتقای باندل، سرور برای اعمال منابع کامل خاموش می شود و پس از چند ثانیه دوباره روشن خواهد شد.</p>
-                        <button type="submit" x-bind:disabled="submitting || {{ ($isLocked || $hasPendingUpgrade || $eligibleBundles->isEmpty()) ? 'true' : 'false' }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:opacity-60">
+                        <button type="submit" x-bind:disabled="submitting || {{ ($isLocked || $hasPendingUpgrade) ? 'true' : 'false' }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:opacity-60">
                             <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
                             <span x-text="submitting ? 'در حال ثبت...' : 'ثبت ارتقای باندل'">ثبت ارتقای باندل</span>
                         </button>
                     </form>
 
-                </article>
+                    </article>
+                @endif
 
                 <article class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                     <h2 class="font-black text-slate-950">سلامت بکاپ</h2>

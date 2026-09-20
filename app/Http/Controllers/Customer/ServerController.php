@@ -510,11 +510,11 @@ class ServerController extends Controller
             'upgradeOrders' => fn ($query) => $query->with(['toBundle', 'disk'])->latest()->limit(6),
         ]);
 
-        $eligibleBundles = VmBundle::query()
-            ->where('is_active', true)
-            ->where('id', '!=', $server->vm_bundle_id)
-            ->orderBy('sort_order')
-            ->orderBy('monthly_price')
+        $eligibleBundles = $server->cloudImage?->allowedBundles()
+            ->where('vm_bundles.is_active', true)
+            ->where('vm_bundles.id', '!=', $server->vm_bundle_id)
+            ->orderBy('vm_bundles.sort_order')
+            ->orderBy('vm_bundles.monthly_price')
             ->get()
             ->filter(fn (VmBundle $bundle): bool => $bundle->cpu_cores >= $server->cpu_cores
                 && $bundle->ram_gb >= $server->ram_gb
@@ -525,7 +525,7 @@ class ServerController extends Controller
                     ->where('is_active', true)
                     ->whereNotNull('hetzner_server_type_id')
                     ->exists()))
-            ->values();
+            ->values() ?? collect();
         $hasPendingUpgrade = $server->upgradeOrders->contains(fn ($order): bool => $order->isPending());
         $extraDiskOptions = ($server->isHetzner()
             ? collect()

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ApplyVmUpgradeJob;
+use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\ProxmoxServer;
 use App\Models\ResourceRate;
@@ -79,6 +80,47 @@ class CustomerVmUpgradeTest extends TestCase
 
         $this->assertDatabaseCount('vm_upgrade_orders', 0);
         Bus::assertNotDispatched(ApplyVmUpgradeJob::class);
+    }
+
+    public function test_customer_cannot_request_a_bundle_not_allowed_for_the_vm_image(): void
+    {
+        Bus::fake();
+
+        [$customer, $vm] = $this->upgradeCatalog();
+        $unavailableBundle = VmBundle::create([
+            'name' => 'Unavailable Growth',
+            'slug' => 'unavailable-growth',
+            'cpu_cores' => 8,
+            'ram_gb' => 16,
+            'disk_gb' => 160,
+            'ip_count' => 1,
+            'monthly_price' => 292000,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($customer, 'customer');
+        $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid)
+            ->assertOk()
+            ->assertDontSee($unavailableBundle->name);
+
+        $this->from($this->customerBaseUrl.'/servers/'.$vm->uuid)->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrades/bundle', [
+            'vm_bundle_id' => $unavailableBundle->id,
+        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid)
+            ->assertSessionHasErrors('bundle');
+
+        $this->assertDatabaseCount('vm_upgrade_orders', 0);
+        Bus::assertNotDispatched(ApplyVmUpgradeJob::class);
+    }
+
+    public function test_server_show_hides_the_upgrade_section_when_its_image_has_no_eligible_bundles(): void
+    {
+        [$customer, $vm] = $this->upgradeCatalog();
+        $vm->cloudImage->allowedBundles()->detach();
+
+        $this->actingAs($customer, 'customer')
+            ->get($this->customerBaseUrl.'/servers/'.$vm->uuid)
+            ->assertOk()
+            ->assertDontSee('ارتقای منابع');
     }
 
     public function test_apply_bundle_upgrade_job_updates_proxmox_and_local_resources(): void
@@ -333,10 +375,21 @@ class CustomerVmUpgradeTest extends TestCase
             'monthly_price' => 146000,
             'is_active' => true,
         ]);
+        $image = CloudImage::create([
+            'proxmox_server_id' => $server->id,
+            'provider' => 'proxmox',
+            'name' => 'Ubuntu 24.04',
+            'slug' => 'ubuntu-2404',
+            'node' => 'pve1',
+            'template_vmid' => 9000,
+            'is_active' => true,
+        ]);
+        $image->allowedBundles()->sync([$currentBundle->id, $targetBundle->id]);
         $vm = VirtualMachine::create([
             'customer_id' => $customer->id,
             'proxmox_server_id' => $server->id,
             'vm_bundle_id' => $currentBundle->id,
+            'cloud_image_id' => $image->id,
             'vmid' => 101,
             'name' => 'upgrade-vm',
             'hostname' => 'upgrade-vm',
