@@ -28,11 +28,16 @@ class NetworkBillingController extends Controller
     public function index(Request $request): View
     {
         $status = $request->validate(['status' => ['nullable', Rule::in(['pending', 'rated', 'ignored', 'quarantined'])]])['status'] ?? null;
-        $periods = VmNetworkBillingPeriod::query()->with('virtualMachine.customer')->latest('period_start')->paginate(15)->withQueryString();
+        $machines = VirtualMachine::query()
+            ->notDeleted()
+            ->with(['customer', 'latestNetworkBillingPeriod'])
+            ->latest('id')
+            ->paginate(15)
+            ->withQueryString();
         $checkpoint = NetworkIngestionCheckpoint::query()->where('source', config('services.ipdr.source', 'ipdr'))->first();
 
         return view('admin.billing.network.index', [
-            'checkpoint' => $checkpoint, 'periods' => $periods, 'reports' => $this->reports, 'wallets' => $this->wallets,
+            'checkpoint' => $checkpoint, 'machines' => $machines, 'reports' => $this->reports, 'wallets' => $this->wallets,
             'statusFilter' => $status,
             'stats' => [
                 'month_bytes' => (int) VmNetworkBillingPeriod::query()->where('period_end', '>', now())->sum('rated_bytes'),

@@ -203,6 +203,11 @@ class VirtualMachine extends Model
         return $this->hasMany(VmNetworkBillingPeriod::class);
     }
 
+    public function latestNetworkBillingPeriod(): HasOne
+    {
+        return $this->hasOne(VmNetworkBillingPeriod::class)->latestOfMany('period_start');
+    }
+
     public function pendingUpgradeOrders(): HasMany
     {
         return $this->hasMany(VmUpgradeOrder::class)

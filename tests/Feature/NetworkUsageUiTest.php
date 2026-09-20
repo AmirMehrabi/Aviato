@@ -33,6 +33,17 @@ class NetworkUsageUiTest extends TestCase
         $this->get('https://admin.localhost/billing/network/virtual-machines/'.$vm->uuid)->assertOk()->assertSee('دفتر باکت‌ها')->assertSee('bucket-ui-1');
     }
 
+    public function test_admin_network_dashboard_lists_machine_without_billing_period(): void
+    {
+        $vm = $this->meteredVm();
+        $this->actingAs(User::factory()->create(), 'admin');
+
+        $this->get('https://admin.localhost/billing/network')
+            ->assertOk()
+            ->assertSee($vm->display_name)
+            ->assertSee('بدون داده');
+    }
+
     public function test_customer_sees_network_summary_for_accessible_vm(): void
     {
         $vm = $this->meteredVm();
