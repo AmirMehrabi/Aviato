@@ -29,10 +29,10 @@
     ];
 
     $useCases = [
-        ['title' => 'سایت و وردپرس', 'body' => 'برای سایت شرکتی، وبلاگ، فروشگاه و پنل های مدیریتی که باید همیشه در دسترس باشند.'],
-        ['title' => 'اپلیکیشن و API', 'body' => 'برای سرویس هایی که نیاز به منابع مشخص، IP اختصاصی و دسترسی مدیریتی دارند.'],
-        ['title' => 'دیتابیس و پردازش', 'body' => 'برای دیتابیس های سبک، صف، کش و کارهای پس زمینه روزمره.'],
-        ['title' => 'تست و توسعه', 'body' => 'برای محیط جداگانه تست، بررسی نسخه جدید و تمرین بدون درگیر کردن سرویس اصلی.'],
+        ['title' => 'سایت و وردپرس', 'icon' => 'global-edit.svg'],
+        ['title' => 'اپلیکیشن و API', 'icon' => 'bag-happy.svg'],
+        ['title' => 'دیتابیس و پردازش', 'icon' => 'data-2.svg'],
+        ['title' => 'تست و توسعه', 'icon' => 'cloud-connection.svg'],
     ];
 
     $steps = [
@@ -58,33 +58,27 @@
     ];
 @endphp
 
-@section('body_class', 'bg-[#F5F8FD]')
+@section('body_class', 'figma-marketing landing-page bg-white')
 
 @section('content')
-    <section id="top" class="relative isolate flex min-h-[58vh] items-center overflow-hidden px-4 pb-12 pt-24 md:min-h-[64vh] md:px-8 md:pb-16 md:pt-28 lg:px-10">
-        <div aria-hidden="true" class="absolute inset-0 -z-20 bg-[#F5F8FD]"></div>
-        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center opacity-90" style="background-image: linear-gradient(90deg, rgba(245,248,253,0.14), rgba(245,248,253,0.88) 76%), url('{{ asset('assets/images/hero-section.webp') }}');"></div>
-        <div aria-hidden="true" class="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-white to-white/0"></div>
+    <section id="top" class="relative isolate flex min-h-[496px] items-center overflow-hidden px-4 pb-12 pt-28 md:px-8 md:pt-44 lg:px-10">
+        <div aria-hidden="true" class="absolute inset-0 -z-20 bg-[#EDF4FE]"></div>
+        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center" style="background-image: linear-gradient(90deg, rgba(237,244,254,.18), rgba(237,244,254,.76) 72%), url('{{ asset('assets/images/figma-landing-cloud-hero.png') }}');"></div>
 
         <div class="mx-auto w-full max-w-7xl">
-            <div class="mx-auto max-w-3xl text-center md:mx-0 md:text-right">
-                <p class="inline-flex items-center gap-2 text-sm font-bold text-[#2C67C9]">
-                    <span aria-hidden="true" class="h-0.5 w-7 bg-[#2C67C9]"></span>
-                    زیرساخت روشن برای رشد واقعی
-                </p>
-                <h1 class="mt-5 text-4xl font-semibold leading-[1.22] text-slate-950 sm:text-5xl md:text-6xl">
-                    زیرساختی پایدار،
-                    <span class="block text-3xl font-light text-slate-700 sm:text-4xl md:text-5xl">برای <span class="font-semibold text-[#1976C9]">اوجی</span> بی‌پایان</span>
+            <div class="mx-auto max-w-[872px] text-center md:mx-0 md:text-right">
+                <h1 class="text-3xl font-bold leading-[1.5] text-[#000C1C] md:text-[32px]">
+                    زیرساختی پایدار، برای <span class="text-[#0069FF]">اوجی</span> بی‌پایان
                 </h1>
-                <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-700 md:mx-0 md:text-lg md:leading-9">
+                <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-[#000C1C] md:mx-0 md:text-2xl md:leading-[44px]">
                   از اولین راه‌اندازی تا اوج رشد، سرورهایی پایدار برای سرویس‌های همیشه‌روشن.
                 </p>
-                <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row md:justify-start">
-                    <a href="#plans" class="inline-flex items-center justify-center rounded-xl bg-[#0069FF] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#0069FF]/20 transition-[transform,background-color,border-color,color,box-shadow] hover:bg-[#0050D0] active:scale-[0.96]">
-                        دیدن پلن‌ها
+                <div class="mt-6 flex flex-col justify-center gap-3 sm:flex-row md:justify-start">
+                    <a href="#plans" class="inline-flex h-12 items-center justify-center rounded-lg bg-[#0069FF] px-8 text-sm font-bold text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
+                        مشاهده پلن
                     </a>
-                    <a href="{{ route('contact') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/75 px-7 py-3.5 text-sm font-bold text-slate-700 shadow-sm backdrop-blur transition-[transform,background-color,border-color,color,box-shadow] hover:border-[#B8D6FF] hover:bg-white hover:text-[#0069FF] active:scale-[0.96]">
-                        با ما تماس بگیرید
+                    <a href="{{ route('contact') }}" class="inline-flex h-12 items-center justify-center rounded-lg border border-[#0069FF] bg-white/70 px-8 text-sm font-bold text-[#0069FF] backdrop-blur transition hover:bg-white">
+                        مشاوره رایگان
                     </a>
                 </div>
             </div>
@@ -92,23 +86,21 @@
     </section>
     
 
-    <section class="bg-white px-4 py-16 md:px-8 md:py-20 lg:px-10">
+    <section class="bg-white px-4 py-5 md:px-8 md:py-[18px] lg:px-10">
         <div class="mx-auto max-w-7xl">
             <div class="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
                 <div class="text-center lg:text-right">
-                    <p class="text-sm font-bold text-[#2C67C9]">مشتریان فعلی آویاتو</p>
-                    <h2 class="mt-3 text-2xl leading-tight text-slate-950 md:text-4xl">
-                        <span class="block">زیرساخت آرام</span>
-                        <span class="block">برای کارهای واقعی.</span>
+                    <h2 class="text-2xl font-bold leading-9 text-[#000C1C]">
+                        همراهان آویاتو
                     </h2>
-                    <p class="mt-5 leading-8 text-slate-600">
+                    <p class="mt-1 leading-8 text-[#000C1C]">
                         آویاتو میزبان پروژه هایی است که برای فروش، پشتیبانی، توسعه و کار روزانه به ماشین مجازی پایدار نیاز دارند.
                     </p>
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-3">
                     @foreach ($currentCustomers as $customer)
-                        <a href="{{ $customer['url'] }}" target="_blank" rel="noopener noreferrer" class="group flex min-h-40 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-[#FBFDFF] p-6 text-center transition hover:-translate-y-1 hover:border-[#B9D6FF] hover:bg-white hover:shadow-xl hover:shadow-slate-200/60">
+                        <a href="{{ $customer['url'] }}" target="_blank" rel="noopener noreferrer" class="group flex min-h-[167px] flex-col items-center justify-center rounded-2xl border border-[#E0E0E0] bg-white p-6 text-center transition hover:border-[#B9D6FF] hover:shadow-lg hover:shadow-slate-200/50">
                             <span class="flex h-16 w-full items-center justify-center">
                                 <img src="{{ asset($customer['logo']) }}" alt="{{ $customer['name'] }}" class="max-h-14 max-w-44 object-contain">
                             </span>
@@ -274,43 +266,16 @@
     </section>
 
     <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
-        <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
-            <div>
-                <p class="text-sm font-bold text-[#2C67C9]">چرا آویاتو؟</p>
-                <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">زیرساختی که فهمیدنش سخت نیست.</h2>
-                <p class="mt-5 leading-8 text-slate-600">
-                    انتخاب ماشین مجازی وقتی راحت تر است که قیمت، منابع و مسیر تحویل از ابتدا روشن باشد.
-                </p>
-            </div>
-
-            <div class="grid gap-4">
+        <div class="mx-auto max-w-[894px] text-right">
+            <h2 class="text-[28px] font-bold leading-[42px] text-[#001739]">چرا آویاتو؟</h2>
+            <div class="mt-4 grid gap-6">
                 @foreach ($differenceRows as $row)
-                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-6">
-                        <h3 class="text-xl text-slate-950">{{ $row['title'] }}</h3>
-                        <p class="mt-3 text-sm leading-8 text-slate-600">{{ $row['body'] }}</p>
-                    </article>
-                @endforeach
-            </div>
-        </div>
-    </section>
-
-    <section class="bg-[#F5F8FD] px-4 py-20 md:px-8 md:py-24 lg:px-10">
-        <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
-            <div>
-                <p class="text-sm font-bold text-[#2C67C9]">کاربردهای رایج</p>
-                <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">برای پروژه امروز، با امکان رشد فردا.</h2>
-                <p class="mt-5 leading-8 text-slate-600">از یک سایت ساده تا سرویس های فنی تر، می توانید با منابع مشخص شروع کنید و بعد متناسب با رشد پروژه تصمیم بگیرید.</p>
-                <a href="{{ route('solutions') }}" class="mt-8 inline-flex rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-[transform,background-color,border-color,color,box-shadow] hover:border-[#B9D6FF] hover:bg-[#F7FBFF] hover:text-[#2C67C9] active:scale-[0.96]">دیدن کاربردها</a>
-            </div>
-
-            <div class="grid gap-4 sm:grid-cols-2">
-                @foreach ($useCases as $case)
-                    <article class="rounded-[1.75rem] border border-slate-200 bg-[#FBFDFF] p-6 shadow-sm shadow-slate-200/40 transition hover:border-[#B9D6FF] hover:shadow-lg hover:shadow-slate-200/60">
-                        <div class="mb-5 grid size-10 place-items-center rounded-2xl bg-[#EEF5FF] text-[#2C67C9]">
-                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <article>
+                        <div class="flex items-center justify-start gap-1 text-[#002F71]">
+                            <img src="{{ asset('assets/icons/figma/tick-circle.svg') }}" alt="" class="size-6" aria-hidden="true">
+                            <h3 class="text-xl font-bold leading-[30px]">{{ $row['title'] }}</h3>
                         </div>
-                        <h3 class="text-xl text-slate-950">{{ $case['title'] }}</h3>
-                        <p class="mt-3 text-sm leading-7 text-slate-600">{{ $case['body'] }}</p>
+                        <p class="mt-1 text-xl leading-9 text-[#002355]">{{ $row['body'] }}</p>
                     </article>
                 @endforeach
             </div>
@@ -318,38 +283,51 @@
     </section>
 
     <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
-        <div class="mx-auto max-w-7xl">
-            <div class="max-w-3xl">
-                <p class="text-sm font-bold text-[#2C67C9]">مسیر شروع</p>
-                <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">از انتخاب پلن تا اتصال، کوتاه و روشن.</h2>
-                <p class="mt-5 leading-8 text-slate-600">فرایند خرید طوری طراحی شده که بدون تماس های طولانی و توضیح های پیچیده بتوانید سفارش را ثبت و پیگیری کنید.</p>
+        <div class="mx-auto grid max-w-[1320px] gap-10 lg:grid-cols-[422px_1fr] lg:items-start">
+            <div class="text-right">
+                <h2 class="text-[28px] font-bold leading-[42px] text-[#001739]">کاربردهای رایج</h2>
+                <p class="mt-1 text-[22px] leading-10 text-[#000C1C]">از یک سایت ساده تا سرویس‌های فنی‌تر، می‌توانید با منابع مشخص شروع کنید و بعد متناسب با رشد پروژه تصمیم بگیرید.</p>
+                <a href="{{ route('solutions') }}" class="mt-5 inline-flex h-12 items-center justify-center rounded-lg border border-[#0069FF] px-8 text-sm text-[#0069FF] transition hover:bg-[#EEF5FF]">راهکارهای ما</a>
             </div>
 
-            <div class="mt-10 grid gap-4 md:grid-cols-3">
-                @foreach ($steps as $step)
-                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-6">
-                        <p class="text-sm font-bold text-[#2C67C9]">{{ $step['number'] }}</p>
-                        <h3 class="mt-7 text-2xl text-slate-950">{{ $step['title'] }}</h3>
-                        <p class="mt-4 text-sm leading-8 text-slate-600">{{ $step['body'] }}</p>
+            <div class="grid gap-2 sm:grid-cols-2">
+                @foreach ($useCases as $case)
+                    <article class="flex min-h-[170px] flex-col items-end justify-center rounded-2xl border border-[#C6DEFF] bg-[#FAFCFF] px-6 py-3 text-right {{ $loop->last ? 'border-[#003A8E] bg-white' : '' }}">
+                        <img src="{{ asset('assets/icons/figma/'.$case['icon']) }}" alt="" class="size-[46px]" aria-hidden="true">
+                        <h3 class="mt-1 text-2xl font-bold leading-9 text-[#001739]">{{ $case['title'] }}</h3>
+                        <p class="mt-1 text-lg leading-8 text-[#002355]">منابع، قیمت و تعداد IP را می‌بینید و پلن مناسب پروژه را انتخاب می‌کنید.</p>
                     </article>
                 @endforeach
             </div>
         </div>
     </section>
 
-    <section class="bg-[#F5F8FD] px-4 py-20 md:px-8 md:py-24 lg:px-10">
-        <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.75fr_1.25fr]">
-            <div>
-                <p class="text-sm font-bold text-[#2C67C9]">قبل از پرداخت</p>
-                <h2 class="mt-3 text-3xl leading-tight text-slate-950 md:text-4xl">همه چیز باید قابل فهم باشد.</h2>
-                <p class="mt-5 leading-8 text-slate-600">منابع، دسترسی، پشتیبانی و هزینه ماهانه باید قبل از خرید برای شما روشن باشد؛ بدون اصطلاحات اضافه و شرط های مبهم.</p>
+    <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
+        <div class="mx-auto max-w-[1320px] rounded-[28px] border border-[#AACDFF] bg-[#002F71] px-6 py-8 text-right text-[#FAFCFF] md:px-16 md:py-6">
+            <h2 class="text-[28px] font-bold leading-[42px]">مسیر شروع شما از اینجاست:</h2>
+            <div class="mt-5 grid gap-4">
+                @foreach ($steps as $step)
+                    <p class="text-lg leading-8 md:text-[22px] md:leading-10"><strong class="font-bold">{{ $step['title'] }}:</strong> {{ $step['body'] }}</p>
+                @endforeach
             </div>
+            <div class="mt-6 flex flex-col gap-4 border-t border-[#AACDFF]/70 pt-5 md:flex-row md:items-center md:justify-between">
+                <p class="text-xl font-bold leading-9">اگر آماده خرید هستید، ثبت نام کنید. اگر هنوز در حال مقایسه هستید، پلن‌ها و قیمت‌ها را کامل ببینید.</p>
+                <a href="{{ route('contact') }}" class="inline-flex h-14 shrink-0 items-center justify-center rounded-lg bg-[#E3EEFF] px-10 text-sm text-[#0069FF] transition hover:bg-white">مشاوره</a>
+            </div>
+        </div>
+    </section>
 
-            <div class="grid gap-4 sm:grid-cols-2">
+    <section class="bg-white px-4 py-20 md:px-8 md:py-24 lg:px-10">
+        <div class="mx-auto max-w-[1320px] text-right">
+            <div class="max-w-[1120px] mr-auto">
+                <h2 class="text-[28px] font-bold leading-[42px] text-[#001739]">قبل از پرداخت همه چیز باید قابل فهم باشد</h2>
+                <p class="mt-1 text-[22px] leading-10 text-[#000C1C]">از یک سایت ساده تا سرویس‌های فنی‌تر، می‌توانید با منابع مشخص شروع کنید و بعد متناسب با رشد پروژه تصمیم بگیرید.</p>
+            </div>
+            <div class="mt-8 grid gap-7 md:grid-cols-4">
                 @foreach ($operations as $item)
-                    <article class="rounded-[1.75rem] border border-slate-200 bg-[#F7FBFF] p-6">
-                        <h3 class="text-xl text-slate-950">{{ $item['title'] }}</h3>
-                        <p class="mt-4 text-sm leading-7 text-slate-600">{{ $item['body'] }}</p>
+                    <article class="text-center">
+                        <h3 class="border-b border-[#003A8E] pb-2 text-2xl font-bold leading-9 text-[#001739]">{{ $item['title'] }}</h3>
+                        <p class="mt-2 text-lg leading-8 text-[#001739]">{{ $item['body'] }}</p>
                     </article>
                 @endforeach
             </div>

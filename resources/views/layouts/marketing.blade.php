@@ -50,6 +50,33 @@
                 padding-top: 7rem;
             }
         }
+
+        /* Shared visual language for the Figma landing and pricing frames. */
+        .figma-marketing {
+            font-family: 'Ravi FaNum', 'IRANSans', 'Dana', 'Vazirmatn', sans-serif;
+        }
+
+        .figma-marketing header {
+            top: 2.5rem;
+        }
+
+        .figma-marketing.landing-page .marketing-main>section:first-child {
+            padding-top: 0;
+        }
+
+        .figma-marketing.pricing-page .marketing-main>section:first-child {
+            padding-top: 184px;
+        }
+
+        @media (max-width: 1023px) {
+            .figma-marketing header {
+                top: 0;
+            }
+
+            .figma-marketing.pricing-page .marketing-main>section:first-child {
+                padding-top: 112px;
+            }
+        }
     </style>
 </head>
 
@@ -95,14 +122,14 @@
         window.addEventListener('scroll', () => scrolled = window.scrollY > 12, { passive: true })"
         @keydown.escape.window="menuOpen = false; solutionsOpen = false">
         <header
-            :class="scrolled ? 'h-14 border-slate-200/80 bg-white/95 shadow-lg shadow-slate-950/5' :
-                'h-[4.75rem] border-transparent bg-transparent'"
-            class="fixed inset-x-0 top-0 z-50 border-b border-transparent backdrop-blur transition-[height,background-color,border-color,box-shadow] duration-300"
+            :class="scrolled ? '!top-0 h-14 border-slate-200/80 bg-white/95 shadow-lg shadow-slate-950/5' :
+                'h-14 border-transparent bg-transparent'"
+            class="fixed inset-x-0 top-0 z-50 border-b border-transparent backdrop-blur transition-[top,height,background-color,border-color,box-shadow] duration-300"
             @mouseleave="solutionsOpen = false">
-            <nav class="relative mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
+            <nav class="relative mx-auto flex h-full max-w-[1320px] items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
                 <a href="{{ route('home') }}" class="flex min-w-0 items-center" aria-label="آویاتو">
                     <span class="relative block h-10 w-24 sm:w-40" :class="scrolled ? 'h-9 w-20 sm:w-40' : 'h-10 w-24 sm:w-40'">
-                        <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
+                        <img src="{{ asset('assets/images/figma-aviato-logo.png') }}" alt="آویاتو"
                             x-show="scrolled || ! {{ $darkHeaderTop ? 'true' : 'false' }}"
                             :class="scrolled ? 'h-9 w-20' : 'h-10 w-24'"
                             class="absolute inset-0 h-10 w-24 object-contain object-right transition-[height,width] sm:w-40">
@@ -149,8 +176,8 @@
                         ورود
                     </a>
                     <a href="{{ route('customer.register') }}"
-                        class="hidden items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] sm:inline-flex sm:px-4 sm:py-2 sm:text-sm">
-                        ثبت نام مشتری
+                        class="hidden items-center justify-center rounded-md bg-[#0069FF] px-3 py-2 text-xs text-white shadow-sm shadow-[#0069FF]/20 transition hover:bg-[#0050D0] sm:inline-flex sm:px-4 sm:py-2 sm:text-sm">
+                        ثبت نام/عضویت
                     </a>
                     <button type="button" @click="menuOpen = true"
                         :class="scrolled ?
@@ -226,7 +253,7 @@
                 x-transition:leave-end="translate-x-full opacity-0"
                 class="absolute right-0 top-0 flex h-dvh w-[min(21rem,88vw)] flex-col border-l border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/15">
                 <div class="flex items-center justify-between gap-4">
-                    <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
+                    <img src="{{ asset('assets/images/figma-aviato-logo.png') }}" alt="آویاتو"
                         class="h-10 w-28 object-contain object-right">
                     <button type="button" @click="menuOpen = false" class="grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50" aria-label="بستن منو">
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -269,7 +296,7 @@
         <footer class="border-t border-slate-200 bg-[#F5F8FD] px-4 py-10 text-slate-700 md:px-8 md:py-12 lg:px-10">
             <div class="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.35fr_0.65fr_0.65fr] md:gap-12">
                 <div>
-                    <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو"
+                    <img src="{{ asset('assets/images/figma-aviato-logo.png') }}" alt="آویاتو"
                         class="h-12 w-40 object-contain object-right">
                     <p class="mt-4 max-w-sm text-base font-black leading-8 text-slate-950">
                         آویاتو، زیرساخت ساده و قابل اتکا برای اجرای سرویس های آنلاین.
