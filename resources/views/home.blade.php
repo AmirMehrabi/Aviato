@@ -63,21 +63,21 @@
 @section('content')
     <section id="top" class="landing-hero relative isolate flex min-h-[496px] items-end overflow-hidden px-4 pb-16 pt-28 md:px-8 md:pb-[106px] md:pt-0 lg:px-10">
         <div aria-hidden="true" class="absolute inset-0 -z-20 bg-[#EDF4FE]"></div>
-        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center" style="background-image: linear-gradient(90deg, rgba(237,244,254,.18), rgba(237,244,254,.76) 72%), url('{{ asset('assets/images/figma-landing-cloud-hero.png') }}');"></div>
+        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center" style="background-image: linear-gradient(to bottom, rgba(255,255,255,0) 58%, rgba(255,255,255,.78) 84%, #fff 100%), linear-gradient(90deg, rgba(237,244,254,.18), rgba(237,244,254,.76) 72%), url('{{ asset('assets/images/figma-landing-cloud-hero.png') }}');"></div>
 
         <div class="mx-auto w-full max-w-[1320px]">
             <div class="mx-auto max-w-[872px] text-center md:ml-auto md:mr-0 md:text-right">
-                <h1 class="text-3xl font-bold leading-[1.5] text-[#000C1C] md:text-[32px]">
+                <h1 class="text-4xl font-bold leading-[1.35] text-[#000C1C] md:text-[44px]">
                     زیرساختی پایدار، برای <span class="text-[#0069FF]">اوجی</span> بی‌پایان
                 </h1>
-                <p class="mx-auto mt-4 max-w-2xl text-base leading-8 text-[#000C1C] md:mx-0 md:mt-6 md:max-w-none md:text-2xl md:leading-[44px]">
+                <p class="mx-auto mt-4 max-w-2xl text-lg leading-8 text-[#000C1C] md:mx-0 md:mt-6 md:max-w-none md:text-[24px] md:leading-[44px]">
                   از اولین راه‌اندازی تا اوج رشد، سرورهایی پایدار برای سرویس‌های همیشه‌روشن.
                 </p>
                 <div class="mt-4 flex flex-col justify-center gap-3 sm:flex-row md:mt-6 md:justify-start md:gap-4">
-                    <a href="#plans" class="inline-flex h-12 items-center justify-center rounded-lg bg-[#0069FF] px-8 text-sm font-bold text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
+                    <a href="#plans" class="inline-flex h-12 items-center justify-center rounded-lg bg-[#0069FF] px-8 text-base font-bold text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
                         مشاهده پلن‌ها
                     </a>
-                    <a href="{{ route('contact') }}" class="inline-flex h-12 items-center justify-center rounded-lg border border-[#0069FF] bg-white/70 px-8 text-sm font-bold text-[#0069FF] backdrop-blur transition hover:bg-white">
+                    <a href="{{ route('contact') }}" class="inline-flex h-12 items-center justify-center rounded-lg border border-[#0069FF] bg-white/70 px-8 text-base font-bold text-[#0069FF] backdrop-blur transition hover:bg-white">
                         مشاوره رایگان
                     </a>
                 </div>
@@ -93,7 +93,7 @@
                     <h2 class="text-2xl font-bold leading-9 text-[#000C1C]">
                         همراهان آویاتو
                     </h2>
-                    <p class="mt-1 leading-8 text-[#000C1C]">
+                    <p class="mt-1 text-lg leading-8 text-[#000C1C]">
                         آویاتو میزبان پروژه هایی است که برای فروش، پشتیبانی، توسعه و کار روزانه به ماشین مجازی پایدار نیاز دارند.
                     </p>
                 </div>
@@ -104,8 +104,8 @@
                             <span class="flex h-16 w-full items-center justify-center">
                                 <img src="{{ asset($customer['logo']) }}" alt="{{ $customer['name'] }}" class="max-h-14 max-w-44 object-contain">
                             </span>
-                            <span class="mt-3 text-lg text-slate-950">{{ $customer['name'] }}</span>
-                            <span class=" text-sm text-slate-500" dir="ltr">{{ parse_url($customer['url'], PHP_URL_HOST) }}</span>
+                            <span class="mt-3 text-xl text-slate-950">{{ $customer['name'] }}</span>
+                            <span class="text-base text-slate-500" dir="ltr">{{ parse_url($customer['url'], PHP_URL_HOST) }}</span>
                         </a>
                     @endforeach
                 </div>
@@ -116,12 +116,11 @@
     <section id="plans" class="landing-plans bg-white px-4 py-14 md:px-8 md:py-20 lg:mt-[150px] lg:px-10">
         <div class="mx-auto grid max-w-[1320px] gap-8 lg:grid-cols-[449px_minmax(0,861px)] lg:items-start lg:gap-[10px]">
             <div class="text-right lg:pt-10">
-                <a href="{{ route('pricing') }}" class="inline-flex flex-row-reverse items-center gap-2 text-[28px] font-bold leading-[42px] text-[#0046AA]">
+                <a href="{{ route('pricing') }}" class="inline-flex flex-row-reverse items-center gap-2 text-[30px] font-bold leading-[44px] text-[#0046AA] md:text-[32px]">
                     <span aria-hidden="true" class="text-2xl">←</span><span>با یک پلن شروع کنید</span>
                 </a>
-                <p class="mt-4 text-[18px] leading-8 text-[#000C1C]">منابع و هزینه ماهانه قبل از خرید کاملا مشخص است؛ انتخاب پلن نباید پیچیده باشد.
-آویاتو میزبان پروژه هایی است که برای فروش، پشتیبانی، توسعه و کار روزانه به ماشین مجازی پایدار نیاز دارند..</p>
-                <a href="{{ route('pricing') }}" class="mt-5 inline-flex h-10 items-center justify-center rounded-lg border border-[#0069FF] px-6 text-sm text-[#0069FF] transition hover:bg-[#EEF5FF]">مشاهده همه پلن‌ها</a>
+                <p class="mt-4 text-lg leading-8 text-[#000C1C] md:text-xl">منابع، قیمت و مدت استفاده را شفاف می‌بینید تا با خیال راحت، پلنی متناسب با نیاز پروژه‌تان انتخاب کنید.</p>
+                <a href="{{ route('pricing') }}" class="mt-5 inline-flex h-11 items-center justify-center rounded-lg border border-[#0069FF] px-6 text-base text-[#0069FF] transition hover:bg-[#EEF5FF]">مشاهده همه پلن‌ها</a>
             </div>
 
             @if ($marketingBundles->isNotEmpty())
@@ -129,10 +128,10 @@
                     @foreach ($marketingBundles->take(3) as $bundle)
                         @php($isRecommended = $loop->index === $recommendedIndex)
                         <a href="{{ route('pricing') }}" class="grid min-h-[126px] grid-cols-3 items-center gap-3 rounded-lg border border-[#C6DEFF] bg-[#FAFCFF] px-4 py-5 text-right transition hover:border-[#0046AA] {{ $isRecommended ? 'border-2 border-[#0046AA] bg-[#EFEFEF]' : '' }} sm:grid-cols-[1fr_1fr_1fr_auto] sm:gap-5 sm:px-6" dir="rtl">
-                            <span class="col-span-3 min-w-0 sm:col-span-1"><strong class="block text-lg font-bold text-[#000C1C] md:text-2xl">{{ $bundle->name }}</strong><span class="mt-1 block text-xs text-[#5A5A5A] md:text-base">{{ $wallets->format($bundle->monthly_price) }} / ماهانه</span></span>
-                            <span class="text-center text-sm text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/cpu.svg') }}" alt="" class="mx-auto mb-1 size-6" aria-hidden="true">{{ $bundle->cpu_cores }} vCPU</span>
-                            <span class="text-center text-sm text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/ram.svg') }}" alt="" class="mx-auto mb-1 size-6" aria-hidden="true">{{ $bundle->ram_gb }} GB RAM</span>
-                            <span class="text-center text-sm text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="mx-auto mb-1 size-6" aria-hidden="true">{{ $bundle->disk_gb }} GB</span>
+                            <span class="col-span-3 min-w-0 sm:col-span-1"><strong class="block text-xl font-bold text-[#000C1C] md:text-2xl">{{ $bundle->name }}</strong><span class="mt-1 block text-sm text-[#5A5A5A] md:text-base">{{ $wallets->format($bundle->monthly_price) }} / ماهانه</span></span>
+                            <span class="text-center text-base text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/cpu.svg') }}" alt="" class="mx-auto mb-1 size-6" aria-hidden="true">{{ $bundle->cpu_cores }} vCPU</span>
+                            <span class="text-center text-base text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/ram.svg') }}" alt="" class="mx-auto mb-1 size-6" aria-hidden="true">{{ $bundle->ram_gb }} GB RAM</span>
+                            <span class="text-center text-base text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="mx-auto mb-1 size-6" aria-hidden="true">{{ $bundle->disk_gb }} GB</span>
                         </a>
                     @endforeach
                 </div>
@@ -147,7 +146,7 @@
             <div class="text-right lg:pt-1">
                 <h2 class="text-[28px] font-bold leading-[42px] text-[#001739]">کاربردهای رایج</h2>
                 <p class="mt-1 text-[20px] leading-9 text-[#000C1C]">برای راه‌اندازی انواع سرویس‌ها، منابع آماده و پایدار آویاتو را در اختیار دارید.</p>
-                <a href="{{ route('solutions') }}" class="mt-4 inline-flex h-10 items-center justify-center rounded-lg border border-[#0069FF] px-6 text-sm text-[#0069FF] transition hover:bg-[#EEF5FF]">راهکارهای ما</a>
+                <a href="{{ route('solutions') }}" class="mt-4 inline-flex h-11 items-center justify-center rounded-lg border border-[#0069FF] px-6 text-base text-[#0069FF] transition hover:bg-[#EEF5FF]">راهکارهای ما</a>
             </div>
 
             <div class="grid gap-2 sm:grid-cols-2">
@@ -155,7 +154,7 @@
                     <article dir="rtl" class="flex min-h-[162px] flex-col items-start justify-center rounded-lg border border-[#C6DEFF] bg-[#FAFCFF] px-6 py-3 text-right {{ $loop->last ? 'border-[#003A8E] bg-white' : '' }}">
                         <img src="{{ asset('assets/icons/figma/'.$case['icon']) }}" alt="" class="size-[46px]" aria-hidden="true">
                         <h3 class="mt-1 text-xl font-bold leading-8 text-[#001739]">{{ $case['title'] }}</h3>
-                        <p class="mt-1 text-sm leading-6 text-[#002355]">مناسب برای شروع و توسعه سرویس‌های آنلاین با منابع پایدار.</p>
+                        <p class="mt-1 text-base leading-7 text-[#002355]">مناسب برای شروع و توسعه سرویس‌های آنلاین با منابع پایدار.</p>
                     </article>
                 @endforeach
             </div>
@@ -170,9 +169,9 @@
                     <article class="min-h-[70px]">
                         <div class="flex items-center justify-start gap-1 text-[#002F71]">
                             <img src="{{ asset('assets/icons/figma/tick-circle.svg') }}" alt="" class="size-6" aria-hidden="true">
-                            <h3 class="text-lg font-bold leading-[30px]">{{ $row['title'] }}</h3>
+                            <h3 class="text-xl font-bold leading-8">{{ $row['title'] }}</h3>
                         </div>
-                        <p class="mt-0.5 text-base leading-7 text-[#002355]">{{ $row['body'] }}</p>
+                        <p class="mt-0.5 text-lg leading-8 text-[#002355]">{{ $row['body'] }}</p>
                     </article>
                 @endforeach
             </div>
@@ -181,12 +180,12 @@
 
     <section class="landing-before-payment mt-14 bg-white px-4 lg:mt-[150px] md:px-8 lg:px-10">
         <div class="mx-auto max-w-[1320px] text-right">
-            <h2 class="text-[24px] font-bold leading-9 text-[#001739]">قبل از پرداخت، همه چیز باید شفاف باشد</h2>
+            <h2 class="text-[26px] font-bold leading-10 text-[#001739] md:text-[28px]">قبل از پرداخت، همه چیز باید شفاف باشد</h2>
             <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0">
                 @foreach ($operations as $item)
                     <article class="px-3 text-center">
-                        <h3 class="border-b border-[#003A8E] pb-2 text-lg font-bold leading-8 text-[#001739]">{{ $item['title'] }}</h3>
-                        <p class="mt-2 text-sm leading-6 text-[#001739]">{{ $item['body'] }}</p>
+                        <h3 class="border-b border-[#003A8E] pb-2 text-xl font-bold leading-8 text-[#001739]">{{ $item['title'] }}</h3>
+                        <p class="mt-2 text-base leading-7 text-[#001739]">{{ $item['body'] }}</p>
                     </article>
                 @endforeach
             </div>
@@ -194,12 +193,12 @@
     </section>
 
     <section class="landing-start mt-14 bg-white px-4 lg:mt-[150px] md:px-8 lg:px-10">
-        <div class="mx-auto flex max-w-[1320px] flex-col justify-between gap-6 rounded-[28px] bg-[#003A8E] p-5 text-right text-[#FAFCFF] shadow-lg shadow-[#003A8E]/10 md:p-7">
+        <div class="mx-auto flex min-h-[376px] max-w-[1320px] flex-col justify-between gap-6 rounded-[28px] bg-[#003A8E] p-5 text-right text-[#FAFCFF] shadow-lg shadow-[#003A8E]/10 md:p-7">
             <div>
-                <h2 class="text-xl font-bold leading-8">مسیر شروع شما از اینجاست:</h2>
+                <h2 class="text-2xl font-bold leading-9">مسیر شروع شما از اینجاست:</h2>
                 <div class="mt-3 grid gap-2">
                     @foreach ($steps as $step)
-                    <div dir="rtl" class="flex items-center gap-1 text-right text-sm leading-7 md:text-base">
+                    <div dir="rtl" class="flex items-center gap-2 text-right text-base leading-7 md:text-lg">
                         <img src="{{ asset('assets/icons/figma/'.$step['icon']) }}" alt="" aria-hidden="true" class="shrink-0">
                         <p class="min-w-0 flex-1"><strong class="font-bold">{{ $step['title'] }}:</strong> {{ $step['body'] }}</p>
                     </div>
@@ -207,8 +206,8 @@
                 </div>
             </div>
             <div class="flex flex-col gap-4 border-t border-[#AACDFF]/70 pt-4 md:flex-row md:items-center md:justify-between">
-                <p class="text-sm font-bold leading-7">برای انتخاب پلن مناسب یا شروع سفارش، تیم آویاتو همراه شماست.</p>
-                <a href="{{ route('contact') }}" class="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-[#E3EEFF] px-8 text-sm text-[#0069FF] transition hover:bg-white">مشاوره رایگان</a>
+                <p class="text-base font-bold leading-7 md:text-lg">برای انتخاب پلن مناسب یا شروع سفارش، تیم آویاتو همراه شماست.</p>
+                <a href="{{ route('contact') }}" class="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-[#E3EEFF] px-8 text-base text-[#0069FF] transition hover:bg-white">مشاوره رایگان</a>
             </div>
         </div>
     </section>
@@ -218,29 +217,29 @@
         <div class="mx-auto max-w-[1320px]">
             <div class="flex items-end justify-between gap-5">
                 <div class="text-right">
-                    <h2 class="text-[24px] font-bold leading-9 text-[#001739]">بلاگ آویاتو</h2>
-                    <p class="mt-1 text-base leading-7 text-[#000C1C]">آخرین مقاله‌ها و راهنماها برای راه‌اندازی سرویس‌های آنلاین.</p>
+                    <h2 class="text-[28px] font-bold leading-10 text-[#001739]">بلاگ آویاتو</h2>
+                    <p class="mt-1 text-lg leading-8 text-[#000C1C]">آخرین مقاله‌ها و راهنماها برای راه‌اندازی سرویس‌های آنلاین.</p>
                 </div>
-                <a href="{{ route('blog') }}" class="shrink-0 text-sm font-bold text-[#0069FF]">همه مقاله‌ها ←</a>
+                <a href="{{ route('blog') }}" class="shrink-0 text-base font-bold text-[#0069FF]">همه مقاله‌ها ←</a>
             </div>
 
             <div class="mt-6 grid gap-4 md:grid-cols-3">
                 @foreach ($latestPosts as $post)
                     <a href="{{ route('blog.show', $post['slug']) }}" class="group flex min-h-[270px] flex-col rounded-lg border border-[#C6DEFF] bg-white p-5 text-right transition hover:-translate-y-1 hover:shadow-lg">
-                        <div class="flex items-center justify-between gap-3 text-xs text-[#0069FF]">
+                        <div class="flex items-center justify-between gap-3 text-sm text-[#0069FF]">
                             <span>{{ $post['date_display'] }}</span>
                             <span>{{ $post['category'] }}</span>
                         </div>
 
-                        <h3 class="mt-5 text-base font-bold leading-7 text-[#001739] transition group-hover:text-[#2C67C9]">
+                        <h3 class="mt-5 text-lg font-bold leading-8 text-[#001739] transition group-hover:text-[#2C67C9] md:text-xl">
                             {{ $post['title'] }}
                         </h3>
 
-                        <p class="mt-3 flex-1 text-sm leading-7 text-[#002355]">
+                        <p class="mt-3 flex-1 text-base leading-7 text-[#002355]">
                             {{ $post['excerpt'] }}
                         </p>
 
-                        <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
+                        <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm text-slate-500">
                             <span>{{ $post['reading_time'] }} مطالعه</span>
                             <span class="text-[#0069FF]">ادامه مطلب ←</span>
                         </div>
@@ -251,5 +250,4 @@
     </section>
     @endif
 
-    </section>
 @endsection
