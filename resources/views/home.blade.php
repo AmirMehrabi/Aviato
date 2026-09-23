@@ -7,7 +7,7 @@
     $activePage = 'home';
 
     $marketingBundles = ($bundles ?? collect())->values();
-    $recommendedIndex = min(1, max(0, $marketingBundles->count() - 1));
+    $recommendedIndex = $marketingBundles->count() > 1 ? 1 : null;
 
     $planMeta = [
         ['label' => 'شروع سبک', 'use' => 'برای سایت، وردپرس و پروژه های کوچک'],
@@ -128,10 +128,18 @@
                     @foreach ($marketingBundles->take(3) as $bundle)
                         @php($isRecommended = $loop->index === $recommendedIndex)
                         <a href="{{ route('pricing') }}" class="grid min-h-[126px] grid-cols-3 items-center gap-3 rounded-lg border border-[#C6DEFF] bg-[#FAFCFF] px-4 py-5 text-right transition hover:border-[#0046AA] {{ $isRecommended ? 'border-2 border-[#0046AA] bg-[#EFEFEF]' : '' }} sm:grid-cols-[1fr_1fr_1fr_auto] sm:gap-5 sm:px-6" dir="rtl">
-                            <span class="col-span-3 min-w-0 sm:col-span-1"><strong class="block text-xl font-bold text-[#000C1C] md:text-2xl">{{ $bundle->name }}</strong><span class="mt-1 block text-sm text-[#5A5A5A] md:text-base">{{ $wallets->format($bundle->monthly_price) }} / ماهانه</span></span>
-                            <span class="text-center text-base text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/cpu.svg') }}" alt="" class="mx-auto mb-1 size-6" aria-hidden="true">{{ $bundle->cpu_cores }} vCPU</span>
-                            <span class="text-center text-base text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/ram.svg') }}" alt="" class="mx-auto mb-1 size-6" aria-hidden="true">{{ $bundle->ram_gb }} GB RAM</span>
-                            <span class="text-center text-base text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="mx-auto mb-1 size-6" aria-hidden="true">{{ $bundle->disk_gb }} GB</span>
+                            <span class="col-span-3 min-w-0 sm:col-span-1">
+                                <span class="flex flex-wrap items-center gap-2">
+                                    <strong class="text-xl font-bold text-[#000C1C] md:text-2xl">{{ $bundle->name }}</strong>
+                                    @if ($isRecommended)
+                                        <span class="whitespace-nowrap rounded-full bg-[#F1396B] px-2.5 py-1 text-xs leading-5 text-white">پلن پیشنهادی</span>
+                                    @endif
+                                </span>
+                                <span class="mt-1 block text-sm text-[#5A5A5A] md:text-base">{{ $wallets->format($bundle->monthly_price) }} / ماهانه</span>
+                            </span>
+                            <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/cpu.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->cpu_cores }} vCPU</span></span>
+                            <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/ram.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->ram_gb }} GB</span></span>
+                            <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->disk_gb }} GB</span></span>
                         </a>
                     @endforeach
                 </div>

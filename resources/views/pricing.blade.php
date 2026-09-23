@@ -6,10 +6,10 @@
 @php
     $activePage = 'pricing';
     $pricingBundles = ($bundles ?? collect())->values();
-    $featuredIndex = $pricingBundles->count() > 1 ? 1 : 0;
+    $featuredIndex = $pricingBundles->count() > 1 ? 1 : null;
     $meta = [
         ['badge' => 'برای شروع آسان', 'fit' => 'سایت، وردپرس و پروژه های کوچک'],
-        ['badge' => 'پیشنهاد ما', 'fit' => 'فروشگاه، اپلیکیشن و سرویس های در حال رشد'],
+        ['badge' => 'پلن پیشنهادی', 'fit' => 'فروشگاه، اپلیکیشن و سرویس های در حال رشد'],
         ['badge' => 'برای کارهای جدی تر', 'fit' => 'دیتابیس، پردازش و سایت های پربازدید'],
     ];
 @endphp
@@ -55,19 +55,19 @@
                             <div aria-hidden="true"></div>
                         </div>
                         @foreach ($pricingBundles as $bundle)
-                            <div class="grid min-h-[126px] grid-cols-[minmax(180px,1.2fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(190px,1.35fr)_minmax(170px,1.2fr)_64px] items-center border-b border-[#C6DEFF] text-center last:border-b-0 {{ $loop->index === $featuredIndex ? 'bg-[#EFEFEF]' : 'bg-[#FAFCFF]' }}">
+                            <div class="grid min-h-[126px] grid-cols-[minmax(180px,1.2fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(190px,1.35fr)_minmax(170px,1.2fr)_64px] items-center border-b border-[#C6DEFF] text-center last:border-b-0 {{ $loop->index === $featuredIndex ? 'bg-[#EFEFEF] ring-2 ring-inset ring-[#0046AA]' : 'bg-[#FAFCFF]' }}">
                                 <div class="px-4 text-right">
                                     <div class="flex flex-wrap items-center justify-start gap-2">
                                         <span class="text-xl font-bold leading-9 text-[#000C1C]">{{ $bundle->name }}</span>
                                         @if ($loop->index === $featuredIndex)
-                                            <span class="rounded-full bg-[#F1396B] px-3 py-1 text-xs leading-5 text-white">پیشنهاد ما</span>
+                                            <span class="whitespace-nowrap rounded-full bg-[#F1396B] px-3 py-1 text-xs leading-5 text-white">پلن پیشنهادی</span>
                                         @endif
                                     </div>
                                     <p class="line-clamp-2 text-sm leading-6 text-[#5A5A5A]">{{ $bundle->description ?: ($meta[$loop->index]['fit'] ?? 'برای پروژه‌های کوچک') }}</p>
                                 </div>
-                                <div class="flex items-center justify-center gap-1 px-2 text-lg text-[#5A5A5A]" dir="ltr"><img src="{{ asset('assets/icons/figma/cpu.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->cpu_cores }} vCPU</span></div>
-                                <div class="flex items-center justify-center gap-1 px-2 text-lg text-[#5A5A5A]" dir="ltr"><img src="{{ asset('assets/icons/figma/ram.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->ram_gb }}GB</span></div>
-                                <div class="flex items-center justify-center gap-1 px-2 text-lg text-[#5A5A5A]" dir="ltr"><img src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->disk_gb }}GB</span></div>
+                                <div class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap px-2 text-lg text-[#5A5A5A]" dir="ltr"><img src="{{ asset('assets/icons/figma/cpu.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->cpu_cores }} vCPU</span></div>
+                                <div class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap px-2 text-lg text-[#5A5A5A]" dir="ltr"><img src="{{ asset('assets/icons/figma/ram.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->ram_gb }}GB</span></div>
+                                <div class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap px-2 text-lg text-[#5A5A5A]" dir="ltr"><img src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->disk_gb }}GB</span></div>
                                 <div class="px-2 text-lg font-bold text-[#003A8E]">{{ $wallets->format($bundle->monthly_price) }}</div>
                                 <div class="px-2 text-base text-[#5A5A5A]">{{ $wallets->format(round($bundle->monthly_price / 720)) }}</div>
                                 <a href="{{ route('customer.register') }}" aria-label="خرید پلن {{ $bundle->name }}" class="mx-auto flex size-8 items-center justify-center text-[#0069FF] transition hover:translate-x-[-2px]">
