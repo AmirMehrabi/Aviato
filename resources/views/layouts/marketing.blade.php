@@ -45,7 +45,7 @@
             padding-top: 6.5rem;
         }
 
-        @media (min-width: 768px) {
+        @media (min-width: 1024px) {
             .marketing-main>section:first-child {
                 padding-top: 7rem;
             }
@@ -75,6 +75,46 @@
 
             .figma-marketing.pricing-page .marketing-main>section:first-child {
                 padding-top: 112px;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .figma-marketing.landing-page .landing-customers {
+                margin-top: 18px;
+                min-height: 184px;
+            }
+
+            .figma-marketing.landing-page .landing-plans {
+                margin-top: 150px;
+                min-height: 388px;
+                padding-top: 10px;
+                padding-bottom: 0;
+            }
+
+            .figma-marketing.landing-page .landing-usage {
+                min-height: 342px;
+            }
+
+            .figma-marketing.landing-page .landing-why {
+                min-height: 316px;
+            }
+
+            .figma-marketing.landing-page .landing-before-payment {
+                min-height: 210px;
+            }
+
+            .figma-marketing.landing-page .landing-start {
+                min-height: 376px;
+            }
+
+            .figma-marketing.landing-page .landing-blog {
+                min-height: 424px;
+            }
+
+            .figma-marketing.landing-page footer.figma-marketing-footer {
+                margin-top: 144px;
+                padding-top: 54px;
+                padding-bottom: 22px;
             }
         }
     </style>
@@ -293,6 +333,38 @@
             @yield('content')
         </main>
 
+        @if (in_array($activePage, ['home', 'pricing'], true))
+        <footer class="figma-marketing-footer mt-14 bg-[#FAFCFF] px-4 py-8 text-[#000C1C] md:min-h-[308px] md:px-8 md:pt-[54px] md:pb-[22px] lg:px-10">
+            <div class="mx-auto max-w-[1320px]">
+                <div dir="ltr" class="grid items-center gap-8 lg:grid-cols-[109px_minmax(0,1fr)_252px] lg:gap-8">
+                    <a href="https://trustseal.enamad.ir/?id=741993&Code=nS8E7FstzvRwYUnf48e4uvEM0kHHqTGU" target="_blank" rel="noopener noreferrer" class="mx-auto inline-flex h-[142px] w-[109px] items-center justify-center sm:mx-0" aria-label="نماد اعتماد الکترونیکی">
+                        <img src="{{ asset('assets/images/figma-enamad.png') }}" alt="نماد اعتماد الکترونیکی" class="size-full object-cover">
+                    </a>
+
+                    <nav dir="rtl" aria-label="پاورقی" class="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-sm text-[#002355] md:gap-x-8 md:text-base lg:gap-x-10">
+                        <a href="{{ route('home') }}" class="hover:text-[#0069FF]">خانه</a>
+                        <a href="{{ route('pricing') }}" class="hover:text-[#0069FF]">قیمت‌گذاری</a>
+                        <a href="{{ route('solutions') }}" class="hover:text-[#0069FF]">راهکارها</a>
+                        <a href="{{ route('api.documentation') }}" class="hover:text-[#0069FF]">مستندات</a>
+                        <a href="{{ route('blog') }}" class="hover:text-[#0069FF]">بلاگ</a>
+                        <a href="{{ route('contact') }}" class="hover:text-[#0069FF]">تماس با ما</a>
+                    </nav>
+
+                    <div class="flex flex-col items-center text-center lg:items-end lg:text-right">
+                        <a href="{{ route('home') }}" aria-label="آویاتو، خانه">
+                            <img src="{{ asset('assets/images/figma-aviato-logo.png') }}" alt="آویاتو" class="h-[62px] w-40 object-contain object-right">
+                        </a>
+                        <p class="mt-3 max-w-[252px] text-base leading-[27px]">آویاتو، زیرساخت ساده و قابل اتکا برای اجرای سرویس‌های آنلاین.</p>
+                    </div>
+                </div>
+
+                <div dir="ltr" class="mt-8 flex flex-col gap-3 border-t border-[#DCE8F7] pt-5 text-center text-sm leading-6 sm:flex-row sm:items-center sm:justify-between sm:text-right">
+                    <p dir="rtl">© {{ now()->year }} آویاتو. همه حقوق محفوظ است.</p>
+                    <p dir="rtl">زیرساخت مطمئن برای سرویس‌هایی که باید همیشه در دسترس باشند.</p>
+                </div>
+            </div>
+        </footer>
+        @else
         <footer class="border-t border-slate-200 bg-[#F5F8FD] px-4 py-10 text-slate-700 md:px-8 md:py-12 lg:px-10">
             <div class="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.35fr_0.65fr_0.65fr] md:gap-12">
                 <div>
@@ -339,6 +411,7 @@
                 <p>زیرساخت مطمئن برای سرویس هایی که باید همیشه در دسترس باشند.</p>
             </div>
         </footer>
+        @endif
     </div>
 </body>
 
