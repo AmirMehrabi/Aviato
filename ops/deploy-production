@@ -26,5 +26,5 @@ if [[ "$local_revision" != "$remote_revision" ]]; then
     exit 1
 fi
 
-echo "Deploying ${local_revision} to production (5.202.19.75)."
+echo "Deploying ${local_revision} to production (5.202.19.100)."
 vendor/bin/dep deploy production --revision="$local_revision" -vvv

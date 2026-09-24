@@ -38,7 +38,7 @@ after('deploy:shared', 'deploy:prepare_storage');
 // Used by GitHub Actions or your local computer.
 // This connects to the production server by SSH.
 host('production')
-    ->set('hostname', '5.202.19.75')
+    ->set('hostname', '5.202.19.100')
     ->set('remote_user', 'deploy')
     ->set('deploy_path', '/var/www/html/aviato')
     ->set('branch', 'master');
