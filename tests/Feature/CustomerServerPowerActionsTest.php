@@ -36,6 +36,7 @@ class CustomerServerPowerActionsTest extends TestCase
 
         $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
         $this->assertSame('customer_start', data_get($vm->desired_state, 'power_intent_source'));
+        $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'power', 'outcome' => 'succeeded']);
     }
 
     public function test_suspended_customer_cannot_start_server(): void
@@ -79,6 +80,7 @@ class CustomerServerPowerActionsTest extends TestCase
         $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
         $this->assertSame(3, data_get($vm->desired_state, 'power_generation'));
         $this->assertSame('customer_stop', data_get($vm->desired_state, 'power_intent_source'));
+        $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'power', 'outcome' => 'succeeded']);
     }
 
     /** @param array<string, mixed> $overrides */

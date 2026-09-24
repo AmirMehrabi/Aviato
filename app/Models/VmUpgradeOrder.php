@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\VmActivityRecorder;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,35 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 ])]
 class VmUpgradeOrder extends Model
 {
+    protected static function booted(): void
+    {
+        static::updated(function (VmUpgradeOrder $order): void {
+            if (! $order->wasChanged('status') || ! in_array($order->status, [self::STATUS_SUCCEEDED, self::STATUS_FAILED, self::STATUS_RECONCILIATION_REQUIRED], true)) {
+                return;
+            }
+
+            $vm = $order->virtualMachine;
+
+            if (! $vm) {
+                return;
+            }
+
+            $title = $order->type === self::TYPE_BUNDLE ? 'ارتقای پلن' : 'ارتقای دیسک';
+            $outcome = match ($order->status) {
+                self::STATUS_SUCCEEDED => 'succeeded',
+                self::STATUS_FAILED => 'failed',
+                default => 'pending',
+            };
+            $detail = match ($outcome) {
+                'succeeded' => 'عملیات با موفقیت انجام شد.',
+                'failed' => 'عملیات کامل نشد. لطفاً با پشتیبانی تماس بگیرید.',
+                default => 'نتیجه زیرساخت در حال بررسی است.',
+            };
+
+            app(VmActivityRecorder::class)->record($vm, 'upgrade', $outcome, $title.' · '.($outcome === 'succeeded' ? 'انجام شد' : ($outcome === 'failed' ? 'ناموفق' : 'نیازمند بررسی')), $detail, metadata: ['order_id' => $order->id]);
+        });
+    }
+
     public const TYPE_BUNDLE = 'bundle';
 
     public const TYPE_PRIMARY_DISK = 'primary_disk';

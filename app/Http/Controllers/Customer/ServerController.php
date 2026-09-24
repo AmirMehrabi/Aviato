@@ -27,6 +27,7 @@ use App\Services\PromotionService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
+use App\Services\VmActivityRecorder;
 use App\Services\VmUpgradeService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -54,6 +55,7 @@ class ServerController extends Controller
         private readonly IpPoolService $ipPools,
         private readonly ProxmoxService $proxmox,
         private readonly HetznerCloudService $hetzner,
+        private readonly VmActivityRecorder $activities,
     ) {}
 
     public function index(Request $request): View
@@ -494,6 +496,18 @@ class ServerController extends Controller
 
     public function show(Request $request, VirtualMachine $virtualMachine): View
     {
+        return $this->detail($request, $virtualMachine, 'overview');
+    }
+
+    public function tab(Request $request, VirtualMachine $virtualMachine, string $tab): View
+    {
+        abort_unless(in_array($tab, ['resources', 'billing', 'upgrade', 'rebuild', 'delete', 'activity'], true), 404);
+
+        return $this->detail($request, $virtualMachine, $tab);
+    }
+
+    private function detail(Request $request, VirtualMachine $virtualMachine, string $tab): View
+    {
         $server = $this->projects->resolveCustomerVm($request, $virtualMachine);
         $customer = $request->user('customer');
         $wallet = $this->wallets->walletFor($customer);
@@ -558,10 +572,17 @@ class ServerController extends Controller
             }
         }
 
-        return view('customer.servers.show', [
+        return view('customer.servers.detail', [
+            'tab' => $tab,
+            'activities' => $tab === 'activity' ? $server->activities()->latest()->paginate(20) : null,
+            'billingWallet' => $tab === 'billing' && $this->projects->canViewBilling($server->project, $customer)
+                ? $this->wallets->walletFor($server->project?->owner ?? $server->customer)
+                : null,
+            'canViewBilling' => $this->projects->canViewBilling($server->project, $customer),
             'customer' => $customer,
             'activeProject' => $server->project,
             'activeMembership' => $this->projects->membership($server->project, $customer),
+            'canManageServer' => $this->projects->canManageVms($server->project, $customer),
             'projects' => $this->projects->projectsFor($customer),
             'wallet' => $wallet,
             'wallets' => $this->wallets,
@@ -689,9 +710,10 @@ class ServerController extends Controller
         ])->save();
 
         RebuildCloudVirtualMachine::dispatch($server->id)->onQueue(RebuildCloudVirtualMachine::QUEUE);
+        $this->activities->record($server, 'rebuild', 'requested', 'درخواست بازسازی ثبت شد', 'نصب دوباره سیستم عامل '.$server->cloudImage->name, $request->user('customer'));
 
         $redirect = redirect()
-            ->route('customer.servers.show', $server)
+            ->route('customer.servers.tab', [$server, 'tab' => 'rebuild'])
             ->with('status', 'درخواست بازسازی ثبت شد. وضعیت همین صفحه به‌روزرسانی می‌شود.');
 
         if ($cloudInitEnabled && $password !== null) {
@@ -743,6 +765,7 @@ class ServerController extends Controller
         }
 
         $accrued = $this->billing->currentAccrued($server);
+        $this->activities->record($server, 'power', 'requested', 'درخواست روشن کردن سرور ثبت شد', null, $customer);
 
         try {
             if ($server->isHetzner()) {
@@ -770,6 +793,7 @@ class ServerController extends Controller
             }
         } catch (Throwable $exception) {
             report($exception);
+            $this->activities->record($server, 'power', 'failed', 'روشن کردن سرور ناموفق بود', null, $customer);
 
             return back()->with('error', 'روشن کردن سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
@@ -786,6 +810,7 @@ class ServerController extends Controller
                 'power_intent_source' => 'customer_start',
             ]),
         ])->save();
+        $this->activities->record($server, 'power', 'succeeded', 'سرور روشن شد', null, $customer);
 
         return back()->with('status', 'سرور روشن شد.');
     }
@@ -823,6 +848,7 @@ class ServerController extends Controller
         }
 
         $accrued = $this->billing->currentAccrued($server);
+        $this->activities->record($server, 'power', 'requested', 'درخواست خاموش کردن سرور ثبت شد', null, $customer);
 
         try {
             if ($server->isHetzner()) {
@@ -850,6 +876,7 @@ class ServerController extends Controller
             }
         } catch (Throwable $exception) {
             report($exception);
+            $this->activities->record($server, 'power', 'failed', 'خاموش کردن سرور ناموفق بود', null, $customer);
 
             return back()->with('error', 'خاموش کردن سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
@@ -866,6 +893,7 @@ class ServerController extends Controller
                 'power_intent_source' => 'customer_stop',
             ]),
         ])->save();
+        $this->activities->record($server, 'power', 'succeeded', 'سرور خاموش شد', null, $customer);
 
         return back()->with('status', 'سرور خاموش شد.');
     }
@@ -880,10 +908,13 @@ class ServerController extends Controller
             'delete_confirmation.in' => 'برای حذف، نام سرور را دقیقا وارد کنید.',
         ]);
 
+        $this->activities->record($server, 'delete', 'requested', 'درخواست حذف سرور ثبت شد', null, $request->user('customer'));
+
         try {
             $result = $this->deletions->requestDelete($server, 'customer');
         } catch (Throwable $exception) {
             report($exception);
+            $this->activities->record($server, 'delete', 'failed', 'درخواست حذف ثبت نشد', null, $request->user('customer'));
 
             return back()->with('error', 'درخواست حذف سرویس ثبت نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }

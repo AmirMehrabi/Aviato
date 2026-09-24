@@ -1,0 +1,353 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "customer:servers:overview": {
+      "targetKind": "existing-ui",
+      "projectId": "4b03d8e7-f773-41e6-8453-c102bf420d85",
+      "activeDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "public-assets-images-aviato_icon_white.png"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-assets-images-aviato_icon_white.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/4b03d8e7-f773-41e6-8453-c102bf420d85/brand-assets/public-assets-images-aviato_icon_white.png/aviato_icon_white.png",
+          "sourcePath": "public/assets/images/aviato_icon_white.png"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/views/customer/servers/detail.blade.php",
+        "resources/views/customer/servers/partials/header.blade.php",
+        "resources/views/customer/servers/tabs/overview.blade.php",
+        "resources/views/customer/layout.blade.php",
+        "resources/css/app.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "732f0f816961905a3ed050f46a803c73b31522401d977ddbbf1f2ff329bc5c87",
+        "resources/views/customer/servers/detail.blade.php": "e9ef02ff95974e3b6eb166b0d32010521dcd52a2ec5e2356bdbaba705864e1c6",
+        "resources/views/customer/servers/partials/header.blade.php": "bf191e1612dd8bb5960a02b2d917dae3d27077998ba1423c181618d4d03e24b0",
+        "resources/views/customer/servers/tabs/overview.blade.php": "dbb8dfb5402c686685fabda444eb7471358f2b4443ed3d1245a3a422fe8200a6",
+        "resources/views/customer/layout.blade.php": "8f009f858be726a671f0e98dde16bfb09535fc0ac78231e9a8176529a6d04b5d",
+        "resources/css/app.css": "dadb5eba6cff860aabddca76c7debc94e3c46f55fbc2979a3d5feff14771dc06"
+      },
+      "components": [],
+      "drafts": {
+        "7d6b12c1-bd71-4e90-93c4-4438d502fdb2": {
+          "title": "Customer server Overview",
+          "visualDirection": "Aviato RTL with Hetzner-like tab hierarchy",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-09-24T15:15:06.108832+00:00",
+      "baselineDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+    },
+    "customer:servers:resources": {
+      "targetKind": "new-ui",
+      "projectId": "4b03d8e7-f773-41e6-8453-c102bf420d85",
+      "activeDraftId": "67cf8568-d952-498a-90fd-3a47cf7b6378",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "public-assets-images-aviato_icon_white.png"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-assets-images-aviato_icon_white.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/4b03d8e7-f773-41e6-8453-c102bf420d85/brand-assets/public-assets-images-aviato_icon_white.png/aviato_icon_white.png",
+          "sourcePath": "public/assets/images/aviato_icon_white.png"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/views/customer/servers/detail.blade.php",
+        "resources/views/customer/servers/partials/header.blade.php",
+        "resources/views/customer/servers/tabs/resources.blade.php",
+        "resources/views/customer/layout.blade.php",
+        "resources/css/app.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "732f0f816961905a3ed050f46a803c73b31522401d977ddbbf1f2ff329bc5c87",
+        "resources/views/customer/servers/detail.blade.php": "e9ef02ff95974e3b6eb166b0d32010521dcd52a2ec5e2356bdbaba705864e1c6",
+        "resources/views/customer/servers/partials/header.blade.php": "bf191e1612dd8bb5960a02b2d917dae3d27077998ba1423c181618d4d03e24b0",
+        "resources/views/customer/servers/tabs/resources.blade.php": "44180cad9aa0c2a36764bd83515459e30195046446a19ba8000ab62b9cab3851",
+        "resources/views/customer/layout.blade.php": "8f009f858be726a671f0e98dde16bfb09535fc0ac78231e9a8176529a6d04b5d",
+        "resources/css/app.css": "dadb5eba6cff860aabddca76c7debc94e3c46f55fbc2979a3d5feff14771dc06"
+      },
+      "components": [],
+      "drafts": {
+        "67cf8568-d952-498a-90fd-3a47cf7b6378": {
+          "title": "Resources",
+          "visualDirection": "Aviato RTL with Hetzner-like tab hierarchy",
+          "currentVersion": 1,
+          "parentDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+        }
+      },
+      "updatedAt": "2026-09-24T15:15:06.109058+00:00",
+      "sourceTarget": "customer:servers:overview",
+      "sourceDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+    },
+    "customer:servers:billing": {
+      "targetKind": "new-ui",
+      "projectId": "4b03d8e7-f773-41e6-8453-c102bf420d85",
+      "activeDraftId": "4bf0a487-da9a-4bcf-8953-b9e51134dca2",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "public-assets-images-aviato_icon_white.png"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-assets-images-aviato_icon_white.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/4b03d8e7-f773-41e6-8453-c102bf420d85/brand-assets/public-assets-images-aviato_icon_white.png/aviato_icon_white.png",
+          "sourcePath": "public/assets/images/aviato_icon_white.png"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/views/customer/servers/detail.blade.php",
+        "resources/views/customer/servers/partials/header.blade.php",
+        "resources/views/customer/servers/tabs/billing.blade.php",
+        "resources/views/customer/layout.blade.php",
+        "resources/css/app.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "732f0f816961905a3ed050f46a803c73b31522401d977ddbbf1f2ff329bc5c87",
+        "resources/views/customer/servers/detail.blade.php": "e9ef02ff95974e3b6eb166b0d32010521dcd52a2ec5e2356bdbaba705864e1c6",
+        "resources/views/customer/servers/partials/header.blade.php": "bf191e1612dd8bb5960a02b2d917dae3d27077998ba1423c181618d4d03e24b0",
+        "resources/views/customer/servers/tabs/billing.blade.php": "27489dbb9b0518640b74f0af4d6e1f9ac78caeef96f9992c3bb82bbb7c9e736e",
+        "resources/views/customer/layout.blade.php": "8f009f858be726a671f0e98dde16bfb09535fc0ac78231e9a8176529a6d04b5d",
+        "resources/css/app.css": "dadb5eba6cff860aabddca76c7debc94e3c46f55fbc2979a3d5feff14771dc06"
+      },
+      "components": [],
+      "drafts": {
+        "4bf0a487-da9a-4bcf-8953-b9e51134dca2": {
+          "title": "Billing",
+          "visualDirection": "Aviato RTL with Hetzner-like tab hierarchy",
+          "currentVersion": 1,
+          "parentDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+        }
+      },
+      "updatedAt": "2026-09-24T15:15:06.109243+00:00",
+      "sourceTarget": "customer:servers:overview",
+      "sourceDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+    },
+    "customer:servers:network": {
+      "targetKind": "new-ui",
+      "projectId": "4b03d8e7-f773-41e6-8453-c102bf420d85",
+      "activeDraftId": "7255ff8a-6ebc-4f97-810d-17d7f476f77c",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "public-assets-images-aviato_icon_white.png"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-assets-images-aviato_icon_white.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/4b03d8e7-f773-41e6-8453-c102bf420d85/brand-assets/public-assets-images-aviato_icon_white.png/aviato_icon_white.png",
+          "sourcePath": "public/assets/images/aviato_icon_white.png"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/views/customer/servers/partials/header.blade.php",
+        "resources/views/customer/network/show.blade.php",
+        "resources/views/customer/layout.blade.php",
+        "resources/css/app.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "732f0f816961905a3ed050f46a803c73b31522401d977ddbbf1f2ff329bc5c87",
+        "resources/views/customer/servers/partials/header.blade.php": "bf191e1612dd8bb5960a02b2d917dae3d27077998ba1423c181618d4d03e24b0",
+        "resources/views/customer/network/show.blade.php": "f86363674abbdd5478bb73041de3aea7ed9f66b742093bc040041088753279bc",
+        "resources/views/customer/layout.blade.php": "8f009f858be726a671f0e98dde16bfb09535fc0ac78231e9a8176529a6d04b5d",
+        "resources/css/app.css": "dadb5eba6cff860aabddca76c7debc94e3c46f55fbc2979a3d5feff14771dc06"
+      },
+      "components": [],
+      "drafts": {
+        "7255ff8a-6ebc-4f97-810d-17d7f476f77c": {
+          "title": "Network",
+          "visualDirection": "Aviato RTL with Hetzner-like tab hierarchy",
+          "currentVersion": 1,
+          "parentDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+        }
+      },
+      "updatedAt": "2026-09-24T15:15:06.109396+00:00",
+      "sourceTarget": "customer:servers:overview",
+      "sourceDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+    },
+    "customer:servers:upgrade": {
+      "targetKind": "new-ui",
+      "projectId": "4b03d8e7-f773-41e6-8453-c102bf420d85",
+      "activeDraftId": "6c2a4e93-2ddf-4b92-8b3a-9895411fafec",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "public-assets-images-aviato_icon_white.png"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-assets-images-aviato_icon_white.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/4b03d8e7-f773-41e6-8453-c102bf420d85/brand-assets/public-assets-images-aviato_icon_white.png/aviato_icon_white.png",
+          "sourcePath": "public/assets/images/aviato_icon_white.png"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/views/customer/servers/detail.blade.php",
+        "resources/views/customer/servers/partials/header.blade.php",
+        "resources/views/customer/servers/tabs/upgrade.blade.php",
+        "resources/views/customer/layout.blade.php",
+        "resources/css/app.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "732f0f816961905a3ed050f46a803c73b31522401d977ddbbf1f2ff329bc5c87",
+        "resources/views/customer/servers/detail.blade.php": "e9ef02ff95974e3b6eb166b0d32010521dcd52a2ec5e2356bdbaba705864e1c6",
+        "resources/views/customer/servers/partials/header.blade.php": "bf191e1612dd8bb5960a02b2d917dae3d27077998ba1423c181618d4d03e24b0",
+        "resources/views/customer/servers/tabs/upgrade.blade.php": "42551e79439a4f6cc2d5d6d2b26f36e61440968f0a4e033364d6ad254c5fadd6",
+        "resources/views/customer/layout.blade.php": "8f009f858be726a671f0e98dde16bfb09535fc0ac78231e9a8176529a6d04b5d",
+        "resources/css/app.css": "dadb5eba6cff860aabddca76c7debc94e3c46f55fbc2979a3d5feff14771dc06"
+      },
+      "components": [],
+      "drafts": {
+        "6c2a4e93-2ddf-4b92-8b3a-9895411fafec": {
+          "title": "Upgrade",
+          "visualDirection": "Aviato RTL with Hetzner-like tab hierarchy",
+          "currentVersion": 2,
+          "parentDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+        }
+      },
+      "updatedAt": "2026-09-24T15:15:06.109608+00:00",
+      "sourceTarget": "customer:servers:overview",
+      "sourceDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+    },
+    "customer:servers:rebuild": {
+      "targetKind": "new-ui",
+      "projectId": "4b03d8e7-f773-41e6-8453-c102bf420d85",
+      "activeDraftId": "c0f07ed2-bf58-4af9-b4db-5a54e5efe40a",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "public-assets-images-aviato_icon_white.png"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-assets-images-aviato_icon_white.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/4b03d8e7-f773-41e6-8453-c102bf420d85/brand-assets/public-assets-images-aviato_icon_white.png/aviato_icon_white.png",
+          "sourcePath": "public/assets/images/aviato_icon_white.png"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/views/customer/servers/detail.blade.php",
+        "resources/views/customer/servers/partials/header.blade.php",
+        "resources/views/customer/servers/tabs/rebuild.blade.php",
+        "resources/views/customer/layout.blade.php",
+        "resources/css/app.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "732f0f816961905a3ed050f46a803c73b31522401d977ddbbf1f2ff329bc5c87",
+        "resources/views/customer/servers/detail.blade.php": "e9ef02ff95974e3b6eb166b0d32010521dcd52a2ec5e2356bdbaba705864e1c6",
+        "resources/views/customer/servers/partials/header.blade.php": "bf191e1612dd8bb5960a02b2d917dae3d27077998ba1423c181618d4d03e24b0",
+        "resources/views/customer/servers/tabs/rebuild.blade.php": "850fdfe21ca3080a5b67775ac1a2410784b16368e1f5228920ac1dd6ca4accf4",
+        "resources/views/customer/layout.blade.php": "8f009f858be726a671f0e98dde16bfb09535fc0ac78231e9a8176529a6d04b5d",
+        "resources/css/app.css": "dadb5eba6cff860aabddca76c7debc94e3c46f55fbc2979a3d5feff14771dc06"
+      },
+      "components": [],
+      "drafts": {
+        "c0f07ed2-bf58-4af9-b4db-5a54e5efe40a": {
+          "title": "Rebuild",
+          "visualDirection": "Aviato RTL with Hetzner-like tab hierarchy",
+          "currentVersion": 2,
+          "parentDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+        }
+      },
+      "updatedAt": "2026-09-24T15:15:06.109784+00:00",
+      "sourceTarget": "customer:servers:overview",
+      "sourceDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+    },
+    "customer:servers:delete": {
+      "targetKind": "new-ui",
+      "projectId": "4b03d8e7-f773-41e6-8453-c102bf420d85",
+      "activeDraftId": "2455198d-76e1-4e7f-bfb3-569022e7307e",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "public-assets-images-aviato_icon_white.png"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-assets-images-aviato_icon_white.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/4b03d8e7-f773-41e6-8453-c102bf420d85/brand-assets/public-assets-images-aviato_icon_white.png/aviato_icon_white.png",
+          "sourcePath": "public/assets/images/aviato_icon_white.png"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/views/customer/servers/detail.blade.php",
+        "resources/views/customer/servers/partials/header.blade.php",
+        "resources/views/customer/servers/tabs/delete.blade.php",
+        "resources/views/customer/layout.blade.php",
+        "resources/css/app.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "732f0f816961905a3ed050f46a803c73b31522401d977ddbbf1f2ff329bc5c87",
+        "resources/views/customer/servers/detail.blade.php": "e9ef02ff95974e3b6eb166b0d32010521dcd52a2ec5e2356bdbaba705864e1c6",
+        "resources/views/customer/servers/partials/header.blade.php": "bf191e1612dd8bb5960a02b2d917dae3d27077998ba1423c181618d4d03e24b0",
+        "resources/views/customer/servers/tabs/delete.blade.php": "6f293b07014ae20e3c02626afe7ae82d7d2cc56489e7ab7d92042652dac45bda",
+        "resources/views/customer/layout.blade.php": "8f009f858be726a671f0e98dde16bfb09535fc0ac78231e9a8176529a6d04b5d",
+        "resources/css/app.css": "dadb5eba6cff860aabddca76c7debc94e3c46f55fbc2979a3d5feff14771dc06"
+      },
+      "components": [],
+      "drafts": {
+        "2455198d-76e1-4e7f-bfb3-569022e7307e": {
+          "title": "Delete",
+          "visualDirection": "Aviato RTL with Hetzner-like tab hierarchy",
+          "currentVersion": 1,
+          "parentDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+        }
+      },
+      "updatedAt": "2026-09-24T15:15:06.109976+00:00",
+      "sourceTarget": "customer:servers:overview",
+      "sourceDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+    },
+    "customer:servers:activity": {
+      "targetKind": "new-ui",
+      "projectId": "4b03d8e7-f773-41e6-8453-c102bf420d85",
+      "activeDraftId": "337c2e54-158d-4251-9286-069cbe3aeba3",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "public-assets-images-aviato_icon_white.png"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-assets-images-aviato_icon_white.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/4b03d8e7-f773-41e6-8453-c102bf420d85/brand-assets/public-assets-images-aviato_icon_white.png/aviato_icon_white.png",
+          "sourcePath": "public/assets/images/aviato_icon_white.png"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/views/customer/servers/detail.blade.php",
+        "resources/views/customer/servers/partials/header.blade.php",
+        "resources/views/customer/servers/tabs/activity.blade.php",
+        "resources/views/customer/layout.blade.php",
+        "resources/css/app.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "732f0f816961905a3ed050f46a803c73b31522401d977ddbbf1f2ff329bc5c87",
+        "resources/views/customer/servers/detail.blade.php": "e9ef02ff95974e3b6eb166b0d32010521dcd52a2ec5e2356bdbaba705864e1c6",
+        "resources/views/customer/servers/partials/header.blade.php": "bf191e1612dd8bb5960a02b2d917dae3d27077998ba1423c181618d4d03e24b0",
+        "resources/views/customer/servers/tabs/activity.blade.php": "c348da2036fe5b74e04e30993c57e19c53bf442546f9c306095635545f26f9f2",
+        "resources/views/customer/layout.blade.php": "8f009f858be726a671f0e98dde16bfb09535fc0ac78231e9a8176529a6d04b5d",
+        "resources/css/app.css": "dadb5eba6cff860aabddca76c7debc94e3c46f55fbc2979a3d5feff14771dc06"
+      },
+      "components": [],
+      "drafts": {
+        "337c2e54-158d-4251-9286-069cbe3aeba3": {
+          "title": "Activity",
+          "visualDirection": "Aviato RTL with Hetzner-like tab hierarchy",
+          "currentVersion": 1,
+          "parentDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+        }
+      },
+      "updatedAt": "2026-09-24T15:15:06.110159+00:00",
+      "sourceTarget": "customer:servers:overview",
+      "sourceDraftId": "7d6b12c1-bd71-4e90-93c4-4438d502fdb2"
+    }
+  }
+}

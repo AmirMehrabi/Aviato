@@ -1055,9 +1055,10 @@ class CloudVmProvisioningTest extends TestCase
             'hostname' => 'new-host',
             'login_username' => 'admin',
             'login_password' => 'new-password',
-        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid);
+        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid.'/rebuild');
 
         $vm->refresh();
+        $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'rebuild', 'outcome' => 'requested']);
         $this->assertSame(VirtualMachine::PROVISION_PENDING, $vm->provisioning_status);
         $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
         $this->assertSame('new-host', $vm->hostname);
@@ -1104,7 +1105,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->actingAs($customer, 'customer');
         $this->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/rebuild', [
             'rebuild_confirmation' => 'rebuild-fee',
-        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid);
+        ])->assertRedirect($this->customerBaseUrl.'/servers/'.$vm->uuid.'/rebuild');
 
         $this->assertSame(450000, $customer->wallet()->firstOrFail()->balance);
         $this->assertDatabaseHas('wallet_transactions', [

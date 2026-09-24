@@ -544,7 +544,9 @@
             </div>
 
             <div class="px-4 pb-8 pt-4 md:px-6 lg:px-8">
-                @hasSection('compact_header')
+                @hasSection('server_detail_header')
+                    @yield('server_detail_header')
+                @elseif (View::hasSection('compact_header'))
                     <div class="mb-4 flex min-w-0 flex-col gap-1">
                         <h1 class="text-xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
                         <p class="text-sm leading-6 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>

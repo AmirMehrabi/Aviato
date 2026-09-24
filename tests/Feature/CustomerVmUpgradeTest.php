@@ -52,6 +52,7 @@ class CustomerVmUpgradeTest extends TestCase
         ]);
         $this->assertTrue($vm->refresh()->last_billed_at->equalTo(now()));
         Bus::assertDispatched(ApplyVmUpgradeJob::class);
+        $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'upgrade', 'outcome' => 'requested']);
 
         CarbonImmutable::setTestNow();
     }
@@ -169,6 +170,7 @@ class CustomerVmUpgradeTest extends TestCase
         $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
         $this->assertSame('UPID:start', $vm->remote_state['upgrade_restart']['start']['task_id']);
         $this->assertSame(VmUpgradeOrder::STATUS_SUCCEEDED, $order->status);
+        $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'upgrade', 'outcome' => 'succeeded']);
     }
 
     public function test_bundle_upgrade_reconciles_when_proxmox_changed_but_a_later_step_failed(): void

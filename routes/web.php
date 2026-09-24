@@ -446,6 +446,9 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::post('servers/{virtualMachine}/start', [ServerController::class, 'start'])->name('customer.servers.start');
             Route::post('servers/{virtualMachine}/stop', [ServerController::class, 'stop'])->name('customer.servers.stop');
             Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->name('customer.servers.show');
+            Route::get('servers/{virtualMachine}/{tab}', [ServerController::class, 'tab'])
+                ->whereIn('tab', ['resources', 'billing', 'upgrade', 'rebuild', 'delete', 'activity'])
+                ->name('customer.servers.tab');
             Route::post('servers/{virtualMachine}/upgrades/bundle', [VmUpgradeController::class, 'storeBundle'])->name('customer.servers.upgrades.bundle.store');
             Route::post('servers/{virtualMachine}/upgrades/extra-disk', [VmUpgradeController::class, 'storeExtraDisk'])->name('customer.servers.upgrades.extra-disk.store');
             Route::delete('servers/{virtualMachine}', [ServerController::class, 'destroy'])->name('customer.servers.destroy');

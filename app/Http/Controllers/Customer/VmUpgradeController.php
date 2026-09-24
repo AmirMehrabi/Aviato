@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\ProjectAccessService;
+use App\Services\VmActivityRecorder;
 use App\Services\VmUpgradeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class VmUpgradeController extends Controller
     public function __construct(
         private readonly VmUpgradeService $upgrades,
         private readonly ProjectAccessService $projects,
+        private readonly VmActivityRecorder $activities,
     ) {}
 
     public function storeBundle(Request $request, VirtualMachine $virtualMachine): RedirectResponse
@@ -30,7 +32,8 @@ class VmUpgradeController extends Controller
 
         try {
             $bundle = VmBundle::query()->where('is_active', true)->findOrFail($data['vm_bundle_id']);
-            $this->upgrades->requestBundleUpgrade($customer, $virtualMachine, $bundle);
+            $order = $this->upgrades->requestBundleUpgrade($customer, $virtualMachine, $bundle);
+            $this->activities->record($virtualMachine, 'upgrade', 'requested', 'درخواست ارتقای پلن ثبت شد', 'پلن مقصد: '.$bundle->name, $customer, ['order_id' => $order->id]);
 
             return back()->with('status', 'درخواست ارتقای باندل ثبت شد. سرور برای اعمال ارتقا کامل خاموش می شود و بعد از چند ثانیه دوباره روشن خواهد شد.');
         } catch (ValidationException $exception) {
@@ -52,7 +55,8 @@ class VmUpgradeController extends Controller
         ]);
 
         try {
-            $this->upgrades->requestExtraDisk($customer, $virtualMachine, (int) $data['size_gb']);
+            $order = $this->upgrades->requestExtraDisk($customer, $virtualMachine, (int) $data['size_gb']);
+            $this->activities->record($virtualMachine, 'upgrade', 'requested', 'درخواست دیسک اضافه ثبت شد', $data['size_gb'].' گیگابایت', $customer, ['order_id' => $order->id]);
 
             return back()->with('status', 'درخواست اتصال دیسک اضافه ثبت شد. بعد از آماده شدن، دیسک باید داخل سیستم عامل mount شود.');
         } catch (ValidationException $exception) {

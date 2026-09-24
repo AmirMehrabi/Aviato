@@ -6,6 +6,7 @@ use App\Models\VirtualMachine;
 use App\Services\HetznerCloudService;
 use App\Services\ProxmoxService;
 use App\Services\VirtualMachineDeletionService;
+use App\Services\VmActivityRecorder;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
@@ -270,6 +271,9 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
                 'delete_error' => $exception->getMessage(),
                 'remote_state' => array_merge($vm->remote_state ?? [], ['delete_steps' => $history]),
             ])->save();
+            if (! $hasAttemptsRemaining) {
+                app(VmActivityRecorder::class)->record($vm, 'delete', 'failed', 'حذف سرور ناموفق بود', 'لطفاً با پشتیبانی تماس بگیرید یا دوباره تلاش کنید.');
+            }
 
             if ($hasAttemptsRemaining) {
                 throw $exception;
@@ -344,6 +348,9 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
                     $hasAttemptsRemaining ? 'delete_retrying_at' : 'delete_failed_at' => now()->toISOString(),
                 ]),
             ])->save();
+            if (! $hasAttemptsRemaining) {
+                app(VmActivityRecorder::class)->record($vm, 'delete', 'failed', 'حذف سرور ناموفق بود', 'لطفاً با پشتیبانی تماس بگیرید یا دوباره تلاش کنید.');
+            }
 
             throw $exception;
         }

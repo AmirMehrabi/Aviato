@@ -6,6 +6,7 @@ use App\Models\VirtualMachine;
 use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
+use App\Services\VmActivityRecorder;
 use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -236,6 +237,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                     'rebuild_error' => null,
                 ]),
             ])->save();
+            app(VmActivityRecorder::class)->record($vm, 'rebuild', 'succeeded', 'بازسازی سرور انجام شد');
         } catch (Throwable $exception) {
             $hasAttemptsRemaining = $retryable && $this->hasAttemptsRemaining();
             $history[] = ['step' => 'failed', 'error' => $exception->getMessage(), 'at' => now()->toISOString()];
@@ -263,6 +265,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
             if ($hasAttemptsRemaining) {
                 throw $exception;
             }
+            app(VmActivityRecorder::class)->record($vm, 'rebuild', 'failed', 'بازسازی سرور ناموفق بود', 'لطفاً با پشتیبانی تماس بگیرید یا پس از بررسی دوباره تلاش کنید.');
         }
     }
 
@@ -326,6 +329,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                     'hetzner_server' => $server,
                 ]),
             ])->save();
+            app(VmActivityRecorder::class)->record($vm, 'rebuild', 'succeeded', 'بازسازی سرور انجام شد');
         } catch (Throwable $exception) {
             $hasAttemptsRemaining = $this->hasAttemptsRemaining();
             $history[] = ['step' => 'failed', 'error' => $exception->getMessage(), 'at' => now()->toISOString()];
@@ -343,6 +347,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
             if ($hasAttemptsRemaining) {
                 throw $exception;
             }
+            app(VmActivityRecorder::class)->record($vm, 'rebuild', 'failed', 'بازسازی سرور ناموفق بود', 'لطفاً با پشتیبانی تماس بگیرید یا پس از بررسی دوباره تلاش کنید.');
         }
     }
 

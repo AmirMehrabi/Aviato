@@ -31,17 +31,21 @@ class NetworkUsageController extends Controller
     public function show(Request $request, VirtualMachine $virtualMachine): View
     {
         $vm = $this->projects->resolveCustomerVm($request, $virtualMachine);
+        $vm->loadMissing(['proxmoxServer', 'infrastructureLocation', 'project.owner']);
         $summary = $this->reports->vmSummary($vm);
         $period = $summary['period'];
 
-        return view('customer.network.show', $this->layoutData($request) + [
+        return view('customer.network.show', array_merge($this->layoutData($request), [
+            'activeProject' => $vm->project,
+            'activeMembership' => $this->projects->membership($vm->project, $request->user('customer')),
+            'canManageServer' => $this->projects->canManageVms($vm->project, $request->user('customer')),
             'vm' => $vm, 'summary' => $summary, 'reports' => $this->reports, 'wallets' => $this->wallets,
             'daily' => $period ? $this->reports->daily($vm, $period->period_start, $period->period_end) : collect(),
             'dataState' => [
                 'partial' => NetworkUsageBucket::query()->where('virtual_machine_id', $vm->id)->where('completeness', 'partial')->count(),
                 'missing' => NetworkUsageBucket::query()->where('virtual_machine_id', $vm->id)->where('completeness', 'missing')->count(),
             ],
-        ]);
+        ]));
     }
 
     private function layoutData(Request $request): array

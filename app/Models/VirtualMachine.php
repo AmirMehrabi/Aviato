@@ -178,6 +178,11 @@ class VirtualMachine extends Model
         return $this->hasMany(VmBackup::class);
     }
 
+    public function activities(): HasMany
+    {
+        return $this->hasMany(VmActivity::class);
+    }
+
     public function upgradeOrders(): HasMany
     {
         return $this->hasMany(VmUpgradeOrder::class)->latest();

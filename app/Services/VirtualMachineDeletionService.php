@@ -196,6 +196,7 @@ class VirtualMachineDeletionService
                     'usage_accrual_id' => $usageAccrual?->id,
                 ]),
             ])->save();
+            app(VmActivityRecorder::class)->record($locked, 'delete', 'succeeded', 'سرور حذف شد');
 
             Log::info('Virtual machine local delete finalization completed', [
                 'virtual_machine_id' => $locked->id,
