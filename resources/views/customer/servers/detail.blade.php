@@ -9,7 +9,7 @@
 @php($activeNav = 'servers')
 
 @section('content')
-    <div class="mx-auto max-w-6xl">
+    <div class="mx-auto max-w-7xl">
         @include('customer.servers.tabs.'.$tab)
     </div>
 @endsection

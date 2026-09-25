@@ -547,14 +547,14 @@
                 @yield('full_width_header')
             @endif
 
-            <div class="px-4 pb-8 pt-4 md:px-6 lg:px-8">
+            <div class="px-4 pb-8 md:px-6 lg:px-8 {{ View::hasSection('full_width_header') ? 'pt-8' : 'pt-4' }}">
                 @unless (View::hasSection('full_width_header'))
-                @if (View::hasSection('compact_header'))
+                    @if (View::hasSection('compact_header'))
                     <div class="mb-4 flex min-w-0 flex-col gap-1">
                         <h1 class="text-xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
                         <p class="text-sm leading-6 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>
                     </div>
-                @else
+                    @else
                     <div class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
                         <div class="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                         <div class="min-w-0">
@@ -587,7 +587,7 @@
                         </a> --}}
                         </div>
                     </div>
-                @endif
+                    @endif
                 @endunless
 
                 @if (session('status'))

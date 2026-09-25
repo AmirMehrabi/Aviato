@@ -69,6 +69,11 @@ class HetznerCloudService
         return $this->post($account, '/servers/'.$serverId.'/actions/poweroff');
     }
 
+    public function reboot(HetznerAccount $account, int|string $serverId): array
+    {
+        return $this->post($account, '/servers/'.$serverId.'/actions/reboot');
+    }
+
     public function rebuild(HetznerAccount $account, int|string $serverId, string $image): array
     {
         return $this->post($account, '/servers/'.$serverId.'/actions/rebuild', ['image' => $image]);

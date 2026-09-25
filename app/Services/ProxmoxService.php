@@ -851,6 +851,26 @@ class ProxmoxService
     }
 
     /**
+     * @return array{task_id: mixed}
+     */
+    public function rebootVm(ProxmoxServer $server, string $node, int $vmid, array $context = []): array
+    {
+        $this->logInfo('Proxmox VM reboot command requested', $server, [
+            'node' => $node,
+            'vmid' => $vmid,
+            'context' => $context,
+        ]);
+
+        $taskId = $this->request($server)
+            ->asForm()
+            ->post("/nodes/{$node}/qemu/{$vmid}/status/reboot")
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function vmStatus(ProxmoxServer $server, string $node, int $vmid): ?array

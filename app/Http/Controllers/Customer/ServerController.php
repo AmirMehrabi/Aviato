@@ -897,6 +897,65 @@ class ServerController extends Controller
         return back()->with('status', 'سرور خاموش شد.');
     }
 
+    public function restart(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+        $customer = $request->user('customer');
+        $server->loadMissing(['proxmoxServer', 'infrastructureLocation.hetznerAccount']);
+
+        $currentGeneration = (int) data_get($server->desired_state, 'power_generation', 0);
+
+        if (! $request->has('power_generation') || $request->integer('power_generation') !== $currentGeneration) {
+            return back()->with('error', 'این درخواست ری‌استارت قدیمی است و اجرا نشد. صفحه را تازه‌سازی کنید.');
+        }
+
+        if ($server->isLxc() || $server->isActionLocked() || $server->provisioning_status !== VirtualMachine::PROVISION_READY || ! $server->isRunning()) {
+            return back()->with('error', 'ری‌استارت در وضعیت فعلی سرور در دسترس نیست.');
+        }
+
+        if (($server->isProxmox() && (! $server->proxmoxServer || ! $server->node || ! $server->vmid))
+            || ($server->isHetzner() && (! $server->infrastructureLocation?->hetznerAccount || ! $server->remote_id))) {
+            return back()->with('error', 'اطلاعات زیرساخت برای ری‌استارت سرور کامل نیست.');
+        }
+
+        $this->activities->record($server, 'power', 'requested', 'درخواست ری‌استارت سرور ثبت شد', null, $customer);
+
+        try {
+            if ($server->isHetzner()) {
+                $reboot = $this->hetzner->reboot($server->infrastructureLocation->hetznerAccount, $server->remote_id);
+                $this->hetzner->waitForAction($server->infrastructureLocation->hetznerAccount, $reboot['action']['id'] ?? null, 180);
+            } else {
+                $reboot = $this->proxmox->rebootVm($server->proxmoxServer, $server->node, (int) $server->vmid, [
+                    'source' => 'customer_restart',
+                    'virtual_machine_id' => $server->id,
+                    'customer_id' => $customer->getAuthIdentifier(),
+                    'ip' => $request->ip(),
+                ]);
+
+                if (! empty($reboot['task_id'])) {
+                    $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $reboot['task_id'], 180);
+                }
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->activities->record($server, 'power', 'failed', 'ری‌استارت سرور ناموفق بود', null, $customer);
+
+            return back()->with('error', 'ری‌استارت سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
+        }
+
+        $server->forceFill([
+            'desired_state' => array_merge($server->desired_state ?? [], [
+                'status' => VirtualMachine::STATUS_RUNNING,
+                'power_generation' => $currentGeneration + 1,
+                'power_intent_at' => now()->toISOString(),
+                'power_intent_source' => 'customer_restart',
+            ]),
+        ])->save();
+        $this->activities->record($server, 'power', 'succeeded', 'سرور ری‌استارت شد', null, $customer);
+
+        return back()->with('status', 'سرور ری‌استارت شد.');
+    }
+
     public function destroy(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
         $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);

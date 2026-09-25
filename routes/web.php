@@ -445,6 +445,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::post('servers/{virtualMachine}/rebuild', [ServerController::class, 'rebuild'])->name('customer.servers.rebuild');
             Route::post('servers/{virtualMachine}/start', [ServerController::class, 'start'])->name('customer.servers.start');
             Route::post('servers/{virtualMachine}/stop', [ServerController::class, 'stop'])->name('customer.servers.stop');
+            Route::post('servers/{virtualMachine}/restart', [ServerController::class, 'restart'])->name('customer.servers.restart');
             Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->name('customer.servers.show');
             Route::get('servers/{virtualMachine}/{tab}', [ServerController::class, 'tab'])
                 ->whereIn('tab', ['resources', 'billing', 'upgrade', 'rebuild', 'delete', 'activity'])

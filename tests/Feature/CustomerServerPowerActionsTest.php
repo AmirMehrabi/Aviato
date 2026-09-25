@@ -83,6 +83,65 @@ class CustomerServerPowerActionsTest extends TestCase
         $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'power', 'outcome' => 'succeeded']);
     }
 
+    public function test_customer_can_restart_running_server_after_confirmation(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, [
+            'desired_state' => ['status' => VirtualMachine::STATUS_RUNNING, 'power_generation' => 2],
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('rebootVm')->once()->andReturn(['task_id' => 'UPID:reboot']);
+            $mock->shouldReceive('waitForTask')->once()->andReturn(['status' => 'OK']);
+        });
+
+        $this->actingAs($customer, 'customer')
+            ->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/restart', ['power_generation' => 2])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $vm->refresh();
+
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
+        $this->assertSame(3, data_get($vm->desired_state, 'power_generation'));
+        $this->assertSame('customer_restart', data_get($vm->desired_state, 'power_intent_source'));
+        $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'power', 'outcome' => 'succeeded']);
+    }
+
+    public function test_stale_restart_request_does_not_reach_provider(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, [
+            'desired_state' => ['status' => VirtualMachine::STATUS_RUNNING, 'power_generation' => 4],
+        ]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('rebootVm');
+        });
+
+        $this->actingAs($customer, 'customer')
+            ->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/restart', ['power_generation' => 3])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertSame(4, data_get($vm->fresh()->desired_state, 'power_generation'));
+    }
+
+    public function test_customer_cannot_restart_another_customers_server(): void
+    {
+        $owner = Customer::factory()->create();
+        $otherCustomer = Customer::factory()->create();
+        $vm = $this->vm($owner);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('rebootVm');
+        });
+
+        $this->actingAs($otherCustomer, 'customer')
+            ->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/restart', ['power_generation' => 0])
+            ->assertNotFound();
+    }
+
     /** @param array<string, mixed> $overrides */
     private function vm(Customer $customer, array $overrides = []): VirtualMachine
     {

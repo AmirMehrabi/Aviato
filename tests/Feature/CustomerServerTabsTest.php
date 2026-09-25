@@ -33,6 +33,7 @@ class CustomerServerTabsTest extends TestCase
                 ->assertSee($vm->display_name)
                 ->assertSee('aria-label="بخش‌های سرور"', false)
                 ->assertSee('aria-label="باز کردن کنسول سرور', false)
+                ->assertSee(route('customer.servers.restart', $vm, false))
                 ->assertSee('نمای کلی')
                 ->assertSee('فعالیت');
         }
