@@ -2,7 +2,7 @@
 
 @section('title', $server->display_name.' · '.(['overview' => 'نمای کلی', 'resources' => 'منابع', 'billing' => 'صورتحساب', 'upgrade' => 'ارتقا', 'rebuild' => 'بازسازی', 'delete' => 'حذف', 'activity' => 'فعالیت'][$tab] ?? 'سرور'))
 @section('header_title', $server->display_name)
-@section('server_detail_header')
+@section('full_width_header')
     @include('customer.servers.partials.header')
 @endsection
 

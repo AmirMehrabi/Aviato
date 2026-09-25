@@ -1050,6 +1050,10 @@ class CloudVmProvisioningTest extends TestCase
         ]);
 
         $this->actingAs($customer, 'customer');
+        $this->get($this->customerBaseUrl.'/servers/'.$vm->uuid.'/rebuild')
+            ->assertOk()
+            ->assertSee('value="old-host" dir="ltr" readonly', false);
+
         $this->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/rebuild', [
             'rebuild_confirmation' => 'rebuild-me',
             'hostname' => 'new-host',
@@ -1061,7 +1065,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'rebuild', 'outcome' => 'requested']);
         $this->assertSame(VirtualMachine::PROVISION_PENDING, $vm->provisioning_status);
         $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
-        $this->assertSame('new-host', $vm->hostname);
+        $this->assertSame('old-host', $vm->hostname);
         $this->assertSame('admin', $vm->login_username);
         $this->assertSame('new-password', $vm->login_password);
         $this->assertNotNull(data_get($vm->remote_state, 'rebuild_started_at'));

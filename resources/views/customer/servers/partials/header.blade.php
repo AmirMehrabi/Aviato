@@ -16,10 +16,10 @@
     $powerReady = ($canManageServer ?? false) && ! $server->isLxc() && ! $server->isActionLocked() && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && $providerReady && ($server->isRunning() || ! $customer->isSuspended());
     $actionPending = $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && ! $server->delete_failed_at && ! $server->deleteAttemptIsStale());
 @endphp
-<div class="mx-auto mb-6 max-w-6xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60"
+<div class="mb-6 w-full min-w-0 border-b border-slate-200 bg-white"
     x-data="{ pending: @js($actionPending), async poll() { if (!this.pending) return; try { const response = await fetch(@js(route('customer.servers.statuses', [], false)) + '?ids[]=' + encodeURIComponent(@js($server->uuid)), { headers: { Accept: 'application/json' } }); if (response.ok) { const data = await response.json(); const next = data.servers?.[0]; if (next && !next.action_pending && !next.provisioning_pending) { window.location.reload(); return; } } } catch (error) {} setTimeout(() => this.poll(), 5000); } }"
     x-init="poll()">
-    <div class="px-5 pt-5 md:px-7 md:pt-6">
+    <div class="px-4 pt-5 md:px-6 md:pt-6 lg:px-8">
         <nav class="mb-5 flex items-center gap-2 text-xs font-bold text-slate-500" aria-label="مسیر صفحه">
             <a href="{{ route('customer.servers.index', [], false) }}" class="hover:text-[#0069FF]">سرورها</a>
             <svg class="size-3 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="m12.8 4.2-5.8 5.8 5.8 5.8-1.1 1.1-6.9-6.9 6.9-6.9z"/></svg>
@@ -66,7 +66,7 @@
             </div>
         </div>
     </div>
-    <nav class="mt-5 overflow-x-auto border-t border-slate-100 px-5 md:px-7" aria-label="بخش‌های سرور">
+    <nav class="mt-5 overflow-x-auto border-t border-slate-100 px-4 md:px-6 lg:px-8" aria-label="بخش‌های سرور">
         <div class="flex min-w-max items-center gap-1">
             @foreach ($tabItems as $item)
                 <a href="{{ $item['href'] }}" @if($tab === $item['key']) aria-current="page" @endif class="whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF] {{ $tab === $item['key'] ? 'border-[#0069FF] text-[#0069FF]' : 'border-transparent text-slate-500 hover:border-slate-200 hover:text-slate-900' }} {{ $item['key'] === 'delete' && $tab !== 'delete' ? 'hover:text-red-600' : '' }}">{{ $item['label'] }}</a>

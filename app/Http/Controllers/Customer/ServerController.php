@@ -659,7 +659,6 @@ class ServerController extends Controller
 
         $data = $request->validate([
             'rebuild_confirmation' => ['required', 'string', Rule::in([$server->display_name])],
-            'hostname' => ['nullable', 'string', 'max:255'],
             'login_username' => ['nullable', 'string', 'max:64'],
             'login_password' => ['nullable', 'string', 'min:8', 'max:255'],
             'ssh_public_key' => ['nullable', 'string', 'max:5000', $this->sshPublicKeyRule()],
@@ -673,7 +672,7 @@ class ServerController extends Controller
         if ($cloudInitEnabled) {
             $password = $this->rebuildPassword($server, $data);
             $username = trim((string) ($data['login_username'] ?? '')) ?: ($server->login_username ?: $server->cloudImage->default_username);
-            $hostname = trim((string) ($data['hostname'] ?? '')) ?: ($server->hostname ?: $server->name);
+            $hostname = $server->hostname ?: $server->name;
             $sshPublicKey = trim((string) ($data['ssh_public_key'] ?? ''));
 
             $server->forceFill([

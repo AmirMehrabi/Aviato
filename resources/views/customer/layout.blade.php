@@ -543,10 +543,13 @@
                 </div>
             </div>
 
+            @hasSection('full_width_header')
+                @yield('full_width_header')
+            @endif
+
             <div class="px-4 pb-8 pt-4 md:px-6 lg:px-8">
-                @hasSection('server_detail_header')
-                    @yield('server_detail_header')
-                @elseif (View::hasSection('compact_header'))
+                @unless (View::hasSection('full_width_header'))
+                @if (View::hasSection('compact_header'))
                     <div class="mb-4 flex min-w-0 flex-col gap-1">
                         <h1 class="text-xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
                         <p class="text-sm leading-6 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>
@@ -585,6 +588,7 @@
                         </div>
                     </div>
                 @endif
+                @endunless
 
                 @if (session('status'))
                     <div class="mb-6 w-full rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>

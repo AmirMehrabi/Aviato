@@ -3,7 +3,7 @@
 @section('header_title', $vm->display_name)
 @section('header_subtitle', 'گزارش دوره، سهمیه رایگان و هزینه نهایی‌شده')
 @php($activeNav = 'servers')
-@section('server_detail_header')
+@section('full_width_header')
     @php($server = $vm)
     @php($tab = 'network')
     @include('customer.servers.partials.header')
