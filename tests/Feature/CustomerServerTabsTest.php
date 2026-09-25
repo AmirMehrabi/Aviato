@@ -31,6 +31,7 @@ class CustomerServerTabsTest extends TestCase
             $this->get($this->base.'/servers/'.$vm->uuid.$suffix)
                 ->assertOk()
                 ->assertSee($vm->display_name)
+                ->assertSee('min-h-screen bg-[#F8FAFC]', false)
                 ->assertSee('aria-label="بخش‌های سرور"', false)
                 ->assertSee('aria-label="باز کردن کنسول سرور', false)
                 ->assertSee(route('customer.servers.restart', $vm, false))

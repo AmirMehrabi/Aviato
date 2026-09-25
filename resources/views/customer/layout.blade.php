@@ -354,7 +354,7 @@
             </div>
         </aside>
 
-        <main class="min-w-0">
+        <main class="min-w-0 {{ View::hasSection('full_width_header') ? 'min-h-screen bg-[#F8FAFC]' : '' }}">
             <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-3 shadow-sm shadow-slate-200/50 backdrop-blur sm:px-4 md:px-6 lg:px-8">
                 <div class="flex h-16 items-center justify-between gap-2">
                     <button
