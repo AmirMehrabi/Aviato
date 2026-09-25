@@ -330,7 +330,7 @@
                     @endforeach
                 </nav>
 
-                <div class="mt-5 border-t border-white/10 pt-4 lg:px-3">
+                <div class="mt-5 border-white/10 pt-4 lg:px-3">
                     <p class="px-3 text-[10px] font-black text-[#5F79AA]">مصرف</p>
                     <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
                         @if($canViewBilling)
@@ -349,9 +349,9 @@
                     </div>
                 </div>
 
-                <div class="mt-5 border-t border-white/10 px-1 py-4 text-xs leading-6 text-[#8FA6D2]">
+                <!-- <div class="mt-5 border-t border-white/10 px-1 py-4 text-xs leading-6 text-[#8FA6D2]">
                     مصرف PAYG از کیف پول کسر می شود و صورتحساب ماهانه برای بایگانی صادر می گردد.
-                </div>
+                </div> -->
             </div>
 
             <div class="relative max-h-[50vh] shrink-0 overflow-y-auto border-t border-white/10 px-3 pt-3 lg:max-h-none lg:overflow-visible lg:pb-1" @click.outside="profileOpen = false" @focusout="if (!$el.contains($event.relatedTarget)) profileOpen = false">
