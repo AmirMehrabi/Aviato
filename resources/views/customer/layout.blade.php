@@ -334,10 +334,10 @@
                     <p class="px-3 text-[10px] font-black text-[#5F79AA]">مصرف</p>
                     <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
                         @if($canViewBilling)
-                        <div class="flex items-center justify-between gap-3">
+                        <!-- <div class="flex items-center justify-between gap-3">
                             <span class="text-xs font-bold text-[#9DB4DC]">موجودی</span>
                             <span class="rounded px-1.5 py-0.5 text-[10px] font-black {{ $wallet->is_locked ? 'bg-red-400/15 text-red-200' : 'bg-emerald-400/15 text-emerald-200' }}">{{ $wallet->is_locked ? 'قفل' : 'فعال' }}</span>
-                        </div>
+                        </div> -->
                         <p class="mt-2 truncate text-lg font-black {{ $balanceIsNegative ? 'text-red-200' : 'text-white' }}">{{ $wallets->format($wallet->balance) }}</p>
                         <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-3 inline-flex w-full items-center justify-center rounded-md bg-[#00A67E] px-3 py-2 text-sm font-black text-white transition hover:bg-[#008F6E]">
                             افزایش اعتبار
