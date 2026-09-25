@@ -56,7 +56,7 @@
                         </p>
                     </div>
 
-                    <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading>
+                    <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading data-auth-validation="register" data-phone-mode="{{ $isCustomerSmsMode ? 'sms' : 'general' }}">
                         @csrf
                         @if ($portal === 'customer' && old('ref', $referralCode ?? '') !== '')
                             <input type="hidden" name="ref" value="{{ old('ref', $referralCode ?? '') }}">
@@ -67,38 +67,42 @@
                         @endif
                         @include('auth.partials.validation-errors')
 
+                        <p class="text-xs font-semibold text-slate-500">فیلدهای دارای نشان «ضروری» باید تکمیل شوند.</p>
+
                         <div class="grid gap-4 sm:grid-cols-2">
                             <label class="block">
-                                <span class="text-sm font-black text-slate-700">نام</span>
+                                <span class="text-sm font-black text-slate-700">نام <span class="text-rose-600">(ضروری)</span></span>
                                 <input name="first_name" value="{{ old('first_name') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
                             </label>
 
                             <label class="block">
-                                <span class="text-sm font-black text-slate-700">نام خانوادگی</span>
+                                <span class="text-sm font-black text-slate-700">نام خانوادگی <span class="text-rose-600">(ضروری)</span></span>
                                 <input name="last_name" value="{{ old('last_name') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
                             </label>
                         </div>
 
                         <div class="grid gap-4 sm:grid-cols-2">
                             <label class="block">
-                                <span class="text-sm font-black text-slate-700">ایمیل</span>
-                                <input name="email" value="{{ old('email') }}" @required($isCustomerEmailMode) class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                                <span class="text-sm font-black text-slate-700">ایمیل <span class="text-xs font-semibold text-slate-500">{{ $isCustomerEmailMode ? '(ضروری)' : ($isCustomerSmsMode ? '(اختیاری)' : '(ایمیل یا موبایل ضروری)') }}</span></span>
+                                <input type="email" name="email" value="{{ old('email') }}" @required($isCustomerEmailMode) autocomplete="email" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                             </label>
 
                             <label class="block">
-                                <span class="text-sm font-black text-slate-700">موبایل</span>
-                                <input name="phone" value="{{ old('phone') }}" @required($isCustomerSmsMode) class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                                <span class="text-sm font-black text-slate-700">موبایل <span class="text-xs font-semibold text-slate-500">{{ $isCustomerSmsMode ? '(ضروری)' : ($isCustomerEmailMode ? '(اختیاری)' : '(ایمیل یا موبایل ضروری)') }}</span></span>
+                                <input type="tel" name="phone" value="{{ old('phone') }}" @required($isCustomerSmsMode) placeholder="09123456789" inputmode="tel" autocomplete="tel" aria-describedby="phone-hint" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                                <span id="phone-hint" class="mt-1 block text-xs leading-5 text-slate-500">شماره را با ارقام لاتین وارد کنید؛ مانند <span dir="ltr">09123456789</span>.</span>
                             </label>
                         </div>
 
                         <label class="block">
-                            <span class="text-sm font-black text-slate-700">رمز عبور</span>
-                            <input type="password" name="password" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                            <span class="text-sm font-black text-slate-700">رمز عبور <span class="text-rose-600">(ضروری)</span></span>
+                            <input type="password" name="password" required minlength="8" autocomplete="new-password" aria-describedby="password-hint" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                            <span id="password-hint" class="mt-1 block text-xs leading-5 text-slate-500">رمز عبور باید حداقل ۸ کاراکتر داشته باشد.</span>
                         </label>
 
                         <label class="block">
-                            <span class="text-sm font-black text-slate-700">تکرار رمز عبور</span>
-                            <input type="password" name="password_confirmation" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                            <span class="text-sm font-black text-slate-700">تکرار رمز عبور <span class="text-rose-600">(ضروری)</span></span>
+                            <input type="password" name="password_confirmation" required autocomplete="new-password" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                         </label>
 
                         <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0069FF] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" type="submit">

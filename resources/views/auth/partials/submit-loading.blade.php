@@ -2,7 +2,8 @@
     (function () {
         const loadingText = @js($loadingText ?? 'در حال ارسال...');
         document.querySelectorAll('form[data-submit-loading]').forEach((form) => {
-            form.addEventListener('submit', () => {
+            form.addEventListener('submit', (event) => {
+                if (event.defaultPrevented) return;
                 const button = form.querySelector('button[type="submit"]');
                 if (!button || button.disabled) return;
                 button.disabled = true;

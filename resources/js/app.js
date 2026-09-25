@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import './auth-validation.js';
 
 document.addEventListener('click', async (event) => {
     const link = event.target.closest('[data-admin-sort-link]');

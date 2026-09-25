@@ -60,7 +60,7 @@
                         <p class="mt-2 text-sm leading-7 text-slate-600">برای ادامه، ایمیل یا شماره موبایل و رمز عبورتان را وارد کنید.</p>
                     </div>
 
-                    <form method="POST" action="{{ route($portal.'.login.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading>
+                    <form method="POST" action="{{ route($portal.'.login.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading data-auth-validation="login" data-phone-mode="general">
                         @csrf
 
                         @if (session('status'))
@@ -70,12 +70,13 @@
 
                         <label class="block">
                             <span class="text-sm font-black text-slate-700">ایمیل یا شماره موبایل</span>
-                            <input name="login" value="{{ old('login') }}" required autofocus class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition placeholder:text-slate-400 focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                            <input name="login" value="{{ old('login') }}" required autofocus autocomplete="username" placeholder="09123456789 یا email@example.com" aria-describedby="login-hint" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition placeholder:text-slate-400 focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                            <span id="login-hint" class="mt-1 block text-xs leading-5 text-slate-500">شماره موبایل را با ارقام لاتین وارد کنید.</span>
                         </label>
 
                         <label class="block">
                             <span class="text-sm font-black text-slate-700">رمز عبور</span>
-                            <input type="password" name="password" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                            <input type="password" name="password" required autocomplete="current-password" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                         </label>
 
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

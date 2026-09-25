@@ -58,7 +58,6 @@
                 ] : []),
             ],
             'حساب' => [
-                ['key' => 'profile', 'label' => 'پروفایل', 'route' => route('customer.profile.show', [], false), 'icon' => 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5 8a5 5 0 0 1 10 0'],
                 ['key' => 'tickets', 'label' => 'تیکت‌ها', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
                 ...($canViewBilling ? [
                     ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M19 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6M16 13h5v4h-5a2 2 0 0 1 0-4Z'],
@@ -190,7 +189,7 @@
         }"
         @keydown.window.ctrl.k.prevent="openSearch()"
         @keydown.window.meta.k.prevent="openSearch()"
-        @keydown.window.escape="closePanels(); sidebarOpen = false"
+        @keydown.window.escape="if (sidebarOpen) { sidebarOpen = false; $refs.sidebarTrigger?.focus(); } closePanels()"
         @notification-center-open.window="walletOpen = false; profileOpen = false; workspaceOpen = false; searchOpen = false"
         @keydown.window="
             if ($event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes($event.target.tagName)) {
@@ -205,13 +204,13 @@
             x-show="sidebarOpen"
             x-transition.opacity.duration.200ms
             class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden"
-            @click="sidebarOpen = false"
+            @click="sidebarOpen = false; $refs.sidebarTrigger?.focus()"
             aria-hidden="true"
         ></div>
 
         <aside
-            class="pointer-events-none fixed inset-y-0 right-0 z-40 flex w-[min(86vw,280px)] translate-x-full flex-col overflow-y-auto border-l border-white/10 bg-[#031B4E] px-4 py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:pointer-events-auto lg:static lg:w-[230px] lg:translate-x-0 lg:overflow-visible lg:px-0 lg:shadow-none"
-            :class="{ '!pointer-events-auto !translate-x-0': sidebarOpen }"
+            class="pointer-events-none invisible fixed inset-y-0 right-0 z-40 flex w-[min(86vw,280px)] translate-x-full flex-col border-l border-white/10 bg-[#031B4E] px-4 py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:pointer-events-auto lg:visible lg:sticky lg:top-0 lg:bottom-auto lg:right-auto lg:h-screen lg:w-[230px] lg:translate-x-0 lg:px-0 lg:shadow-none"
+            :class="{ '!pointer-events-auto !visible !translate-x-0': sidebarOpen }"
             aria-label="منوی مشتری"
         >
             <div class="flex items-center justify-between lg:px-4">
@@ -225,8 +224,9 @@
                 </a>
                 <button
                     type="button"
+                    x-ref="sidebarClose"
                     class="grid size-9 place-items-center rounded-md border border-white/10 text-[#9DB4DC] transition hover:bg-white/10 hover:text-white lg:hidden"
-                    @click="sidebarOpen = false"
+                    @click="sidebarOpen = false; $refs.sidebarTrigger?.focus()"
                     aria-label="بستن منو"
                 >
                     <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -235,122 +235,180 @@
                 </button>
             </div>
 
-            <nav class="mt-7 space-y-6 text-sm font-bold">
-                <div class="relative px-3 pt-2" @click.outside="workspaceOpen = false">
-                    <button
-                        type="button"
-                        @click="workspaceOpen = !workspaceOpen; walletOpen = false; profileOpen = false; searchOpen = false"
-                        class="group w-full rounded-xl border border-white/10 bg-[#08245A] p-3 text-right transition hover:border-[#5B8DDA] hover:bg-[#0A2A66]"
-                        :aria-expanded="workspaceOpen.toString()"
-                        aria-controls="customer-workspace-menu"
-                    >
-                        <span class="flex items-start gap-2.5">
-                            <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">ف</span>
-                            <span class="min-w-0 flex-1">
-                                <span class="block text-[10px] font-black text-[#8FA6D2]">انتخاب فضای کاری</span>
-                                <span class="mt-1 block truncate text-sm font-black text-white">{{ $activeProject->name }}</span>
-                                <span class="mt-1 block truncate text-[10px] font-bold text-[#9DB4DC]">{{ $activeWorkspaceRole }} · مالک: {{ $activeProject->owner?->name }}</span>
-                            </span>
-                            <svg class="mt-1 size-4 shrink-0 text-[#8FA6D2] transition" :class="workspaceOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
+            <div class="relative mt-7 px-3 pt-2" @click.outside="workspaceOpen = false">
+                <button
+                    type="button"
+                    @click="workspaceOpen = !workspaceOpen; walletOpen = false; profileOpen = false; searchOpen = false"
+                    class="group w-full rounded-xl border border-white/10 bg-[#08245A] p-3 text-right transition hover:border-[#5B8DDA] hover:bg-[#0A2A66]"
+                    :aria-expanded="workspaceOpen.toString()"
+                    aria-controls="customer-workspace-menu"
+                >
+                    <span class="flex items-start gap-2.5">
+                        <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">ف</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-[10px] font-black text-[#8FA6D2]">انتخاب فضای کاری</span>
+                            <span class="mt-1 block truncate text-sm font-black text-white">{{ $activeProject->name }}</span>
+                            <span class="mt-1 block truncate text-[10px] font-bold text-[#9DB4DC]">{{ $activeWorkspaceRole }} · مالک: {{ $activeProject->owner?->name }}</span>
                         </span>
-                    </button>
+                        <svg class="mt-1 size-4 shrink-0 text-[#8FA6D2] transition" :class="workspaceOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </button>
 
-                    <div id="customer-workspace-menu" x-cloak x-show="workspaceOpen" x-transition class="absolute inset-x-3 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl shadow-slate-950/25">
-                        <div class="rounded-lg bg-[#F2F8FF] px-3 py-2.5 text-xs font-bold leading-6 text-[#31527F]">
-                            فضای کاری محیط مشترک ماشین‌ها، اعضا و پرداخت‌هاست. با تغییر آن، منابع و صورتحساب قابل مشاهده تغییر می‌کند.
-                        </div>
-                        <div class="mt-2 max-h-64 space-y-1 overflow-y-auto">
-                            @foreach($projects as $project)
-                                @php
-                                    $projectMembership = $project->members->firstWhere('customer_id', $customer->id);
-                                    $projectRole = $workspaceRoleLabels[$projectMembership?->role ?? 'member'] ?? 'عضو';
-                                    $isActiveWorkspace = (int) $activeProject->id === (int) $project->id;
-                                    $isNewWorkspace = in_array((int) $project->id, $newWorkspaceIds, true);
-                                    $workspaceState = $isActiveWorkspace ? 'فضای فعال' : 'ورود به فضای کاری';
-                                @endphp
-                                <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
-                                    @csrf
-                                    <input type="hidden" name="project_id" value="{{ $project->id }}">
-                                    <button type="submit" @click="workspaceOpen = false" aria-label="{{ $workspaceState }} {{ $project->name }}" class="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
-                                        <span class="grid size-8 shrink-0 place-items-center rounded-lg {{ $isActiveWorkspace ? 'bg-[#0069FF] text-white' : 'bg-slate-100 text-slate-500' }} text-xs font-black">{{ mb_substr($project->name, 0, 1) }}</span>
-                                        <span class="min-w-0 flex-1">
-                                            <span class="flex items-center gap-2">
-                                                <span class="truncate text-sm font-black text-slate-900">{{ $project->name }}</span>
-                                                @if($isActiveWorkspace)<span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-[#0069FF]">فعال</span>@endif
-                                                @if($isNewWorkspace && ! $isActiveWorkspace)<span class="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-700">جدید</span>@endif
-                                                @if($project->is_default)<span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700">پیش‌فرض</span>@endif
-                                            </span>
-                                            <span class="mt-1 block truncate text-[11px] font-bold text-slate-500">نقش شما: {{ $projectRole }} · مالک: {{ $project->owner?->name }}</span>
+                <div id="customer-workspace-menu" x-cloak x-show="workspaceOpen" x-transition class="absolute inset-x-3 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl shadow-slate-950/25">
+                    <div class="rounded-lg bg-[#F2F8FF] px-3 py-2.5 text-xs font-bold leading-6 text-[#31527F]">
+                        فضای کاری محیط مشترک ماشین‌ها، اعضا و پرداخت‌هاست. با تغییر آن، منابع و صورتحساب قابل مشاهده تغییر می‌کند.
+                    </div>
+                    <div class="mt-2 max-h-64 space-y-1 overflow-y-auto">
+                        @foreach($projects as $project)
+                            @php
+                                $projectMembership = $project->members->firstWhere('customer_id', $customer->id);
+                                $projectRole = $workspaceRoleLabels[$projectMembership?->role ?? 'member'] ?? 'عضو';
+                                $isActiveWorkspace = (int) $activeProject->id === (int) $project->id;
+                                $isNewWorkspace = in_array((int) $project->id, $newWorkspaceIds, true);
+                                $workspaceState = $isActiveWorkspace ? 'فضای فعال' : 'ورود به فضای کاری';
+                            @endphp
+                            <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
+                                @csrf
+                                <input type="hidden" name="project_id" value="{{ $project->id }}">
+                                <button type="submit" @click="workspaceOpen = false" aria-label="{{ $workspaceState }} {{ $project->name }}" class="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
+                                    <span class="grid size-8 shrink-0 place-items-center rounded-lg {{ $isActiveWorkspace ? 'bg-[#0069FF] text-white' : 'bg-slate-100 text-slate-500' }} text-xs font-black">{{ mb_substr($project->name, 0, 1) }}</span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="flex items-center gap-2">
+                                            <span class="truncate text-sm font-black text-slate-900">{{ $project->name }}</span>
+                                            @if($isActiveWorkspace)<span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-[#0069FF]">فعال</span>@endif
+                                            @if($isNewWorkspace && ! $isActiveWorkspace)<span class="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-700">جدید</span>@endif
+                                            @if($project->is_default)<span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700">پیش‌فرض</span>@endif
                                         </span>
-                                        @if($isActiveWorkspace)<span class="mt-1 text-sm font-black text-[#0069FF]" aria-hidden="true">✓</span>@endif
-                                    </button>
-                                </form>
-                            @endforeach
-                        </div>
-                        <div class="mt-2 border-t border-slate-100 pt-2">
-                            <a href="{{ route('customer.projects.index', [], false) }}" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-black text-[#0069FF] transition hover:bg-[#F2F8FF]">
-                                <span>مدیریت فضاهای کاری</span>
-                                <span aria-hidden="true">←</span>
-                            </a>
-                        </div>
+                                        <span class="mt-1 block truncate text-[11px] font-bold text-slate-500">نقش شما: {{ $projectRole }} · مالک: {{ $project->owner?->name }}</span>
+                                    </span>
+                                    @if($isActiveWorkspace)<span class="mt-1 text-sm font-black text-[#0069FF]" aria-hidden="true">✓</span>@endif
+                                </button>
+                            </form>
+                        @endforeach
                     </div>
-                </div>
-                @foreach ($navGroups as $group => $items)
-                    <div>
-                        <p class="px-4 text-[10px] font-black text-[#5F79AA]">{{ $group }}</p>
-                        <div class="mt-2 space-y-0.5">
-                            @foreach ($items as $item)
-                                @php
-                                    $isActive = $activeNav === $item['key'];
-                                @endphp
-                                <a
-                                    href="{{ $item['route'] ?: '#' }}"
-                                    @if (! $item['route']) aria-disabled="true" @endif
-                                    @click="if (window.innerWidth < 1024) sidebarOpen = false"
-                                    class="flex items-center gap-2.5 px-3 py-2 transition {{ $isActive ? 'bg-white/90 text-[#031B4E] shadow-sm shadow-black/10' : ($item['route'] ? 'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' : 'cursor-default text-[#6F86B5] opacity-70') }}"
-                                >
-                                    <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                        <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
-                                    <span>{{ $item['label'] }}</span>
-                                    @if ($item['key'] === 'invoices' && ($invoiceCount ?? null))
-                                        <span class="mr-auto rounded px-1.5 py-0.5 text-[10px] font-black {{ $isActive ? 'bg-[#E5F0FF] text-[#0069FF]' : 'bg-white/10 text-[#C7D4EA]' }}">{{ $invoiceCount }}</span>
-                                    @endif
-                                    @if ($item['key'] === 'tickets' && $customerUnreadNotificationsCount > 0)
-                                        <span class="mr-auto rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white">{{ number_format($customerUnreadNotificationsCount) }}</span>
-                                    @endif
-                                </a>
-                            @endforeach
-                        </div>
+                    <div class="mt-2 border-t border-slate-100 pt-2">
+                        <a href="{{ route('customer.projects.index', [], false) }}" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-black text-[#0069FF] transition hover:bg-[#F2F8FF]">
+                            <span>مدیریت فضاهای کاری</span>
+                            <span aria-hidden="true">←</span>
+                        </a>
                     </div>
-                @endforeach
-            </nav>
-
-
-
-            <div class="mt-5 border-t border-white/10 pt-4 lg:px-3">
-                <p class="px-3 text-[10px] font-black text-[#5F79AA]">مصرف</p>
-                <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
-                    @if($canViewBilling)
-                    <div class="flex items-center justify-between gap-3">
-                        <span class="text-xs font-bold text-[#9DB4DC]">موجودی</span>
-                        <span class="rounded px-1.5 py-0.5 text-[10px] font-black {{ $wallet->is_locked ? 'bg-red-400/15 text-red-200' : 'bg-emerald-400/15 text-emerald-200' }}">{{ $wallet->is_locked ? 'قفل' : 'فعال' }}</span>
-                    </div>
-                    <p class="mt-2 truncate text-lg font-black {{ $balanceIsNegative ? 'text-red-200' : 'text-white' }}">{{ $wallets->format($wallet->balance) }}</p>
-                    <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-3 inline-flex w-full items-center justify-center rounded-md bg-[#00A67E] px-3 py-2 text-sm font-black text-white transition hover:bg-[#008F6E]">
-                        افزایش اعتبار
-                    </a>
-                    @else
-                        <p class="text-xs font-black text-white">مدیریت مالی با مالک فضاست</p>
-                        <p class="mt-2 truncate text-[11px] font-bold text-[#9DB4DC]">{{ $activeProject->owner?->name }}</p>
-                    @endif
                 </div>
             </div>
 
-            <div class="mt-auto border-t border-white/10 px-1 pt-4 text-xs leading-6 text-[#8FA6D2]">
-                مصرف PAYG از کیف پول کسر می شود و صورتحساب ماهانه برای بایگانی صادر می گردد.
+            <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                <nav class="mt-4 space-y-6 text-sm font-bold" aria-label="بخش‌های پنل مشتری">
+                    @foreach ($navGroups as $group => $items)
+                        <div>
+                            <p class="px-4 text-[10px] font-black text-[#5F79AA]">{{ $group }}</p>
+                            <div class="mt-2 space-y-0.5">
+                                @foreach ($items as $item)
+                                    @php
+                                        $isActive = $activeNav === $item['key'];
+                                    @endphp
+                                    <a
+                                        href="{{ $item['route'] ?: '#' }}"
+                                        @if (! $item['route']) aria-disabled="true" @endif
+                                        @click="if (window.innerWidth < 1024) sidebarOpen = false"
+                                        class="flex items-center gap-2.5 px-3 py-2 transition {{ $isActive ? 'bg-white/90 text-[#031B4E] shadow-sm shadow-black/10' : ($item['route'] ? 'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' : 'cursor-default text-[#6F86B5] opacity-70') }}"
+                                    >
+                                        <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        <span>{{ $item['label'] }}</span>
+                                        @if ($item['key'] === 'invoices' && ($invoiceCount ?? null))
+                                            <span class="mr-auto rounded px-1.5 py-0.5 text-[10px] font-black {{ $isActive ? 'bg-[#E5F0FF] text-[#0069FF]' : 'bg-white/10 text-[#C7D4EA]' }}">{{ $invoiceCount }}</span>
+                                        @endif
+                                        @if ($item['key'] === 'tickets' && $customerUnreadNotificationsCount > 0)
+                                            <span class="mr-auto rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white">{{ number_format($customerUnreadNotificationsCount) }}</span>
+                                        @endif
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </nav>
+
+                <div class="mt-5 border-t border-white/10 pt-4 lg:px-3">
+                    <p class="px-3 text-[10px] font-black text-[#5F79AA]">مصرف</p>
+                    <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
+                        @if($canViewBilling)
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-xs font-bold text-[#9DB4DC]">موجودی</span>
+                            <span class="rounded px-1.5 py-0.5 text-[10px] font-black {{ $wallet->is_locked ? 'bg-red-400/15 text-red-200' : 'bg-emerald-400/15 text-emerald-200' }}">{{ $wallet->is_locked ? 'قفل' : 'فعال' }}</span>
+                        </div>
+                        <p class="mt-2 truncate text-lg font-black {{ $balanceIsNegative ? 'text-red-200' : 'text-white' }}">{{ $wallets->format($wallet->balance) }}</p>
+                        <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-3 inline-flex w-full items-center justify-center rounded-md bg-[#00A67E] px-3 py-2 text-sm font-black text-white transition hover:bg-[#008F6E]">
+                            افزایش اعتبار
+                        </a>
+                        @else
+                            <p class="text-xs font-black text-white">مدیریت مالی با مالک فضاست</p>
+                            <p class="mt-2 truncate text-[11px] font-bold text-[#9DB4DC]">{{ $activeProject->owner?->name }}</p>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="mt-5 border-t border-white/10 px-1 py-4 text-xs leading-6 text-[#8FA6D2]">
+                    مصرف PAYG از کیف پول کسر می شود و صورتحساب ماهانه برای بایگانی صادر می گردد.
+                </div>
+            </div>
+
+            <div class="relative max-h-[50vh] shrink-0 overflow-y-auto border-t border-white/10 px-3 pt-3 lg:max-h-none lg:overflow-visible lg:pb-1" @click.outside="profileOpen = false" @focusout="if (!$el.contains($event.relatedTarget)) profileOpen = false">
+                <button
+                    type="button"
+                    class="hidden w-full items-center gap-3 rounded-xl px-2 py-2.5 text-right transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:flex {{ $activeNav === 'profile' ? 'bg-white/10' : '' }}"
+                    @click="profileOpen = !profileOpen; walletOpen = false; workspaceOpen = false; searchOpen = false"
+                    :aria-expanded="profileOpen.toString()"
+                    aria-controls="customer-account-menu"
+                    aria-label="حساب کاربری {{ $customer->name }}"
+                >
+                    <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-[10px] font-bold text-[#9DB4DC]">حساب کاربری</span>
+                        <span class="block truncate text-sm font-black text-white">{{ $customer->name }}</span>
+                    </span>
+                    <svg class="size-4 shrink-0 text-[#9DB4DC] transition-transform" :class="profileOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+                </button>
+
+                <div id="customer-account-menu" x-cloak x-show="profileOpen" x-transition class="absolute inset-x-3 bottom-full z-50 mb-2 hidden max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl shadow-slate-950/20 lg:block">
+                    <div class="border-b border-slate-100 px-2 py-2">
+                        <p class="truncate text-sm font-black text-slate-950">{{ $customer->name }}</p>
+                        <p class="truncate text-xs text-slate-500" dir="ltr">{{ $customer->email ?? $customer->phone ?? 'حساب مشتری' }}</p>
+                    </div>
+                    <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="mt-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF]">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                        پروفایل
+                    </a>
+                    <form method="POST" action="{{ route('customer.logout', [], false) }}" class="mt-1 border-t border-slate-100 pt-1">
+                        @csrf
+                        <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-600 transition hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
+                            خروج از حساب
+                        </button>
+                    </form>
+                </div>
+
+                <div class="lg:hidden">
+                    <div class="flex items-center gap-3 px-2 pb-3">
+                        <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
+                        <span class="min-w-0">
+                            <span class="block text-[10px] font-bold text-[#9DB4DC]">حساب کاربری</span>
+                            <span class="block truncate text-sm font-black text-white">{{ $customer->name }}</span>
+                        </span>
+                    </div>
+                    <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                        پروفایل
+                    </a>
+                    <form method="POST" action="{{ route('customer.logout', [], false) }}">
+                        @csrf
+                        <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-200 transition hover:bg-red-400/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-200">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
+                            خروج از حساب
+                        </button>
+                    </form>
+                </div>
             </div>
         </aside>
 
@@ -359,8 +417,9 @@
                 <div class="flex h-16 items-center justify-between gap-2">
                     <button
                         type="button"
+                        x-ref="sidebarTrigger"
                         class="grid size-11 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm shadow-slate-200/50 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] lg:hidden"
-                        @click="sidebarOpen = true"
+                        @click="sidebarOpen = true; $nextTick(() => $refs.sidebarClose?.focus())"
                         :aria-expanded="sidebarOpen.toString()"
                         aria-label="باز کردن منو"
                     >
@@ -446,56 +505,6 @@
                         </div>
                         @endif
 
-                        <div class="relative">
-                            <button
-                                type="button"
-                                @click="profileOpen = !profileOpen; walletOpen = false; searchOpen = false"
-                                class="group flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 text-slate-600 shadow-sm shadow-slate-200/50 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] sm:px-2.5"
-                                aria-label="پروفایل"
-                                :aria-expanded="profileOpen.toString()"
-                            >
-                                <span class="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-950 text-sm font-black text-white shadow-sm">
-                                    {{ $customerInitial }}
-                                    <span class="absolute inset-x-0 bottom-0 h-1 bg-[#00A67E]"></span>
-                                </span>
-                                <svg class="hidden size-4 text-slate-400 transition group-hover:text-[#0069FF] sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </button>
-
-                            <div
-                                x-cloak
-                                x-show="profileOpen"
-                                x-transition
-                                @click.away="profileOpen = false"
-                                class="absolute left-0 top-14 z-50 w-72 rounded-xl border border-slate-200 bg-white p-4 text-right shadow-2xl shadow-slate-950/10"
-                            >
-                                <div class="flex items-center gap-3 border-b border-slate-200 pb-4">
-                                    <span class="relative grid size-11 place-items-center overflow-hidden rounded-xl bg-slate-950 text-lg font-black text-white">
-                                        {{ $customerInitial }}
-                                        <span class="absolute inset-x-0 bottom-0 h-1.5 bg-[#00A67E]"></span>
-                                    </span>
-                                    <div class="min-w-0">
-                                        <p class="truncate font-black text-slate-950">{{ $customer->name }}</p>
-                                        <p class="truncate text-sm text-slate-500">{{ $customer->email ?? $customer->phone ?? 'حساب مشتری' }}</p>
-                                    </div>
-                                </div>
-                                <div class="mt-3 space-y-1">
-                                    <a href="{{ route('dashboard', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">داشبورد</a>
-                                    <a href="{{ route('customer.profile.show', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">پروفایل</a>
-                                    @if($canViewBilling)
-                                    <a href="{{ route('customer.wallet.show', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">کیف پول</a>
-                                    <a href="{{ route('customer.invoices.index', [], false) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">صورتحساب‌ها و پرداخت‌ها</a>
-                                    @endif
-                                    <form method="POST" action="{{ route('customer.logout', [], false) }}" class="pt-2">
-                                        @csrf
-                                        <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-right text-sm font-black text-red-600 transition hover:bg-red-50">
-                                            خروج از حساب
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </header>

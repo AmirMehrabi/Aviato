@@ -209,6 +209,29 @@ class PortalAuthenticationTest extends TestCase
         $response->assertRedirect('https://cp.localhost/email/verify?phone=09123456789');
     }
 
+    public function test_registration_form_explains_required_fields_and_uses_sms_phone_validation(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'sms');
+
+        $this->get('https://cp.localhost/register')
+            ->assertOk()
+            ->assertSee('data-auth-validation="register"', false)
+            ->assertSee('data-phone-mode="sms"', false)
+            ->assertSee('placeholder="09123456789"', false)
+            ->assertSee('شماره را با ارقام لاتین وارد کنید')
+            ->assertSee('رمز عبور باید حداقل ۸ کاراکتر داشته باشد')
+            ->assertSee('موبایل <span class="text-xs font-semibold text-slate-500">(ضروری)</span>', false)
+            ->assertSee('ایمیل <span class="text-xs font-semibold text-slate-500">(اختیاری)</span>', false);
+    }
+
+    public function test_login_form_uses_shared_auth_validation(): void
+    {
+        $this->get('https://cp.localhost/login')
+            ->assertOk()
+            ->assertSee('data-auth-validation="login"', false)
+            ->assertSee('شماره موبایل را با ارقام لاتین وارد کنید');
+    }
+
     public function test_customer_login_page_links_to_customer_password_reset(): void
     {
         $this->get('https://cp.localhost/login')
