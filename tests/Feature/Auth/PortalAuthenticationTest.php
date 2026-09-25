@@ -218,7 +218,6 @@ class PortalAuthenticationTest extends TestCase
             ->assertSee('data-auth-validation="register"', false)
             ->assertSee('data-phone-mode="sms"', false)
             ->assertSee('placeholder="09123456789"', false)
-            ->assertSee('شماره را با ارقام لاتین وارد کنید')
             ->assertSee('رمز عبور باید حداقل ۸ کاراکتر داشته باشد')
             ->assertSee('موبایل <span class="text-xs font-semibold text-slate-500">(ضروری)</span>', false)
             ->assertSee('ایمیل <span class="text-xs font-semibold text-slate-500">(اختیاری)</span>', false);

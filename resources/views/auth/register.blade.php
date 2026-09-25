@@ -90,7 +90,6 @@
                             <label class="block">
                                 <span class="text-sm font-black text-slate-700">موبایل <span class="text-xs font-semibold text-slate-500">{{ $isCustomerSmsMode ? '(ضروری)' : ($isCustomerEmailMode ? '(اختیاری)' : '(ایمیل یا موبایل ضروری)') }}</span></span>
                                 <input type="tel" name="phone" value="{{ old('phone') }}" @required($isCustomerSmsMode) placeholder="09123456789" inputmode="tel" autocomplete="tel" aria-describedby="phone-hint" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
-                                <span id="phone-hint" class="mt-1 block text-xs leading-5 text-slate-500">شماره را با ارقام لاتین وارد کنید؛ مانند <span dir="ltr">09123456789</span>.</span>
                             </label>
                         </div>
 
