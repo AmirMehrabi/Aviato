@@ -209,7 +209,7 @@ class PortalAuthenticationTest extends TestCase
         $response->assertRedirect('https://cp.localhost/email/verify?phone=09123456789');
     }
 
-    public function test_registration_form_explains_required_fields_and_uses_sms_phone_validation(): void
+    public function test_registration_form_marks_required_fields_and_uses_sms_phone_validation(): void
     {
         AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'sms');
 
@@ -219,8 +219,18 @@ class PortalAuthenticationTest extends TestCase
             ->assertSee('data-phone-mode="sms"', false)
             ->assertSee('placeholder="09123456789"', false)
             ->assertSee('رمز عبور باید حداقل ۸ کاراکتر داشته باشد')
-            ->assertSee('موبایل <span class="text-xs font-semibold text-slate-500">(ضروری)</span>', false)
+            ->assertSee('فیلدهای ستاره‌دار الزامی هستند')
+            ->assertSee('موبایل <span class="text-rose-600" aria-hidden="true">*</span>', false)
             ->assertSee('ایمیل <span class="text-xs font-semibold text-slate-500">(اختیاری)</span>', false);
+    }
+
+    public function test_registration_form_explains_contact_choice_when_verification_is_disabled(): void
+    {
+        AppSetting::setValue(AppSetting::CUSTOMER_VERIFICATION_MODE, 'disabled');
+
+        $this->get('https://cp.localhost/register')
+            ->assertOk()
+            ->assertSee('برای راه ارتباطی، حداقل یکی از ایمیل یا شماره موبایل را وارد کنید.');
     }
 
     public function test_login_form_uses_shared_auth_validation(): void

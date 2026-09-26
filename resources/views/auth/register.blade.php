@@ -67,40 +67,45 @@
                         @endif
                         @include('auth.partials.validation-errors')
 
-                        <p class="text-xs font-semibold text-slate-500">فیلدهای دارای نشان «ضروری» باید تکمیل شوند.</p>
+                        <p class="text-xs font-semibold text-slate-500"><span class="font-black text-rose-600" aria-hidden="true">*</span> فیلدهای ستاره‌دار الزامی هستند.</p>
 
                         <div class="grid gap-4 sm:grid-cols-2">
                             <label class="block">
-                                <span class="text-sm font-black text-slate-700">نام <span class="text-rose-600">(ضروری)</span></span>
+                                <span class="text-sm font-black text-slate-700">نام <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></span>
                                 <input name="first_name" value="{{ old('first_name') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
                             </label>
 
                             <label class="block">
-                                <span class="text-sm font-black text-slate-700">نام خانوادگی <span class="text-rose-600">(ضروری)</span></span>
+                                <span class="text-sm font-black text-slate-700">نام خانوادگی <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></span>
                                 <input name="last_name" value="{{ old('last_name') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
                             </label>
                         </div>
 
+                        @if (! $isCustomerEmailMode && ! $isCustomerSmsMode)
+                            <p class="text-xs leading-5 text-slate-500">برای راه ارتباطی، حداقل یکی از ایمیل یا شماره موبایل را وارد کنید.</p>
+                        @endif
+
                         <div class="grid gap-4 sm:grid-cols-2">
                             <label class="block">
-                                <span class="text-sm font-black text-slate-700">ایمیل <span class="text-xs font-semibold text-slate-500">{{ $isCustomerEmailMode ? '(ضروری)' : ($isCustomerSmsMode ? '(اختیاری)' : '(ایمیل یا موبایل ضروری)') }}</span></span>
+                                <span class="text-sm font-black text-slate-700">ایمیل @if ($isCustomerEmailMode)<span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span>@elseif ($isCustomerSmsMode)<span class="text-xs font-semibold text-slate-500">(اختیاری)</span>@endif</span>
                                 <input type="email" name="email" value="{{ old('email') }}" @required($isCustomerEmailMode) autocomplete="email" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                             </label>
 
                             <label class="block">
-                                <span class="text-sm font-black text-slate-700">موبایل <span class="text-xs font-semibold text-slate-500">{{ $isCustomerSmsMode ? '(ضروری)' : ($isCustomerEmailMode ? '(اختیاری)' : '(ایمیل یا موبایل ضروری)') }}</span></span>
+                                <span class="text-sm font-black text-slate-700">موبایل @if ($isCustomerSmsMode)<span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span>@elseif ($isCustomerEmailMode)<span class="text-xs font-semibold text-slate-500">(اختیاری)</span>@endif</span>
                                 <input type="tel" name="phone" value="{{ old('phone') }}" @required($isCustomerSmsMode) placeholder="09123456789" inputmode="tel" autocomplete="tel" aria-describedby="phone-hint" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                                <span id="phone-hint" class="mt-1 block text-xs leading-5 text-slate-500">شماره موبایل را با ارقام لاتین وارد کنید.</span>
                             </label>
                         </div>
 
                         <label class="block">
-                            <span class="text-sm font-black text-slate-700">رمز عبور <span class="text-rose-600">(ضروری)</span></span>
+                            <span class="text-sm font-black text-slate-700">رمز عبور <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></span>
                             <input type="password" name="password" required minlength="8" autocomplete="new-password" aria-describedby="password-hint" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                             <span id="password-hint" class="mt-1 block text-xs leading-5 text-slate-500">رمز عبور باید حداقل ۸ کاراکتر داشته باشد.</span>
                         </label>
 
                         <label class="block">
-                            <span class="text-sm font-black text-slate-700">تکرار رمز عبور <span class="text-rose-600">(ضروری)</span></span>
+                            <span class="text-sm font-black text-slate-700">تکرار رمز عبور <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></span>
                             <input type="password" name="password_confirmation" required autocomplete="new-password" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
                         </label>
 
