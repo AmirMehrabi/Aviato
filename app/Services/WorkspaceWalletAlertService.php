@@ -25,8 +25,6 @@ class WorkspaceWalletAlertService
     public function snapshot(Customer $owner): array
     {
         $balance = $this->balances->effectiveBalance($owner);
-        $hours = ResourceRate::hoursPerMonth();
-        $monthly = 0;
         $machines = VirtualMachine::query()
             ->notDeleted()
             ->where(function ($query) use ($owner): void {
@@ -36,6 +34,27 @@ class WorkspaceWalletAlertService
             ->with(['bundle', 'disks', 'backups'])
             ->get();
 
+        $monthly = $this->monthlyCost($machines);
+
+        return [
+            'balance' => $balance,
+            'monthly_cost' => $monthly,
+            'percent' => $monthly > 0 ? round(100 * $balance / $monthly, 2) : null,
+        ];
+    }
+
+    public function projectMonthlyCost(Project $project): int
+    {
+        return $this->monthlyCost($project->virtualMachines()
+            ->notDeleted()
+            ->with(['bundle', 'disks', 'backups'])
+            ->get());
+    }
+
+    private function monthlyCost(iterable $machines): int
+    {
+        $hours = ResourceRate::hoursPerMonth();
+        $monthly = 0;
         foreach ($machines as $vm) {
             if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
                 continue;
@@ -48,11 +67,7 @@ class WorkspaceWalletAlertService
                 ->sum(fn (VmBackup $backup): int => (int) round($this->billing->backupHourly($backup) * $hours));
         }
 
-        return [
-            'balance' => $balance,
-            'monthly_cost' => $monthly,
-            'percent' => $monthly > 0 ? round(100 * $balance / $monthly, 2) : null,
-        ];
+        return $monthly;
     }
 
     public function thresholds(Project $project): array

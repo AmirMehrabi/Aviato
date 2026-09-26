@@ -214,7 +214,7 @@ class CustomerWalletBillingTest extends TestCase
             ->assertSee('جمع مبلغ پرداخت‌شده')
             ->assertSee(Jalali::format($paidAt));
 
-        $this->get($this->customerBaseUrl.'/wallet')
+        $this->get($this->customerBaseUrl.'/wallet?tab=transactions')
             ->assertOk()
             ->assertSee('مشاهده رسید پرداخت')
             ->assertSee('/payments/'.$payment->id.'/receipt', false);
@@ -272,7 +272,7 @@ class CustomerWalletBillingTest extends TestCase
 
         $this->actingAs($billingMember, 'customer')
             ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
-            ->get($this->customerBaseUrl.'/wallet')
+            ->get($this->customerBaseUrl.'/wallet?tab=top-up')
             ->assertOk()
             ->assertSee('پرداخت و افزایش موجودی')
             ->assertDontSee('فقط مالک فضای کاری می‌تواند موجودی این کیف پول را افزایش دهد.');
@@ -354,6 +354,57 @@ class CustomerWalletBillingTest extends TestCase
             ->assertDontSee(route('customer.monitoring.index', [], false));
     }
 
+    public function test_billing_member_sees_shared_monthly_estimate_without_vm_details(): void
+    {
+        $owner = Customer::factory()->create();
+        $billingMember = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $otherProject = $owner->ownedProjects()->create(['name' => 'Second workspace']);
+        $project->members()->create([
+            'customer_id' => $billingMember->id,
+            'role' => ProjectMember::ROLE_BILLING,
+        ]);
+        $bundle = VmBundle::create([
+            'name' => 'Wallet estimate',
+            'slug' => 'wallet-estimate',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'monthly_price' => 730000,
+            'is_active' => true,
+        ]);
+
+        foreach ([$project, $otherProject] as $workspace) {
+            VirtualMachine::create([
+                'customer_id' => $owner->id,
+                'project_id' => $workspace->id,
+                'vm_bundle_id' => $bundle->id,
+                'name' => 'private-server-'.$workspace->id,
+                'cpu_cores' => 2,
+                'ram_gb' => 4,
+                'disk_gb' => 40,
+                'ip_count' => 1,
+                'status' => VirtualMachine::STATUS_RUNNING,
+                'provisioning_status' => VirtualMachine::PROVISION_READY,
+                'last_billed_at' => now(),
+            ]);
+        }
+
+        $owner->wallet()->update(['balance' => 500000]);
+
+        $this->actingAs($billingMember, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/wallet')
+            ->assertOk()
+            ->assertViewHas('projectMonthlyEstimate', 730000)
+            ->assertViewHas('monthlyEstimate', 1460000)
+            ->assertViewHas('suggestedTopUp', 960000)
+            ->assertViewHas('suggestedTopUpToman', 96000)
+            ->assertDontSee('private-server-'.$project->id)
+            ->assertDontSee('private-server-'.$otherProject->id);
+    }
+
     public function test_billing_workspace_member_is_redirected_from_vm_sections(): void
     {
         $owner = Customer::factory()->create();
@@ -425,10 +476,10 @@ class CustomerWalletBillingTest extends TestCase
         $this->enableMellatGateway();
 
         $this->actingAs($customer, 'customer')
-            ->get($this->customerBaseUrl.'/wallet')
+            ->get($this->customerBaseUrl.'/wallet?tab=top-up')
             ->assertOk()
-            ->assertSee('100,000')
-            ->assertSee('300,000')
+            ->assertSee('250,000')
+            ->assertSee('500,000')
             ->assertSee('1,000,000')
             ->assertSee('2,500,000')
             // ->assertSee('تمام مبلغ‌ها به تومان است')
@@ -444,7 +495,7 @@ class CustomerWalletBillingTest extends TestCase
         $this->enableHesabroGateway();
 
         $this->actingAs($customer, 'customer')
-            ->get($this->customerBaseUrl.'/wallet')
+            ->get($this->customerBaseUrl.'/wallet?tab=top-up')
             ->assertOk()
             ->assertSee('درگاه پرداخت را انتخاب کنید')
             ->assertSee('بانک ملت')
@@ -684,7 +735,7 @@ class CustomerWalletBillingTest extends TestCase
 
         $this->actingAs($customer, 'customer');
 
-        $this->get($this->customerBaseUrl.'/wallet')
+        $this->get($this->customerBaseUrl.'/wallet?tab=transactions')
             ->assertOk()
             ->assertSee('شارژ اولیه')
             ->assertSee('کسر PAYG');

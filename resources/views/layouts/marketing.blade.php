@@ -166,8 +166,8 @@
                 'h-14 border-transparent bg-transparent'"
             class="fixed inset-x-0 top-0 z-50 border-b border-transparent backdrop-blur transition-[top,height,background-color,border-color,box-shadow] duration-300"
             @mouseleave="solutionsOpen = false">
-            <nav class="relative mx-auto flex h-full max-w-[1320px] items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
-                <a href="{{ route('home') }}" class="flex min-w-0 items-center" aria-label="آویاتو">
+            <nav class="relative mx-auto flex h-full max-w-[1400px] items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
+                <a href="{{ route('home') }}" class="flex min-w-0 items-center" aria-label="آویاتو" @mouseenter="solutionsOpen = false" @focus="solutionsOpen = false">
                     <span class="relative block h-10 w-24 sm:w-40" :class="scrolled ? 'h-9 w-20 sm:w-40' : 'h-10 w-24 sm:w-40'">
                         <img src="{{ asset('assets/images/figma-aviato-logo.png') }}" alt="آویاتو"
                             x-show="scrolled || ! {{ $darkHeaderTop ? 'true' : 'false' }}"
@@ -199,6 +199,7 @@
                             </div>
                         @else
                             <a href="{{ route($item['route']) }}"
+                                @mouseenter="solutionsOpen = false" @focus="solutionsOpen = false"
                                 @if (!$isActive) :class="scrolled ? 'text-slate-600 hover:bg-white hover:text-[#0069FF]' : '{{ $darkHeaderTop ? 'text-white/80 hover:bg-white/10 hover:text-white' : 'text-slate-600 hover:bg-white/80 hover:text-[#0069FF]' }}'" @endif
                                 class="relative rounded-full px-4 py-2 transition {{ $isActive ? 'bg-[#0069FF] text-white shadow-sm shadow-[#0069FF]/25' : '' }}">
                                 {{ $item['label'] }}
@@ -207,7 +208,7 @@
                     @endforeach
                 </div>
 
-                <div class="flex shrink-0 items-center gap-1 sm:gap-2">
+                <div class="flex shrink-0 items-center gap-1 sm:gap-2" @mouseenter="solutionsOpen = false" @focusin="solutionsOpen = false">
                     <a href="{{ route('customer.login') }}"
                         :class="scrolled ?
                             '!border-slate-200 !bg-white !text-slate-700 hover:!border-[#B8D6FF] hover:!bg-[#EBF3FF] hover:!text-[#0069FF]' :

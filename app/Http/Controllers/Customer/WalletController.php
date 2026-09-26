@@ -12,6 +12,7 @@ use App\Services\ProjectAccessService;
 use App\Services\UsageBalanceService;
 use App\Services\UsageBillingService;
 use App\Services\WalletService;
+use App\Services\WorkspaceWalletAlertService;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +28,7 @@ class WalletController extends Controller
         private readonly UsageBillingService $usageBilling,
         private readonly UsageBalanceService $usageBalances,
         private readonly PaymentGatewayManager $paymentGateways,
+        private readonly WorkspaceWalletAlertService $walletAlerts,
     ) {}
 
     public function show(Request $request): View
@@ -46,6 +48,13 @@ class WalletController extends Controller
             ])],
         ]);
         $selectedType = $filters['type'] ?? 'all';
+        $selectedTab = $request->query('tab');
+        $selectedTab = in_array($selectedTab, ['overview', 'top-up', 'transactions'], true) ? $selectedTab : 'overview';
+        if ($request->boolean('topup') || $request->boolean('gift_card') || $request->session()->has('errors')) {
+            $selectedTab = 'top-up';
+        } elseif ($selectedType !== 'all' || $request->has('page')) {
+            $selectedTab = 'transactions';
+        }
         $paymentNotice = $this->paymentNotice($request, $activeProject->owner->id);
         $transactions = $wallet->transactions()
             ->with('reference')
@@ -64,6 +73,13 @@ class WalletController extends Controller
                     ->orWhereNull('metadata->project_id');
             })
             ->where('created_at', '>=', $monthStart);
+        $walletSnapshot = $this->walletAlerts->snapshot($activeProject->owner);
+        $monthlyEstimate = $walletSnapshot['monthly_cost'];
+        $effectiveBalance = $walletSnapshot['balance'];
+        $suggestedTopUp = max(0, $monthlyEstimate - $effectiveBalance);
+        $suggestedTopUpToman = AppSetting::currency() === 'IRR'
+            ? (int) ceil($suggestedTopUp / 10)
+            : $suggestedTopUp;
 
         return view('customer.wallet.show', [
             'customer' => $customer,
@@ -74,7 +90,13 @@ class WalletController extends Controller
             'wallets' => $this->wallets,
             'transactions' => $transactions,
             'selectedType' => $selectedType,
+            'selectedTab' => $selectedTab,
             'pendingUsage' => $this->usageBilling->projectPendingUsage($activeProject->id),
+            'effectiveBalance' => $effectiveBalance,
+            'monthlyEstimate' => $monthlyEstimate,
+            'projectMonthlyEstimate' => $this->walletAlerts->projectMonthlyCost($activeProject),
+            'suggestedTopUp' => $suggestedTopUp,
+            'suggestedTopUpToman' => $suggestedTopUpToman,
             'monthlyCredits' => (int) (clone $baseQuery)->where('amount', '>', 0)->sum('amount'),
             'monthlyCharges' => (int) abs((clone $baseQuery)->where('amount', '<', 0)->sum('amount')),
             'canTopUp' => $this->projects->canViewBilling($activeProject, $customer),
