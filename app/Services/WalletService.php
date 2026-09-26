@@ -56,11 +56,6 @@ class WalletService
         return $prefix.$this->formattedAmount(abs($amount), $currency).' '.$this->currencyLabel($currency);
     }
 
-    public function customerWalletNegativeThreshold(): int
-    {
-        return AppSetting::customerWalletNegativeThreshold();
-    }
-
     public function isWalletDepleted(Customer $customer): bool
     {
         $usageBalances = $this->usageBalances ?? app(UsageBalanceService::class);

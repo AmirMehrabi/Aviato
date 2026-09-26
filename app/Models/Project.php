@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['uuid', 'owner_customer_id', 'name', 'slug', 'is_default'])]
+#[Fillable(['uuid', 'owner_customer_id', 'name', 'slug', 'is_default', 'wallet_alert_thresholds', 'wallet_alert_recipient_ids'])]
 class Project extends Model
 {
     protected static function booted(): void
@@ -59,6 +59,8 @@ class Project extends Model
     {
         return [
             'is_default' => 'boolean',
+            'wallet_alert_thresholds' => 'array',
+            'wallet_alert_recipient_ids' => 'array',
         ];
     }
 }

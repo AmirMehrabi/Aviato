@@ -48,7 +48,9 @@ class AppSetting extends Model
 
     public const KAVENEGAR_TEMPLATE = 'kavenegar.template';
 
-    public const CUSTOMER_WALLET_NEGATIVE_THRESHOLD = 'customer.wallet.negative_threshold';
+    public const CUSTOMER_WALLET_ALERT_PERCENTAGES = 'customer.wallet.alert_percentages';
+
+    public const CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY = 'customer.wallet.alert_recipient_policy';
 
     public const CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED = 'customer.wallet.negative_sms_enabled';
 
@@ -437,9 +439,18 @@ class AppSetting extends Model
         return (int) round($usd * $rate * $markup);
     }
 
-    public static function customerWalletNegativeThreshold(): int
+    public static function customerWalletAlertPercentages(): array
     {
-        return (int) static::getValue(self::CUSTOMER_WALLET_NEGATIVE_THRESHOLD, 0);
+        $values = static::getValue(self::CUSTOMER_WALLET_ALERT_PERCENTAGES, [15, 10, 5]);
+
+        return is_array($values) ? array_values(array_unique(array_filter(array_map('intval', $values), fn (int $value): bool => $value >= 1 && $value <= 100))) : [15, 10, 5];
+    }
+
+    public static function customerWalletAlertRecipientPolicy(): string
+    {
+        $policy = (string) static::getValue(self::CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY, 'owner');
+
+        return in_array($policy, ['owner', 'owner_and_billing'], true) ? $policy : 'owner';
     }
 
     public static function customerWalletNegativeSmsEnabled(): bool

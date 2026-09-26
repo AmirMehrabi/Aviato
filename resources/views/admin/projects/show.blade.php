@@ -75,6 +75,22 @@
         </article>
     </section>
 
+    <section class="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+        <h2 class="text-lg font-black text-slate-950">هشدارهای کیف‌پول</h2>
+        <p class="mt-2 text-sm text-slate-600">موجودی مؤثر کیف‌پول مالک: {{ app(\App\Services\WalletService::class)->format($walletAlertSnapshot['balance']) }} · هزینه ماهانه برآوردی همه فضاهای کاری مالک: {{ app(\App\Services\WalletService::class)->format($walletAlertSnapshot['monthly_cost']) }} · باقیمانده: {{ $walletAlertSnapshot['percent'] === null ? 'بدون هزینه ماهانه' : $walletAlertSnapshot['percent'].'٪' }}</p>
+        <form method="POST" action="{{ route('admin.projects.wallet-alerts.update', $project) }}" class="mt-5 space-y-4">
+            @csrf @method('PATCH')
+            <div class="grid gap-4 md:grid-cols-2">
+                <label class="block"><span class="text-sm font-black">درصدهای هشدار</span><select name="threshold_mode" class="mt-2 w-full rounded-lg border border-slate-300 p-3"><option value="default" @selected($project->wallet_alert_thresholds === null)>پیش‌فرض تنظیمات مدیر</option><option value="custom" @selected($project->wallet_alert_thresholds !== null)>مقدار سفارشی این فضا</option></select></label>
+                <label class="block"><span class="text-sm font-black">درصدهای سفارشی</span><input name="thresholds" value="{{ old('thresholds', implode(', ', $walletAlertThresholds)) }}" placeholder="15, 10, 5" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-300 p-3"><span class="mt-1 block text-xs text-slate-500">در حالت پیش‌فرض نادیده گرفته می‌شود.</span></label>
+                <label class="block"><span class="text-sm font-black">دریافت‌کنندگان</span><select name="recipient_mode" class="mt-2 w-full rounded-lg border border-slate-300 p-3"><option value="default" @selected($project->wallet_alert_recipient_ids === null)>پیش‌فرض تنظیمات مدیر</option><option value="custom" @selected($project->wallet_alert_recipient_ids !== null)>اعضای انتخاب‌شده</option></select></label>
+                <div><span class="text-sm font-black">اعضای منتخب</span><div class="mt-2 max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-300 p-3">@foreach($project->members as $member)@if($member->customer?->status === \App\Models\Customer::STATUS_ACTIVE)<label class="flex items-center gap-2 text-sm"><input type="checkbox" name="recipient_ids[]" value="{{ $member->customer_id }}" @checked(in_array($member->customer_id, $walletAlertRecipientIds, true))><span>{{ $member->customer->name }} ({{ $roleLabels[$member->role] ?? $member->role }})</span></label>@endif @endforeach</div><span class="mt-1 block text-xs text-slate-500">در حالت پیش‌فرض نادیده گرفته می‌شود. برای توقف ارسال خودکار می‌توانید هیچ عضوی را انتخاب نکنید.</span></div>
+            </div>
+            <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره تنظیمات هشدار</button>
+        </form>
+        <form method="POST" action="{{ route('admin.projects.wallet-alerts.send', $project) }}" class="mt-5 border-t border-slate-100 pt-5">@csrf<p class="mb-3 text-xs text-slate-500">ارسال به {{ count($walletAlertRecipientIds) }} دریافت‌کننده ذخیره‌شده انجام می‌شود. اگر انتخاب‌ها را تغییر داده‌اید، ابتدا تنظیمات هشدار را ذخیره کنید.</p><button class="rounded-lg border border-[#0069FF] px-5 py-3 text-sm font-black text-[#0069FF]">ارسال دستی اعلان موجودی</button></form>
+    </section>
+
     <section class="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div class="space-y-5">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">

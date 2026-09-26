@@ -2,12 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\VirtualMachine;
 use App\Models\Wallet;
-use App\Services\Sms\KavenegarLookupClient;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -16,36 +13,18 @@ class CustomerWalletAlertService
     public function __construct(
         private readonly ProxmoxService $proxmox,
         private readonly UsageBalanceService $usageBalances,
+        private readonly WorkspaceWalletAlertService $workspaceAlerts,
     ) {}
 
     public function handleWalletBalanceChange(Customer $customer): void
     {
-        $customer->loadMissing('virtualMachines.proxmoxServer');
         $wallet = Wallet::query()->where('customer_id', $customer->id)->first();
 
         if (! $wallet instanceof Wallet) {
             return;
         }
 
-        $threshold = AppSetting::customerWalletNegativeThreshold();
         $effectiveBalance = $this->usageBalances->effectiveBalance($customer);
-
-        if ($effectiveBalance > $threshold) {
-            if ((int) $wallet->negative_notification_count !== 0) {
-                $wallet->forceFill([
-                    'negative_notification_count' => 0,
-                    'negative_notified_at' => null,
-                ])->save();
-            }
-
-            $this->restoreLockedVirtualMachines($customer);
-
-            return;
-        }
-
-        $wallet->forceFill([
-            'negative_notification_count' => (int) ($wallet->negative_notification_count ?? 0),
-        ])->save();
 
         if ($effectiveBalance <= 0 && $customer->auto_suspend_vms) {
             $this->lockVirtualMachines($customer);
@@ -53,58 +32,7 @@ class CustomerWalletAlertService
             $this->restoreLockedVirtualMachines($customer);
         }
 
-        if (! $customer->smsNotificationsEnabled() || ! AppSetting::customerWalletNegativeSmsEnabled() || blank($customer->phone)) {
-            return;
-        }
-
-        DB::transaction(function () use ($customer, $wallet, $threshold): void {
-            $lockedWallet = Wallet::query()->whereKey($wallet->id)->lockForUpdate()->first();
-            $effectiveBalance = $this->usageBalances->effectiveBalance($customer);
-
-            if (! $lockedWallet || $effectiveBalance > $threshold) {
-                return;
-            }
-
-            $count = (int) ($lockedWallet->negative_notification_count ?? 0);
-            if ($count >= 3) {
-                return;
-            }
-
-            $this->sendSms($customer);
-
-            $count++;
-            $lockedWallet->forceFill([
-                'negative_notification_count' => $count,
-                'negative_notified_at' => now(),
-            ])->save();
-        });
-    }
-
-    private function sendSms(Customer $customer): void
-    {
-        if (AppSetting::smsGateway() !== 'kavenegar') {
-            return;
-        }
-
-        $template = AppSetting::customerWalletNegativeSmsTemplate();
-        if ($template === '') {
-            return;
-        }
-
-        try {
-            app(KavenegarLookupClient::class)->sendLookup(
-                $customer->phone,
-                $template,
-                KavenegarLookupClient::nameToken(
-                    $customer->first_name !== '' ? $customer->first_name : $customer->name,
-                ),
-            );
-        } catch (Throwable $exception) {
-            Log::warning('Customer wallet negative SMS notification failed.', [
-                'customer_id' => $customer->id,
-                'error' => $exception->getMessage(),
-            ]);
-        }
+        $this->workspaceAlerts->checkOwner($customer);
     }
 
     private function lockVirtualMachines(Customer $customer): void

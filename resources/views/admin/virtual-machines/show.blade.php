@@ -17,7 +17,7 @@
     @endif
 
     @php
-        $walletBlocked = ($effectiveWalletBalance ?? 0) < \App\Models\AppSetting::customerWalletNegativeThreshold();
+        $walletBlocked = ($effectiveWalletBalance ?? 0) <= 0;
     @endphp
 
     {{-- Hero header --}}

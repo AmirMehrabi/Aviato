@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Services\BillingService;
+use App\Services\WorkspaceWalletAlertService;
 use App\Support\AdminTableSort;
 use App\Support\Jalali;
 use Illuminate\Contracts\View\View;
@@ -21,6 +22,7 @@ class ProjectController extends Controller
 {
     public function __construct(
         private readonly BillingService $billing,
+        private readonly WorkspaceWalletAlertService $walletAlerts,
     ) {}
 
     public function index(Request $request): View
@@ -109,6 +111,9 @@ class ProjectController extends Controller
                 ->whereDoesntHave('projectMemberships', fn ($query) => $query->where('project_id', $project->id))
                 ->orderBy('name')
                 ->get(['id', 'name', 'email', 'phone']),
+            'walletAlertSnapshot' => $this->walletAlerts->snapshot($project->owner),
+            'walletAlertThresholds' => $this->walletAlerts->thresholds($project),
+            'walletAlertRecipientIds' => collect($this->walletAlerts->recipients($project))->pluck('id')->all(),
         ]);
     }
 
@@ -248,6 +253,54 @@ class ProjectController extends Controller
         $member->delete();
 
         return back()->with('status', 'عضو از فضای کاری حذف شد.');
+    }
+
+    public function updateWalletAlerts(Request $request, Project $project): RedirectResponse
+    {
+        $this->assertManageMembers($request, $project);
+        $data = $request->validate([
+            'threshold_mode' => ['required', Rule::in(['default', 'custom'])],
+            'thresholds' => ['required_if:threshold_mode,custom', 'nullable', 'string', 'max:50'],
+            'recipient_mode' => ['required', Rule::in(['default', 'custom'])],
+            'recipient_ids' => ['array', 'max:100'],
+            'recipient_ids.*' => ['integer', 'distinct', Rule::exists('project_members', 'customer_id')->where('project_id', $project->id)],
+        ]);
+
+        if ($data['recipient_mode'] === 'custom' && isset($data['recipient_ids'])) {
+            $activeCount = $project->members()->whereIn('customer_id', $data['recipient_ids'])
+                ->whereHas('customer', fn ($query) => $query->where('status', Customer::STATUS_ACTIVE))->count();
+            if ($activeCount !== count($data['recipient_ids'])) {
+                return back()->withErrors(['recipient_ids' => 'فقط اعضای فعال فضای کاری می‌توانند اعلان دریافت کنند.'])->withInput();
+            }
+        }
+
+        $thresholds = null;
+        if ($data['threshold_mode'] === 'custom') {
+            $values = array_map('trim', explode(',', (string) $data['thresholds']));
+            if (count($values) > 10 || count($values) !== count(array_unique(array_map('intval', $values))) || collect($values)->contains(fn (string $value): bool => ! ctype_digit($value) || (int) $value < 1 || (int) $value > 100)) {
+                return back()->withErrors(['thresholds' => 'درصدها باید عددهای یکتای بین ۱ تا ۱۰۰ باشند و با ویرگول جدا شوند.'])->withInput();
+            }
+            $thresholds = array_map('intval', $values);
+        }
+
+        $project->update([
+            'wallet_alert_thresholds' => $thresholds,
+            'wallet_alert_recipient_ids' => $data['recipient_mode'] === 'default' ? null : array_map('intval', $data['recipient_ids'] ?? []),
+        ]);
+
+        return back()->with('status', 'تنظیمات هشدار کیف‌پول ذخیره شد.');
+    }
+
+    public function sendWalletAlert(Request $request, Project $project): RedirectResponse
+    {
+        $this->assertManageMembers($request, $project);
+        $count = $this->walletAlerts->sendManual($project, $request->user('admin')->id);
+
+        if ($count === 0) {
+            return back()->withErrors(['recipient_ids' => 'برای ارسال دستی، ابتدا حداقل یک دریافت‌کننده انتخاب کنید.']);
+        }
+
+        return back()->with('status', "اعلان موجودی برای {$count} نفر ارسال شد.");
     }
 
     private function uniqueSlug(Customer $customer, string $name, Project $ignore): string

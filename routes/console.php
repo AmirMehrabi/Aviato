@@ -4,6 +4,7 @@ use App\Jobs\ApplyVmUpgradeJob;
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Jobs\ReconcilePendingVirtualMachine;
 use App\Models\ApiRequestLog;
+use App\Models\Customer;
 use App\Models\HetznerAccount;
 use App\Models\VirtualMachine;
 use App\Models\VmUpgradeOrder;
@@ -18,6 +19,7 @@ use App\Services\StaleVirtualMachineCleanupService;
 use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmBackupService;
+use App\Services\WorkspaceWalletAlertService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use Symfony\Component\Console\Command\Command;
@@ -31,6 +33,14 @@ Artisan::command('billing:charge-usage', function (UsageBillingService $billing)
         $accruals->sum('amount'),
     ));
 })->purpose('Accrue hourly PAYG usage without creating wallet transactions');
+
+Artisan::command('billing:check-wallet-alerts', function (WorkspaceWalletAlertService $alerts): void {
+    Customer::query()->whereHas('ownedProjects')->orderBy('id')->chunkById(100, function ($owners) use ($alerts): void {
+        foreach ($owners as $owner) {
+            $alerts->checkOwner($owner);
+        }
+    });
+})->purpose('Notify selected workspace members when shared wallet coverage crosses a percentage threshold');
 
 Artisan::command('api:prune-logs {--days=90 : Keep logs newer than this many days}', function (): void {
     $days = max(1, (int) $this->option('days'));
@@ -403,6 +413,7 @@ Artisan::command('vm-upgrades:reconcile {--limit=100 : Maximum orders to queue}'
 })->purpose('Reconcile stale or indeterminate VM upgrades against the provider');
 
 Schedule::command('billing:charge-usage')->hourly();
+Schedule::command('billing:check-wallet-alerts')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('network-usage:sync')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('network-usage:retry')->hourly()->withoutOverlapping();
 Schedule::command('metering-inventory:refresh')->everyMinute()->withoutOverlapping();
