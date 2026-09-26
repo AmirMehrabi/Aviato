@@ -1,7 +1,7 @@
 .journal {
     background: #faf9f6;
     color: #242521;
-    font-family: 'Ravi FaNum', var(--font-sans);
+    font-family: 'Ravi', var(--font-sans);
     line-height: 1.8;
 }
 .journal-shell { width: min(100% - 48px, 720px); margin-inline: auto; }

@@ -57,27 +57,28 @@
                         @endif
 
                         <h2 class="text-3xl font-black leading-tight text-slate-950">{{ $isAdminPortal ? 'ورود به مدیریت' : 'خوش آمدید' }}</h2>
+                        <p class="mt-2 text-sm leading-7 text-slate-600 lg:hidden">{{ $isAdminPortal ? 'ابزارهای مدیریت آویاتو بعد از ورود در دسترس شماست.' : 'ماشین‌های مجازی، کیف پول و صورت‌حساب‌هایتان را یک‌جا مدیریت کنید.' }}</p>
                         <p class="mt-2 text-sm leading-7 text-slate-600">برای ادامه، ایمیل یا شماره موبایل و رمز عبورتان را وارد کنید.</p>
                     </div>
 
-                    <form method="POST" action="{{ route($portal.'.login.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading data-auth-validation="login" data-phone-mode="general">
+                    <form method="POST" action="{{ route($portal.'.login.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading data-auth-validation="login" data-phone-mode="general" novalidate>
                         @csrf
 
                         @if (session('status'))
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{{ session('status') }}</div>
                         @endif
-                        @include('auth.partials.validation-errors')
+                        @include('auth.partials.validation-errors', ['inlineErrors' => true])
 
-                        <label class="block">
-                            <span class="text-sm font-black text-slate-700">ایمیل یا شماره موبایل</span>
-                            <input name="login" value="{{ old('login') }}" required autofocus autocomplete="username" placeholder="09123456789 یا email@example.com" aria-describedby="login-hint" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition placeholder:text-slate-400 focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                        <div data-auth-field>
+                            <label for="login" class="text-sm font-black text-slate-700">ایمیل یا شماره موبایل</label>
+                            <input id="login" name="login" value="{{ old('login') }}" required autofocus autocomplete="username" placeholder="09123456789 یا email@example.com" aria-describedby="login-hint{{ $errors->has('login') ? ' login-server-error' : '' }}" @error('login') aria-invalid="true" @enderror class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition placeholder:text-slate-400 focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10 aria-invalid:border-rose-400 aria-invalid:bg-rose-50/40" dir="ltr">
                             <span id="login-hint" class="mt-1 block text-xs leading-5 text-slate-500">شماره موبایل را با ارقام لاتین وارد کنید.</span>
-                        </label>
+                            @error('login')
+                                <span id="login-server-error" class="mt-1 block text-xs font-semibold text-rose-600" role="alert">{{ $message }}</span>
+                            @enderror
+                        </div>
 
-                        <label class="block">
-                            <span class="text-sm font-black text-slate-700">رمز عبور</span>
-                            <input type="password" name="password" required autocomplete="current-password" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
-                        </label>
+                        @include('auth.partials.password-field', ['name' => 'password', 'label' => 'رمز عبور', 'autocomplete' => 'current-password'])
 
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             @if ($isAdminPortal)

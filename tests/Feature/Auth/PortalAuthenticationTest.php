@@ -219,6 +219,8 @@ class PortalAuthenticationTest extends TestCase
             ->assertSee('data-phone-mode="sms"', false)
             ->assertSee('placeholder="09123456789"', false)
             ->assertSee('رمز عبور باید حداقل ۸ کاراکتر داشته باشد')
+            ->assertSee('data-password-toggle', false)
+            ->assertSee('حساب‌تان را بسازید، پلن انتخاب کنید')
             ->assertSee('فیلدهای ستاره‌دار الزامی هستند')
             ->assertSee('موبایل <span class="text-rose-600" aria-hidden="true">*</span>', false)
             ->assertSee('ایمیل <span class="text-xs font-semibold text-slate-500">(اختیاری)</span>', false);
@@ -238,6 +240,8 @@ class PortalAuthenticationTest extends TestCase
         $this->get('https://cp.localhost/login')
             ->assertOk()
             ->assertSee('data-auth-validation="login"', false)
+            ->assertSee('data-password-toggle', false)
+            ->assertSee('ماشین‌های مجازی، کیف پول و صورت‌حساب‌هایتان را یک‌جا مدیریت کنید.')
             ->assertSee('شماره موبایل را با ارقام لاتین وارد کنید');
     }
 
@@ -342,6 +346,7 @@ class PortalAuthenticationTest extends TestCase
 
         $response->assertSee('ایمیل یا شماره موبایل را وارد کنید.')
             ->assertSee('رمز عبور را وارد کنید.')
+            ->assertSee('id="login-server-error"', false)
             ->assertDontSee('The login field is required.')
             ->assertDontSee('The password field is required.');
 
@@ -351,14 +356,16 @@ class PortalAuthenticationTest extends TestCase
         );
     }
 
-    public function test_registration_validation_is_persian_and_not_repeated_beside_fields(): void
+    public function test_registration_validation_is_persian_and_shown_beside_fields(): void
     {
         $response = $this->followingRedirects()->from('https://cp.localhost/register')
             ->post('https://cp.localhost/register', []);
 
-        $response->assertSee('لطفاً اطلاعات واردشده را بررسی کنید:')
+        $response->assertSee('لطفاً فیلدهای مشخص‌شده را بررسی کنید.')
             ->assertSee('نام را وارد کنید.')
             ->assertSee('نام خانوادگی را وارد کنید.')
+            ->assertSee('id="first_name-server-error"', false)
+            ->assertSee('aria-invalid="true"', false)
             ->assertDontSee('The first_name field is required.')
             ->assertDontSee('The email field is required.');
 

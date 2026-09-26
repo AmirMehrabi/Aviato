@@ -51,12 +51,13 @@
                     <div class="border-b border-slate-200 bg-[linear-gradient(180deg,#EAF4FF_0%,#FFFFFF_100%)] p-4 md:px-8">
                         {{-- <span class="inline-flex rounded-md bg-white px-3 py-1 text-xs font-black text-[#0069FF] ring-1 ring-[#B8D6FF]">پنل مشتریان</span> --}}
                         <h2 class="text-3xl font-black leading-tight text-slate-950">ثبت نام</h2>
+                        <p class="mt-2 text-sm leading-7 text-slate-600 lg:hidden">حساب‌تان را بسازید، پلن انتخاب کنید و سرویس‌هایتان را از یک پنل مدیریت کنید.</p>
                         <p class="mt-2 text-sm leading-7 text-slate-600">
                             {{ $verificationModeValue === 'disabled' ? 'اطلاعات‌تان را وارد کنید تا حساب شما ساخته شود.' : ($isCustomerSmsMode ? 'بعد از ثبت‌نام، یک کد تأیید برای شماره موبایل‌تان می‌فرستیم.' : 'بعد از ثبت‌نام، یک کد تأیید برای ایمیل‌تان می‌فرستیم.') }}
                         </p>
                     </div>
 
-                    <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading data-auth-validation="register" data-phone-mode="{{ $isCustomerSmsMode ? 'sms' : 'general' }}">
+                    <form method="POST" action="{{ route($portal.'.register.store', [], false) }}" class="space-y-5 p-4 md:px-8" data-submit-loading data-auth-validation="register" data-phone-mode="{{ $isCustomerSmsMode ? 'sms' : 'general' }}" novalidate>
                         @csrf
                         @if ($portal === 'customer' && old('ref', $referralCode ?? '') !== '')
                             <input type="hidden" name="ref" value="{{ old('ref', $referralCode ?? '') }}">
@@ -65,20 +66,26 @@
                         @if (session('status'))
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{{ session('status') }}</div>
                         @endif
-                        @include('auth.partials.validation-errors')
+                        @include('auth.partials.validation-errors', ['inlineErrors' => true])
 
                         <p class="text-xs font-semibold text-slate-500"><span class="font-black text-rose-600" aria-hidden="true">*</span> فیلدهای ستاره‌دار الزامی هستند.</p>
 
                         <div class="grid gap-4 sm:grid-cols-2">
-                            <label class="block">
-                                <span class="text-sm font-black text-slate-700">نام <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></span>
-                                <input name="first_name" value="{{ old('first_name') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
-                            </label>
+                            <div data-auth-field>
+                                <label for="first_name" class="text-sm font-black text-slate-700">نام <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></label>
+                                <input id="first_name" name="first_name" value="{{ old('first_name') }}" required autocomplete="given-name" @error('first_name') aria-invalid="true" aria-describedby="first_name-server-error" @enderror class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10 aria-invalid:border-rose-400 aria-invalid:bg-rose-50/40">
+                                @error('first_name')
+                                    <span id="first_name-server-error" class="mt-1 block text-xs font-semibold text-rose-600" role="alert">{{ $message }}</span>
+                                @enderror
+                            </div>
 
-                            <label class="block">
-                                <span class="text-sm font-black text-slate-700">نام خانوادگی <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></span>
-                                <input name="last_name" value="{{ old('last_name') }}" required class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10">
-                            </label>
+                            <div data-auth-field>
+                                <label for="last_name" class="text-sm font-black text-slate-700">نام خانوادگی <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></label>
+                                <input id="last_name" name="last_name" value="{{ old('last_name') }}" required autocomplete="family-name" @error('last_name') aria-invalid="true" aria-describedby="last_name-server-error" @enderror class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10 aria-invalid:border-rose-400 aria-invalid:bg-rose-50/40">
+                                @error('last_name')
+                                    <span id="last_name-server-error" class="mt-1 block text-xs font-semibold text-rose-600" role="alert">{{ $message }}</span>
+                                @enderror
+                            </div>
                         </div>
 
                         @if (! $isCustomerEmailMode && ! $isCustomerSmsMode)
@@ -86,28 +93,27 @@
                         @endif
 
                         <div class="grid gap-4 sm:grid-cols-2">
-                            <label class="block">
-                                <span class="text-sm font-black text-slate-700">ایمیل @if ($isCustomerEmailMode)<span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span>@elseif ($isCustomerSmsMode)<span class="text-xs font-semibold text-slate-500">(اختیاری)</span>@endif</span>
-                                <input type="email" name="email" value="{{ old('email') }}" @required($isCustomerEmailMode) autocomplete="email" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
-                            </label>
+                            <div data-auth-field>
+                                <label for="email" class="text-sm font-black text-slate-700">ایمیل @if ($isCustomerEmailMode)<span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span>@elseif ($isCustomerSmsMode)<span class="text-xs font-semibold text-slate-500">(اختیاری)</span>@endif</label>
+                                <input id="email" type="email" name="email" value="{{ old('email') }}" @required($isCustomerEmailMode) autocomplete="email" @error('email') aria-invalid="true" aria-describedby="email-server-error" @enderror class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10 aria-invalid:border-rose-400 aria-invalid:bg-rose-50/40" dir="ltr">
+                                @error('email')
+                                    <span id="email-server-error" class="mt-1 block text-xs font-semibold text-rose-600" role="alert">{{ $message }}</span>
+                                @enderror
+                            </div>
 
-                            <label class="block">
-                                <span class="text-sm font-black text-slate-700">موبایل @if ($isCustomerSmsMode)<span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span>@elseif ($isCustomerEmailMode)<span class="text-xs font-semibold text-slate-500">(اختیاری)</span>@endif</span>
-                                <input type="tel" name="phone" value="{{ old('phone') }}" @required($isCustomerSmsMode) placeholder="09123456789" inputmode="tel" autocomplete="tel" aria-describedby="phone-hint" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
+                            <div data-auth-field>
+                                <label for="phone" class="text-sm font-black text-slate-700">موبایل @if ($isCustomerSmsMode)<span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span>@elseif ($isCustomerEmailMode)<span class="text-xs font-semibold text-slate-500">(اختیاری)</span>@endif</label>
+                                <input id="phone" type="tel" name="phone" value="{{ old('phone') }}" @required($isCustomerSmsMode) placeholder="09123456789" inputmode="tel" autocomplete="tel" aria-describedby="phone-hint{{ $errors->has('phone') ? ' phone-server-error' : '' }}" @error('phone') aria-invalid="true" @enderror class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10 aria-invalid:border-rose-400 aria-invalid:bg-rose-50/40" dir="ltr">
                                 <span id="phone-hint" class="mt-1 block text-xs leading-5 text-slate-500">شماره موبایل را با ارقام لاتین وارد کنید.</span>
-                            </label>
+                                @error('phone')
+                                    <span id="phone-server-error" class="mt-1 block text-xs font-semibold text-rose-600" role="alert">{{ $message }}</span>
+                                @enderror
+                            </div>
                         </div>
 
-                        <label class="block">
-                            <span class="text-sm font-black text-slate-700">رمز عبور <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></span>
-                            <input type="password" name="password" required minlength="8" autocomplete="new-password" aria-describedby="password-hint" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
-                            <span id="password-hint" class="mt-1 block text-xs leading-5 text-slate-500">رمز عبور باید حداقل ۸ کاراکتر داشته باشد.</span>
-                        </label>
+                        @include('auth.partials.password-field', ['name' => 'password', 'label' => 'رمز عبور', 'autocomplete' => 'new-password', 'requiredMarker' => true, 'minlength' => 8, 'hintId' => 'password-hint', 'hint' => 'رمز عبور باید حداقل ۸ کاراکتر داشته باشد.'])
 
-                        <label class="block">
-                            <span class="text-sm font-black text-slate-700">تکرار رمز عبور <span class="text-rose-600" aria-hidden="true">*</span><span class="sr-only"> (الزامی)</span></span>
-                            <input type="password" name="password_confirmation" required autocomplete="new-password" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold outline-none transition focus:border-[#0069FF] focus:bg-white focus:ring-4 focus:ring-[#0069FF]/10" dir="ltr">
-                        </label>
+                        @include('auth.partials.password-field', ['name' => 'password_confirmation', 'label' => 'تکرار رمز عبور', 'autocomplete' => 'new-password', 'requiredMarker' => true])
 
                         <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0069FF] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]" type="submit">
                             <span>{{ $verificationModeValue === 'disabled' ? 'ساخت حساب' : 'ساخت حساب و دریافت کد' }}</span>

@@ -53,7 +53,7 @@
 
         /* Shared visual language for the Figma landing and pricing frames. */
         .figma-marketing {
-            font-family: 'Ravi FaNum', 'IRANSans', 'Dana', 'Vazirmatn', sans-serif;
+            font-family: 'Ravi', 'Dana', 'Vazirmatn', sans-serif;
         }
 
         .figma-marketing header {
