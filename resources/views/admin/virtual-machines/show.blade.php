@@ -18,7 +18,16 @@
 
     @php
         $walletBlocked = ($effectiveWalletBalance ?? 0) <= 0;
+        $latestBackup = $vm->backups->first();
     @endphp
+
+    @if ($latestBackup?->status === \App\Models\VmBackup::STATUS_FAILED)
+        <section id="backup-status" class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3" aria-labelledby="backup-status-heading">
+            <h2 id="backup-status-heading" class="text-sm font-bold text-amber-900">آخرین بکاپ این ماشین ناموفق بوده است</h2>
+            <p class="mt-1 text-sm leading-6 text-amber-900" dir="auto">{{ $latestBackup->error ? \Illuminate\Support\Str::limit($latestBackup->error, 300) : 'جزئیات خطا ثبت نشده است.' }}</p>
+            <p class="mt-1 text-xs text-amber-800">{{ $latestBackup->finished_at?->diffForHumans() ?? $latestBackup->updated_at?->diffForHumans() }}</p>
+        </section>
+    @endif
 
     {{-- Hero header --}}
     <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
@@ -314,7 +323,7 @@
             </div>
         </section>
 
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section id="upgrade-history" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">تاریخچه ارتقاء</h2>
             <div class="mt-5 space-y-3">
                 @forelse($vm->upgradeOrders as $order)

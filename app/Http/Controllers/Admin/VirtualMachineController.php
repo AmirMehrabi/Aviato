@@ -186,6 +186,7 @@ class VirtualMachineController extends Controller
             'bundle',
             'cloudImage',
             'disks',
+            'backups' => fn ($query) => $query->latest('id')->limit(1),
             'upgradeOrders' => fn ($query) => $query->with(['toBundle', 'disk'])->latest()->limit(10),
         ]);
         $billingCustomer = $virtualMachine->project?->owner ?? $virtualMachine->customer;

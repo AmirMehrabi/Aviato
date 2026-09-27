@@ -67,7 +67,7 @@ class AdminBillingCenterTest extends TestCase
             ->assertOk()->assertSee('Billing Customer');
     }
 
-    public function test_admin_dashboard_surfaces_gateway_payment_metrics_and_recent_payments(): void
+    public function test_admin_dashboard_keeps_payment_reporting_in_billing_center(): void
     {
         Payment::create([
             'customer_id' => $this->customer->id,
@@ -94,11 +94,10 @@ class AdminBillingCenterTest extends TestCase
 
         $this->get('https://admin.localhost/dashboard')
             ->assertOk()
-            ->assertSee('پرداخت‌های درگاه')
-            ->assertSee('وصول موفق')
-            ->assertSee('REF-DASHBOARD')
-            ->assertSee('Billing Customer')
-            ->assertSee('در انتظار');
+            ->assertSee('صف اقدام‌ها')
+            ->assertDontSee('وصول موفق')
+            ->assertDontSee('REF-DASHBOARD')
+            ->assertDontSee('آخرین پرداخت‌ها');
     }
 
     public function test_admin_can_act_on_dismiss_and_restore_dashboard_warnings(): void
@@ -117,10 +116,10 @@ class AdminBillingCenterTest extends TestCase
 
         $response = $this->get('https://admin.localhost/dashboard')
             ->assertOk()
-            ->assertSee('هشدارهای بحرانی')
+            ->assertSee('صف اقدام‌ها')
             ->assertSee('failed-dashboard-vm')
-            ->assertSee('تلاش دوباره')
-            ->assertSee(route('admin.virtual-machines.retry-provisioning', $vm));
+            ->assertSee('بررسی ماشین')
+            ->assertSee(route('admin.virtual-machines.show', $vm));
 
         preg_match('/name="warning_key" value="([a-f0-9]{64})"/', $response->getContent(), $matches);
         $this->assertArrayHasKey(1, $matches);
@@ -136,7 +135,7 @@ class AdminBillingCenterTest extends TestCase
         $this->get('https://admin.localhost/dashboard')
             ->assertOk()
             ->assertDontSee('failed-dashboard-vm')
-            ->assertSee('نمایش 1 هشدار بسته‌شده');
+            ->assertSee('نمایش 1 مورد پنهان‌شده');
 
         $this->delete('https://admin.localhost/dashboard/warnings/dismissals')
             ->assertRedirect()
