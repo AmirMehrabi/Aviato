@@ -61,8 +61,8 @@
     @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)<section class="mt-6 rounded-2xl border {{ $customer->auto_suspend_vms ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50' }} p-5">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-                <h2 class="text-xl font-black text-slate-950">تعلیق خودکار ماشین‌ها</h2>
-                <p class="mt-2 text-sm leading-7 text-slate-600">وقتی موجودی مؤثر کیف‌پول به صفر یا کمتر برسد، ماشین‌های این مشتری به‌صورت خودکار متوقف و معلق می‌شوند. این گزینه فقط همین رفتار را کنترل می‌کند و محدودیت‌های دیگر کیف‌پول را تغییر نمی‌دهد.</p>
+                <h2 class="text-xl font-black text-slate-950">محافظت خودکار کیف پول</h2>
+                <p class="mt-2 text-sm leading-7 text-slate-600">در موجودی مؤثر صفر، شبکه ماشین‌های متصل به کیف پول قطع می‌شود. در حد بدهی تعیین‌شده در تنظیمات، ماشین‌های روشن خاموش می‌شوند. شارژ کیف پول شبکه را وصل می‌کند و ماشین‌هایی را که به‌دلیل بدهی خاموش شده‌اند روشن می‌کند.</p>
                 <p class="mt-2 text-sm font-black {{ $customer->auto_suspend_vms ? 'text-amber-800' : 'text-emerald-800' }}">وضعیت: {{ $customer->auto_suspend_vms ? 'فعال' : 'غیرفعال' }}</p>
             </div>
             <form method="POST" action="{{ route('admin.customers.auto-suspension.update', $customer) }}" class="shrink-0">
@@ -159,6 +159,13 @@
                             </div>
                             <span class="rounded-md px-2 py-1 text-xs font-black {{ $vm->status === 'running' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-200 text-slate-600' }}">{{ \App\Support\AdminUi::status($vm->status) }}</span>
                         </div>
+                        @if (data_get($vm->wallet_restriction, 'last_error'))
+                            <p class="mt-3 rounded-lg bg-red-50 p-2 text-xs leading-5 text-red-700">خطای محدودیت کیف پول: {{ data_get($vm->wallet_restriction, 'last_error') }}</p>
+                        @elseif (data_get($vm->wallet_restriction, 'wallet_stopped'))
+                            <p class="mt-3 text-xs font-bold text-red-700">خاموش به‌دلیل بدهی کیف پول</p>
+                        @elseif (data_get($vm->wallet_restriction, 'network_frozen_at'))
+                            <p class="mt-3 text-xs font-bold text-amber-700">شبکه قطع به‌دلیل کیف پول</p>
+                        @endif
                         <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
                             <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->cpu_cores }}</span><span class="text-slate-500">vCPU</span></div>
                             <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->ram_gb }} GB</span><span class="text-slate-500">RAM</span></div>

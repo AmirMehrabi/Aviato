@@ -177,6 +177,8 @@ class WalletController extends Controller
         $wallet = $this->wallets->walletFor($activeProject->owner);
         $pendingUsage = $this->usageBilling->projectPendingUsage($activeProject->id);
         $effectiveBalance = $this->usageBalances->effectiveBalance($activeProject->owner);
+        $monthlyEstimate = $this->walletAlerts->snapshot($activeProject->owner)['monthly_cost'];
+        $shutdownAt = -max(1, (int) ceil($monthlyEstimate * AppSetting::customerWalletShutdownPercentage() / 100));
 
         return view('customer.suspension.notice', [
             'customer' => $customer,
@@ -187,6 +189,7 @@ class WalletController extends Controller
             'wallets' => $this->wallets,
             'pendingUsage' => $pendingUsage,
             'effectiveBalance' => $effectiveBalance,
+            'shutdownAt' => $shutdownAt,
         ]);
     }
 

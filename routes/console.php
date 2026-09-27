@@ -3,6 +3,7 @@
 use App\Jobs\ApplyVmUpgradeJob;
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Jobs\ReconcilePendingVirtualMachine;
+use App\Jobs\ReconcileWalletRestrictions;
 use App\Models\ApiRequestLog;
 use App\Models\Customer;
 use App\Models\HetznerAccount;
@@ -41,6 +42,18 @@ Artisan::command('billing:check-wallet-alerts', function (WorkspaceWalletAlertSe
         }
     });
 })->purpose('Notify selected workspace members when shared wallet coverage crosses a percentage threshold');
+
+Artisan::command('billing:reconcile-wallet-restrictions', function (): void {
+    Customer::query()
+        ->whereHas('ownedProjects.virtualMachines')
+        ->orWhereHas('virtualMachines', fn ($query) => $query->whereNull('project_id'))
+        ->orderBy('id')
+        ->chunkById(100, function ($owners): void {
+            foreach ($owners as $owner) {
+                ReconcileWalletRestrictions::dispatch($owner->id);
+            }
+        });
+})->purpose('Reconcile wallet network freezes, debt shutdowns, and funded VM recovery');
 
 Artisan::command('api:prune-logs {--days=90 : Keep logs newer than this many days}', function (): void {
     $days = max(1, (int) $this->option('days'));
@@ -414,6 +427,7 @@ Artisan::command('vm-upgrades:reconcile {--limit=100 : Maximum orders to queue}'
 
 Schedule::command('billing:charge-usage')->hourly();
 Schedule::command('billing:check-wallet-alerts')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('billing:reconcile-wallet-restrictions')->everyMinute()->withoutOverlapping();
 Schedule::command('network-usage:sync')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('network-usage:retry')->hourly()->withoutOverlapping();
 Schedule::command('metering-inventory:refresh')->everyMinute()->withoutOverlapping();

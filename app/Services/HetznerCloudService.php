@@ -74,6 +74,85 @@ class HetznerCloudService
         return $this->post($account, '/servers/'.$serverId.'/actions/reboot');
     }
 
+    public function walletFreezeFirewall(HetznerAccount $account): int
+    {
+        $name = 'aviato-wallet-freeze';
+        foreach ($this->paginated($account, '/firewalls', 'firewalls') as $firewall) {
+            if (($firewall['name'] ?? null) === $name) {
+                $rules = $firewall['rules'] ?? [];
+                if (count($rules) !== 1 || ($rules[0]['direction'] ?? null) !== 'out'
+                    || ($rules[0]['protocol'] ?? null) !== 'tcp' || (string) ($rules[0]['port'] ?? '') !== '9'
+                    || ! in_array('192.0.2.1/32', $rules[0]['destination_ips'] ?? [], true)) {
+                    throw new RuntimeException('The reserved wallet freeze firewall has unexpected rules.');
+                }
+
+                return (int) $firewall['id'];
+            }
+        }
+
+        // Hetzner accepts outbound traffic when no outbound rule exists. A rule
+        // limited to a documentation-only address makes all real outbound traffic
+        // fall through to the default deny policy; no inbound rules means deny.
+        $response = $this->post($account, '/firewalls', [
+            'name' => $name,
+            'rules' => [[
+                'direction' => 'out',
+                'protocol' => 'tcp',
+                'port' => '9',
+                'destination_ips' => ['192.0.2.1/32', '2001:db8::1/128'],
+            ]],
+        ]);
+
+        $id = (int) data_get($response, 'firewall.id');
+        if ($id <= 0) {
+            throw new RuntimeException('Hetzner did not return the wallet freeze firewall ID.');
+        }
+
+        return $id;
+    }
+
+    public function applyFirewall(HetznerAccount $account, int $firewallId, int|string $serverId): array
+    {
+        return $this->post($account, '/firewalls/'.$firewallId.'/actions/apply_to_resources', [
+            'apply_to' => [['type' => 'server', 'server' => ['id' => (int) $serverId]]],
+        ]);
+    }
+
+    public function firewallAppliedToServer(HetznerAccount $account, int $firewallId, int|string $serverId): bool
+    {
+        $firewall = $this->get($account, '/firewalls/'.$firewallId)['firewall'] ?? [];
+
+        foreach ($firewall['applied_to'] ?? [] as $resource) {
+            if (($resource['type'] ?? null) === 'server'
+                && (int) data_get($resource, 'server.id') === (int) $serverId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function removeFirewall(HetznerAccount $account, int $firewallId, int|string $serverId): array
+    {
+        return $this->post($account, '/firewalls/'.$firewallId.'/actions/remove_from_resources', [
+            'remove_from' => [['type' => 'server', 'server' => ['id' => (int) $serverId]]],
+        ]);
+    }
+
+    public function detachFromNetwork(HetznerAccount $account, int|string $serverId, int $networkId): array
+    {
+        return $this->post($account, '/servers/'.$serverId.'/actions/detach_from_network', ['network' => $networkId]);
+    }
+
+    public function attachToNetwork(HetznerAccount $account, int|string $serverId, array $network): array
+    {
+        return $this->post($account, '/servers/'.$serverId.'/actions/attach_to_network', array_filter([
+            'network' => $network['network'],
+            'ip' => $network['ip'] ?? null,
+            'alias_ips' => $network['alias_ips'] ?? null,
+        ], static fn ($value): bool => $value !== null));
+    }
+
     public function rebuild(HetznerAccount $account, int|string $serverId, string $image): array
     {
         return $this->post($account, '/servers/'.$serverId.'/actions/rebuild', ['image' => $image]);

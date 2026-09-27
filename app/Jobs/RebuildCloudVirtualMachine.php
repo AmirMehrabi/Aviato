@@ -231,6 +231,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                 'provisioning_task_id' => null,
                 'last_started_at' => $startAllowed ? now() : $vm->last_started_at,
                 'last_seen_at' => now(),
+                'wallet_restriction' => $startAllowed ? $vm->wallet_restriction : array_merge($vm->wallet_restriction ?? [], ['wallet_stopped' => true, 'resume_on_funding' => true]),
                 'remote_state' => array_merge($vm->remote_state ?? [], [
                     'rebuild_steps' => $history,
                     'rebuild_finished_at' => now()->toISOString(),
@@ -322,6 +323,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                 'provisioning_task_id' => null,
                 'last_started_at' => $startAllowed ? now() : $vm->last_started_at,
                 'last_seen_at' => now(),
+                'wallet_restriction' => $startAllowed ? $vm->wallet_restriction : array_merge($vm->wallet_restriction ?? [], ['wallet_stopped' => true, 'resume_on_funding' => true]),
                 'remote_state' => array_merge($vm->remote_state ?? [], [
                     'rebuild_steps' => $history,
                     'rebuild_finished_at' => now()->toISOString(),

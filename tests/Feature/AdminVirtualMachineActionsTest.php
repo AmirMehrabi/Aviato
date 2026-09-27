@@ -192,9 +192,7 @@ class AdminVirtualMachineActionsTest extends TestCase
         $vm = $this->readyVm($customer);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldReceive('stopVm')
-                ->once()
-                ->andReturn(['task_id' => 'UPID:stop']);
+            $mock->shouldNotReceive('stopVm');
             $mock->shouldNotReceive('startVm');
         });
 
@@ -207,7 +205,7 @@ class AdminVirtualMachineActionsTest extends TestCase
             ->assertSessionHas('error');
 
         $vm->refresh();
-        $this->assertSame(VirtualMachine::STATUS_SUSPENDED, $vm->status);
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
     }
 
     public function test_admin_create_persists_selected_proxmox_node_storage_and_os_template(): void

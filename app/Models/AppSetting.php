@@ -50,6 +50,8 @@ class AppSetting extends Model
 
     public const CUSTOMER_WALLET_ALERT_PERCENTAGES = 'customer.wallet.alert_percentages';
 
+    public const CUSTOMER_WALLET_SHUTDOWN_PERCENTAGE = 'customer.wallet.shutdown_percentage';
+
     public const CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY = 'customer.wallet.alert_recipient_policy';
 
     public const CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED = 'customer.wallet.negative_sms_enabled';
@@ -444,6 +446,11 @@ class AppSetting extends Model
         $values = static::getValue(self::CUSTOMER_WALLET_ALERT_PERCENTAGES, [15, 10, 5]);
 
         return is_array($values) ? array_values(array_unique(array_filter(array_map('intval', $values), fn (int $value): bool => $value >= 1 && $value <= 100))) : [15, 10, 5];
+    }
+
+    public static function customerWalletShutdownPercentage(): int
+    {
+        return min(100, max(1, (int) static::getValue(self::CUSTOMER_WALLET_SHUTDOWN_PERCENTAGE, 10)));
     }
 
     public static function customerWalletAlertRecipientPolicy(): string

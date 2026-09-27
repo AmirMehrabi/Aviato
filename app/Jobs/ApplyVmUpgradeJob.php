@@ -283,6 +283,9 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
                     'last_stopped_at' => now(),
                     'last_started_at' => empty($result['start_skipped_wallet_locked']) ? now() : $vm->last_started_at,
                     'last_billed_at' => now(),
+                    'wallet_restriction' => ! empty($result['start_skipped_wallet_locked'])
+                        ? array_merge($vm->wallet_restriction ?? [], ['wallet_stopped' => true, 'resume_on_funding' => true])
+                        : $vm->wallet_restriction,
                     'desired_state' => array_merge($vm->desired_state ?? [], ['status' => ! empty($result['start_skipped_wallet_locked']) ? VirtualMachine::STATUS_STOPPED : VirtualMachine::STATUS_RUNNING]),
                     'remote_state' => array_merge($vm->remote_state ?? [], [
                         'upgrade_config' => $config,

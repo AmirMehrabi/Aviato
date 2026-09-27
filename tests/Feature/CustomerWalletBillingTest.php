@@ -18,6 +18,8 @@ use App\Services\PaymentService;
 use App\Services\ProjectAccessService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
+use App\Services\WalletNetworkRestrictionService;
+use App\Services\WalletRestrictionService;
 use App\Services\WalletService;
 use App\Support\Jalali;
 use Carbon\CarbonImmutable;
@@ -25,7 +27,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Mockery;
 use Tests\TestCase;
 
 class CustomerWalletBillingTest extends TestCase
@@ -1061,127 +1062,80 @@ class CustomerWalletBillingTest extends TestCase
         CarbonImmutable::setTestNow();
     }
 
-    public function test_negative_wallet_locks_vms_and_blocks_them_until_top_up(): void
+    public function test_wallet_freezes_network_at_zero_then_stops_at_negative_threshold_and_recovers(): void
     {
         $customer = Customer::factory()->create();
         $server = ProxmoxServer::create([
-            'name' => 'THR Proxmox',
-            'datacenter' => 'THR-1',
-            'host' => 'pve.local',
-            'port' => 8006,
-            'realm' => 'pam',
-            'username' => 'root',
-            'api_token_id' => 'root@pam!panel',
-            'api_token_secret' => 'secret',
-            'is_active' => true,
-            'maintenance_mode' => false,
+            'name' => 'THR Proxmox', 'datacenter' => 'THR-1', 'host' => 'pve.local',
+            'port' => 8006, 'realm' => 'pam', 'username' => 'root',
+            'api_token_id' => 'root@pam!panel', 'api_token_secret' => 'secret',
+            'is_active' => true, 'maintenance_mode' => false,
+        ]);
+        $bundle = VmBundle::create([
+            'name' => 'Wallet threshold', 'slug' => 'wallet-threshold',
+            'cpu_cores' => 2, 'ram_gb' => 4, 'disk_gb' => 40, 'ip_count' => 1,
+            'monthly_price' => 730000, 'is_active' => true,
         ]);
         $vm = VirtualMachine::create([
-            'customer_id' => $customer->id,
-            'proxmox_server_id' => $server->id,
-            'vmid' => 101,
-            'name' => 'wallet-locked-vm',
-            'hostname' => 'wallet-locked-vm',
-            'node' => 'pve1',
-            'storage' => 'local-lvm',
-            'network_bridge' => 'vmbr1',
-            'ip_address' => '192.168.10.50',
-            'login_username' => 'ubuntu',
-            'cpu_cores' => 2,
-            'ram_gb' => 4,
-            'disk_gb' => 40,
-            'ip_count' => 1,
-            'status' => VirtualMachine::STATUS_RUNNING,
+            'customer_id' => $customer->id, 'proxmox_server_id' => $server->id,
+            'vm_bundle_id' => $bundle->id, 'vmid' => 101, 'name' => 'wallet-vm',
+            'node' => 'pve1', 'cpu_cores' => 2, 'ram_gb' => 4, 'disk_gb' => 40,
+            'ip_count' => 1, 'status' => VirtualMachine::STATUS_RUNNING,
             'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'last_billed_at' => now(),
         ]);
+        $networks = $this->mock(WalletNetworkRestrictionService::class);
+        $networks->shouldReceive('freeze')->twice();
+        $networks->shouldReceive('restore')->once();
+        $proxmox = $this->mock(ProxmoxService::class);
+        $proxmox->shouldReceive('shutdownVm')->once()->andReturn(['task_id' => 'UPID:stop']);
+        $proxmox->shouldReceive('waitForTask')->twice()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
+        $proxmox->shouldReceive('waitForVmStopped')->once()->andReturn(['status' => 'stopped']);
+        $proxmox->shouldReceive('startVm')->once()->andReturn(['task_id' => 'UPID:start']);
+        $proxmox->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
+        $restrictions = app(WalletRestrictionService::class);
 
-        $this->mock(ProxmoxService::class, function ($mock) use ($customer, $server, $vm): void {
-            $mock->shouldReceive('stopVm')
-                ->once()
-                ->with(
-                    Mockery::on(fn ($value) => $value instanceof ProxmoxServer && $value->is($server)),
-                    'pve1',
-                    101,
-                    Mockery::on(fn (array $context): bool => $context['source'] === 'wallet_suspension'
-                        && $context['virtual_machine_id'] === $vm->id
-                        && $context['customer_id'] === $customer->id),
-                )
-                ->andReturn(['task_id' => 'UPID:stop']);
-        });
+        $restrictions->reconcile($customer);
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->fresh()->status);
+        $this->assertFalse((bool) data_get($vm->fresh()->wallet_restriction, 'wallet_stopped'));
 
-        app(WalletService::class)->charge($customer, 1000, 'کسر آزمایشی');
+        $customer->wallet()->update(['balance' => -73000]);
+        $restrictions->reconcile($customer);
+        $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->fresh()->status);
+        $this->assertTrue((bool) data_get($vm->fresh()->wallet_restriction, 'wallet_stopped'));
 
-        $vm->refresh();
-        $this->assertSame(VirtualMachine::STATUS_SUSPENDED, $vm->status);
-        $this->assertNotNull(data_get($vm->remote_state, 'wallet_locked_at'));
-
-        $this->actingAs($customer, 'customer');
-        $this->get($this->customerBaseUrl.'/dashboard')
-            ->assertOk()
-            ->assertSee('موجودی کیف پول منفی است');
-
-        app(WalletService::class)->credit($customer, 2000, 'شارژ آزمایشی');
-
-        $vm->refresh();
-        $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
-        $this->assertNull(data_get($vm->remote_state, 'wallet_locked_at'));
-        $this->assertNotNull(data_get($vm->remote_state, 'wallet_unlocked_at'));
+        $customer->wallet()->update(['balance' => 100000]);
+        $restrictions->reconcile($customer);
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->fresh()->status);
+        $this->assertNull($vm->fresh()->wallet_restriction);
     }
 
-    public function test_disabled_auto_suspension_does_not_lock_vms_or_restore_existing_wallet_locks(): void
+    public function test_disabling_wallet_protection_restores_network_without_starting_customer_stopped_vm(): void
     {
         $customer = Customer::factory()->create(['auto_suspend_vms' => false]);
         $server = ProxmoxServer::create([
-            'name' => 'THR Proxmox',
-            'datacenter' => 'THR-1',
-            'host' => 'pve.local',
-            'port' => 8006,
-            'realm' => 'pam',
-            'username' => 'root',
-            'api_token_id' => 'root@pam!panel',
-            'api_token_secret' => 'secret',
-            'is_active' => true,
-            'maintenance_mode' => false,
+            'name' => 'THR Proxmox', 'datacenter' => 'THR-1', 'host' => 'pve.local',
+            'port' => 8006, 'realm' => 'pam', 'username' => 'root',
+            'api_token_id' => 'root@pam!panel', 'api_token_secret' => 'secret',
+            'is_active' => true, 'maintenance_mode' => false,
         ]);
         $vm = VirtualMachine::create([
-            'customer_id' => $customer->id,
-            'proxmox_server_id' => $server->id,
-            'vmid' => 102,
-            'name' => 'auto-suspension-disabled-vm',
-            'hostname' => 'auto-suspension-disabled-vm',
-            'node' => 'pve1',
-            'storage' => 'local-lvm',
-            'network_bridge' => 'vmbr1',
-            'ip_address' => '192.168.10.51',
-            'login_username' => 'ubuntu',
-            'cpu_cores' => 2,
-            'ram_gb' => 4,
-            'disk_gb' => 40,
-            'ip_count' => 1,
-            'status' => VirtualMachine::STATUS_RUNNING,
+            'customer_id' => $customer->id, 'proxmox_server_id' => $server->id,
+            'vmid' => 102, 'name' => 'manually-stopped-vm', 'node' => 'pve1',
+            'cpu_cores' => 2, 'ram_gb' => 4, 'disk_gb' => 40, 'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_STOPPED,
             'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'wallet_restriction' => ['resume_on_funding' => false, 'wallet_stopped' => false, 'network_interfaces' => ['net0']],
         ]);
+        $networks = $this->mock(WalletNetworkRestrictionService::class);
+        $networks->shouldReceive('restore')->once();
+        $networks->shouldNotReceive('freeze');
+        $this->mock(ProxmoxService::class)->shouldNotReceive('startVm');
 
-        $this->mock(ProxmoxService::class, function ($mock): void {
-            $mock->shouldNotReceive('stopVm');
-        });
+        app(WalletRestrictionService::class)->reconcile($customer);
 
-        app(WalletService::class)->charge($customer, 1000, 'کسر آزمایشی');
-
-        $vm->refresh();
-        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->status);
-        $this->assertNull(data_get($vm->remote_state, 'wallet_locked_at'));
-
-        $vm->forceFill([
-            'status' => VirtualMachine::STATUS_SUSPENDED,
-            'remote_state' => ['wallet_locked_at' => now()->toISOString()],
-        ])->save();
-
-        app(WalletService::class)->charge($customer, 1000, 'کسر آزمایشی دوم');
-
-        $vm->refresh();
-        $this->assertSame(VirtualMachine::STATUS_SUSPENDED, $vm->status);
-        $this->assertNotNull(data_get($vm->remote_state, 'wallet_locked_at'));
+        $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->fresh()->status);
+        $this->assertNull($vm->fresh()->wallet_restriction);
     }
 
     private function enableMellatGateway(): void

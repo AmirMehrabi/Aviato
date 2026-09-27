@@ -678,6 +678,69 @@ class ProxmoxService
         return ['task_id' => $taskId, 'payload' => $payload];
     }
 
+    public function lxcConfig(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        return $this->getData($server, "/nodes/{$node}/lxc/{$vmid}/config") ?? [];
+    }
+
+    public function setLxcNetworkLinkState(ProxmoxServer $server, string $node, int $vmid, bool $enabled, string $interface = 'net0'): array
+    {
+        if (! preg_match('/^net\d+$/', $interface)) {
+            throw new RuntimeException('A valid LXC network interface id is required.');
+        }
+
+        $device = (string) ($this->lxcConfig($server, $node, $vmid)[$interface] ?? '');
+        if ($device === '') {
+            throw new RuntimeException("LXC network interface {$interface} does not exist.");
+        }
+
+        $parts = array_values(array_filter(
+            array_map('trim', explode(',', $device)),
+            static fn (string $part): bool => $part !== '' && ! str_starts_with($part, 'link_down='),
+        ));
+        if (! $enabled) {
+            $parts[] = 'link_down=1';
+        }
+        $payload = [$interface => implode(',', $parts)];
+        $taskId = $this->request($server)
+            ->asForm()
+            ->put("/nodes/{$node}/lxc/{$vmid}/config", $payload)
+            ->throw()
+            ->json('data');
+
+        return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    public function lxcStatus(ProxmoxServer $server, string $node, int $vmid): ?array
+    {
+        return $this->getData($server, "/nodes/{$node}/lxc/{$vmid}/status/current");
+    }
+
+    public function startLxc(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        return ['task_id' => $this->request($server)->asForm()
+            ->post("/nodes/{$node}/lxc/{$vmid}/status/start")
+            ->throw()->json('data')];
+    }
+
+    public function stopLxc(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        return ['task_id' => $this->request($server)->asForm()
+            ->post("/nodes/{$node}/lxc/{$vmid}/status/stop")
+            ->throw()->json('data')];
+    }
+
+    public function shutdownLxc(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        try {
+            return ['task_id' => $this->request($server)->asForm()
+                ->post("/nodes/{$node}/lxc/{$vmid}/status/shutdown", ['timeout' => 60, 'forceStop' => 1])
+                ->throw()->json('data')];
+        } catch (RequestException) {
+            return $this->stopLxc($server, $node, $vmid);
+        }
+    }
+
     /**
      * @return array<string, mixed>|null
      */

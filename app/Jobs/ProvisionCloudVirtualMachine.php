@@ -128,6 +128,9 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                     'last_started_at' => $shouldStartAfterCreate && $canAutoStart ? now() : null,
                     'last_billed_at' => now(),
                     'last_seen_at' => now(),
+                    'wallet_restriction' => $shouldStartAfterCreate && ! $canAutoStart
+                        ? ['resume_on_funding' => true, 'wallet_stopped' => true, 'created_at' => now()->toISOString()]
+                        : null,
                     'remote_state' => ['steps' => $history, 'finished_at' => now()->toISOString()],
                 ])->save();
 
@@ -216,6 +219,9 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'last_started_at' => $shouldStartAfterCreate && $canAutoStart ? now() : null,
                 'last_billed_at' => now(),
                 'last_seen_at' => now(),
+                'wallet_restriction' => $shouldStartAfterCreate && ! $canAutoStart
+                    ? ['resume_on_funding' => true, 'wallet_stopped' => true, 'created_at' => now()->toISOString()]
+                    : null,
                 'remote_state' => ['steps' => $history, 'finished_at' => now()->toISOString()],
             ])->save();
         } catch (Throwable $exception) {
@@ -320,6 +326,9 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'last_started_at' => ($server['status'] ?? null) === 'running' ? now() : null,
                 'last_billed_at' => now(),
                 'last_seen_at' => now(),
+                'wallet_restriction' => $shouldStartAfterCreate && ! $canAutoStart
+                    ? ['resume_on_funding' => true, 'wallet_stopped' => true, 'created_at' => now()->toISOString()]
+                    : null,
                 'remote_state' => [
                     'steps' => $history,
                     'finished_at' => now()->toISOString(),

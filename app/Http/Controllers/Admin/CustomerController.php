@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreCustomerRequest;
 use App\Http\Requests\Admin\UpdateCustomerRequest;
+use App\Jobs\ReconcileWalletRestrictions;
 use App\Models\Customer;
 use App\Services\BillingService;
 use App\Services\WalletService;
@@ -162,9 +163,11 @@ class CustomerController extends Controller
             'auto_suspend_vms' => (bool) $data['auto_suspend_vms'],
         ])->save();
 
+        ReconcileWalletRestrictions::dispatch($customer->id);
+
         return back()->with('status', (bool) $data['auto_suspend_vms']
-            ? 'تعلیق خودکار ماشین‌های مشتری فعال شد.'
-            : 'تعلیق خودکار ماشین‌های مشتری غیرفعال شد.');
+            ? 'محافظت خودکار کیف پول فعال شد.'
+            : 'محافظت خودکار کیف پول غیرفعال شد و رفع محدودیت‌ها در صف قرار گرفت.');
     }
 
     public function impersonate(Request $request, Customer $customer): RedirectResponse

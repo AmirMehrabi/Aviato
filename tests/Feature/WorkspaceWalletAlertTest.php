@@ -53,6 +53,7 @@ class WorkspaceWalletAlertTest extends TestCase
 
         $this->actingAs($admin, 'admin')->patch('https://admin.localhost/settings/protection', [
             'wallet_alert_percentages' => '25, 15, 5',
+            'wallet_shutdown_percentage' => 12,
             'wallet_alert_recipient_policy' => 'owner_and_billing',
             'unverified_customer_vm_limit' => 2,
             'verified_customer_vm_limit' => 0,
@@ -61,6 +62,7 @@ class WorkspaceWalletAlertTest extends TestCase
         ])->assertSessionHas('status');
 
         $this->assertSame([25, 15, 5], AppSetting::customerWalletAlertPercentages());
+        $this->assertSame(12, AppSetting::customerWalletShutdownPercentage());
         $this->assertSame('owner_and_billing', AppSetting::customerWalletAlertRecipientPolicy());
 
         $this->actingAs($admin, 'admin')->patch('https://admin.localhost/settings/protection', [
@@ -71,6 +73,16 @@ class WorkspaceWalletAlertTest extends TestCase
             'deleted_vm_cooldown_days' => 30,
             'vm_rebuild_fee_multiplier_percentage' => 50,
         ])->assertSessionHasErrors('wallet_alert_percentages');
+
+        $this->actingAs($admin, 'admin')->patch('https://admin.localhost/settings/protection', [
+            'wallet_alert_percentages' => '15, 10, 5',
+            'wallet_shutdown_percentage' => 101,
+            'wallet_alert_recipient_policy' => 'owner',
+            'unverified_customer_vm_limit' => 2,
+            'verified_customer_vm_limit' => 0,
+            'deleted_vm_cooldown_days' => 30,
+            'vm_rebuild_fee_multiplier_percentage' => 50,
+        ])->assertSessionHasErrors('wallet_shutdown_percentage');
     }
 
     public function test_scheduled_check_detects_unsettled_usage_without_a_wallet_transaction(): void

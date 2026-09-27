@@ -126,6 +126,9 @@ class VirtualMachineIpReassignmentService
         if ($vm->isActionLocked()) {
             throw new RuntimeException('This VM is locked and cannot change IP.');
         }
+        if (! empty($vm->wallet_restriction)) {
+            throw new RuntimeException('This VM network is restricted by its wallet and cannot change IP yet.');
+        }
         if (! $vm->proxmoxServer || ! $vm->node || ! $vm->vmid || ! $oldAddress) {
             throw new RuntimeException('Only provisioned VMs with an assigned IP can change IP.');
         }

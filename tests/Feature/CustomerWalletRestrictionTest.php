@@ -104,7 +104,7 @@ class CustomerWalletRestrictionTest extends TestCase
             ->get('https://admin.localhost/settings/protection')
             ->assertOk()
             ->assertSee('هشدار موجودی کیف‌پول')
-            ->assertSee('موجودی مؤثر کیف‌پول به صفر یا کمتر')
+            ->assertSee('در موجودی مؤثر صفر یا کمتر، شبکه ماشین‌ها قطع می‌شود')
             ->assertSee('15, 10, 5');
     }
 }

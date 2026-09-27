@@ -57,6 +57,11 @@
                     <div class="flex flex-wrap items-center gap-2 border-r border-slate-200 pr-4 text-xs font-black">
                         <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 {{ $server->isRunning() ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}"><span class="size-1.5 rounded-full {{ $server->isRunning() ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>{{ $statusLabel ?? ($server->isRunning() ? 'روشن' : 'خاموش') }}</span>
                         <span class="rounded-full px-2.5 py-1 {{ $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY ? 'bg-blue-50 text-[#0069FF]' : 'bg-amber-50 text-amber-800' }}">{{ $provisioningLabel ?? $server->provisioning_status }}</span>
+                        @if (data_get($server->wallet_restriction, 'wallet_stopped'))
+                            <span class="rounded-full bg-red-50 px-2.5 py-1 text-red-700">خاموش به‌دلیل بدهی کیف پول</span>
+                        @elseif (data_get($server->wallet_restriction, 'network_frozen_at'))
+                            <span class="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800">شبکه قطع به‌دلیل کیف پول</span>
+                        @endif
                     </div>
                 </div>
             </div>
