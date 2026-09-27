@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>پیش فاکتور - {{ $project->name }}</title>
+    <link rel="stylesheet" href="{{ asset('assets/fonts.css') }}">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Tahoma, 'B Nazanin', Arial, sans-serif; background: #f5f5f5; padding: 20px; color: #1a1a2e; }
+        body { font-family: 'Vazirmatn', Tahoma, Arial, sans-serif; background: #f5f5f5; padding: 20px; color: #1a1a2e; }
         .invoice { max-width: 900px; margin: 0 auto; background: #fff; padding: 40px; border: 1px solid #ddd; }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 3px solid #031B4E; padding-bottom: 20px; }
         .header-right h1 { font-size: 24px; color: #031B4E; }
