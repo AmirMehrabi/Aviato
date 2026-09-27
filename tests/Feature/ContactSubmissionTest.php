@@ -9,6 +9,18 @@ class ContactSubmissionTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_contact_page_separates_sales_requests_from_customer_support(): void
+    {
+        $this->get('/contact')
+            ->assertOk()
+            ->assertSee('درخواست مشاوره خرید')
+            ->assertSee('پشتیبانی مشتریان')
+            ->assertSee(route('customer.tickets.create'), false)
+            ->assertSee('نوع درخواست را انتخاب کنید')
+            ->assertSee('mailto:admin@aviato.ir', false)
+            ->assertSee('tel:+983491097953', false);
+    }
+
     public function test_guest_can_submit_contact_form(): void
     {
         $response = $this->post('/contact', [
@@ -41,5 +53,21 @@ class ContactSubmissionTest extends TestCase
             'team_size' => 'invalid',
             'message' => 'short',
         ])->assertSessionHasErrors(['name', 'email', 'need_type', 'team_size', 'message']);
+    }
+
+    public function test_guest_can_submit_without_team_size(): void
+    {
+        $this->post('/contact', [
+            'name' => 'Amir Rezaei',
+            'email' => 'amir@example.com',
+            'need_type' => 'migration',
+            'message' => 'We need help planning a migration to Aviato.',
+        ])->assertRedirect('/contact');
+
+        $this->assertDatabaseHas('contact_submissions', [
+            'email' => 'amir@example.com',
+            'team_size' => null,
+            'status' => 'new',
+        ]);
     }
 }

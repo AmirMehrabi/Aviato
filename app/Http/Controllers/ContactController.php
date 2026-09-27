@@ -28,7 +28,7 @@ class ContactController extends Controller
             'email' => ['required', 'email:rfc', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'need_type' => ['required', 'string', Rule::in($needTypes)],
-            'team_size' => ['required', 'string', Rule::in($teamSizes)],
+            'team_size' => ['nullable', 'string', Rule::in($teamSizes)],
             'message' => ['required', 'string', 'min:10', 'max:5000'],
         ]);
 
