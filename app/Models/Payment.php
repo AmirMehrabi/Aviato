@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[Fillable([
     'customer_id',
@@ -45,6 +46,11 @@ class Payment extends Model
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);
+    }
+
+    public function walletTransactions(): MorphMany
+    {
+        return $this->morphMany(WalletTransaction::class, 'reference');
     }
 
     public function promotionCode(): BelongsTo

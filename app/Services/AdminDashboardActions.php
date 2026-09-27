@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Payment;
 use App\Models\ProxmoxServer;
 use App\Models\Ticket;
 use App\Models\VirtualMachine;
@@ -15,6 +16,8 @@ class AdminDashboardActions
 {
     public const VISIBLE_LIMIT = 8;
 
+    public function __construct(private readonly AdminDashboardFinance $finance) {}
+
     public function snapshot(Collection $dismissedKeys, int $page = 1, ?string $category = null): array
     {
         $queries = $this->issueQueries();
@@ -23,6 +26,7 @@ class AdminDashboardActions
             'servers' => ['server-offline'],
             'machines' => ['vm-provisioning', 'vm-delete'],
             'tickets' => ['ticket'],
+            'payments' => ['payment-reconciliation', 'payment-pending'],
             default => array_keys($queries),
         };
         $queueQueries = array_intersect_key($queries, array_flip($categoryTypes));
@@ -69,6 +73,7 @@ class AdminDashboardActions
                 'servers' => 'سرورهای آفلاین',
                 'machines' => 'ماشین‌های نیازمند بررسی',
                 'tickets' => 'تیکت‌های در انتظار پاسخ',
+                'payments' => 'پرداخت‌های نیازمند بررسی',
                 default => null,
             },
             'health' => [
@@ -83,6 +88,12 @@ class AdminDashboardActions
                     'count' => $counts['vm-provisioning'] + $counts['vm-delete'],
                     'category' => 'machines',
                     'url' => route('admin.dashboard', ['category' => 'machines']),
+                ],
+                [
+                    'label' => 'پرداخت نیازمند بررسی',
+                    'count' => $counts['payment-reconciliation'] + $counts['payment-pending'],
+                    'category' => 'payments',
+                    'url' => route('admin.dashboard', ['category' => 'payments']),
                 ],
                 [
                     'label' => 'تیکت در انتظار پاسخ',
@@ -119,6 +130,9 @@ class AdminDashboardActions
             });
 
         return [
+            'payment-reconciliation' => $this->finance->uncreditedPayments(),
+            'payment-pending' => Payment::query()->where('status', Payment::STATUS_PENDING)
+                ->where('created_at', '<=', now()->subMinutes(AdminDashboardFinance::PENDING_AGE_MINUTES)),
             'vm-provisioning' => VirtualMachine::query()->notDeleted()
                 ->where('status', '!=', VirtualMachine::STATUS_DELETING)
                 ->where('provisioning_status', VirtualMachine::PROVISION_FAILED),
@@ -151,6 +165,7 @@ class AdminDashboardActions
             'vm-provisioning', 'vm-delete' => ['customer'],
             'upgrade', 'backup' => ['virtualMachine.customer'],
             'ticket', 'wallet' => ['customer'],
+            'payment-reconciliation', 'payment-pending' => ['customer'],
             default => [],
         };
 
@@ -167,6 +182,8 @@ class AdminDashboardActions
             $query->orderByRaw('COALESCE(last_seen_at, updated_at)');
         } elseif ($type === 'backup') {
             $query->orderByRaw('COALESCE(finished_at, updated_at)');
+        } elseif (str_starts_with($type, 'payment-')) {
+            $query->orderBy($type === 'payment-pending' ? 'created_at' : 'paid_at');
         }
 
         return $query->with($relations)
@@ -183,11 +200,29 @@ class AdminDashboardActions
             'vm-delete' => $record->delete_failed_at ?? $record->delete_started_at ?? $record->delete_requested_at ?? $record->updated_at,
             'server-offline' => $record->last_seen_at ?? $record->updated_at,
             'backup' => $record->finished_at ?? $record->updated_at,
+            'payment-reconciliation' => $record->paid_at,
+            'payment-pending' => $record->created_at,
             default => $record->updated_at,
         };
         $occurredAt ??= now();
 
         $details = match ($type) {
+            'payment-reconciliation' => [
+                'rank' => 98,
+                'category' => 'پرداخت موفق بدون اعتبار کیف پول',
+                'title' => $record->customer?->name ?: 'مشتری شماره '.$record->customer_id,
+                'meta' => $record->provider.' · #'.$record->id,
+                'url' => route('admin.billing.payments.show', $record),
+                'action' => 'تطبیق پرداخت',
+            ],
+            'payment-pending' => [
+                'rank' => 78,
+                'category' => 'پرداخت در انتظار طولانی',
+                'title' => $record->customer?->name ?: 'مشتری شماره '.$record->customer_id,
+                'meta' => $record->provider.' · #'.$record->id,
+                'url' => route('admin.billing.payments.show', $record),
+                'action' => 'بررسی پرداخت',
+            ],
             'vm-provisioning' => [
                 'rank' => 100,
                 'category' => 'آماده‌سازی ناموفق',

@@ -6,6 +6,7 @@ use App\Enums\AdminRole;
 use App\Http\Controllers\Controller;
 use App\Models\AdminDashboardWarningDismissal;
 use App\Services\AdminDashboardActions;
+use App\Services\AdminDashboardFinance;
 use App\Support\AdminAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +14,7 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly AdminDashboardActions $actions) {}
+    public function __construct(private readonly AdminDashboardActions $actions, private readonly AdminDashboardFinance $finance) {}
 
     public function __invoke(Request $request): View|RedirectResponse
     {
@@ -25,10 +26,12 @@ class DashboardController extends Controller
             ->where('user_id', $request->user('admin')->id)
             ->pluck('warning_key');
         $category = $request->query('category');
-        $category = in_array($category, ['servers', 'machines', 'tickets'], true) ? $category : null;
+        $category = in_array($category, ['servers', 'machines', 'tickets', 'payments'], true) ? $category : null;
+        $days = in_array($request->integer('period', 1), [1, 7, 30], true) ? $request->integer('period', 1) : 1;
 
         return view('admin.dashboard', [
             'dashboard' => $this->actions->snapshot($dismissedKeys, max(1, $request->integer('page', 1)), $category),
+            'finance' => $this->finance->snapshot($days),
             'refreshedAt' => now(),
         ]);
     }

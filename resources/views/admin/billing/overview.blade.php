@@ -10,7 +10,7 @@
     </form>
     <section class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach([
-            ['مبالغ وصول‌شده', $wallets->format($cash), 'text-[#0069FF]'],
+            ['مبالغ وصول‌شده', $cashByCurrency->isEmpty() ? $wallets->format(0) : $cashByCurrency->map(fn ($row) => $wallets->format((int) $row->total, $row->currency).' ('.$row->currency.')')->implode(' · '), 'text-[#0069FF]'],
             ['درآمد مصرف‌شده', $wallets->format($consumption), 'text-amber-600'],
             ['پرداخت‌های موفق', number_format($successfulPayments), 'text-emerald-600'],
             ['کیف پول‌های منفی', number_format($negativeWallets), 'text-red-600'],
@@ -20,7 +20,7 @@
     </section>
     <section class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="font-black">وصول وجه و مصرف</h2>
+            <h2 class="font-black">وصول وجه و مصرف</h2><p class="mt-1 text-xs text-slate-500">روند وصول فقط برای ارز {{ $trendCurrency }} است؛ مبالغ هر ارز جداگانه در خلاصه بالا آمده‌اند.</p>
             @php($max = max(1, $trend->max(fn($d) => max($d['cash'], $d['consumption']))))
             <div class="mt-6 flex h-64 items-end gap-1 overflow-hidden border-b border-slate-200">
                 @foreach($trend as $point)
@@ -33,7 +33,7 @@
             <div class="mt-3 flex gap-5 text-xs font-bold text-slate-500"><span class="before:ml-2 before:inline-block before:size-2 before:bg-[#0069FF]">وصول درگاه</span><span class="before:ml-2 before:inline-block before:size-2 before:bg-amber-400">مصرف تسویه‌شده</span></div>
         </div>
         <aside class="space-y-4">
-            <div class="rounded-xl border border-slate-200 bg-white p-5"><h2 class="font-black">خلاصه تطبیق</h2><dl class="mt-4 space-y-3 text-sm"><div class="flex justify-between"><dt>وصول‌شده</dt><dd class="font-black text-blue-600">{{ $wallets->format($cash) }}</dd></div><div class="flex justify-between"><dt>مصرف‌شده</dt><dd class="font-black text-amber-600">{{ $wallets->format($consumption) }}</dd></div><div class="flex justify-between border-t pt-3"><dt>مانده کیف پول‌ها</dt><dd class="font-black">{{ $wallets->format($walletBalance) }}</dd></div></dl><p class="mt-4 rounded-lg bg-blue-50 p-3 text-xs leading-6 text-blue-800">شارژ کیف پول درآمد نیست؛ فقط مصرف تسویه‌شده به‌عنوان درآمد مصرفی نمایش داده می‌شود.</p></div>
+            <div class="rounded-xl border border-slate-200 bg-white p-5"><h2 class="font-black">خلاصه تطبیق</h2><dl class="mt-4 space-y-3 text-sm"><div class="flex justify-between gap-2"><dt>وصول‌شده</dt><dd class="text-left font-black text-blue-600">@forelse ($cashByCurrency as $row)<div>{{ $wallets->format((int) $row->total, $row->currency) }} <span class="text-xs" dir="ltr">({{ $row->currency }})</span></div>@empty {{ $wallets->format(0) }} @endforelse</dd></div><div class="flex justify-between"><dt>مصرف‌شده</dt><dd class="font-black text-amber-600">{{ $wallets->format($consumption) }}</dd></div><div class="flex justify-between border-t pt-3"><dt>مانده کیف پول‌ها</dt><dd class="font-black">{{ $wallets->format($walletBalance) }}</dd></div></dl><p class="mt-4 rounded-lg bg-blue-50 p-3 text-xs leading-6 text-blue-800">شارژ کیف پول درآمد نیست؛ فقط مصرف تسویه‌شده به‌عنوان درآمد مصرفی نمایش داده می‌شود.</p></div>
             <div class="rounded-xl border border-slate-200 bg-white p-5"><h2 class="font-black">نیازمند بررسی</h2><div class="mt-3 space-y-2 text-sm"><a class="flex justify-between text-amber-700" href="{{ route('admin.billing.payments.index', ['status'=>'pending']) }}"><span>پرداخت در انتظار</span><b>{{ $pendingPayments }}</b></a><a class="flex justify-between text-red-700" href="{{ route('admin.billing.payments.index', ['status'=>'failed']) }}"><span>ناموفق ۷ روز اخیر</span><b>{{ $failedPayments }}</b></a><a class="flex justify-between text-red-700" href="{{ route('admin.billing.wallets.index', ['state'=>'negative']) }}"><span>کیف پول منفی</span><b>{{ $negativeWallets }}</b></a><a class="flex justify-between border-t pt-2 text-slate-700" href="{{ route('admin.resellers.withdrawals') }}"><span>تعهد فروشندگان</span><b>{{ $wallets->format($resellerLiability) }}</b></a></div></div>
         </aside>
     </section>

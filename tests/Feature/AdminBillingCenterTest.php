@@ -67,7 +67,7 @@ class AdminBillingCenterTest extends TestCase
             ->assertOk()->assertSee('Billing Customer');
     }
 
-    public function test_admin_dashboard_keeps_payment_reporting_in_billing_center(): void
+    public function test_admin_dashboard_shows_gateway_reporting_and_recent_payment(): void
     {
         Payment::create([
             'customer_id' => $this->customer->id,
@@ -95,9 +95,40 @@ class AdminBillingCenterTest extends TestCase
         $this->get('https://admin.localhost/dashboard')
             ->assertOk()
             ->assertSee('صف اقدام‌ها')
-            ->assertDontSee('وصول موفق')
-            ->assertDontSee('REF-DASHBOARD')
-            ->assertDontSee('آخرین پرداخت‌ها');
+            ->assertSee('وصول موفق')
+            ->assertSee('REF-DASHBOARD')
+            ->assertSee('آخرین پرداخت‌های درگاه');
+    }
+
+    public function test_billing_overview_uses_paid_date_and_keeps_gateway_currencies_separate(): void
+    {
+        $irr = Payment::create([
+            'customer_id' => $this->customer->id,
+            'wallet_id' => $this->customer->wallet->id,
+            'provider' => 'mellat',
+            'type' => Payment::TYPE_TOP_UP,
+            'status' => Payment::STATUS_SUCCESSFUL,
+            'amount' => 2_000_000,
+            'currency' => 'IRR',
+            'paid_at' => now(),
+        ]);
+        $irr->forceFill(['created_at' => now()->subDays(31)])->save();
+        Payment::create([
+            'customer_id' => $this->customer->id,
+            'wallet_id' => $this->customer->wallet->id,
+            'provider' => 'zibal',
+            'type' => Payment::TYPE_TOP_UP,
+            'status' => Payment::STATUS_SUCCESSFUL,
+            'amount' => 50,
+            'currency' => 'USD',
+            'paid_at' => now(),
+        ]);
+
+        $this->get('https://admin.localhost/billing')
+            ->assertOk()
+            ->assertViewHas('cashByCurrency', fn ($rows): bool => $rows->count() === 2
+                && (int) $rows->firstWhere('currency', 'IRR')->total === 2_000_000
+                && (int) $rows->firstWhere('currency', 'USD')->total === 50);
     }
 
     public function test_admin_can_act_on_dismiss_and_restore_dashboard_warnings(): void

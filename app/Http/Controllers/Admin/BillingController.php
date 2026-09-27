@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\ResellerWithdrawalRequest;
@@ -26,19 +27,24 @@ class BillingController extends Controller
     public function overview(Request $request)
     {
         [$from, $to] = $this->range($request);
-        $payments = Payment::query()->whereBetween('created_at', [$from, $to]);
-        $settlements = UsageSettlement::query()->whereBetween('service_date', [$from->toDateString(), $to->toDateString()]);
+        $payments = Payment::query()->where('status', Payment::STATUS_SUCCESSFUL)->whereBetween('paid_at', [$from, $to]);
+        $settlements = UsageSettlement::query()->whereNotNull('settled_at')
+            ->where('service_date', '>=', $from->toDateString())
+            ->where('service_date', '<', $to->copy()->addDay()->toDateString());
 
-        $cash = (clone $payments)->where('status', Payment::STATUS_SUCCESSFUL)->sum('amount');
+        $cashByCurrency = (clone $payments)->selectRaw('currency, SUM(amount) as total')->groupBy('currency')->get();
+        $trendCurrency = $cashByCurrency->contains('currency', AppSetting::currency())
+            ? AppSetting::currency()
+            : ($cashByCurrency->first()?->currency ?? AppSetting::currency());
         $consumption = (clone $settlements)->sum('amount');
-        $successfulPayments = (clone $payments)->where('status', Payment::STATUS_SUCCESSFUL)->count();
+        $successfulPayments = (clone $payments)->count();
         $negativeWallets = Wallet::query()->where('balance', '<', 0)->count();
 
-        $paymentDays = (clone $payments)->where('status', Payment::STATUS_SUCCESSFUL)
+        $paymentDays = (clone $payments)->where('currency', $trendCurrency)
             ->selectRaw('DATE(paid_at) as day, SUM(amount) as total')
             ->whereNotNull('paid_at')->groupByRaw('DATE(paid_at)')->pluck('total', 'day');
-        $settlementDays = (clone $settlements)->selectRaw('service_date as day, SUM(amount) as total')
-            ->groupBy('service_date')->pluck('total', 'day');
+        $settlementDays = (clone $settlements)->selectRaw('DATE(service_date) as day, SUM(amount) as total')
+            ->groupByRaw('DATE(service_date)')->pluck('total', 'day');
 
         $trend = collect();
         for ($day = $from->copy()->startOfDay(); $day->lte($to); $day->addDay()) {
@@ -54,7 +60,7 @@ class BillingController extends Controller
         $recent = $this->recentEvents();
 
         return view('admin.billing.overview', compact(
-            'from', 'to', 'cash', 'consumption', 'successfulPayments', 'negativeWallets', 'trend', 'recent'
+            'from', 'to', 'cashByCurrency', 'trendCurrency', 'consumption', 'successfulPayments', 'negativeWallets', 'trend', 'recent'
         ) + [
             'pendingPayments' => Payment::query()->where('status', Payment::STATUS_PENDING)->count(),
             'failedPayments' => Payment::query()->where('status', Payment::STATUS_FAILED)->where('created_at', '>=', now()->subDays(7))->count(),
@@ -67,9 +73,12 @@ class BillingController extends Controller
     public function payments(Request $request)
     {
         [$from, $to] = $this->range($request);
-        $query = Payment::query()->with('customer')->whereBetween('created_at', [$from, $to]);
+        $dateColumn = $request->query('date_basis') === 'paid' ? 'paid_at' : 'created_at';
+        $query = Payment::query()->with('customer')->whereBetween($dateColumn, [$from, $to]);
         $this->searchCustomer($query, $request, true);
-        $query->when($request->filled('status'), fn (Builder $q) => $q->where('status', $request->string('status')))
+        $query->when($request->filled('status'), fn (Builder $q) => $request->string('status')->toString() === 'unsuccessful'
+            ? $q->whereIn('status', [Payment::STATUS_FAILED, Payment::STATUS_CANCELLED])
+            : $q->where('status', $request->string('status')))
             ->when($request->filled('provider'), fn (Builder $q) => $q->where('provider', $request->string('provider')));
         $sort = AdminTableSort::apply($query, $request, 'billing-payments');
 
