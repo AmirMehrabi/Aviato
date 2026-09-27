@@ -1,7 +1,7 @@
 @extends('layouts.marketing')
 
 @section('title', 'آویاتو: لیست تغییرات نسخه‌ها')
-@section('description', 'نسخه‌های منتشرشده آویاتو و خلاصه تغییرات هر release.')
+@section('description', 'نسخه‌های منتشرشده آویاتو و تغییراتی که در هر نسخه برای کاربران ارائه شده است.')
 
 @php
     $activePage = 'changelog';
@@ -12,22 +12,37 @@
             'date' => 'دوشنبه ششم مهر ۱۴۰۵',
             'tag' => 'مدیریت روشن‌تر هزینه‌ها و سرویس‌ها',
             'summary' => 'در این نسخه، پیگیری موجودی و هزینه‌های فضای کاری آسان‌تر شده و هشدارهای کیف پول پیش از تمام شدن اعتبار به دست افراد مناسب می‌رسند. صفحه‌های سرور، بکاپ و کیف پول هم بازطراحی شده‌اند تا کارهای روزمره و وضعیت سرویس‌ها را سریع‌تر دنبال کنید.',
-            'items' => [
-                'دریافت هشدار موجودی کیف پول در چند مرحله، بر اساس درصد اعتبار باقی‌مانده نسبت به هزینه ماهانه؛ درصدهای پیش‌فرض ۱۵، ۱۰ و ۵ هستند',
-                'امکان انتخاب دریافت‌کنندگان هشدار برای هر فضای کاری و دریافت اطلاع‌رسانی دستی موجودی از سوی تیم آویاتو',
-                'ارسال هشدارهای خودکار خارج از ساعات سکوت، با فاصله یک ساعت میان اعلان‌های عقب‌افتاده؛ اطلاع‌رسانی دستی بدون تأخیر انجام می‌شود',
-                'نمایش نام فضای کاری و موجودی باقی‌مانده در پیامک‌های هشدار کیف پول برای تشخیص راحت‌تر حساب مربوط',
-                'بازطراحی صفحه کیف پول با نمایش برآورد هزینه ماهانه، میزان پوشش موجودی و مبلغ پیشنهادی برای شارژ یک ماه',
-                'ساده‌تر شدن شارژ کیف پول و پیگیری تراکنش‌ها، مانده پس از هر تراکنش و رسیدهای پرداخت',
-                'شفاف‌تر شدن وضعیت سرویس هنگام تمام شدن موجودی: ابتدا ارتباط شبکه محدود می‌شود و خاموشی ماشین‌ها در حد بدهی مشخص انجام می‌گیرد؛ پس از شارژ، دسترسی بازیابی می‌شود',
-                'بازطراحی صفحه سرورها با بخش‌های جداگانه برای وضعیت، منابع، مصرف و هزینه، فعالیت‌ها، ارتقا، بازسازی و حذف سرویس',
-                'اضافه شدن تاریخچه فعالیت سرور برای پیگیری درخواست‌ها و نتیجه عملیات، همراه با نمایش روشن‌تر وضعیت محدودیت کیف پول',
-                'بهبود روند ارتقای پلن و دیسک اضافه تا وضعیت انجام ارتقا و هزینه جدید دقیق‌تر نمایش داده شود',
-                'بازطراحی صفحه بکاپ برای تنظیم ساده‌تر زمان‌بندی و تعداد نسخه‌ها و مشاهده وضعیت نسخه‌های پشتیبان',
-                'اصلاح مرکز اعلان‌ها تا هر اعلان به صفحه مرتبط خود هدایت شود و نشانگر تیکت فقط برای پیام‌های تیکت نمایش داده شود',
-                'روان‌تر شدن ثبت‌نام و ورود، همراه با پیام‌های روشن‌تر برای خطاهای فرم و انتخاب رمز عبور',
-                'بازطراحی صفحه اصلی، صفحه پلن‌ها و بخش‌های اصلی پنل برای مقایسه آسان‌تر منابع و قیمت‌ها و دسترسی سریع‌تر به خدمات',
-                'بهبود خوانایی مقاله‌ها و نمایش اطلاعات مصرف شبکه و هزینه‌های مربوط به آن',
+            'sections' => [
+                [
+                    'title' => 'کیف پول و هزینه‌ها',
+                    'items' => [
+                        'دریافت هشدار موجودی کیف پول در چند مرحله، بر اساس درصد اعتبار باقی‌مانده نسبت به هزینه ماهانه؛ درصدهای پیش‌فرض ۱۵، ۱۰ و ۵ هستند',
+                        'امکان انتخاب دریافت‌کنندگان هشدار برای هر فضای کاری و دریافت اطلاع‌رسانی دستی موجودی از سوی تیم آویاتو',
+                        'ارسال هشدارهای خودکار خارج از ساعات سکوت، با فاصله یک ساعت میان اعلان‌های عقب‌افتاده؛ اطلاع‌رسانی دستی بدون تأخیر انجام می‌شود',
+                        'نمایش نام فضای کاری و موجودی باقی‌مانده در پیامک‌های هشدار کیف پول برای تشخیص راحت‌تر حساب مربوط',
+                        'بازطراحی صفحه کیف پول با نمایش برآورد هزینه ماهانه، میزان پوشش موجودی و مبلغ پیشنهادی برای شارژ یک ماه',
+                        'ساده‌تر شدن شارژ کیف پول و پیگیری تراکنش‌ها، مانده پس از هر تراکنش و رسیدهای پرداخت',
+                        'شفاف‌تر شدن وضعیت سرویس هنگام تمام شدن موجودی: ابتدا ارتباط شبکه محدود می‌شود و خاموشی ماشین‌ها در حد بدهی مشخص انجام می‌گیرد؛ پس از شارژ، دسترسی بازیابی می‌شود',
+                    ],
+                ],
+                [
+                    'title' => 'سرورها و بکاپ',
+                    'items' => [
+                        'بازطراحی صفحه سرورها با بخش‌های جداگانه برای وضعیت، منابع، مصرف و هزینه، فعالیت‌ها، ارتقا، بازسازی و حذف سرویس',
+                        'اضافه شدن تاریخچه فعالیت سرور برای پیگیری درخواست‌ها و نتیجه عملیات، همراه با نمایش روشن‌تر وضعیت محدودیت کیف پول',
+                        'بهبود روند ارتقای پلن و دیسک اضافه تا وضعیت انجام ارتقا و هزینه جدید دقیق‌تر نمایش داده شود',
+                        'بازطراحی صفحه بکاپ برای تنظیم ساده‌تر زمان‌بندی و تعداد نسخه‌ها و مشاهده وضعیت نسخه‌های پشتیبان',
+                    ],
+                ],
+                [
+                    'title' => 'تجربه کاربری',
+                    'items' => [
+                        'اصلاح مرکز اعلان‌ها تا هر اعلان به صفحه مرتبط خود هدایت شود و نشانگر تیکت فقط برای پیام‌های تیکت نمایش داده شود',
+                        'روان‌تر شدن ثبت‌نام و ورود، همراه با پیام‌های روشن‌تر برای خطاهای فرم و انتخاب رمز عبور',
+                        'بازطراحی صفحه اصلی، صفحه پلن‌ها و بخش‌های اصلی پنل برای مقایسه آسان‌تر منابع و قیمت‌ها و دسترسی سریع‌تر به خدمات',
+                        'بهبود خوانایی مقاله‌ها و نمایش اطلاعات مصرف شبکه و هزینه‌های مربوط به آن',
+                    ],
+                ],
             ],
         ],
         [
@@ -258,58 +273,76 @@
 @endphp
 
 @section('content')
-    <section class="bg-gradient-to-b from-[#EBF3FF] via-white to-white px-4 pb-14 pt-16 md:px-8 md:pt-24 lg:px-10">
-        <div class="mx-auto max-w-4xl text-center">
-            <h1 class="mt-4 text-4xl font-black leading-tight md:text-5xl">تغییرات نسخه‌های آویاتو</h1>
-            <p class="mt-6 text-lg leading-9 text-slate-600">
-                خلاصه releaseها. نسخه‌های آینده بعدا به همین صفحه اضافه می‌شوند.
+    <section class="bg-gradient-to-b from-[#EBF3FF] via-white to-white px-4 pb-12 pt-16 md:px-8 md:pb-16 md:pt-24">
+        <div class="mx-auto max-w-3xl">
+            <h1 class="text-4xl font-black leading-tight text-slate-950 md:text-5xl">تغییرات نسخه‌های آویاتو</h1>
+            <p class="mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg md:leading-9">
+                ببینید در هر نسخه چه امکاناتی اضافه شده و مدیریت سرویس‌ها چه تغییراتی کرده است.
             </p>
         </div>
     </section>
 
+    <section class="px-4 pb-20 md:px-8 md:pb-28">
+        <div class="mx-auto max-w-3xl">
+            @php($latestRelease = $releases[0])
+            <article class="overflow-hidden rounded-3xl border border-[#C6DEFF] bg-white shadow-sm" aria-labelledby="latest-release-title">
+                <div class="border-b border-[#DCEAFF] bg-[#F7FBFF] px-5 py-7 md:px-9 md:py-9">
+                    <span class="inline-flex rounded-full bg-[#E4F0FF] px-3 py-1 text-xs font-black text-[#0055CC]">تازه‌ترین نسخه</span>
+                    <h2 id="latest-release-title" class="mt-4 text-3xl font-black text-slate-950">نسخه {{ $latestRelease['version'] }}</h2>
+                    <p class="mt-2 text-sm font-bold text-slate-600">{{ $latestRelease['date'] }}@if (isset($latestRelease['tag'])) <span aria-hidden="true">·</span> {{ $latestRelease['tag'] }}@endif</p>
+                    @if (isset($latestRelease['summary']))
+                        <p class="mt-5 text-base leading-8 text-slate-700">{{ $latestRelease['summary'] }}</p>
+                    @endif
+                </div>
 
+                <div class="divide-y divide-slate-100 px-5 md:px-9">
+                    @foreach ($latestRelease['sections'] ?? [['title' => 'تغییرات این نسخه', 'items' => $latestRelease['items']]] as $section)
+                        <section class="py-7 md:py-8" aria-labelledby="release-section-{{ $loop->index }}">
+                            <h3 id="release-section-{{ $loop->index }}" class="text-lg font-black text-slate-950">{{ $section['title'] }}</h3>
+                            <ul class="mt-4 space-y-3">
+                                @foreach ($section['items'] as $item)
+                                    <li class="flex gap-3 text-base leading-8 text-slate-700">
+                                        <span class="mt-3 size-1.5 shrink-0 rounded-full bg-[#0069FF]" aria-hidden="true"></span>
+                                        <span>{{ $item }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </section>
+                    @endforeach
+                </div>
+            </article>
 
-
-    <section class="px-4 pb-20 md:px-8 lg:px-10">
-        
-        <div class="mx-auto max-w-5xl space-y-5">
-
-            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-5 text-sm leading-7 text-slate-600">
-                نسخه‌های بعدی همین‌جا اضافه می‌شوند تا تغییرات آینده برای کاربران قابل پیگیری باشد.
+            <div class="mb-5 mt-14 md:mt-16">
+                <h2 class="text-2xl font-black text-slate-950">نسخه‌های پیشین</h2>
+                <p class="mt-2 text-sm leading-7 text-slate-600">برای خواندن فهرست کامل تغییرات هر نسخه، جزئیات آن را باز کنید.</p>
             </div>
-            @foreach ($releases as $release)
-                <article class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                    <div class="flex flex-col gap-4 border-b border-slate-200 bg-[#F7FBFF] px-6 py-6 md:flex-row md:items-start md:justify-between md:px-8">
-                        <div>
-                            <div class="flex flex-wrap items-center gap-3">
-                                <h2 class="text-3xl font-black text-slate-950">نسخه {{ $release['version'] }}</h2>
-                                @if (isset($release['tag']))
-                                    <span class="rounded-full bg-[#EAF4FF] px-3 py-1 text-xs font-black text-[#0069FF]">{{ $release['tag'] }}</span>
-                                @endif
-                            </div>
-                            <p class="mt-2 text-sm  text-slate-500">انتشار در <span class="font-extrabold text-slate-800">{{ $release['date'] }}</span></p>
-                        </div>
+
+            <div class="space-y-4">
+                @foreach (array_slice($releases, 1) as $release)
+                    <article class="rounded-2xl border border-slate-200 bg-white px-5 py-6 shadow-sm md:px-7" aria-labelledby="release-{{ $loop->index }}-title">
+                        <h3 id="release-{{ $loop->index }}-title" class="text-xl font-black text-slate-950">نسخه {{ $release['version'] }}</h3>
+                        <p class="mt-1 text-sm font-bold text-slate-500">{{ $release['date'] }}@if (isset($release['tag'])) <span aria-hidden="true">·</span> {{ $release['tag'] }}@endif</p>
                         @if (isset($release['summary']))
-                        <div class="rounded-2xl bg-white px-4 py-3 text-sm leading-7 text-slate-600 md:max-w-sm">
-                            {{ $release['summary'] }}
-                        </div>                            
+                            <p class="mt-4 text-base leading-8 text-slate-700">{{ $release['summary'] }}</p>
                         @endif
-
-                    </div>
-                    <div class="px-6 py-6 md:px-8">
-                        <ul class="grid gap-3 md:grid-cols-2">
-                            @foreach ($release['items'] as $item)
-                                <li class="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-700">
-                                    <span class="mt-1 size-2.5 shrink-0 rounded-full bg-[#0069FF]"></span>
-                                    <span>{{ $item }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </article>
-            @endforeach
-
-
+                        <details class="group mt-5 border-t border-slate-100 pt-4">
+                            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 rounded-lg text-sm font-black text-[#0069FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0069FF] [&::-webkit-details-marker]:hidden">
+                                <span class="group-open:hidden">مشاهده تغییرات این نسخه</span>
+                                <span class="hidden group-open:inline">بستن تغییرات این نسخه</span>
+                                <svg class="size-5 shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                            </summary>
+                            <ul class="mt-5 space-y-3 border-t border-slate-100 pt-5">
+                                @foreach ($release['items'] as $item)
+                                    <li class="flex gap-3 text-base leading-8 text-slate-700">
+                                        <span class="mt-3 size-1.5 shrink-0 rounded-full bg-[#0069FF]" aria-hidden="true"></span>
+                                        <span>{{ $item }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </details>
+                    </article>
+                @endforeach
+            </div>
         </div>
     </section>
 @endsection
