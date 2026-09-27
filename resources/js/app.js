@@ -258,6 +258,7 @@ window.notificationCenter = function notificationCenter(config) {
 
                 this.items = data.items || [];
                 this.setUnreadCount(data.unread_count || 0);
+                this.setTicketUnreadCount(data.ticket_unread_count || 0);
             } catch (error) {
                 this.error = 'بارگذاری اعلان‌ها انجام نشد. اتصال را بررسی و دوباره تلاش کنید.';
             } finally {
@@ -269,6 +270,12 @@ window.notificationCenter = function notificationCenter(config) {
             this.unreadCount = Number(count || 0);
             window.dispatchEvent(new CustomEvent('notification-unread-changed', {
                 detail: { count: this.unreadCount },
+            }));
+        },
+
+        setTicketUnreadCount(count) {
+            window.dispatchEvent(new CustomEvent('ticket-notification-unread-changed', {
+                detail: { count: Number(count || 0) },
             }));
         },
 
@@ -322,6 +329,7 @@ window.notificationCenter = function notificationCenter(config) {
                     notification.read = true;
                 });
                 this.setUnreadCount(data.unread_count ?? 0);
+                this.setTicketUnreadCount(data.ticket_unread_count ?? 0);
                 this.announcement = 'همه اعلان‌ها خوانده شدند.';
             } catch (error) {
                 this.error = 'خواندن همه اعلان‌ها انجام نشد. دوباره تلاش کنید.';
@@ -360,6 +368,7 @@ window.notificationCenter = function notificationCenter(config) {
 
                 this.setNotificationRead(notificationId);
                 this.setUnreadCount(data.unread_count ?? this.unreadCount);
+                this.setTicketUnreadCount(data.ticket_unread_count ?? 0);
                 this.announcement = 'اعلان خوانده شد.';
 
                 if (navigateTo) {
@@ -414,9 +423,14 @@ window.addEventListener('DOMContentLoaded', () => {
         },
         body: JSON.stringify({}),
     }).then((response) => response.ok ? response.json() : Promise.reject())
-        .then((data) => window.dispatchEvent(new CustomEvent('notification-unread-changed', {
-            detail: { count: Number(data.notification_unread_count || 0) },
-        })))
+        .then((data) => {
+            window.dispatchEvent(new CustomEvent('notification-unread-changed', {
+                detail: { count: Number(data.notification_unread_count || 0) },
+            }));
+            window.dispatchEvent(new CustomEvent('ticket-notification-unread-changed', {
+                detail: { count: Number(data.ticket_notification_unread_count || 0) },
+            }));
+        })
         .catch(() => {});
 });
 

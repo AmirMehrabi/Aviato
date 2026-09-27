@@ -72,6 +72,53 @@ class CustomerNotificationActionsTest extends TestCase
         $this->assertSame(0, $customer->fresh()->unreadNotifications()->count());
     }
 
+    public function test_ticket_badge_and_action_labels_ignore_wallet_notifications(): void
+    {
+        $customer = $this->fundedCustomer();
+        $ticketId = $this->createNotification($customer, 'پاسخ پشتیبانی');
+        $walletId = (string) Str::uuid();
+        DB::table('notifications')->insert([
+            'id' => $walletId,
+            'type' => 'App\\Notifications\\WorkspaceWalletBalanceNotification',
+            'notifiable_type' => Customer::class,
+            'notifiable_id' => $customer->id,
+            'data' => json_encode([
+                'event' => 'workspace_wallet_balance',
+                'title' => 'هشدار کیف پول',
+                'body' => 'موجودی کم است',
+                'url' => '/projects/example/enter',
+            ]),
+            'read_at' => null,
+            'created_at' => now()->addSecond(),
+            'updated_at' => now()->addSecond(),
+        ]);
+
+        $this->actingAs($customer, 'customer')
+            ->getJson('https://cp.localhost/notifications')
+            ->assertOk()
+            ->assertJsonPath('unread_count', 2)
+            ->assertJsonPath('ticket_unread_count', 1)
+            ->assertJsonPath('items.0.action_label', 'مشاهده فضای کاری')
+            ->assertJsonPath('items.1.action_label', 'مشاهده تیکت');
+
+        $this->actingAs($customer, 'customer')
+            ->get('https://cp.localhost/dashboard')
+            ->assertOk()
+            ->assertSee('ticketUnreadCount: 1');
+
+        $this->actingAs($customer, 'customer')
+            ->postJson("https://cp.localhost/notifications/{$ticketId}/read")
+            ->assertJsonPath('ticket_unread_count', 0);
+        $this->actingAs($customer, 'customer')
+            ->get('https://cp.localhost/dashboard')
+            ->assertOk()
+            ->assertSee('ticketUnreadCount: 0');
+        $this->actingAs($customer, 'customer')
+            ->getJson('https://cp.localhost/notifications')
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonPath('ticket_unread_count', 0);
+    }
+
     private function fundedCustomer(): Customer
     {
         $customer = Customer::factory()->create();

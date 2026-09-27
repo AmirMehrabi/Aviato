@@ -82,7 +82,7 @@
                         <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </span>
                     <p class="mt-3 text-sm font-black text-slate-800">اعلانی ندارید</p>
-                    <p class="mt-1 text-xs font-bold leading-6 text-slate-500">پاسخ‌های جدید پشتیبانی و تغییرات تیکت‌ها اینجا نمایش داده می‌شوند.</p>
+                    <p class="mt-1 text-xs font-bold leading-6 text-slate-500">اعلان‌های مربوط به فضای کاری، کیف پول و پشتیبانی اینجا نمایش داده می‌شوند.</p>
                 </div>
             </template>
 
@@ -109,7 +109,7 @@
                                         @click="markRead(notification.id)"
                                         class="min-h-9 rounded-lg px-2.5 text-[11px] font-black text-slate-600 transition-colors duration-150 hover:bg-white hover:text-[#0069FF] disabled:cursor-wait disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
                                     >خواندن</button>
-                                    <a :href="notification.url" class="inline-flex min-h-9 items-center rounded-lg px-2.5 text-[11px] font-black text-[#0069FF] transition-colors duration-150 hover:bg-[#EBF3FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">مشاهده تیکت</a>
+                                    <a :href="notification.url" class="inline-flex min-h-9 items-center rounded-lg px-2.5 text-[11px] font-black text-[#0069FF] transition-colors duration-150 hover:bg-[#EBF3FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]" x-text="notification.action_label || 'مشاهده'"></a>
                                 </div>
                             </div>
                         </div>

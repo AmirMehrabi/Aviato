@@ -50,6 +50,10 @@ class AppSetting extends Model
 
     public const CUSTOMER_WALLET_ALERT_PERCENTAGES = 'customer.wallet.alert_percentages';
 
+    public const CUSTOMER_WALLET_QUIET_START = 'customer.wallet.quiet_start';
+
+    public const CUSTOMER_WALLET_QUIET_END = 'customer.wallet.quiet_end';
+
     public const CUSTOMER_WALLET_SHUTDOWN_PERCENTAGE = 'customer.wallet.shutdown_percentage';
 
     public const CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY = 'customer.wallet.alert_recipient_policy';
@@ -446,6 +450,16 @@ class AppSetting extends Model
         $values = static::getValue(self::CUSTOMER_WALLET_ALERT_PERCENTAGES, [15, 10, 5]);
 
         return is_array($values) ? array_values(array_unique(array_filter(array_map('intval', $values), fn (int $value): bool => $value >= 1 && $value <= 100))) : [15, 10, 5];
+    }
+
+    public static function customerWalletQuietStart(): string
+    {
+        return (string) static::getValue(self::CUSTOMER_WALLET_QUIET_START, '00:00');
+    }
+
+    public static function customerWalletQuietEnd(): string
+    {
+        return (string) static::getValue(self::CUSTOMER_WALLET_QUIET_END, '08:00');
     }
 
     public static function customerWalletShutdownPercentage(): int

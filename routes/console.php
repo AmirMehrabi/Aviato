@@ -20,6 +20,7 @@ use App\Services\StaleVirtualMachineCleanupService;
 use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmBackupService;
+use App\Services\WorkspaceWalletAlertDispatcher;
 use App\Services\WorkspaceWalletAlertService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -42,6 +43,10 @@ Artisan::command('billing:check-wallet-alerts', function (WorkspaceWalletAlertSe
         }
     });
 })->purpose('Notify selected workspace members when shared wallet coverage crosses a percentage threshold');
+
+Artisan::command('billing:send-wallet-alerts', function (WorkspaceWalletAlertDispatcher $dispatcher): void {
+    $this->info(sprintf('Delivered %d queued wallet alert(s).', $dispatcher->dispatchPending()));
+})->purpose('Deliver queued automatic wallet alerts outside quiet hours');
 
 Artisan::command('billing:reconcile-wallet-restrictions', function (): void {
     Customer::query()
@@ -427,6 +432,7 @@ Artisan::command('vm-upgrades:reconcile {--limit=100 : Maximum orders to queue}'
 
 Schedule::command('billing:charge-usage')->hourly();
 Schedule::command('billing:check-wallet-alerts')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('billing:send-wallet-alerts')->everyMinute()->withoutOverlapping();
 Schedule::command('billing:reconcile-wallet-restrictions')->everyMinute()->withoutOverlapping();
 Schedule::command('network-usage:sync')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('network-usage:retry')->hourly()->withoutOverlapping();

@@ -7,9 +7,14 @@ use App\Models\Customer;
 use App\Models\User;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
+use App\Services\Sms\KavenegarLookupClient;
 use App\Services\WorkspaceWalletAlertService;
+use App\Services\WorkspaceWalletQuietHours;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class WorkspaceWalletAlertTest extends TestCase
@@ -20,6 +25,7 @@ class WorkspaceWalletAlertTest extends TestCase
     {
         parent::setUp();
         config(['portals.admin.domain' => 'admin.localhost', 'portals.customer.domain' => 'cp.localhost']);
+        $this->travelTo(Carbon::parse('2026-09-28 10:00:00', 'Asia/Tehran'));
     }
 
     public function test_default_levels_are_15_10_and_5_and_alerts_are_idempotent(): void
@@ -101,6 +107,145 @@ class WorkspaceWalletAlertTest extends TestCase
             'kind' => 'automatic',
             'threshold_percent' => 15,
         ]);
+    }
+
+    public function test_quiet_hours_queue_automatic_alerts_and_space_them_hourly_per_recipient(): void
+    {
+        [$owner, $project] = $this->billableWorkspace();
+        $second = $owner->ownedProjects()->create(['name' => 'Second workspace', 'slug' => 'second-workspace']);
+        $second->members()->create(['customer_id' => $owner->id, 'role' => 'owner']);
+        $owner->wallet()->update(['balance' => 100_000]);
+
+        $this->travelTo(Carbon::parse('2026-09-27 02:00:00', 'Asia/Tehran'));
+        app(WorkspaceWalletAlertService::class)->checkOwner($owner);
+        $this->assertSame(0, DB::table('workspace_wallet_alert_deliveries')->count());
+        $this->assertSame(2, DB::table('workspace_wallet_alert_queue')->where('status', 'pending')->count());
+
+        $this->artisan('billing:send-wallet-alerts')->assertSuccessful();
+        $this->assertSame(0, $owner->notifications()->count());
+
+        $this->travelTo(Carbon::parse('2026-09-27 08:00:00', 'Asia/Tehran'));
+        $this->artisan('billing:send-wallet-alerts')->assertSuccessful();
+        $this->assertSame(1, $owner->notifications()->count());
+
+        $this->travelTo(Carbon::parse('2026-09-27 08:30:00', 'Asia/Tehran'));
+        $this->artisan('billing:send-wallet-alerts')->assertSuccessful();
+        $this->assertSame(1, $owner->notifications()->count());
+
+        $this->travelTo(Carbon::parse('2026-09-27 09:00:00', 'Asia/Tehran'));
+        $this->artisan('billing:send-wallet-alerts')->assertSuccessful();
+        $this->assertSame(2, $owner->notifications()->count());
+    }
+
+    public function test_manual_alert_is_immediate_during_quiet_hours_and_obsolete_automatic_alert_is_canceled(): void
+    {
+        [$owner, $project] = $this->billableWorkspace();
+        $owner->wallet()->update(['balance' => 100_000]);
+        $this->travelTo(Carbon::parse('2026-09-27 02:00:00', 'Asia/Tehran'));
+        app(WorkspaceWalletAlertService::class)->checkOwner($owner);
+
+        $admin = User::factory()->create();
+        $this->actingAs($admin, 'admin')->post('https://admin.localhost/workspaces/'.$project->uuid.'/wallet-alerts/send')->assertSessionHas('status');
+        $this->assertSame(1, $owner->notifications()->count());
+        $this->assertSame('manual', DB::table('workspace_wallet_alert_deliveries')->value('kind'));
+        $this->assertDatabaseCount('tickets', 0);
+
+        $owner->wallet()->update(['balance' => 300_000]);
+        app(WorkspaceWalletAlertService::class)->checkOwner($owner);
+        $this->travelTo(Carbon::parse('2026-09-27 08:00:00', 'Asia/Tehran'));
+        $this->artisan('billing:send-wallet-alerts')->assertSuccessful();
+        $this->assertSame(1, $owner->notifications()->count());
+        $this->assertSame('canceled', DB::table('workspace_wallet_alert_queue')->value('status'));
+    }
+
+    public function test_admin_can_set_quiet_hours_that_cross_midnight(): void
+    {
+        $admin = User::factory()->create();
+        $this->actingAs($admin, 'admin')->patch('https://admin.localhost/settings/protection', [
+            'wallet_alert_percentages' => '15, 10, 5',
+            'wallet_alert_recipient_policy' => 'owner',
+            'wallet_quiet_start' => '22:00',
+            'wallet_quiet_end' => '06:00',
+            'unverified_customer_vm_limit' => 2,
+            'verified_customer_vm_limit' => 0,
+            'deleted_vm_cooldown_days' => 30,
+            'vm_rebuild_fee_multiplier_percentage' => 50,
+        ])->assertSessionHas('status');
+
+        $quiet = app(WorkspaceWalletQuietHours::class);
+        $this->travelTo(Carbon::parse('2026-09-28 21:59:00', 'Asia/Tehran'));
+        $this->assertFalse($quiet->isQuiet());
+        $this->travelTo(Carbon::parse('2026-09-28 22:00:00', 'Asia/Tehran'));
+        $this->assertTrue($quiet->isQuiet());
+        $this->travelTo(Carbon::parse('2026-09-29 05:59:00', 'Asia/Tehran'));
+        $this->assertTrue($quiet->isQuiet());
+        $this->travelTo(Carbon::parse('2026-09-29 06:00:00', 'Asia/Tehran'));
+        $this->assertFalse($quiet->isQuiet());
+    }
+
+    public function test_queued_sms_retries_without_duplicating_the_in_app_notification(): void
+    {
+        [$owner] = $this->billableWorkspace();
+        $owner->update(['phone' => '09123456789']);
+        $owner->wallet()->update(['balance' => 100_000]);
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, true, 'boolean', 'billing');
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'wallet-alert', 'string', 'billing');
+        AppSetting::setValue(AppSetting::SMS_GATEWAY, 'kavenegar', 'string', 'sms');
+
+        $attempts = 0;
+        $sms = Mockery::mock(KavenegarLookupClient::class);
+        $sms->shouldReceive('sendLookup')->twice()->andReturnUsing(function () use (&$attempts): void {
+            $attempts++;
+            if ($attempts === 1) {
+                throw new RuntimeException('Temporary SMS failure');
+            }
+        });
+        $this->app->instance(KavenegarLookupClient::class, $sms);
+
+        $this->travelTo(Carbon::parse('2026-09-27 02:00:00', 'Asia/Tehran'));
+        app(WorkspaceWalletAlertService::class)->checkOwner($owner);
+        $this->assertSame(0, $attempts);
+
+        $this->travelTo(Carbon::parse('2026-09-27 08:00:00', 'Asia/Tehran'));
+        $this->artisan('billing:send-wallet-alerts')->assertSuccessful();
+        $this->assertSame(1, $owner->notifications()->count());
+        $this->assertSame('pending', DB::table('workspace_wallet_alert_queue')->value('sms_status'));
+
+        $this->travelTo(Carbon::parse('2026-09-27 08:04:00', 'Asia/Tehran'));
+        $this->artisan('billing:send-wallet-alerts')->assertSuccessful();
+        $this->assertSame(1, $attempts);
+
+        $this->travelTo(Carbon::parse('2026-09-27 08:05:00', 'Asia/Tehran'));
+        $this->artisan('billing:send-wallet-alerts')->assertSuccessful();
+        $this->assertSame('sent', DB::table('workspace_wallet_alert_queue')->value('sms_status'));
+        $this->assertSame(1, $owner->notifications()->count());
+    }
+
+    public function test_manual_wallet_sms_bypasses_quiet_hours(): void
+    {
+        [$owner, $project] = $this->billableWorkspace();
+        $owner->update(['phone' => '09123456789']);
+        $owner->wallet()->update(['balance' => 1_234_567]);
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, true, 'boolean', 'billing');
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'wallet-alert', 'string', 'billing');
+        AppSetting::setValue(AppSetting::SMS_GATEWAY, 'kavenegar', 'string', 'sms');
+
+        $sms = Mockery::mock(KavenegarLookupClient::class);
+        $sms->shouldReceive('sendLookup')->once()->with(
+            '09123456789',
+            'wallet-alert',
+            KavenegarLookupClient::nameToken($owner->first_name ?: $owner->name),
+            $project->name,
+            '123456.70',
+        );
+        $this->app->instance(KavenegarLookupClient::class, $sms);
+        $this->travelTo(Carbon::parse('2026-09-27 02:00:00', 'Asia/Tehran'));
+
+        $admin = User::factory()->create();
+        $this->actingAs($admin, 'admin')->post('https://admin.localhost/workspaces/'.$project->uuid.'/wallet-alerts/send')->assertSessionHas('status');
+
+        $this->assertSame(1, $owner->notifications()->count());
+        $this->assertSame(0, DB::table('workspace_wallet_alert_queue')->count());
     }
 
     public function test_admin_settings_inherit_until_workspace_overrides_and_manual_send_does_not_consume_levels(): void

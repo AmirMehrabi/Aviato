@@ -20,6 +20,7 @@ class WorkspaceWalletAlertService
     public function __construct(
         private readonly UsageBalanceService $balances,
         private readonly BillingService $billing,
+        private readonly WorkspaceWalletQuietHours $quietHours,
     ) {}
 
     public function snapshot(Customer $owner): array
@@ -156,10 +157,31 @@ class WorkspaceWalletAlertService
                 }
 
                 if ($newlyCrossed !== []) {
-                    $this->deliver($project, $recipient, $snapshot, min($newlyCrossed));
+                    $pending = DB::table('workspace_wallet_alert_queue')
+                        ->where('project_id', $project->id)
+                        ->where('customer_id', $recipient->id)
+                        ->where('status', 'pending')->exists();
+                    if (! $pending) {
+                        $recipientBacklog = DB::table('workspace_wallet_alert_queue')
+                            ->where('customer_id', $recipient->id)->where('status', 'pending')->exists();
+                        DB::table('workspace_wallet_alert_queue')->insert([
+                            'project_id' => $project->id,
+                            'customer_id' => $recipient->id,
+                            'status' => 'pending',
+                            'is_deferred' => $this->quietHours->isQuiet() || $recipientBacklog,
+                            'attempts' => 0,
+                            'created_at' => now(),
+                        ]);
+                    }
                 }
             }
         });
+
+        if (! $this->quietHours->isQuiet()) {
+            foreach ($recipients as $recipient) {
+                app(WorkspaceWalletAlertDispatcher::class)->dispatchForRecipient($recipient->id);
+            }
+        }
     }
 
     public function sendManual(Project $project, int $adminId): int
@@ -174,7 +196,12 @@ class WorkspaceWalletAlertService
         return count($recipients);
     }
 
-    private function deliver(Project $project, Customer $recipient, array $snapshot, ?int $threshold, ?int $adminId = null): void
+    public function deliverQueued(Project $project, Customer $recipient, array $snapshot, int $threshold): void
+    {
+        $this->deliver($project, $recipient, $snapshot, $threshold, sendSms: false);
+    }
+
+    private function deliver(Project $project, Customer $recipient, array $snapshot, ?int $threshold, ?int $adminId = null, bool $sendSms = true): void
     {
         $recipient->notify(new WorkspaceWalletBalanceNotification($project, $snapshot['balance'], $snapshot['percent'], $threshold, $adminId));
         DB::table('workspace_wallet_alert_deliveries')->insert([
@@ -188,9 +215,21 @@ class WorkspaceWalletAlertService
             'created_at' => now(),
         ]);
 
-        if (! $recipient->smsNotificationsEnabled() || ! AppSetting::customerWalletNegativeSmsEnabled() || blank($recipient->phone)
-            || AppSetting::smsGateway() !== 'kavenegar' || AppSetting::customerWalletNegativeSmsTemplate() === '') {
-            return;
+        if ($sendSms) {
+            $this->sendSmsNow($project, $recipient, $snapshot);
+        }
+    }
+
+    public function smsEnabled(Customer $recipient): bool
+    {
+        return $recipient->smsNotificationsEnabled() && AppSetting::customerWalletNegativeSmsEnabled() && filled($recipient->phone)
+            && AppSetting::smsGateway() === 'kavenegar' && AppSetting::customerWalletNegativeSmsTemplate() !== '';
+    }
+
+    public function sendSmsNow(Project $project, Customer $recipient, array $snapshot): bool
+    {
+        if (! $this->smsEnabled($recipient)) {
+            return true;
         }
 
         try {
@@ -198,15 +237,19 @@ class WorkspaceWalletAlertService
                 $recipient->phone,
                 AppSetting::customerWalletNegativeSmsTemplate(),
                 KavenegarLookupClient::nameToken($recipient->first_name ?: $recipient->name),
-                (string) $snapshot['balance'],
-                $snapshot['percent'] === null ? null : (string) $snapshot['percent'],
+                $project->name,
+                number_format($snapshot['balance'] / (AppSetting::currency() === 'IRR' ? 10 : 1), 2, '.', ''),
             );
+
+            return true;
         } catch (Throwable $exception) {
             Log::warning('Workspace wallet SMS notification failed.', [
                 'project_id' => $project->id,
                 'customer_id' => $recipient->id,
                 'error' => $exception->getMessage(),
             ]);
+
+            return false;
         }
     }
 }

@@ -3,10 +3,12 @@
     <p class="mt-2 text-xs leading-6 text-blue-900">درصد موجودی مؤثر نسبت به هزینه ماهانه همه منابعی که از کیف‌پول مالک پرداخت می‌شوند. این درصدها برای همه فضاهای کاری پیش‌فرض هستند و در مدیریت هر فضای کاری قابل تغییرند.</p>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
         <x-form.input name="wallet_alert_percentages" label="درصدهای هشدار" :value="old('wallet_alert_percentages', implode(', ', $walletAlertPercentages))" dir-ltr help="مثال: 15, 10, 5" />
+        <x-form.input name="wallet_quiet_start" type="time" label="شروع ساعات سکوت اعلان خودکار" :value="old('wallet_quiet_start', $walletQuietStart)" dir-ltr help="بر اساس ساعت آسیا/تهران؛ پیش‌فرض 00:00" />
+        <x-form.input name="wallet_quiet_end" type="time" label="پایان ساعات سکوت اعلان خودکار" :value="old('wallet_quiet_end', $walletQuietEnd)" dir-ltr help="پیش‌فرض 08:00؛ اعلان‌های دستی فوری ارسال می‌شوند." />
         <x-form.input name="wallet_shutdown_percentage" type="number" label="حد بدهی برای خاموشی (درصد هزینه ماهانه)" :value="old('wallet_shutdown_percentage', $walletShutdownPercentage)" min="1" max="100" dir-ltr help="مثال: 10 یعنی خاموشی در موجودی مؤثر منفی ۱۰٪ برآورد ماهانه." />
         <x-form.select name="wallet_alert_recipient_policy" label="دریافت‌کنندگان پیش‌فرض" :selected="old('wallet_alert_recipient_policy', $walletAlertRecipientPolicy)" :options="['owner' => 'فقط مالک فضای کاری', 'owner_and_billing' => 'مالک و اعضای مالی']" />
         <x-form.checkbox name="customer_wallet_negative_sms_enabled" label="ارسال پیامک فعال باشد" :checked="$customerWalletNegativeSmsEnabled" />
-        <x-form.input name="customer_wallet_negative_sms_template" label="Template کاوه‌نگار" :value="$customerWalletNegativeSmsTemplate" dir-ltr help="token: نام، token2: موجودی در واحد صورتحساب، token3: درصد باقی‌مانده" />
+        <x-form.input name="customer_wallet_negative_sms_template" label="Template کاوه‌نگار" :value="$customerWalletNegativeSmsTemplate" dir-ltr help="token: نام مشتری، token2: نام فضای کاری، token3: موجودی مؤثر به تومان با دو رقم اعشار" />
     </div>
 </div>
 <div class="rounded-xl border border-amber-200 bg-amber-50 p-4"><h2 class="font-black text-amber-950">زمان اعمال محدودیت</h2><p class="text-xs leading-6 text-amber-900">در موجودی مؤثر صفر یا کمتر، شبکه ماشین‌ها قطع می‌شود و ماشین‌ها روشن می‌مانند. در حد بدهی تعیین‌شده، ماشین‌های روشن خاموش می‌شوند. پس از شارژ و مثبت شدن موجودی مؤثر، شبکه وصل و فقط ماشین‌هایی که به‌دلیل کیف پول خاموش شده‌اند روشن می‌شوند.</p></div>

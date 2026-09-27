@@ -38,6 +38,7 @@
         $walletIsOverdrawn = $effectiveWalletBalance < 0;
         $activeNav = $activeNav ?? 'dashboard';
         $customerUnreadNotificationsCount = $customer->unreadNotifications()->count();
+        $customerUnreadTicketNotificationsCount = app(\App\Services\Notifications\NotificationInboxService::class)->ticketUnreadCount($customer);
         $newWorkspaceIds = $customer->unreadNotifications()
             ->get()
             ->filter(fn ($notification) => data_get($notification->data, 'event') === 'workspace_added')
@@ -133,6 +134,7 @@
     <div
         x-data="{
             sidebarOpen: false,
+            ticketUnreadCount: {{ (int) $customerUnreadTicketNotificationsCount }},
             searchOpen: false,
             searchQuery: '',
             walletOpen: false,
@@ -191,6 +193,7 @@
         @keydown.window.meta.k.prevent="openSearch()"
         @keydown.window.escape="if (sidebarOpen) { sidebarOpen = false; $refs.sidebarTrigger?.focus(); } closePanels()"
         @notification-center-open.window="walletOpen = false; profileOpen = false; workspaceOpen = false; searchOpen = false"
+        @ticket-notification-unread-changed.window="ticketUnreadCount = Number($event.detail.count || 0)"
         @keydown.window="
             if ($event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes($event.target.tagName)) {
                 $event.preventDefault();
@@ -320,8 +323,8 @@
                                         @if ($item['key'] === 'invoices' && ($invoiceCount ?? null))
                                             <span class="mr-auto rounded px-1.5 py-0.5 text-[10px] font-black {{ $isActive ? 'bg-[#E5F0FF] text-[#0069FF]' : 'bg-white/10 text-[#C7D4EA]' }}">{{ $invoiceCount }}</span>
                                         @endif
-                                        @if ($item['key'] === 'tickets' && $customerUnreadNotificationsCount > 0)
-                                            <span class="mr-auto rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white">{{ number_format($customerUnreadNotificationsCount) }}</span>
+                                        @if ($item['key'] === 'tickets')
+                                            <span x-show="ticketUnreadCount > 0" x-text="ticketUnreadCount.toLocaleString('fa-IR')" class="mr-auto rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white"></span>
                                         @endif
                                     </a>
                                 @endforeach
