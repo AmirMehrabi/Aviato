@@ -8,7 +8,7 @@
         <x-form.input name="wallet_shutdown_percentage" type="number" label="حد بدهی برای خاموشی (درصد هزینه ماهانه)" :value="old('wallet_shutdown_percentage', $walletShutdownPercentage)" min="1" max="100" dir-ltr help="مثال: 10 یعنی خاموشی در موجودی مؤثر منفی ۱۰٪ برآورد ماهانه." />
         <x-form.select name="wallet_alert_recipient_policy" label="دریافت‌کنندگان پیش‌فرض" :selected="old('wallet_alert_recipient_policy', $walletAlertRecipientPolicy)" :options="['owner' => 'فقط مالک فضای کاری', 'owner_and_billing' => 'مالک و اعضای مالی']" />
         <x-form.checkbox name="customer_wallet_negative_sms_enabled" label="ارسال پیامک فعال باشد" :checked="$customerWalletNegativeSmsEnabled" />
-        <x-form.input name="customer_wallet_negative_sms_template" label="Template کاوه‌نگار" :value="$customerWalletNegativeSmsTemplate" dir-ltr help="%token: نام مشتری؛ %token10: نام فضای کاری؛ %token20: موجودی مؤثر به تومان با دو رقم اعشار (ممیز)." />
+        <x-form.input name="customer_wallet_negative_sms_template" label="Template کاوه‌نگار" :value="$customerWalletNegativeSmsTemplate" dir-ltr help="%token: نام مشتری؛ %token10: نام فضای کاری؛ %token20: موجودی ثبت‌شده کیف پول به تومان، گرد شده به عدد صحیح و با جداکننده هزارگان." />
     </div>
 </div>
 <div class="rounded-xl border border-amber-200 bg-amber-50 p-4"><h2 class="font-black text-amber-950">زمان اعمال محدودیت</h2><p class="text-xs leading-6 text-amber-900">در موجودی مؤثر صفر یا کمتر، شبکه ماشین‌ها قطع می‌شود و ماشین‌ها روشن می‌مانند. در حد بدهی تعیین‌شده، ماشین‌های روشن خاموش می‌شوند. پس از شارژ و مثبت شدن موجودی مؤثر، شبکه وصل و فقط ماشین‌هایی که به‌دلیل کیف پول خاموش شده‌اند روشن می‌شوند.</p></div>

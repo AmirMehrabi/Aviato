@@ -232,11 +232,8 @@ class WorkspaceWalletAlertService
             return true;
         }
 
-        $amountIrt = number_format($snapshot['balance'] / (AppSetting::currency() === 'IRR' ? 10 : 1), 2, '.', '');
-        $amountToken = str_replace('.', ' ممیز ', ltrim($amountIrt, '-'));
-        if (str_starts_with($amountIrt, '-')) {
-            $amountToken = 'منفی '.$amountToken;
-        }
+        $walletBalance = app(WalletService::class)->walletFor($project->owner)->balance;
+        $amountToken = number_format($walletBalance / (AppSetting::currency() === 'IRR' ? 10 : 1), 0, '.', ',');
 
         $customerToken = mb_substr(preg_replace('/[^\p{L}\p{N}]+/u', '', KavenegarLookupClient::nameToken($recipient->first_name ?: $recipient->name)) ?: 'مشتری', 0, 100);
         $workspaceName = trim(preg_replace('/\s+/u', ' ', preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $project->name) ?? '') ?? '');
@@ -266,6 +263,8 @@ class WorkspaceWalletAlertService
                 'project_id' => $project->id,
                 'customer_id' => $recipient->id,
                 'template' => $template,
+                'wallet_balance' => $walletBalance,
+                'effective_balance' => $snapshot['balance'],
                 'tokens' => $tokens,
                 'message_id' => data_get($sent, 'messageid'),
                 'message' => data_get($sent, 'message'),
@@ -277,6 +276,8 @@ class WorkspaceWalletAlertService
                 'project_id' => $project->id,
                 'customer_id' => $recipient->id,
                 'template' => $template,
+                'wallet_balance' => $walletBalance,
+                'effective_balance' => $snapshot['balance'],
                 'tokens' => $tokens,
                 'provider_status' => $exception->getCode() ?: null,
                 'error' => $exception->getMessage(),

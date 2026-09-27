@@ -241,8 +241,8 @@ class WorkspaceWalletAlertTest extends TestCase
             null,
             null,
             'تیم مالی اصلی',
-            '123456 ممیز 70',
-        )->andReturn(['messageid' => 123, 'message' => 'موجودی تیم مالی اصلی 123456 ممیز 70 تومان']);
+            '123,457',
+        )->andReturn(['messageid' => 123, 'message' => 'موجودی تیم مالی اصلی 123,457 تومان']);
         $this->app->instance(KavenegarLookupClient::class, $sms);
         $this->travelTo(Carbon::parse('2026-09-27 02:00:00', 'Asia/Tehran'));
 
@@ -257,6 +257,7 @@ class WorkspaceWalletAlertTest extends TestCase
     {
         [$owner, $project] = $this->billableWorkspace();
         $owner->update(['phone' => '09123456789']);
+        $owner->wallet()->update(['balance' => 31_180_840]);
         $project->update(['name' => 'فضای کاری جدید']);
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, true, 'boolean', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'wallet-alert', 'string', 'billing');
@@ -265,21 +266,23 @@ class WorkspaceWalletAlertTest extends TestCase
 
         Http::fake(['api.kavenegar.com/*' => Http::response([
             'return' => ['status' => 200, 'message' => 'تایید شد'],
-            'entries' => [['messageid' => 123, 'message' => 'موجودی فضای کاری جدید 123456 ممیز 70 تومان']],
+            'entries' => [['messageid' => 123, 'message' => 'موجودی فضای کاری جدید 3,118,084 تومان']],
         ])]);
         Log::spy();
 
-        $this->assertTrue(app(WorkspaceWalletAlertService::class)->sendSmsNow($project, $owner, ['balance' => 1_234_567]));
+        $this->assertTrue(app(WorkspaceWalletAlertService::class)->sendSmsNow($project, $owner, ['balance' => 31_051_220]));
 
         Http::assertSent(fn ($request): bool => $request['token10'] === 'فضای کاری جدید'
-            && $request['token20'] === '123456 ممیز 70'
+            && $request['token20'] === '3,118,084'
             && ! isset($request['token2'], $request['token3']));
         Log::shouldHaveReceived('info')->once()->with('Workspace wallet SMS notification sent.', Mockery::on(
             fn (array $context): bool => $context['project_id'] === $project->id
+                && $context['wallet_balance'] === 31_180_840
+                && $context['effective_balance'] === 31_051_220
                 && $context['message_id'] === 123
-                && $context['message'] === 'موجودی فضای کاری جدید 123456 ممیز 70 تومان'
+                && $context['message'] === 'موجودی فضای کاری جدید 3,118,084 تومان'
                 && $context['tokens']['token10'] === 'فضای کاری جدید'
-                && $context['tokens']['token20'] === '123456 ممیز 70'
+                && $context['tokens']['token20'] === '3,118,084'
         ));
     }
 
@@ -287,6 +290,7 @@ class WorkspaceWalletAlertTest extends TestCase
     {
         [$owner, $project] = $this->billableWorkspace();
         $owner->update(['phone' => '09123456789']);
+        $owner->wallet()->update(['balance' => -12_345]);
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, true, 'boolean', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'wallet-alert', 'string', 'billing');
         AppSetting::setValue(AppSetting::SMS_GATEWAY, 'kavenegar', 'string', 'sms');
@@ -299,11 +303,11 @@ class WorkspaceWalletAlertTest extends TestCase
 
         $this->assertFalse(app(WorkspaceWalletAlertService::class)->sendSmsNow($project, $owner, ['balance' => -12_345]));
 
-        Http::assertSent(fn ($request): bool => $request['token20'] === 'منفی 1234 ممیز 50'
+        Http::assertSent(fn ($request): bool => $request['token20'] === '-1,235'
             && ! isset($request['token2'], $request['token3']));
         Log::shouldHaveReceived('warning')->once()->with('Workspace wallet SMS notification failed.', Mockery::on(
             fn (array $context): bool => $context['project_id'] === $project->id
-                && $context['tokens']['token20'] === 'منفی 1234 ممیز 50'
+                && $context['tokens']['token20'] === '-1,235'
                 && $context['provider_status'] === 431
                 && str_contains($context['error'], 'ساختار کد صحیح نمی باشد')
                 && ! isset($context['phone'], $context['api_key'])
