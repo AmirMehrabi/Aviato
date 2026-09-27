@@ -35,6 +35,9 @@ class DashboardController extends Controller
         $virtualMachines = $canViewVms
             ? $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks', 'proxmoxServer'])->latest()->get()
             : collect();
+        $billingMachines = $canViewBilling && ! $canViewVms
+            ? VirtualMachine::query()->where('project_id', $activeProject->id)->notDeleted()->with(['bundle', 'disks'])->get()
+            : $virtualMachines;
         $monthlyCostFor = function (VirtualMachine $vm): int {
             if ($vm->isActionLocked()) {
                 return 0;
@@ -50,7 +53,7 @@ class DashboardController extends Controller
             'pending' => $virtualMachines->where('provisioning_status', VirtualMachine::PROVISION_PENDING)->count(),
             'failed' => $virtualMachines->where('provisioning_status', VirtualMachine::PROVISION_FAILED)->count(),
             'deleting' => $virtualMachines->where('status', VirtualMachine::STATUS_DELETING)->count(),
-            'monthly_spend' => $canViewBilling ? $virtualMachines->sum($monthlyCostFor) : 0,
+            'monthly_spend' => $canViewBilling ? $billingMachines->sum($monthlyCostFor) : 0,
             'unbilled_accrued' => 0,
         ];
         $pendingUsage = ! $canViewBilling
@@ -80,7 +83,8 @@ class DashboardController extends Controller
             };
             $statusClass = match ($vm->status) {
                 VirtualMachine::STATUS_RUNNING => 'bg-emerald-50 text-emerald-700',
-                VirtualMachine::STATUS_STOPPED, VirtualMachine::STATUS_SUSPENDED => 'bg-red-50 text-red-700',
+                VirtualMachine::STATUS_STOPPED => 'bg-slate-100 text-slate-700',
+                VirtualMachine::STATUS_SUSPENDED => 'bg-red-50 text-red-700',
                 VirtualMachine::STATUS_DELETING => 'bg-amber-50 text-amber-700',
                 default => 'bg-slate-100 text-slate-700',
             };
@@ -118,7 +122,8 @@ class DashboardController extends Controller
                 'provisioningClass' => $provisioningClass,
                 'dot' => match ($vm->status) {
                     VirtualMachine::STATUS_RUNNING => 'bg-emerald-500',
-                    VirtualMachine::STATUS_STOPPED, VirtualMachine::STATUS_SUSPENDED => 'bg-red-500',
+                    VirtualMachine::STATUS_STOPPED => 'bg-slate-400',
+                    VirtualMachine::STATUS_SUSPENDED => 'bg-red-500',
                     VirtualMachine::STATUS_DELETING => 'bg-amber-500',
                     default => $needsAttention ? 'bg-red-500' : 'bg-slate-400',
                 },

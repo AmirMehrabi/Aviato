@@ -25,36 +25,13 @@
             </div>
         </header>
         
-        <section class="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5" aria-label="خلاصه وضعیت">
-            @foreach ($statusStrip as $item)
-                @php
-                    $toneClasses = match($item['tone']) {
-                        'green' => ['dot' => 'bg-emerald-500', 'icon' => 'bg-emerald-50', 'value' => 'text-emerald-700'],
-                        'amber' => ['dot' => 'bg-amber-500', 'icon' => 'bg-amber-50', 'value' => 'text-amber-700'],
-                        'red' => ['dot' => 'bg-red-500', 'icon' => 'bg-red-50', 'value' => 'text-red-700'],
-                        default => ['dot' => 'bg-slate-400', 'icon' => 'bg-slate-50', 'value' => 'text-slate-950'],
-                    };
-                @endphp
-                <a href="{{ $item['url'] }}" class="group flex min-h-[5.5rem] items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm shadow-slate-200/40 transition-[border-color,box-shadow] hover:border-[#B8D6FF] hover:shadow-md hover:shadow-[#0069FF]/[0.08] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">
-                    <span class="grid size-9 shrink-0 place-items-center rounded-xl {{ $toneClasses['icon'] }}" aria-hidden="true">
-                        <span class="size-2.5 rounded-full {{ $toneClasses['dot'] }}"></span>
-                    </span>
-                    <span class="min-w-0">
-                        <span class="block text-[11px] font-black text-slate-500">{{ $item['label'] }}</span>
-                        <span class="mt-0.5 block text-lg font-black leading-tight {{ $toneClasses['value'] }}">{{ $item['value'] }}</span>
-                        <span class="mt-0.5 block truncate text-[11px] font-bold text-slate-400">{{ $item['sub'] }}</span>
-                    </span>
-                </a>
-            @endforeach
-        </section>
-
         <section class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,.65fr)]">
             <div id="critical-warnings" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/50">
                 <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div class="flex items-center gap-2">
-                            <h2 class="text-base font-black text-slate-950">هشدارهای بحرانی</h2>
-                            <span class="rounded-lg {{ $criticalAlerts->isNotEmpty() ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700' }} px-2 py-1 text-[11px] font-black">
+                            <h2 class="text-base font-black text-slate-950">هشدارهای بحرانی و موارد نیازمند اقدام</h2>
+                            <span class="rounded-lg {{ $criticalAlerts->isNotEmpty() ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700' }} px-2 py-1 text-xs font-black">
                                 {{ $criticalAlerts->count() }} قابل مشاهده
                             </span>
                         </div>
@@ -72,7 +49,7 @@
                 </div>
 
                 <div class="space-y-2 p-3">
-                    @forelse ($criticalAlerts->take(6) as $alert)
+                    @forelse ($criticalAlerts as $alert)
                         @php
                             $alertClasses = $alert['tone'] === 'red'
                                 ? ['surface' => 'border-red-200 bg-red-50/70', 'dot' => 'bg-red-500', 'label' => 'text-red-700', 'button' => 'bg-red-600 hover:bg-red-700 focus-visible:outline-red-600']
@@ -84,7 +61,7 @@
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <p class="text-sm font-black text-slate-950" dir="auto">{{ $alert['title'] }}</p>
-                                        <span class="rounded-md bg-white/80 px-2 py-0.5 text-[10px] font-black {{ $alertClasses['label'] }}">{{ $alert['label'] }}</span>
+                                        <span class="rounded-md bg-white/80 px-2 py-0.5 text-xs font-black {{ $alertClasses['label'] }}">{{ $alert['label'] }}</span>
                                     </div>
                                     <p class="mt-1 break-words text-xs font-bold leading-6 text-slate-600">{{ $alert['meta'] }}</p>
                                 </div>
@@ -93,7 +70,7 @@
                                     <input type="hidden" name="warning_key" value="{{ $alert['key'] }}">
                                     <button
                                         type="submit"
-                                        class="inline-flex size-10 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-600"
+                                        class="inline-flex size-10 items-center justify-center rounded-xl text-slate-600 transition-colors hover:bg-white hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-600"
                                         aria-label="بستن هشدار {{ $alert['title'] }}"
                                         title="بستن هشدار"
                                     >
@@ -160,13 +137,13 @@
                                 <div class="min-w-0">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <a href="{{ $server['url'] }}" class="truncate text-sm font-black text-slate-950 hover:text-[#0069FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">{{ $server['name'] }}</a>
-                                        <span class="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-black {{ $server['status_class'] }}">
+                                        <span class="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-black {{ $server['status_class'] }}">
                                             <span class="size-1.5 rounded-full {{ $server['dot_class'] }}" aria-hidden="true"></span>
                                             {{ $server['status'] }}
                                         </span>
                                     </div>
-                                    <p class="mt-1 text-[11px] font-bold text-slate-500">{{ $server['detail'] }}</p>
-                                    <p class="mt-1 text-[11px] text-slate-400">{{ $server['sync'] }} · {{ $server['synced_at'] }}</p>
+                                    <p class="mt-1 text-xs font-bold text-slate-500">{{ $server['detail'] }}</p>
+                                    <p class="mt-1 text-xs text-slate-600">{{ $server['sync'] }} · {{ $server['synced_at'] }}</p>
                                 </div>
                                 <form method="POST" action="{{ $server['sync_url'] }}" class="shrink-0">
                                     @csrf
@@ -186,6 +163,29 @@
             </aside>
         </section>
 
+        <section class="mt-4 grid grid-cols-2 gap-2.5 xl:grid-cols-4" aria-label="خلاصه وضعیت">
+            @foreach ($statusStrip as $item)
+                @php
+                    $toneClasses = match($item['tone']) {
+                        'green' => ['dot' => 'bg-emerald-500', 'icon' => 'bg-emerald-50', 'value' => 'text-emerald-700'],
+                        'amber' => ['dot' => 'bg-amber-500', 'icon' => 'bg-amber-50', 'value' => 'text-amber-700'],
+                        'red' => ['dot' => 'bg-red-500', 'icon' => 'bg-red-50', 'value' => 'text-red-700'],
+                        default => ['dot' => 'bg-slate-400', 'icon' => 'bg-slate-50', 'value' => 'text-slate-950'],
+                    };
+                @endphp
+                <a href="{{ $item['url'] }}" class="group flex min-h-[5.5rem] items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm shadow-slate-200/40 transition-[border-color,box-shadow] hover:border-[#B8D6FF] hover:shadow-md hover:shadow-[#0069FF]/[0.08] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">
+                    <span class="grid size-9 shrink-0 place-items-center rounded-xl {{ $toneClasses['icon'] }}" aria-hidden="true">
+                        <span class="size-2.5 rounded-full {{ $toneClasses['dot'] }}"></span>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block text-xs font-black text-slate-500">{{ $item['label'] }}</span>
+                        <span class="mt-0.5 block text-lg font-black leading-tight {{ $toneClasses['value'] }}">{{ $item['value'] }}</span>
+                        <span class="mt-0.5 block text-xs font-bold leading-5 text-slate-600">{{ $item['sub'] }}</span>
+                    </span>
+                </a>
+            @endforeach
+        </section>
+
         <section class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50" aria-labelledby="payments-heading">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -196,22 +196,22 @@
             </div>
             <div class="mt-3 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
                 <div class="rounded-xl bg-emerald-50 p-3">
-                    <p class="text-[11px] font-black text-emerald-700">وصول موفق امروز</p>
+                    <p class="text-xs font-black text-emerald-700">وصول موفق امروز</p>
                     <p class="mt-1 text-lg font-black text-emerald-800">{{ $wallets->format($paymentSummary['today_amount']) }}</p>
                 </div>
                 <div class="rounded-xl bg-[#EBF3FF] p-3">
-                    <p class="text-[11px] font-black text-[#31527F]">وصول موفق · ۳۰ روز</p>
+                    <p class="text-xs font-black text-[#31527F]">وصول موفق · ۳۰ روز</p>
                     <p class="mt-1 text-lg font-black text-[#0069FF]">{{ $wallets->format($paymentSummary['successful_amount']) }}</p>
-                    <p class="mt-0.5 text-[10px] font-bold text-[#61799C]">{{ number_format($paymentSummary['successful_count']) }} پرداخت موفق</p>
+                    <p class="mt-0.5 text-xs font-bold text-[#61799C]">{{ number_format($paymentSummary['successful_count']) }} پرداخت موفق</p>
                 </div>
                 <div class="rounded-xl bg-slate-50 p-3">
-                    <p class="text-[11px] font-black text-slate-600">نرخ موفقیت پرداخت</p>
+                    <p class="text-xs font-black text-slate-600">نرخ موفقیت پرداخت</p>
                     <p class="mt-1 text-lg font-black text-slate-950">{{ $paymentSummary['success_rate'] }}٪</p>
                 </div>
                 <a href="{{ route('admin.billing.wallets.index', ['state' => 'negative']) }}" class="rounded-xl {{ $paymentSummary['negative_wallets'] > 0 ? 'bg-red-50' : 'bg-emerald-50' }} p-3 transition-colors hover:brightness-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">
-                    <p class="text-[11px] font-black {{ $paymentSummary['negative_wallets'] > 0 ? 'text-red-700' : 'text-emerald-700' }}">کیف پول منفی</p>
+                    <p class="text-xs font-black {{ $paymentSummary['negative_wallets'] > 0 ? 'text-red-700' : 'text-emerald-700' }}">کیف پول منفی</p>
                     <p class="mt-1 text-lg font-black {{ $paymentSummary['negative_wallets'] > 0 ? 'text-red-800' : 'text-emerald-800' }}">{{ $paymentSummary['negative_wallets'] }} مورد</p>
-                    <p class="mt-0.5 text-[10px] font-bold {{ $paymentSummary['negative_wallets'] > 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ $paymentSummary['negative_total'] }}</p>
+                    <p class="mt-0.5 text-xs font-bold {{ $paymentSummary['negative_wallets'] > 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ $paymentSummary['negative_total'] }}</p>
                 </a>
             </div>
         </section>
@@ -244,15 +244,15 @@
                             <span class="grid size-8 shrink-0 place-items-center rounded-lg text-xs font-black {{ $paymentTone }}" aria-hidden="true">{{ $payment['status'] === 'successful' ? '✓' : '!' }}</span>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate text-xs font-black text-slate-900">{{ $payment['customer'] }}</span>
-                                <span class="mt-0.5 block truncate text-[11px] font-bold text-slate-400">{{ $payment['provider'] }} · {{ $payment['reference'] ?: 'بدون مرجع' }}</span>
+                                <span class="mt-0.5 block truncate text-xs font-bold text-slate-600">{{ $payment['provider'] }} · {{ $payment['reference'] ?: 'بدون مرجع' }}</span>
                             </span>
                             <span class="shrink-0 text-left">
                                 <span class="block text-xs font-black text-slate-900">{{ $wallets->format($payment['amount']) }}</span>
-                                <span class="mt-1 inline-flex rounded-md px-2 py-0.5 text-[10px] font-black {{ $paymentTone }}">{{ $paymentStatus }}</span>
+                                <span class="mt-1 inline-flex rounded-md px-2 py-0.5 text-xs font-black {{ $paymentTone }}">{{ $paymentStatus }}</span>
                             </span>
                         </a>
                     @empty
-                        <p class="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-400">هنوز پرداختی ثبت نشده است.</p>
+                        <p class="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-600">هنوز پرداختی ثبت نشده است.</p>
                     @endforelse
                 </div>
             </div>
@@ -265,19 +265,19 @@
                 <div class="mt-3 space-y-2">
                     @forelse ($recentTickets as $ticket)
                         <a href="{{ route('admin.tickets.show', $ticket['number']) }}" class="flex min-h-14 items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 transition-colors hover:border-[#B8D6FF] hover:bg-[#F8FBFF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">
-                            <span class="grid size-8 shrink-0 place-items-center rounded-lg text-[10px] font-black {{ match($ticket['priority']) { 'urgent' => 'bg-red-50 text-red-700', 'high' => 'bg-amber-50 text-amber-700', 'normal' => 'bg-[#EBF3FF] text-[#0069FF]', default => 'bg-slate-100 text-slate-500' } }}">
+                            <span class="grid size-8 shrink-0 place-items-center rounded-lg text-xs font-black {{ match($ticket['priority']) { 'urgent' => 'bg-red-50 text-red-700', 'high' => 'bg-amber-50 text-amber-700', 'normal' => 'bg-[#EBF3FF] text-[#0069FF]', default => 'bg-slate-100 text-slate-500' } }}">
                                 {{ $ticket['number'] }}
                             </span>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate text-sm font-bold text-slate-900">{{ $ticket['subject'] }}</span>
-                                <span class="mt-0.5 block truncate text-[11px] text-slate-400">{{ $ticket['customer'] }} · {{ $ticket['time'] }}</span>
+                                <span class="mt-0.5 block truncate text-xs text-slate-600">{{ $ticket['customer'] }} · {{ $ticket['time'] }}</span>
                             </span>
-                            <span class="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-black {{ match($ticket['status']) { 'open' => 'bg-emerald-50 text-emerald-700', 'pending' => 'bg-amber-50 text-amber-700', default => 'bg-slate-100 text-slate-600' } }}">
+                            <span class="shrink-0 rounded-md px-2 py-0.5 text-xs font-black {{ match($ticket['status']) { 'open' => 'bg-emerald-50 text-emerald-700', 'pending' => 'bg-amber-50 text-amber-700', default => 'bg-slate-100 text-slate-600' } }}">
                                 {{ $ticket['status_label'] }}
                             </span>
                         </a>
                     @empty
-                        <p class="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-400">تیکتی نیازمند پاسخ نیست.</p>
+                        <p class="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-bold text-slate-600">تیکتی نیازمند پاسخ نیست.</p>
                     @endforelse
                 </div>
             </div>

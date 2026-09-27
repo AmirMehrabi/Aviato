@@ -62,9 +62,6 @@
         $workspaceRoleLabels = ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'];
         $workspaceRole = $workspaceRoleLabels[$activeMembership?->role ?? 'member'] ?? 'عضو';
         $attentionItems = collect([
-            $canViewBilling && $wallet->is_locked
-                ? ['tone' => 'red', 'title' => 'کیف پول قفل است', 'body' => 'برای ادامه استفاده، وضعیت کیف پول را بررسی کنید.', 'url' => route('customer.wallet.show', ['topup' => 1], false), 'action' => 'بررسی کیف پول']
-                : null,
             $canViewVms && ($summary['failed'] ?? 0) > 0
                 ? ['tone' => 'red', 'title' => 'آماده‌سازی ماشین ناموفق بوده است', 'body' => $summary['failed'].' ماشین به بررسی نیاز دارد.', 'url' => route('customer.servers.index', [], false), 'action' => 'بررسی ماشین']
                 : null,
@@ -84,7 +81,7 @@
                     {{ mb_substr($activeProject->name ?: 'ف', 0, 1) }}
                 </span>
                 <span class="min-w-0">
-                    <span class="block text-[10px] font-black text-slate-400">فضای کاری فعال</span>
+                    <span class="block text-xs font-black text-slate-600">فضای کاری فعال</span>
                     <span class="block truncate text-xs font-black">{{ $activeProject->name }} · {{ $workspaceRole }}</span>
                 </span>
             </a>
@@ -97,7 +94,7 @@
                         </svg>
                     </span>
                     <span class="min-w-0">
-                        <span class="block text-[10px] font-black text-slate-400">موجودی کیف پول</span>
+                        <span class="block text-xs font-black text-slate-600">موجودی کیف پول</span>
                         <span class="block truncate text-sm font-black {{ $walletIsBlocked ? 'text-red-700' : 'text-slate-950' }}">{{ $wallets->format($wallet->balance) }}</span>
                     </span>
                     <a
@@ -151,6 +148,36 @@
                     </a>
                 </div>
             @endforeach
+        </section>
+    @endif
+
+    @if ($canViewBilling)
+        <section class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" aria-labelledby="billing-summary-heading">
+            <h2 id="billing-summary-heading" class="mb-3 text-base font-black text-slate-950">هزینه و صورتحساب</h2>
+            <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:items-center">
+                <div>
+                    <p class="text-xs font-black text-slate-600">برآورد هزینه ماه جاری</p>
+                    <p class="mt-1 text-sm font-black text-slate-950">{{ $wallets->format($dashboardStats['monthly_spend']) }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-black text-slate-600">مصرف ثبت‌نشده</p>
+                    <p class="mt-1 text-sm font-black {{ $pendingUsage > 0 ? 'text-amber-700' : 'text-emerald-700' }}">{{ $wallets->format($pendingUsage) }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-black text-slate-600">آخرین صورتحساب</p>
+                    @if ($latestInvoice)
+                        <a href="{{ route('customer.invoices.show', $latestInvoice, false) }}" class="mt-1 inline-flex text-sm font-black text-[#0069FF] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">{{ $latestInvoice->number }}</a>
+                    @else
+                        <p class="mt-1 text-sm font-black text-slate-600">هنوز صادر نشده</p>
+                    @endif
+                </div>
+                <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-black text-slate-600 transition-colors hover:bg-white hover:text-[#0069FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">
+                    جزئیات مصرف
+                    <svg class="size-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
         </section>
     @endif
 
@@ -209,37 +236,37 @@
                                 <span class="mt-1.5 size-2.5 shrink-0 rounded-full {{ $vm['dot'] }}" aria-hidden="true"></span>
                                 <div class="min-w-0">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <h3 class="truncate text-sm font-black text-slate-950" dir="ltr">{{ $vm['name'] }}</h3>
-                                        <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-black {{ $vm['statusClass'] }}">
+                                        <h3 class="min-w-0 truncate text-sm font-black" dir="ltr"><a href="{{ $vm['url'] }}" class="text-slate-950 hover:text-[#0069FF] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">{{ $vm['name'] }}</a></h3>
+                                        <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-black {{ $vm['statusClass'] }}">
                                             <span class="size-1.5 rounded-full {{ $vm['dot'] }}" aria-hidden="true"></span>
                                             {{ $vm['status'] }}
                                         </span>
                                         @if ($vm['provisioningStatus'] !== 'آماده')
-                                            <span class="inline-flex rounded-lg px-2.5 py-1 text-[11px] font-black {{ $vm['provisioningClass'] }}">{{ $vm['provisioningStatus'] }}</span>
+                                            <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-black {{ $vm['provisioningClass'] }}">{{ $vm['provisioningStatus'] }}</span>
                                         @endif
                                     </div>
-                                    <p class="mt-1.5 break-all text-xs font-bold text-slate-400" dir="ltr">{{ $vm['hostname'] }} · {{ $vm['ip'] }}</p>
+                                    <p class="mt-1.5 break-all text-xs font-bold text-slate-600" dir="ltr">{{ $vm['hostname'] }} · {{ $vm['ip'] }}</p>
                                 </div>
                             </div>
 
                             <dl class="grid grid-cols-2 gap-2">
                                 <div class="flex min-h-10 items-center gap-2 rounded-xl bg-slate-50 px-3">
-                                    <svg class="size-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <svg class="size-4 shrink-0 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                         <rect x="7" y="7" width="10" height="10" rx="2"/>
                                         <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" stroke-linecap="round"/>
                                     </svg>
                                     <div>
-                                        <dt class="text-[10px] font-black text-slate-400">CPU</dt>
+                                        <dt class="text-xs font-black text-slate-600">CPU</dt>
                                         <dd class="text-xs font-black text-slate-700">{{ $vm['cpu'] }}</dd>
                                     </div>
                                 </div>
                                 <div class="flex min-h-10 items-center gap-2 rounded-xl bg-slate-50 px-3">
-                                    <svg class="size-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <svg class="size-4 shrink-0 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                         <rect x="5" y="6" width="14" height="12" rx="2"/>
                                         <path d="M8 10h8M8 14h8M9 3v3M15 3v3M9 18v3M15 18v3" stroke-linecap="round"/>
                                     </svg>
                                     <div>
-                                        <dt class="text-[10px] font-black text-slate-400">RAM</dt>
+                                        <dt class="text-xs font-black text-slate-600">RAM</dt>
                                         <dd class="text-xs font-black text-slate-700">{{ $vm['ram'] }}</dd>
                                     </div>
                                 </div>
@@ -258,14 +285,13 @@
                                     </a>
                                     <a
                                         href="{{ $vm['url'] }}"
-                                        class="inline-flex size-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
-                                        aria-label="مدیریت {{ $vm['name'] }}"
-                                        title="مدیریت ماشین"
+                                        class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition-colors hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
                                     >
                                         <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                             <circle cx="12" cy="12" r="3"/>
                                             <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.95 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.53-1H3v-4h.08A1.7 1.7 0 0 0 4.6 8.95a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08A1.7 1.7 0 0 0 15.05 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06L19.82 7l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.61.6 1.1 1.2 1H21v4h-.4a1.7 1.7 0 0 0-1.2 1Z" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
+                                        مدیریت ماشین
                                     </a>
                                 @else
                                     <a
@@ -287,33 +313,4 @@
         </section>
     @endif
 
-    @if ($canViewBilling)
-        <section class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" aria-labelledby="billing-summary-heading">
-            <h2 id="billing-summary-heading" class="sr-only">خلاصه مالی</h2>
-            <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:items-center">
-                <div>
-                    <p class="text-[10px] font-black text-slate-400">برآورد هزینه ماه جاری</p>
-                    <p class="mt-1 text-sm font-black text-slate-950">{{ $wallets->format($dashboardStats['monthly_spend']) }}</p>
-                </div>
-                <div>
-                    <p class="text-[10px] font-black text-slate-400">مصرف ثبت‌نشده</p>
-                    <p class="mt-1 text-sm font-black {{ $pendingUsage > 0 ? 'text-amber-700' : 'text-emerald-700' }}">{{ $wallets->format($pendingUsage) }}</p>
-                </div>
-                <div>
-                    <p class="text-[10px] font-black text-slate-400">آخرین صورتحساب</p>
-                    @if ($latestInvoice)
-                        <a href="{{ route('customer.invoices.show', $latestInvoice, false) }}" class="mt-1 inline-flex text-sm font-black text-[#0069FF] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">{{ $latestInvoice->number }}</a>
-                    @else
-                        <p class="mt-1 text-sm font-black text-slate-600">هنوز صادر نشده</p>
-                    @endif
-                </div>
-                <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-black text-slate-600 transition-colors hover:bg-white hover:text-[#0069FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">
-                    جزئیات مصرف
-                    <svg class="size-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </a>
-            </div>
-        </section>
-    @endif
 @endsection

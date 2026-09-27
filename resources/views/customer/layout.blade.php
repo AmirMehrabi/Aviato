@@ -36,6 +36,7 @@
             : (int) ($wallet->balance ?? 0);
         $walletIsDepleted = $effectiveWalletBalance <= 0;
         $walletIsOverdrawn = $effectiveWalletBalance < 0;
+        $walletIsLocked = (bool) ($wallet->is_locked ?? false);
         $activeNav = $activeNav ?? 'dashboard';
         $customerUnreadNotificationsCount = $customer->unreadNotifications()->count();
         $customerUnreadTicketNotificationsCount = app(\App\Services\Notifications\NotificationInboxService::class)->ticketUnreadCount($customer);
@@ -101,11 +102,11 @@
         }
     @endphp
 
-    @if ($walletIsDepleted && $canViewBilling)
-        <div class="border-b {{ $walletIsOverdrawn ? 'border-red-200 bg-red-50 text-red-900' : 'border-amber-200 bg-amber-50 text-amber-900' }} px-4 py-3 sm:px-6 lg:px-8">
+    @if (($walletIsDepleted || $walletIsLocked) && $canViewBilling)
+        <div class="border-b {{ $walletIsOverdrawn || $walletIsLocked ? 'border-red-200 bg-red-50 text-red-900' : 'border-amber-200 bg-amber-50 text-amber-900' }} px-4 py-3 sm:px-6 lg:px-8">
             <div class="mx-auto flex max-w-[1600px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div class="flex items-start gap-3">
-                    <span class="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl {{ $walletIsOverdrawn ? 'bg-red-600' : 'bg-amber-500' }} text-white">
+                    <span class="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl {{ $walletIsOverdrawn || $walletIsLocked ? 'bg-red-600' : 'bg-amber-500' }} text-white">
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
                             <path d="M12 8v5" stroke-linecap="round"/>
                             <path d="M12 17h.01" stroke-linecap="round"/>
@@ -113,17 +114,17 @@
                         </svg>
                     </span>
                     <div>
-                        <p class="text-xs font-black tracking-[0.2em] {{ $walletIsOverdrawn ? 'text-red-700' : 'text-amber-700' }}">{{ $walletIsOverdrawn ? 'موجودی کیف پول منفی است' : 'کیف پول شما خالی است' }}</p>
-                        <p class="mt-1 text-sm font-bold leading-7 {{ $walletIsOverdrawn ? 'text-red-800' : 'text-amber-800' }}">
-                            مشاهده و مدیریت حساب همچنان در دسترس است؛ برای ساخت یا افزایش مصرف سرویس‌ها، کیف پول را شارژ کنید.
+                        <p class="text-xs font-black {{ $walletIsOverdrawn || $walletIsLocked ? 'text-red-700' : 'text-amber-700' }}">{{ $walletIsOverdrawn ? 'موجودی کیف پول منفی است' : ($walletIsDepleted ? 'کیف پول شما خالی است' : 'کیف پول قفل است') }}</p>
+                        <p class="mt-1 text-sm font-bold leading-7 {{ $walletIsOverdrawn || $walletIsLocked ? 'text-red-800' : 'text-amber-800' }}">
+                            {{ $walletIsLocked ? 'برای ادامه استفاده، وضعیت کیف پول را بررسی کنید. مشاهده و مدیریت حساب همچنان در دسترس است.' : 'مشاهده و مدیریت حساب همچنان در دسترس است؛ برای ساخت یا افزایش مصرف سرویس‌ها، کیف پول را شارژ کنید.' }}
                         </p>
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex items-center justify-center rounded-xl {{ $walletIsOverdrawn ? 'bg-red-600 hover:bg-red-500' : 'bg-amber-500 hover:bg-amber-400' }} px-4 py-2 text-sm font-black text-white transition">
+                    <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex items-center justify-center rounded-xl {{ $walletIsOverdrawn || $walletIsLocked ? 'bg-red-600 hover:bg-red-500' : 'bg-amber-500 hover:bg-amber-400' }} px-4 py-2 text-sm font-black text-white transition">
                         رفتن به کیف پول
                     </a>
-                    <a href="{{ route('customer.suspension.notice', [], false) }}" class="inline-flex items-center justify-center rounded-xl border {{ $walletIsOverdrawn ? 'border-red-200 text-red-700 hover:bg-red-100' : 'border-amber-200 text-amber-700 hover:bg-amber-100' }} bg-white px-4 py-2 text-sm font-black transition">
+                    <a href="{{ route('customer.suspension.notice', [], false) }}" class="inline-flex items-center justify-center rounded-xl border {{ $walletIsOverdrawn || $walletIsLocked ? 'border-red-200 text-red-700 hover:bg-red-100' : 'border-amber-200 text-amber-700 hover:bg-amber-100' }} bg-white px-4 py-2 text-sm font-black transition">
                         مشاهده توضیح
                     </a>
                 </div>

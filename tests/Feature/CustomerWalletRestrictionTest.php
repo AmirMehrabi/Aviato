@@ -51,6 +51,19 @@ class CustomerWalletRestrictionTest extends TestCase
             ->assertOk();
     }
 
+    public function test_locked_wallet_has_one_clear_dashboard_notice(): void
+    {
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 500000, 'is_locked' => true]);
+
+        $response = $this->actingAs($customer, 'customer')
+            ->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertSee('کیف پول قفل است');
+
+        $this->assertSame(1, substr_count($response->getContent(), 'کیف پول قفل است'));
+    }
+
     public function test_positive_wallet_balance_does_not_lock_wallet_access(): void
     {
         $customer = Customer::factory()->create([

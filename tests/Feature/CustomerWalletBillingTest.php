@@ -404,6 +404,12 @@ class CustomerWalletBillingTest extends TestCase
             ->assertViewHas('suggestedTopUpToman', 96000)
             ->assertDontSee('private-server-'.$project->id)
             ->assertDontSee('private-server-'.$otherProject->id);
+
+        $this->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertViewHas('dashboardStats', fn (array $stats): bool => $stats['monthly_spend'] === 730000)
+            ->assertDontSee('private-server-'.$project->id)
+            ->assertDontSee('private-server-'.$otherProject->id);
     }
 
     public function test_billing_workspace_member_is_redirected_from_vm_sections(): void
