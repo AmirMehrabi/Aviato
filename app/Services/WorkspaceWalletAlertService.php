@@ -232,20 +232,53 @@ class WorkspaceWalletAlertService
             return true;
         }
 
+        $amountIrt = number_format($snapshot['balance'] / (AppSetting::currency() === 'IRR' ? 10 : 1), 2, '.', '');
+        $amountToken = str_replace('.', ' ممیز ', ltrim($amountIrt, '-'));
+        if (str_starts_with($amountIrt, '-')) {
+            $amountToken = 'منفی '.$amountToken;
+        }
+
+        $customerToken = mb_substr(preg_replace('/[^\p{L}\p{N}]+/u', '', KavenegarLookupClient::nameToken($recipient->first_name ?: $recipient->name)) ?: 'مشتری', 0, 100);
+        $workspaceName = trim(preg_replace('/\s+/u', ' ', preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $project->name) ?? '') ?? '');
+        $workspaceWords = preg_split('/\s+/u', $workspaceName) ?: [];
+        $workspaceToken = implode(' ', array_slice($workspaceWords, 0, 5));
+        if (count($workspaceWords) > 5) {
+            $workspaceToken .= ' '.implode('', array_slice($workspaceWords, 5));
+        }
+        $workspaceToken = mb_substr($workspaceToken, 0, 100) ?: 'فضای کاری';
+        $template = AppSetting::customerWalletNegativeSmsTemplate();
+        $tokens = [
+            'token' => $customerToken,
+            'token10' => $workspaceToken,
+            'token20' => $amountToken,
+        ];
+
         try {
-            app(KavenegarLookupClient::class)->sendLookup(
+            $sent = app(KavenegarLookupClient::class)->sendLookup(
                 $recipient->phone,
-                AppSetting::customerWalletNegativeSmsTemplate(),
-                KavenegarLookupClient::nameToken($recipient->first_name ?: $recipient->name),
-                $project->name,
-                number_format($snapshot['balance'] / (AppSetting::currency() === 'IRR' ? 10 : 1), 2, '.', ''),
+                $template,
+                $customerToken,
+                token10: $workspaceToken,
+                token20: $amountToken,
             );
+
+            Log::info('Workspace wallet SMS notification sent.', [
+                'project_id' => $project->id,
+                'customer_id' => $recipient->id,
+                'template' => $template,
+                'tokens' => $tokens,
+                'message_id' => data_get($sent, 'messageid'),
+                'message' => data_get($sent, 'message'),
+            ]);
 
             return true;
         } catch (Throwable $exception) {
             Log::warning('Workspace wallet SMS notification failed.', [
                 'project_id' => $project->id,
                 'customer_id' => $recipient->id,
+                'template' => $template,
+                'tokens' => $tokens,
+                'provider_status' => $exception->getCode() ?: null,
                 'error' => $exception->getMessage(),
             ]);
 

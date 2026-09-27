@@ -32,7 +32,7 @@ class KavenegarLookupClient
         ?string $token3 = null,
         ?string $token10 = null,
         ?string $token20 = null,
-    ): void {
+    ): ?array {
         $apiKey = (string) AppSetting::getValue(AppSetting::KAVENEGAR_API_KEY, '');
 
         if ($apiKey === '' || $template === '') {
@@ -61,7 +61,7 @@ class KavenegarLookupClient
             $payload['token20'] = $token20;
         }
 
-        $this->sendPayload($apiKey, $payload);
+        return $this->sendPayload($apiKey, $payload);
     }
 
     public function sendLookupWithSpacedToken(string $phone, string $template, string $token): void
@@ -86,7 +86,7 @@ class KavenegarLookupClient
     /**
      * @param  array<string, string>  $payload
      */
-    private function sendPayload(string $apiKey, array $payload): void
+    private function sendPayload(string $apiKey, array $payload): ?array
     {
         try {
             $response = Http::asForm()
@@ -102,15 +102,20 @@ class KavenegarLookupClient
         if (! $response->ok()) {
             throw new RuntimeException($message !== ''
                 ? 'ارسال پیامک Kavenegar ناموفق بود: '.$message
-                : 'ارسال پیامک Kavenegar ناموفق بود. کد خطا: '.$response->status());
+                : 'ارسال پیامک Kavenegar ناموفق بود. کد خطا: '.$response->status(),
+                (int) data_get($responsePayload, 'return.status', $response->status()));
         }
 
         $status = data_get($responsePayload, 'return.status');
         if ((int) $status !== 200) {
             $message = (string) data_get($responsePayload, 'return.message', 'پاسخ نامعتبر از درگاه Kavenegar دریافت شد.');
 
-            throw new RuntimeException($message);
+            throw new RuntimeException($message, (int) $status);
         }
+
+        $entry = data_get($responsePayload, 'entries.0');
+
+        return is_array($entry) ? $entry : null;
     }
 
     private function compactToken(string $token): string

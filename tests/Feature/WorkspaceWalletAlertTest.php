@@ -13,6 +13,8 @@ use App\Services\WorkspaceWalletQuietHours;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Mockery;
 use RuntimeException;
 use Tests\TestCase;
@@ -224,6 +226,7 @@ class WorkspaceWalletAlertTest extends TestCase
     public function test_manual_wallet_sms_bypasses_quiet_hours(): void
     {
         [$owner, $project] = $this->billableWorkspace();
+        $project->update(['name' => 'تیم مالی-اصلی']);
         $owner->update(['phone' => '09123456789']);
         $owner->wallet()->update(['balance' => 1_234_567]);
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, true, 'boolean', 'billing');
@@ -235,9 +238,11 @@ class WorkspaceWalletAlertTest extends TestCase
             '09123456789',
             'wallet-alert',
             KavenegarLookupClient::nameToken($owner->first_name ?: $owner->name),
-            $project->name,
-            '123456.70',
-        );
+            null,
+            null,
+            'تیم مالی اصلی',
+            '123456 ممیز 70',
+        )->andReturn(['messageid' => 123, 'message' => 'موجودی تیم مالی اصلی 123456 ممیز 70 تومان']);
         $this->app->instance(KavenegarLookupClient::class, $sms);
         $this->travelTo(Carbon::parse('2026-09-27 02:00:00', 'Asia/Tehran'));
 
@@ -246,6 +251,63 @@ class WorkspaceWalletAlertTest extends TestCase
 
         $this->assertSame(1, $owner->notifications()->count());
         $this->assertSame(0, DB::table('workspace_wallet_alert_queue')->count());
+    }
+
+    public function test_wallet_sms_logs_the_message_returned_by_kavenegar(): void
+    {
+        [$owner, $project] = $this->billableWorkspace();
+        $owner->update(['phone' => '09123456789']);
+        $project->update(['name' => 'فضای کاری جدید']);
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, true, 'boolean', 'billing');
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'wallet-alert', 'string', 'billing');
+        AppSetting::setValue(AppSetting::SMS_GATEWAY, 'kavenegar', 'string', 'sms');
+        AppSetting::setValue(AppSetting::KAVENEGAR_API_KEY, 'test-key', 'string', 'sms');
+
+        Http::fake(['api.kavenegar.com/*' => Http::response([
+            'return' => ['status' => 200, 'message' => 'تایید شد'],
+            'entries' => [['messageid' => 123, 'message' => 'موجودی فضای کاری جدید 123456 ممیز 70 تومان']],
+        ])]);
+        Log::spy();
+
+        $this->assertTrue(app(WorkspaceWalletAlertService::class)->sendSmsNow($project, $owner, ['balance' => 1_234_567]));
+
+        Http::assertSent(fn ($request): bool => $request['token10'] === 'فضای کاری جدید'
+            && $request['token20'] === '123456 ممیز 70'
+            && ! isset($request['token2'], $request['token3']));
+        Log::shouldHaveReceived('info')->once()->with('Workspace wallet SMS notification sent.', Mockery::on(
+            fn (array $context): bool => $context['project_id'] === $project->id
+                && $context['message_id'] === 123
+                && $context['message'] === 'موجودی فضای کاری جدید 123456 ممیز 70 تومان'
+                && $context['tokens']['token10'] === 'فضای کاری جدید'
+                && $context['tokens']['token20'] === '123456 ممیز 70'
+        ));
+    }
+
+    public function test_wallet_sms_failure_logs_the_submitted_tokens_and_provider_error(): void
+    {
+        [$owner, $project] = $this->billableWorkspace();
+        $owner->update(['phone' => '09123456789']);
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, true, 'boolean', 'billing');
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'wallet-alert', 'string', 'billing');
+        AppSetting::setValue(AppSetting::SMS_GATEWAY, 'kavenegar', 'string', 'sms');
+        AppSetting::setValue(AppSetting::KAVENEGAR_API_KEY, 'test-key', 'string', 'sms');
+
+        Http::fake(['api.kavenegar.com/*' => Http::response([
+            'return' => ['status' => 431, 'message' => 'ساختار کد صحیح نمی باشد'],
+        ], 400)]);
+        Log::spy();
+
+        $this->assertFalse(app(WorkspaceWalletAlertService::class)->sendSmsNow($project, $owner, ['balance' => -12_345]));
+
+        Http::assertSent(fn ($request): bool => $request['token20'] === 'منفی 1234 ممیز 50'
+            && ! isset($request['token2'], $request['token3']));
+        Log::shouldHaveReceived('warning')->once()->with('Workspace wallet SMS notification failed.', Mockery::on(
+            fn (array $context): bool => $context['project_id'] === $project->id
+                && $context['tokens']['token20'] === 'منفی 1234 ممیز 50'
+                && $context['provider_status'] === 431
+                && str_contains($context['error'], 'ساختار کد صحیح نمی باشد')
+                && ! isset($context['phone'], $context['api_key'])
+        ));
     }
 
     public function test_admin_settings_inherit_until_workspace_overrides_and_manual_send_does_not_consume_levels(): void
