@@ -36,4 +36,15 @@ class MarketingSitemapTest extends TestCase
         $response->assertSee(route('changelog'), false);
         $response->assertSee(route('contact'), false);
     }
+
+    public function test_home_page_declares_the_aviato_social_preview_image(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertSee('<meta property="og:image" content="'.asset('assets/images/aviato-social-preview.png').'">', false);
+        $response->assertSee('<meta property="og:image:width" content="1735">', false);
+        $response->assertSee('<meta property="og:image:height" content="907">', false);
+        $response->assertSee('<meta name="twitter:image" content="'.asset('assets/images/aviato-social-preview.png').'">', false);
+    }
 }

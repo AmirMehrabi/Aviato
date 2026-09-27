@@ -25,14 +25,14 @@
     $differenceRows = [
         ['title' => 'خرید بدون ابهام', 'body' => 'قبل از پرداخت می دانید چه منابعی می گیرید، هزینه چقدر است و سفارش از کجا پیگیری می شود.'],
         ['title' => 'شروع قابل پیش بینی', 'body' => 'پس از ثبت سفارش، ساخت ماشین مجازی شروع می شود و اطلاعات اتصال داخل پنل مشتری قرار می گیرد.'],
-        ['title' => 'پشتیبانی قابل فهم', 'body' => 'برای انتخاب پلن، شروع کار و رفع سوال های رایج، با تیم فارسی زبان در ارتباط هستید.'],
+        ['title' => 'پشتیبانی قابل فهم', 'body' => 'برای انتخاب پلن، شروع کار و رفع سوال های رایج، با تیم فنی در ارتباط هستید.'],
     ];
 
     $useCases = [
-        ['title' => 'سایت و وردپرس', 'icon' => 'global-edit.svg'],
-        ['title' => 'اپلیکیشن و API', 'icon' => 'bag-happy.svg'],
-        ['title' => 'دیتابیس و پردازش', 'icon' => 'data-2.svg'],
-        ['title' => 'تست و توسعه', 'icon' => 'cloud-connection.svg'],
+        ['title' => 'سایت و وردپرس', 'body' => 'سایت یا فروشگاه وردپرسی خود را با منابع مشخص میزبانی کنید و پلنی متناسب با بازدیدتان انتخاب کنید.', 'icon' => 'global-edit.svg'],
+        ['title' => 'اپلیکیشن و API', 'body' => 'بک‌اند و API را با IP اختصاصی اجرا کنید و تنظیمات سرور را متناسب با نیاز اپلیکیشن کنترل کنید.', 'icon' => 'bag-happy.svg'],
+        ['title' => 'دیتابیس و پردازش', 'body' => 'پایگاه داده و کارهای پردازشی را روی سروری با دیسک NVMe و منابع مشخص اجرا کنید.', 'icon' => 'data-2.svg'],
+        ['title' => 'تست و توسعه', 'body' => 'محیطی جدا برای آزمایش نسخه‌های جدید و بررسی تغییرات پیش از انتشار بسازید.', 'icon' => 'cloud-connection.svg'],
     ];
 
     $steps = [
@@ -162,7 +162,7 @@
                     <article dir="rtl" class="flex min-h-[162px] flex-col items-start justify-center rounded-lg border border-[#C6DEFF] bg-[#FAFCFF] px-6 py-3 text-right {{ $loop->last ? 'border-[#003A8E] bg-white' : '' }}">
                         <img src="{{ asset('assets/icons/figma/'.$case['icon']) }}" alt="" class="size-[46px]" aria-hidden="true">
                         <h3 class="mt-1 text-xl font-bold leading-8 text-[#001739]">{{ $case['title'] }}</h3>
-                        <p class="mt-1 text-base leading-7 text-[#002355]">مناسب برای شروع و توسعه سرویس‌های آنلاین با منابع پایدار.</p>
+                        <p class="mt-1 text-base leading-7 text-[#002355]">{{ $case['body'] }}</p>
                     </article>
                 @endforeach
             </div>

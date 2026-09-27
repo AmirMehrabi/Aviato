@@ -11,6 +11,13 @@
     <meta property="og:description" content="@yield('og_description', trim($__env->yieldContent('description'))) ">
     <meta property="og:url" content="@yield('canonical', url()->current())">
     <meta property="og:site_name" content="Aviato">
+    <meta property="og:image" content="{{ asset('assets/images/aviato-social-preview.png') }}">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1735">
+    <meta property="og:image:height" content="907">
+    <meta property="og:image:alt" content="لوگوی آویاتو">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{{ asset('assets/images/aviato-social-preview.png') }}">
     <link rel="canonical" href="@yield('canonical', url()->current())">
     <link rel="icon" href="{{ asset('favicons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicons/favicon-32x32.png') }}">
