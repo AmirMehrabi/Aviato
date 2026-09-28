@@ -33,9 +33,9 @@ class DashboardController extends Controller
         $virtualMachines = $canViewVms
             ? $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks', 'proxmoxServer'])->latest()->get()
             : collect();
-        $billingMachines = $canViewBilling && ! $canViewVms
+        $billingMachines = $canViewBilling
             ? VirtualMachine::query()->where('project_id', $activeProject->id)->notDeleted()->with(['bundle', 'disks'])->get()
-            : $virtualMachines;
+            : collect();
         $monthlyCostFor = function (VirtualMachine $vm): int {
             if ($vm->isActionLocked()) {
                 return 0;

@@ -308,6 +308,101 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertSame(0, $billingMember->wallet()->firstOrFail()->balance);
     }
 
+    public function test_workspace_admin_can_see_owner_finances_and_full_workspace_cost_with_limited_vm_scope(): void
+    {
+        $owner = Customer::factory()->create();
+        $admin = Customer::factory()->create();
+        $member = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $admin->id,
+            'role' => ProjectMember::ROLE_ADMIN,
+            'vm_access_scope' => ProjectMember::VM_ACCESS_SPECIFIC,
+        ]);
+        $project->members()->create([
+            'customer_id' => $member->id,
+            'role' => ProjectMember::ROLE_MEMBER,
+        ]);
+        $bundle = VmBundle::create([
+            'name' => 'Workspace billing',
+            'slug' => 'workspace-billing',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'monthly_price' => 730000,
+            'is_active' => true,
+        ]);
+        VirtualMachine::create([
+            'customer_id' => $owner->id,
+            'project_id' => $project->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'restricted-vm',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'last_billed_at' => now(),
+        ]);
+        $owner->wallet()->update(['balance' => 2500000]);
+        $ownerBalance = app(WalletService::class)->format(2500000);
+
+        $this->actingAs($admin, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertSee('هزینه و صورتحساب')
+            ->assertSee('موجودی کیف پول')
+            ->assertSee($ownerBalance)
+            ->assertSee('/wallet', false)
+            ->assertViewHas('dashboardStats', fn (array $stats): bool => $stats['monthly_spend'] === 730000)
+            ->assertDontSee('restricted-vm');
+
+        $this->get($this->customerBaseUrl.'/wallet')
+            ->assertOk()
+            ->assertSee($ownerBalance)
+            ->assertViewHas('canTopUp', true);
+        $this->get($this->customerBaseUrl.'/invoices')->assertOk();
+
+        $this->actingAs($member, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/wallet')->assertNotFound();
+        $this->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertDontSee('هزینه و صورتحساب');
+    }
+
+    public function test_workspace_admin_can_top_up_owner_wallet(): void
+    {
+        $owner = Customer::factory()->create();
+        $admin = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create([
+            'customer_id' => $admin->id,
+            'role' => ProjectMember::ROLE_ADMIN,
+        ]);
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+
+        $this->actingAs($admin, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->post($this->customerBaseUrl.'/wallet/top-ups', [
+                'amount_toman' => 300000,
+                'gateway' => 'mellat',
+            ])
+            ->assertRedirect($this->customerBaseUrl.'/wallet/payments/1/gateway');
+
+        $this->assertDatabaseHas('payments', [
+            'id' => 1,
+            'customer_id' => $owner->id,
+            'amount' => 3000000,
+            'status' => Payment::STATUS_PENDING,
+        ]);
+        $this->assertSame(0, $admin->wallet()->firstOrFail()->balance);
+    }
+
     public function test_billing_workspace_member_can_open_dashboard_without_vm_access(): void
     {
         $owner = Customer::factory()->create();

@@ -14,7 +14,7 @@
                 <p class="mt-2 text-sm leading-7 text-slate-500">مبلغ مورد نیاز را انتخاب کنید و پرداخت را انجام دهید.</p>
                 @if (! $canTopUp)
                     <div class="mt-7 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold leading-7 text-amber-900">
-                        فقط مالک یا نقش مالی فضای کاری می‌تواند موجودی این کیف پول را افزایش دهد.
+                        فقط مالک، مدیر یا نقش مالی فضای کاری می‌تواند موجودی این کیف پول را افزایش دهد.
                     </div>
                 @elseif (empty($availablePaymentGateways))
                     <div class="mt-7 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold leading-7 text-amber-900">

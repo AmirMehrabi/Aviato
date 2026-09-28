@@ -250,7 +250,7 @@
                             <option value="billing">مالی</option>
                         </select>
                         <span class="mt-2 block text-xs font-bold leading-6 text-slate-500">
-                            <span x-show="role === 'admin'">مدیریت اعضا، تنظیمات و همه ماشین‌های فضای کاری</span>
+                            <span x-show="role === 'admin'">مدیریت اعضا، تنظیمات، ماشین‌ها و امور مالی فضای کاری</span>
                             <span x-show="role === 'member'">ساخت و مدیریت ماشین‌های خودش، بدون دسترسی به اعضا و تنظیمات</span>
                             <span x-show="role === 'viewer'">فقط مشاهده منابعی که برای او تعیین شده است</span>
                             <span x-show="role === 'billing'">مشاهده صورتحساب و پرداخت‌ها، بدون دسترسی به ماشین‌ها</span>
@@ -265,7 +265,7 @@
             <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <p class="text-sm font-black text-slate-950">راهنمای نقش‌ها</p>
                 <div class="mt-3 space-y-2 text-xs font-bold leading-6 text-slate-600">
-                    <p><span class="font-black text-slate-900">مالک / مدیر:</span> مدیریت اعضا و ماشین‌ها</p>
+                    <p><span class="font-black text-slate-900">مالک / مدیر:</span> مدیریت اعضا، ماشین‌ها و امور مالی</p>
                     <p><span class="font-black text-slate-900">عضو:</span> مدیریت ماشین‌ها</p>
                     <p><span class="font-black text-slate-900">فقط مشاهده:</span> فقط دیدن منابع</p>
                     <p><span class="font-black text-slate-900">مالی:</span> دیدن صورتحساب و پرداخت‌ها</p>

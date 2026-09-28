@@ -338,7 +338,7 @@
                             افزایش اعتبار
                         </a>
                         @else
-                            <p class="text-xs font-black text-white">مدیریت مالی با مالک فضاست</p>
+                            <p class="text-xs font-black text-white">دسترسی مالی ندارید</p>
                             <p class="mt-2 truncate text-[11px] font-bold text-[#9DB4DC]">{{ $activeProject->owner?->name }}</p>
                         @endif
                     </div>

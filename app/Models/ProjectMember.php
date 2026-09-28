@@ -91,7 +91,7 @@ class ProjectMember extends Model
 
     public function canViewBilling(): bool
     {
-        return in_array($this->role, [self::ROLE_OWNER, self::ROLE_BILLING], true);
+        return in_array($this->role, [self::ROLE_OWNER, self::ROLE_ADMIN, self::ROLE_BILLING], true);
     }
 
     public static function defaultVmAccessScopeForRole(?string $role): string
