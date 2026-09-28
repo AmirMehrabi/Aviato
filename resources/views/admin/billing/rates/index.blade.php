@@ -22,7 +22,7 @@
                         <td class="px-5 py-4"><span class="font-black">{{ $rate->label }}</span><span class="block text-xs text-slate-500" dir="ltr">{{ $rate->resource }}</span></td>
                         <td class="px-5 py-4">{{ $rate->unit }}</td>
                         <td class="px-5 py-4 font-black">{{ $money->format($rate->monthly_price) }}</td>
-                        <td class="px-5 py-4" dir="ltr">{{ number_format((float) $rate->hourly_price, 2) }}</td>
+                        <td class="px-5 py-4" dir="ltr">{{ \App\Support\PersianDigits::format((float) $rate->hourly_price, 2) }}</td>
                         <td class="px-5 py-4">{{ $rate->billing_policy === 'always' ? 'همیشه' : 'فقط روشن' }}</td>
                         <td class="px-5 py-4"><x-admin.icon-action :href="route('admin.billing.rates.edit', $rate)" label="ویرایش قیمت منبع" icon="edit" tone="primary" /></td>
                     </tr>

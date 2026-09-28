@@ -43,7 +43,7 @@
                                         class="relative rounded-2xl border px-3 py-4 text-center text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10"
                                     >
                                         @if ($loop->last && $recommendedTopUpToman !== null)<span class="absolute -top-2 right-2 rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] text-white">برآورد ماهانه</span>@endif
-                                        {{ number_format($amount) }}
+                                        {{ \App\Support\PersianDigits::format($amount) }}
                                         <span class="mt-1 block text-[11px] font-bold opacity-70">تومان</span>
                                     </button>
                                 @endforeach
@@ -65,7 +65,7 @@
                                     autocomplete="off"
                                     dir="ltr"
                                     class="h-14 min-w-0 flex-1 border-0 bg-transparent text-left text-lg font-black text-slate-950 outline-none placeholder:text-slate-300"
-                                    placeholder="مثلا 750,000"
+                                    placeholder="مثلاً ۷۵۰٬۰۰۰"
                                 >
                                 <span class="shrink-0 border-r border-slate-200 pr-4 text-sm font-black text-slate-500">تومان</span>
                             </div>
@@ -200,7 +200,7 @@
                     this.$nextTick(() => this.$refs.customAmount?.focus());
                 },
                 formatAmount(value) {
-                    return value ? new Intl.NumberFormat('en-US').format(Number(value)) : 'مبلغی انتخاب نشده';
+                    return value ? new Intl.NumberFormat('fa-IR').format(Number(value)) : 'مبلغی انتخاب نشده';
                 },
                 get formattedCustomAmount() {
                     return this.customAmount ? this.formatAmount(this.customAmount) : '';

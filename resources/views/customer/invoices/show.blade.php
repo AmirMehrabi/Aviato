@@ -31,7 +31,7 @@
             </article>
             @if($invoice->tax_amount > 0)
             <article class="rounded-3xl border border-slate-200 p-5">
-                <p class="text-xs font-black text-slate-500">مالیات ({{ number_format($invoice->tax_rate_percentage, 0) }}٪)</p>
+                <p class="text-xs font-black text-slate-500">مالیات ({{ \App\Support\PersianDigits::format($invoice->tax_rate_percentage, 0) }}٪)</p>
                 <p class="mt-3 text-xl font-black text-amber-600">{{ $wallets->format($invoice->tax_amount) }}</p>
             </article>
             @endif
@@ -56,16 +56,16 @@
                     @foreach ($invoice->items->where('type', \App\Models\InvoiceItem::TYPE_VM_USAGE) as $item)
                         <tr>
                             <td class="px-5 py-4 font-black text-slate-950">{{ $item->label }}</td>
-                            <td class="px-5 py-4 text-sm leading-7 text-slate-600">{{ $item->description }}</td>
-                            <td class="px-5 py-4 font-bold text-slate-700">{{ number_format((float) $item->quantity, 2) }} ساعت</td>
-                            <td class="px-5 py-4 font-bold text-slate-700">{{ number_format((float) $item->unit_price, 2) }}</td>
+                            <td class="px-5 py-4 text-sm leading-7 text-slate-600">{{ \App\Support\PersianDigits::convert($item->description) }}</td>
+                            <td class="px-5 py-4 font-bold text-slate-700">{{ \App\Support\PersianDigits::format((float) $item->quantity, 2) }} ساعت</td>
+                            <td class="px-5 py-4 font-bold text-slate-700">{{ \App\Support\PersianDigits::format((float) $item->unit_price, 2) }}</td>
                             <td class="px-5 py-4 font-black text-slate-950">{{ $wallets->format($item->subtotal) }}</td>
                         </tr>
                     @endforeach
                     @foreach ($invoice->items->where('type', \App\Models\InvoiceItem::TYPE_TAX) as $item)
                         <tr class="bg-amber-50/50">
                             <td class="px-5 py-4 font-black text-amber-800">{{ $item->label }}</td>
-                            <td class="px-5 py-4 text-sm leading-7 text-amber-700">{{ $item->description }}</td>
+                            <td class="px-5 py-4 text-sm leading-7 text-amber-700">{{ \App\Support\PersianDigits::convert($item->description) }}</td>
                             <td class="px-5 py-4 font-bold text-amber-700">—</td>
                             <td class="px-5 py-4 font-bold text-amber-700">—</td>
                             <td class="px-5 py-4 font-black text-amber-800">{{ $wallets->format($item->subtotal) }}</td>

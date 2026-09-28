@@ -64,7 +64,7 @@
             </div>
             <div class="meta-item">
                 <div class="label">تعداد ماشین‌ها</div>
-                <div class="value">{{ number_format($project->virtual_machines_count) }} ماشین</div>
+                <div class="value">{{ \App\Support\PersianDigits::format($project->virtual_machines_count) }} ماشین</div>
             </div>
             <div class="meta-item">
                 <div class="label">تاریخ صدور</div>
@@ -105,14 +105,14 @@
                                 <span style="color: #6b7280">{{ \App\Support\AdminUi::status($vm->status) }}</span>
                             @endif
                         </td>
-                        <td style="text-align: left; font-weight: bold">{{ number_format($priceToman) }}</td>
+                        <td style="text-align: left; font-weight: bold">{{ \App\Support\PersianDigits::format($priceToman) }}</td>
                     </tr>
                 @endforeach
                 @if($taxEnabled && $taxRate > 0)
                     @php($taxAmount = (int) round($subtotal * $taxRate / 100))
                     <tr class="tax-row">
-                        <td colspan="5" style="text-align: left; font-weight: bold">مالیات ارزش افزوده ({{ number_format($taxRate, 0) }}٪)</td>
-                        <td style="text-align: left; font-weight: bold">{{ number_format($taxAmount) }}</td>
+                        <td colspan="5" style="text-align: left; font-weight: bold">مالیات ارزش افزوده ({{ \App\Support\PersianDigits::format($taxRate, 0) }}٪)</td>
+                        <td style="text-align: left; font-weight: bold">{{ \App\Support\PersianDigits::format($taxAmount) }}</td>
                     </tr>
                 @else
                     @php($taxAmount = 0)
@@ -124,17 +124,17 @@
             <div class="summary-box">
                 <div class="summary-row">
                     <span>جمع موارد:</span>
-                    <span>{{ number_format($subtotal) }} تومان</span>
+                    <span>{{ \App\Support\PersianDigits::format($subtotal) }} تومان</span>
                 </div>
                 @if($taxEnabled && $taxRate > 0)
                 <div class="summary-row">
-                    <span>مالیات ({{ number_format($taxRate, 0) }}٪):</span>
-                    <span>{{ number_format($taxAmount) }} تومان</span>
+                    <span>مالیات ({{ \App\Support\PersianDigits::format($taxRate, 0) }}٪):</span>
+                    <span>{{ \App\Support\PersianDigits::format($taxAmount) }} تومان</span>
                 </div>
                 @endif
                 <div class="summary-row total">
                     <span>جمع کل:</span>
-                    <span>{{ number_format($subtotal + $taxAmount) }} تومان</span>
+                    <span>{{ \App\Support\PersianDigits::format($subtotal + $taxAmount) }} تومان</span>
                 </div>
             </div>
         </div>

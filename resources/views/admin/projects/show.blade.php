@@ -60,17 +60,17 @@
         </article>
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <p class="text-xs font-black tracking-wide text-slate-500">اعضا</p>
-            <p class="mt-2 text-xl font-black text-slate-950">{{ number_format($project->members_count) }}</p>
+            <p class="mt-2 text-xl font-black text-slate-950">{{ \App\Support\PersianDigits::format($project->members_count) }}</p>
             <p class="mt-1 text-sm font-bold text-slate-500">افراد دارای دسترسی</p>
         </article>
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <p class="text-xs font-black tracking-wide text-slate-500">ماشین‌ها</p>
-            <p class="mt-2 text-xl font-black text-slate-950">{{ number_format($project->virtual_machines_count) }}</p>
+            <p class="mt-2 text-xl font-black text-slate-950">{{ \App\Support\PersianDigits::format($project->virtual_machines_count) }}</p>
             <p class="mt-1 text-sm font-bold text-slate-500">هزینه با مالک است</p>
         </article>
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <p class="text-xs font-black tracking-wide text-slate-500">هزینه ماهانه</p>
-            <p class="mt-2 text-xl font-black text-[#0069FF]">{{ number_format($totalMonthlyCost / 10) }} تومان</p>
+            <p class="mt-2 text-xl font-black text-[#0069FF]">{{ \App\Support\PersianDigits::format($totalMonthlyCost / 10) }} تومان</p>
             <p class="mt-1 text-sm font-bold text-slate-500">جمع تقریبی ماشین‌ها</p>
         </article>
     </section>
@@ -118,7 +118,7 @@
                                     <td class="px-4 py-3 text-slate-600">{{ $vm->creator?->name ?: $vm->customer?->name }}</td>
                                     <td class="px-4 py-3 font-bold text-slate-900">{{ $project->owner?->name }}</td>
                                     <td class="px-4 py-3"><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">{{ \App\Support\AdminUi::status($vm->status) }}</span></td>
-                                    <td class="px-4 py-3 text-left font-black text-slate-950">{{ number_format($vmPrices->get($vm->uuid, 0) / 10) }} <span class="text-xs font-bold text-slate-500">تومان</span></td>
+                                    <td class="px-4 py-3 text-left font-black text-slate-950">{{ \App\Support\PersianDigits::format($vmPrices->get($vm->uuid, 0) / 10) }} <span class="text-xs font-bold text-slate-500">تومان</span></td>
                                     <td class="px-4 py-3 text-left">
                                         <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white">مشاهده</a>
                                     </td>
@@ -139,7 +139,7 @@
                         <h2 class="text-lg font-black text-slate-950">اعضا و دسترسی‌ها</h2>
                         <p class="mt-1 text-sm leading-7 text-slate-500">نقش، محدوده VM و فهرست VMهای مشخص برای هر عضو اینجا مدیریت می‌شود.</p>
                     </div>
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{{ number_format($project->members_count) }} عضو</span>
+                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{{ \App\Support\PersianDigits::format($project->members_count) }} عضو</span>
                 </div>
 
                 <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4" x-data="{ role: @js($defaultMemberRole), scope: @js($defaultMemberScope), scopeTouched: @js(old('vm_access_scope') !== null), syncScope() { if (! this.scopeTouched) { this.scope = this.role === 'member' ? 'own' : 'all'; } } }">

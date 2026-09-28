@@ -11,17 +11,17 @@ class WalletServiceTest extends TestCase
     {
         $wallets = new WalletService;
 
-        $this->assertSame('49,000 تومان', $wallets->format(490000, 'IRR'));
-        $this->assertSame('490,000 تومان', $wallets->format(490000, 'IRT'));
-        $this->assertSame('-49,000 تومان', $wallets->format(-490000, 'IRR'));
-        $this->assertSame('1 تومان', $wallets->format(10, 'IRR'));
-        $this->assertSame('1.5 تومان', $wallets->format(15, 'IRR'));
+        $this->assertSame('۴۹,۰۰۰ تومان', $wallets->format(490000, 'IRR'));
+        $this->assertSame('۴۹۰,۰۰۰ تومان', $wallets->format(490000, 'IRT'));
+        $this->assertSame('-۴۹,۰۰۰ تومان', $wallets->format(-490000, 'IRR'));
+        $this->assertSame('۱ تومان', $wallets->format(10, 'IRR'));
+        $this->assertSame('۱.۵ تومان', $wallets->format(15, 'IRR'));
     }
 
     public function test_format_keeps_non_iranian_currency_codes(): void
     {
         $wallets = new WalletService;
 
-        $this->assertSame('10 USD', $wallets->format(10, 'USD'));
+        $this->assertSame('۱۰ USD', $wallets->format(10, 'USD'));
     }
 }

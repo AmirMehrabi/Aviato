@@ -197,7 +197,7 @@ class CustomerWalletBillingTest extends TestCase
             ->assertOk()
             ->assertSee('رسیدهای پرداخت')
             ->assertSee($payment->receiptNumber())
-            ->assertSee('300,000 تومان')
+            ->assertSee('۳۰۰,۰۰۰ تومان')
             ->assertSee('بانک ملت')
             ->assertDontSee($pendingPayment->receiptNumber())
             ->assertDontSee($nonTopUpPayment->receiptNumber());
@@ -205,7 +205,7 @@ class CustomerWalletBillingTest extends TestCase
         $this->get($this->customerBaseUrl.'/payments/'.$payment->id.'/receipt')
             ->assertOk()
             ->assertSee($payment->receiptNumber())
-            ->assertSee('300,000 تومان')
+            ->assertSee('۳۰۰,۰۰۰ تومان')
             ->assertSee('RECEIPT-REF-1')
             ->assertSee('RECEIPT-AUTH-1')
             ->assertSee('چاپ یا ذخیره PDF')
@@ -251,8 +251,8 @@ class CustomerWalletBillingTest extends TestCase
             ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
             ->get($this->customerBaseUrl.'/payments/'.$payment->id.'/receipt')
             ->assertOk()
-            ->assertSee('2,500,000 تومان')
-            ->assertSee('زیبال');
+            ->assertSee('۲,۵۰۰,۰۰۰ تومان')
+            ->assertSee('ZIBAL-REF-1');
 
         $this->actingAs($unrelatedCustomer, 'customer')
             ->get($this->customerBaseUrl.'/payments/'.$payment->id.'/receipt')
@@ -580,10 +580,10 @@ class CustomerWalletBillingTest extends TestCase
         $this->actingAs($customer, 'customer')
             ->get($this->customerBaseUrl.'/wallet?tab=top-up')
             ->assertOk()
-            ->assertSee('250,000')
-            ->assertSee('500,000')
-            ->assertSee('1,000,000')
-            ->assertSee('2,500,000')
+            ->assertSee('۲۵۰,۰۰۰')
+            ->assertSee('۵۰۰,۰۰۰')
+            ->assertSee('۱,۰۰۰,۰۰۰')
+            ->assertSee('۲,۵۰۰,۰۰۰')
             // ->assertSee('تمام مبلغ‌ها به تومان است')
             ->assertSee('مبلغ دلخواه خود را وارد کنید')
             ->assertSee('پرداخت و افزایش موجودی')
@@ -631,7 +631,7 @@ class CustomerWalletBillingTest extends TestCase
             ->assertViewHas('recommendedTopUpToman', 300000)
             ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000, 300000])
             ->assertSee('برآورد ماهانه')
-            ->assertSee('300,000');
+            ->assertSee('۳۰۰,۰۰۰');
 
         AppSetting::setValue(AppSetting::TAX_RATE_PERCENTAGE, 10.5, 'float', 'billing');
         AppSetting::setValue(AppSetting::TAX_ENABLED, true, 'boolean', 'billing');
@@ -648,7 +648,7 @@ class CustomerWalletBillingTest extends TestCase
             ->assertViewHas('recommendedTopUpToman', 332000)
             ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000, 332000])
             ->assertSee('برآورد ماهانه')
-            ->assertSee('332,000');
+            ->assertSee('۳۳۲,۰۰۰');
     }
 
     public function test_wallet_page_shows_gateway_selector_when_multiple_gateways_are_available(): void
@@ -1112,7 +1112,7 @@ class CustomerWalletBillingTest extends TestCase
         $this->actingAs($customer, 'customer');
         $this->get($this->customerBaseUrl.'/wallet')
             ->assertOk()
-            ->assertSee('0 تومان')
+            ->assertSee('۰ تومان')
             ->assertDontSee('300 تومان');
 
         CarbonImmutable::setTestNow();

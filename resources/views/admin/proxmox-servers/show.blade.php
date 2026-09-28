@@ -482,7 +482,7 @@
                                     </td>
                                     <td class="py-4">
                                         <p class="font-bold text-slate-700">آخرین صدور: {{ $vm->last_billed_at?->diffForHumans() ?? 'هرگز' }}</p>
-                                        <p class="mt-1 text-xs text-slate-500">صادر نشده: {{ number_format((int) ($vm->unbilled_amount ?? 0)) }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">صادر نشده: {{ \App\Support\PersianDigits::format((int) ($vm->unbilled_amount ?? 0)) }}</p>
                                     </td>
                                     <td class="py-4">
                                         <form method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy', [$server, $vm]) }}" onsubmit="return confirm('آیا این رکورد محلی حذف شود؟ قبل از پاکسازی، Proxmox دوباره بررسی خواهد شد.');">

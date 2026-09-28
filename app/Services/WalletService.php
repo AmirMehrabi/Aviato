@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Support\PersianDigits;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -53,7 +54,7 @@ class WalletService
         $currency ??= AppSetting::currency();
         $prefix = $amount < 0 ? '-' : '';
 
-        return $prefix.$this->formattedAmount(abs($amount), $currency).' '.$this->currencyLabel($currency);
+        return PersianDigits::convert($prefix.$this->formattedAmount(abs($amount), $currency)).' '.$this->currencyLabel($currency);
     }
 
     public function isWalletDepleted(Customer $customer): bool
