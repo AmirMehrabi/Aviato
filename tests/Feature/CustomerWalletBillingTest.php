@@ -600,7 +600,7 @@ class CustomerWalletBillingTest extends TestCase
             ->get($this->customerBaseUrl.'/wallet?tab=top-up')
             ->assertOk()
             ->assertViewHas('recommendedTopUpToman', null)
-            ->assertDontSee('مبلغ پیشنهادی');
+            ->assertDontSee('>برآورد ماهانه</span>', false);
 
         $bundle = VmBundle::create([
             'name' => 'Monthly recommendation',
@@ -612,7 +612,7 @@ class CustomerWalletBillingTest extends TestCase
             'monthly_price' => 3000000,
             'is_active' => true,
         ]);
-        VirtualMachine::create([
+        $vm = VirtualMachine::create([
             'customer_id' => $customer->id,
             'project_id' => $project->id,
             'vm_bundle_id' => $bundle->id,
@@ -630,8 +630,25 @@ class CustomerWalletBillingTest extends TestCase
             ->assertOk()
             ->assertViewHas('recommendedTopUpToman', 300000)
             ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000, 300000])
-            ->assertSee('مبلغ پیشنهادی')
+            ->assertSee('برآورد ماهانه')
             ->assertSee('300,000');
+
+        AppSetting::setValue(AppSetting::TAX_RATE_PERCENTAGE, 10.5, 'float', 'billing');
+        AppSetting::setValue(AppSetting::TAX_ENABLED, true, 'boolean', 'billing');
+
+        $this->get($this->customerBaseUrl.'/wallet?tab=top-up')
+            ->assertOk()
+            ->assertViewHas('recommendedTopUpToman', 300000);
+
+        $vm->update(['tax_exempt' => false]);
+
+        $this->get($this->customerBaseUrl.'/wallet?tab=top-up')
+            ->assertOk()
+            ->assertViewHas('projectMonthlyEstimate', 3315000)
+            ->assertViewHas('recommendedTopUpToman', 332000)
+            ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000, 332000])
+            ->assertSee('برآورد ماهانه')
+            ->assertSee('332,000');
     }
 
     public function test_wallet_page_shows_gateway_selector_when_multiple_gateways_are_available(): void

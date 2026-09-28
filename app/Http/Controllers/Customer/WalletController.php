@@ -82,10 +82,11 @@ class WalletController extends Controller
         $projectMonthlyEstimateToman = AppSetting::currency() === 'IRR'
             ? (int) ceil($projectMonthlyEstimate / 10)
             : $projectMonthlyEstimate;
+        $roundedMonthlyEstimateToman = intdiv($projectMonthlyEstimateToman + 999, 1000) * 1000;
         $recommendedTopUpToman = $activeProject->virtualMachines()->notDeleted()->exists()
-            && $projectMonthlyEstimateToman >= 250000
-            && $projectMonthlyEstimateToman <= 50000000
-                ? $projectMonthlyEstimateToman
+            && $roundedMonthlyEstimateToman >= 250000
+            && $roundedMonthlyEstimateToman <= 50000000
+                ? $roundedMonthlyEstimateToman
                 : null;
         $topUpPresets = [250000, 500000, 1000000, 2500000];
         $lastPreset = $recommendedTopUpToman ?? 10000000;

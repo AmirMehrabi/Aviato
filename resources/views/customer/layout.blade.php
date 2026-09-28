@@ -37,6 +37,10 @@
         $walletIsDepleted = $effectiveWalletBalance <= 0;
         $walletIsOverdrawn = $effectiveWalletBalance < 0;
         $walletIsLocked = (bool) ($wallet->is_locked ?? false);
+        $workspaceWalletRisks = app(\App\Services\WorkspaceWalletRiskService::class)->forProjects($projects, $customer);
+        $activeWalletRisk = $workspaceWalletRisks[$activeProject->id] ?? null;
+        $workspaceSelectorRiskTone = $activeWalletRisk['tone'] ?? (collect($workspaceWalletRisks)->contains(fn (array $risk): bool => $risk['tone'] !== 'warning') ? 'critical' : 'warning');
+        $workspaceSelectorRiskLabel = $activeWalletRisk['label'] ?? (count($workspaceWalletRisks).' فضای کاری نیازمند توجه');
         $activeNav = $activeNav ?? 'dashboard';
         $newWorkspaceNotification = $customer->unreadNotifications()
             ->where('type', \App\Notifications\WorkspaceAddedNotification::class)
@@ -251,7 +255,15 @@
                 >
                     <span class="flex items-start gap-2.5">
                         <span class="min-w-0 flex-1">
-                            <span class="block text-[10px] font-black text-[#8FA6D2]">انتخاب فضای کاری</span>
+                            <span class="flex flex-wrap items-center gap-2 text-[10px] font-black text-[#8FA6D2]">
+                                انتخاب فضای کاری
+                                @if($workspaceWalletRisks !== [])
+                                    <span class="inline-flex items-center gap-1 font-black {{ $workspaceSelectorRiskTone === 'warning' ? 'text-amber-300' : 'text-rose-300' }}">
+                                        <span class="size-1.5 rounded-full {{ $workspaceSelectorRiskTone === 'warning' ? 'bg-amber-300' : 'bg-rose-400' }}" aria-hidden="true"></span>
+                                        {{ $workspaceSelectorRiskLabel }}
+                                    </span>
+                                @endif
+                            </span>
                             <span class="mt-1 block text-sm font-black leading-6 text-white" style="overflow-wrap: anywhere">{{ $activeProject->name }}</span>
                             <span class="mt-1 block truncate text-[10px] font-bold text-[#9DB4DC]">{{ $activeWorkspaceRole }} · مالک: {{ $activeProject->owner?->name }}</span>
                         </span>
@@ -269,14 +281,21 @@
                                 $projectRole = $workspaceRoleLabels[$projectMembership?->role ?? 'member'] ?? 'عضو';
                                 $isActiveWorkspace = (int) $activeProject->id === (int) $project->id;
                                 $workspaceState = $isActiveWorkspace ? 'فضای فعال' : 'ورود به فضای کاری';
+                                $workspaceRisk = $workspaceWalletRisks[$project->id] ?? null;
                             @endphp
                             <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
                                 @csrf
                                 <input type="hidden" name="project_id" value="{{ $project->id }}">
-                                <button type="submit" @click="workspaceOpen = false" aria-label="{{ $workspaceState }} {{ $project->name }}" class="flex w-full items-start gap-2.5 rounded-lg px-3 py-3 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
+                                <button type="submit" @click="workspaceOpen = false" aria-label="{{ $workspaceState }} {{ $project->name }}{{ $workspaceRisk ? '، '.$workspaceRisk['label'] : '' }}" class="flex w-full items-start gap-2.5 rounded-lg px-3 py-3 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
                                     <span class="min-w-0 flex-1">
                                         <span class="block text-sm font-black leading-6 text-slate-900" style="overflow-wrap: anywhere">{{ $project->name }}</span>
                                         <span class="mt-1 block truncate text-[11px] font-bold text-slate-500">نقش شما: {{ $projectRole }} · مالک: {{ $project->owner?->name }}</span>
+                                        @if($workspaceRisk)
+                                            <span class="mt-1 inline-flex items-center gap-1.5 text-[11px] font-black {{ $workspaceRisk['tone'] === 'warning' ? 'text-amber-700' : 'text-rose-700' }}">
+                                                <span class="size-1.5 rounded-full {{ $workspaceRisk['tone'] === 'warning' ? 'bg-amber-500' : 'bg-rose-500' }}" aria-hidden="true"></span>
+                                                {{ $workspaceRisk['label'] }}@if($workspaceRisk['tone'] !== 'depleted') · {{ number_format($workspaceRisk['percent'], 0) }}٪ پوشش ماهانه@endif
+                                            </span>
+                                        @endif
                                     </span>
                                     @if($isActiveWorkspace)<span class="mt-1 text-sm font-black text-[#0069FF]" aria-hidden="true">✓</span>@endif
                                 </button>
@@ -326,14 +345,23 @@
                 </nav>
 
                 <div class="mt-5 border-white/10 pt-4 lg:px-3">
-                    <p class="px-3 text-[10px] font-black text-[#5F79AA]">مصرف</p>
+                    <div class="flex flex-wrap items-center justify-between gap-2 px-3">
+                        <p class="text-[10px] font-black text-[#5F79AA]">مصرف</p>
+                        @if($canViewBilling && $activeWalletRisk)
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-black {{ $activeWalletRisk['tone'] === 'warning' ? 'bg-amber-400/15 text-amber-200' : 'bg-rose-400/15 text-rose-200' }}">
+                                <span class="size-1.5 rounded-full {{ $activeWalletRisk['tone'] === 'warning' ? 'bg-amber-300' : 'bg-rose-400' }}" aria-hidden="true"></span>
+                                {{ $activeWalletRisk['label'] }}
+                            </span>
+                        @endif
+                    </div>
                     <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
                         @if($canViewBilling)
-                        <!-- <div class="flex items-center justify-between gap-3">
-                            <span class="text-xs font-bold text-[#9DB4DC]">موجودی</span>
-                            <span class="rounded px-1.5 py-0.5 text-[10px] font-black {{ $wallet->is_locked ? 'bg-red-400/15 text-red-200' : 'bg-emerald-400/15 text-emerald-200' }}">{{ $wallet->is_locked ? 'قفل' : 'فعال' }}</span>
-                        </div> -->
-                        <p class="mt-2 truncate text-lg font-black {{ $balanceIsNegative ? 'text-red-200' : 'text-white' }}">{{ $wallets->format($wallet->balance) }}</p>
+                        <p class="truncate text-lg font-black {{ $activeWalletRisk && $activeWalletRisk['tone'] !== 'warning' ? 'text-rose-200' : ($balanceIsNegative ? 'text-red-200' : 'text-white') }}">{{ $wallets->format($wallet->balance) }}</p>
+                        @if($activeWalletRisk)
+                            <p class="mt-1 text-[11px] font-bold leading-5 {{ $activeWalletRisk['tone'] === 'warning' ? 'text-amber-200' : 'text-rose-200' }}">
+                                {{ $activeWalletRisk['tone'] === 'depleted' ? 'اعتبار قابل استفاده پایان یافته است.' : 'اعتبار قابل استفاده: '.number_format($activeWalletRisk['percent'], 0).'٪ هزینه ماهانه' }}
+                            </p>
+                        @endif
                         <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-3 inline-flex w-full items-center justify-center rounded-md bg-[#00A67E] px-3 py-2 text-sm font-black text-white transition hover:bg-[#008F6E]">
                             افزایش اعتبار
                         </a>

@@ -42,7 +42,7 @@
                                         :class="selectedPreset === {{ $amount }} ? 'border-[#0069FF] bg-[#EBF3FF] text-[#0069FF] shadow-sm shadow-[#0069FF]/10' : 'border-slate-200 bg-white text-slate-700 hover:border-[#B8D6FF] hover:bg-slate-50'"
                                         class="relative rounded-2xl border px-3 py-4 text-center text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10"
                                     >
-                                        @if ($loop->last && $recommendedTopUpToman !== null)<span class="absolute -top-2 right-2 rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] text-white">مبلغ پیشنهادی</span>@endif
+                                        @if ($loop->last && $recommendedTopUpToman !== null)<span class="absolute -top-2 right-2 rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] text-white">برآورد ماهانه</span>@endif
                                         {{ number_format($amount) }}
                                         <span class="mt-1 block text-[11px] font-bold opacity-70">تومان</span>
                                     </button>
