@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\ProjectMember;
 use App\Models\ProxmoxServer;
@@ -11,6 +12,7 @@ use App\Models\VmBundle;
 use App\Models\VmTransfer;
 use App\Services\ProjectAccessService;
 use App\Services\UsageBillingService;
+use App\Services\WorkspaceWalletAlertService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -98,6 +100,99 @@ class CustomerProjectTest extends TestCase
         ])->assertNotFound();
 
         $this->assertNotSame('Not Allowed', $project->fresh()->name);
+    }
+
+    public function test_owner_and_workspace_admin_can_override_wallet_alert_settings_and_restore_defaults(): void
+    {
+        $owner = Customer::factory()->create();
+        $admin = Customer::factory()->create();
+        $billing = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create(['customer_id' => $admin->id, 'role' => ProjectMember::ROLE_ADMIN]);
+        $project->members()->create(['customer_id' => $billing->id, 'role' => ProjectMember::ROLE_BILLING]);
+        $url = $this->customerBaseUrl.'/projects/'.$project->uuid;
+
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_ALERT_PERCENTAGES, [20, 10], 'array', 'billing');
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY, 'owner_and_billing', 'string', 'billing');
+
+        $this->actingAs($owner, 'customer')->get($url)
+            ->assertOk()
+            ->assertSee('هشدارهای موجودی کیف‌پول')
+            ->assertSee('پیش‌فرض فعلی: 20، 10 درصد')
+            ->assertSee('مالک و اعضای مالی');
+
+        $this->patch($url.'/wallet-alerts', [
+            'threshold_mode' => 'custom',
+            'thresholds' => '15, 5',
+            'recipient_mode' => 'custom',
+            'recipient_ids' => [$admin->id],
+        ])->assertSessionHas('status');
+
+        $this->assertSame([15, 5], $project->fresh()->wallet_alert_thresholds);
+        $this->assertSame([$admin->id], $project->fresh()->wallet_alert_recipient_ids);
+        $this->assertSame([$admin->id], array_map(fn (Customer $recipient): int => $recipient->id, app(WorkspaceWalletAlertService::class)->recipients($project->fresh())));
+
+        $this->actingAs($admin, 'customer')->get($url)
+            ->assertOk()
+            ->assertSee('هشدارهای موجودی کیف‌پول')
+            ->assertSee('name="recipient_ids[]"', false);
+
+        $this->patch($url.'/wallet-alerts', [
+            'threshold_mode' => 'default',
+            'recipient_mode' => 'custom',
+        ])->assertSessionHas('status');
+
+        $this->assertNull($project->fresh()->wallet_alert_thresholds);
+        $this->assertSame([], $project->fresh()->wallet_alert_recipient_ids);
+
+        $this->patch($url.'/wallet-alerts', [
+            'threshold_mode' => 'default',
+            'recipient_mode' => 'default',
+        ])->assertSessionHas('status');
+
+        $this->assertNull($project->fresh()->wallet_alert_recipient_ids);
+        $this->assertSame([20, 10], app(WorkspaceWalletAlertService::class)->thresholds($project->fresh()));
+        $this->assertCount(2, app(WorkspaceWalletAlertService::class)->recipients($project->fresh()));
+    }
+
+    public function test_wallet_alert_override_rejects_non_managers_and_invalid_recipients_or_levels(): void
+    {
+        $owner = Customer::factory()->create();
+        $member = Customer::factory()->create();
+        $outsider = Customer::factory()->create();
+        $inactive = Customer::factory()->create(['status' => Customer::STATUS_SUSPENDED]);
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create(['customer_id' => $member->id, 'role' => ProjectMember::ROLE_MEMBER]);
+        $project->members()->create(['customer_id' => $inactive->id, 'role' => ProjectMember::ROLE_BILLING]);
+        $url = $this->customerBaseUrl.'/projects/'.$project->uuid;
+        $payload = [
+            'threshold_mode' => 'custom',
+            'thresholds' => '15, 5',
+            'recipient_mode' => 'custom',
+            'recipient_ids' => [$owner->id],
+        ];
+
+        $this->actingAs($member, 'customer')->get($url)
+            ->assertOk()
+            ->assertDontSee('هشدارهای موجودی کیف‌پول');
+        $this->patch($url.'/wallet-alerts', $payload)->assertNotFound();
+        $this->actingAs($outsider, 'customer')->patch($url.'/wallet-alerts', $payload)->assertNotFound();
+
+        $this->actingAs($owner, 'customer')->patch($url.'/wallet-alerts', [
+            ...$payload,
+            'recipient_ids' => [$outsider->id],
+        ])->assertSessionHasErrors('recipient_ids.0');
+        $this->patch($url.'/wallet-alerts', [
+            ...$payload,
+            'recipient_ids' => [$inactive->id],
+        ])->assertSessionHasErrors('recipient_ids');
+        $this->patch($url.'/wallet-alerts', [
+            ...$payload,
+            'thresholds' => '15, 15',
+        ])->assertSessionHasErrors('thresholds');
+
+        $this->assertNull($project->fresh()->wallet_alert_thresholds);
+        $this->assertNull($project->fresh()->wallet_alert_recipient_ids);
     }
 
     public function test_customer_can_only_switch_to_accessible_workspaces(): void

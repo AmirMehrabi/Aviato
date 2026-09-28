@@ -428,6 +428,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::post('projects', [ProjectController::class, 'store'])->name('customer.projects.store');
         Route::get('projects/{project}', [ProjectController::class, 'show'])->name('customer.projects.show');
         Route::patch('projects/{project}', [ProjectController::class, 'update'])->name('customer.projects.update');
+        Route::patch('projects/{project}/wallet-alerts', [ProjectController::class, 'updateWalletAlerts'])->name('customer.projects.wallet-alerts.update');
         Route::patch('projects/{project}/default', [ProjectController::class, 'setDefault'])->name('customer.projects.default');
         Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->name('customer.projects.destroy');
         Route::post('projects/{project}/members', [ProjectController::class, 'storeMember'])->name('customer.projects.members.store');

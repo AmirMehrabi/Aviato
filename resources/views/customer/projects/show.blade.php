@@ -16,6 +16,7 @@
     $isOwner = $ownerPays;
     $isActive = (int) $activeProject->id === (int) $project->id;
     $roleLabels = ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'];
+    $selectedWalletAlertRecipientIds = old('recipient_ids_present') !== null ? array_map('intval', old('recipient_ids', [])) : $walletAlertRecipientIds;
 @endphp
 
 @section('content')
@@ -140,6 +141,59 @@
                     </div>
                 </div>
             </div>
+
+            @if($canManageMembers)
+                <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                    <h2 class="text-lg font-black text-slate-950">هشدارهای موجودی کیف‌پول</h2>
+                    <p class="mt-1 text-sm leading-7 text-slate-500">این هشدارها با توجه به درصد موجودی مؤثر کیف‌پول مالک نسبت به هزینه ماهانه او ارسال می‌شوند. تنظیمات این فضا را می‌توانید مستقل از پیش‌فرض مدیر تغییر دهید.</p>
+                    <form method="POST" action="{{ route('customer.projects.wallet-alerts.update', $project, false) }}" class="mt-5 space-y-5" x-data="{ thresholdMode: @js(old('threshold_mode', $project->wallet_alert_thresholds === null ? 'default' : 'custom')), recipientMode: @js(old('recipient_mode', $project->wallet_alert_recipient_ids === null ? 'default' : 'custom')) }">
+                        @csrf
+                        @method('PATCH')
+                        <div>
+                            <label for="wallet-alert-threshold-mode" class="block text-sm font-black text-slate-700">درصدهای هشدار</label>
+                            <select id="wallet-alert-threshold-mode" name="threshold_mode" x-model="thresholdMode" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                                <option value="default">پیش‌فرض مدیر</option>
+                                <option value="custom">درصدهای سفارشی این فضا</option>
+                            </select>
+                            <p class="mt-2 text-xs font-bold leading-6 text-slate-500">پیش‌فرض فعلی: {{ implode('، ', $defaultWalletAlertThresholds) }} درصد</p>
+                            @error('threshold_mode') <p class="mt-1 text-sm font-bold text-red-600" role="alert">{{ $message }}</p> @enderror
+                        </div>
+                        <div x-cloak x-show="thresholdMode === 'custom'">
+                            <label for="wallet-alert-thresholds" class="block text-sm font-black text-slate-700">درصدهای سفارشی</label>
+                            <input id="wallet-alert-thresholds" name="thresholds" value="{{ old('thresholds', implode(', ', $walletAlertThresholds)) }}" placeholder="15, 10, 5" dir="ltr" :required="thresholdMode === 'custom'" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                            <p class="mt-2 text-xs font-bold leading-6 text-slate-500">تا ۱۰ درصد یکتا از ۱ تا ۱۰۰ را با ویرگول جدا کنید.</p>
+                            @error('thresholds') <p class="mt-1 text-sm font-bold text-red-600" role="alert">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="border-t border-slate-100 pt-5">
+                            <label for="wallet-alert-recipient-mode" class="block text-sm font-black text-slate-700">دریافت‌کنندگان</label>
+                            <select id="wallet-alert-recipient-mode" name="recipient_mode" x-model="recipientMode" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
+                                <option value="default">پیش‌فرض مدیر</option>
+                                <option value="custom">اعضای انتخاب‌شده این فضا</option>
+                            </select>
+                            <p class="mt-2 text-xs font-bold leading-6 text-slate-500">پیش‌فرض فعلی: {{ $defaultWalletAlertRecipientPolicy === 'owner_and_billing' ? 'مالک و اعضای مالی' : 'مالک فضای کاری' }}</p>
+                            @error('recipient_mode') <p class="mt-1 text-sm font-bold text-red-600" role="alert">{{ $message }}</p> @enderror
+                        </div>
+                        <div x-cloak x-show="recipientMode === 'custom'">
+                            <p class="text-sm font-black text-slate-700">اعضای منتخب</p>
+                            <input type="hidden" name="recipient_ids_present" value="1">
+                            <div class="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-slate-200 p-4">
+                                @foreach($project->members as $member)
+                                    @if($member->customer?->status === \App\Models\Customer::STATUS_ACTIVE)
+                                        <label class="flex items-center gap-3 text-sm font-bold text-slate-700">
+                                            <input type="checkbox" name="recipient_ids[]" value="{{ $member->customer_id }}" @checked(in_array($member->customer_id, $selectedWalletAlertRecipientIds, true)) class="rounded border-slate-300 text-[#0069FF] focus:ring-[#0069FF]">
+                                            <span>{{ $member->customer->name }} ({{ $roleLabels[$member->role] ?? $member->role }})</span>
+                                        </label>
+                                    @endif
+                                @endforeach
+                            </div>
+                            <p class="mt-2 text-xs font-bold leading-6 text-slate-500">اگر هیچ عضوی را انتخاب نکنید، ارسال خودکار هشدارهای این فضا متوقف می‌شود.</p>
+                            @error('recipient_ids') <p class="mt-1 text-sm font-bold text-red-600" role="alert">{{ $message }}</p> @enderror
+                            @error('recipient_ids.*') <p class="mt-1 text-sm font-bold text-red-600" role="alert">{{ $message }}</p> @enderror
+                        </div>
+                        <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">ذخیره تنظیمات هشدار</button>
+                    </form>
+                </div>
+            @endif
 
             @if($isOwner)
                 <div class="rounded-lg border border-red-200 bg-white p-5 shadow-sm shadow-slate-200/60">

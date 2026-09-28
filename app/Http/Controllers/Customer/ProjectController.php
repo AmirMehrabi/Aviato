@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectMember;
@@ -10,6 +11,8 @@ use App\Notifications\WorkspaceAddedNotification;
 use App\Services\ProjectAccessService;
 use App\Services\ProjectLifecycleService;
 use App\Services\WalletService;
+use App\Services\WorkspaceWalletAlertPreferences;
+use App\Services\WorkspaceWalletAlertService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,6 +65,13 @@ class ProjectController extends Controller
             'activeProject' => $activeProject,
             'activeMembership' => $this->projects->membership($activeProject, $customer),
             'projectMembership' => $this->projects->membership($project, $customer),
+            'walletAlertThresholds' => app(WorkspaceWalletAlertService::class)->thresholds($project),
+            'walletAlertRecipientIds' => array_map(
+                fn (Customer $recipient): int => $recipient->id,
+                app(WorkspaceWalletAlertService::class)->recipients($project),
+            ),
+            'defaultWalletAlertThresholds' => AppSetting::customerWalletAlertPercentages(),
+            'defaultWalletAlertRecipientPolicy' => AppSetting::customerWalletAlertRecipientPolicy(),
             'deletionBlockers' => $this->projects->canDeleteProject($project, $customer)
                 ? $this->lifecycle->deletionBlockers($project, $customer)
                 : [],
@@ -106,6 +116,17 @@ class ProjectController extends Controller
         ]);
 
         return redirect()->route('customer.projects.show', $project)->with('status', 'نام فضای کاری تغییر کرد.');
+    }
+
+    public function updateWalletAlerts(Request $request, Project $project): RedirectResponse
+    {
+        $customer = $request->user('customer');
+        $project->loadMissing('members');
+        abort_unless($this->projects->canManageMembers($project, $customer), 404);
+
+        app(WorkspaceWalletAlertPreferences::class)->update($request, $project);
+
+        return redirect()->route('customer.projects.show', $project)->with('status', 'تنظیمات هشدار کیف‌پول ذخیره شد.');
     }
 
     public function setDefault(Request $request, Project $project): RedirectResponse
