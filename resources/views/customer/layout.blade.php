@@ -250,7 +250,6 @@
                     aria-controls="customer-workspace-menu"
                 >
                     <span class="flex items-start gap-2.5">
-                        <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">ف</span>
                         <span class="min-w-0 flex-1">
                             <span class="block text-[10px] font-black text-[#8FA6D2]">انتخاب فضای کاری</span>
                             <span class="mt-1 block text-sm font-black leading-6 text-white" style="overflow-wrap: anywhere">{{ $activeProject->name }}</span>
@@ -263,10 +262,7 @@
                 </button>
 
                 <div id="customer-workspace-menu" x-cloak x-show="workspaceOpen" x-transition class="absolute inset-x-3 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl shadow-slate-950/25">
-                    <div class="rounded-lg bg-[#F2F8FF] px-3 py-2.5 text-xs font-bold leading-6 text-[#31527F]">
-                        فضای کاری محیط مشترک ماشین‌ها، اعضا و پرداخت‌هاست. با تغییر آن، منابع و صورتحساب قابل مشاهده تغییر می‌کند.
-                    </div>
-                    <div class="mt-2 max-h-64 space-y-1 overflow-y-auto">
+                    <div class="max-h-64 space-y-1 overflow-y-auto">
                         @foreach($projects as $project)
                             @php
                                 $projectMembership = $project->members->firstWhere('customer_id', $customer->id);
@@ -277,8 +273,7 @@
                             <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
                                 @csrf
                                 <input type="hidden" name="project_id" value="{{ $project->id }}">
-                                <button type="submit" @click="workspaceOpen = false" aria-label="{{ $workspaceState }} {{ $project->name }}" class="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
-                                    <span class="grid size-8 shrink-0 place-items-center rounded-lg {{ $isActiveWorkspace ? 'bg-[#0069FF] text-white' : 'bg-slate-100 text-slate-500' }} text-xs font-black">{{ mb_substr($project->name, 0, 1) }}</span>
+                                <button type="submit" @click="workspaceOpen = false" aria-label="{{ $workspaceState }} {{ $project->name }}" class="flex w-full items-start gap-2.5 rounded-lg px-3 py-3 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
                                     <span class="min-w-0 flex-1">
                                         <span class="block text-sm font-black leading-6 text-slate-900" style="overflow-wrap: anywhere">{{ $project->name }}</span>
                                         <span class="mt-1 block truncate text-[11px] font-bold text-slate-500">نقش شما: {{ $projectRole }} · مالک: {{ $project->owner?->name }}</span>
