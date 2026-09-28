@@ -156,7 +156,15 @@ class CustomerProjectTest extends TestCase
             ->get($this->customerBaseUrl.'/dashboard')
             ->assertOk()
             ->assertSee('فضای کاری جدید')
-            ->assertSee($project->name);
+            ->assertSee($project->name)
+            ->assertSee('fixed bottom-4 right-4', false)
+            ->assertSee('10000');
+
+        $this->assertSame(0, $member->fresh()->unreadNotifications()->count());
+
+        $this->get($this->customerBaseUrl.'/dashboard')
+            ->assertOk()
+            ->assertDontSee('فضای کاری جدید');
 
         $this->actingAs($member, 'customer')
             ->get($this->customerBaseUrl.'/projects/'.$project->uuid.'/enter')
@@ -164,6 +172,31 @@ class CustomerProjectTest extends TestCase
             ->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id);
 
         $this->assertSame(0, $member->fresh()->unreadNotifications()->count());
+    }
+
+    public function test_billing_member_sees_workspace_toast_once_on_wallet_page(): void
+    {
+        $owner = Customer::factory()->create();
+        $member = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+
+        $this->actingAs($owner, 'customer')->post($this->customerBaseUrl.'/projects/'.$project->uuid.'/members', [
+            'identifier' => $member->email,
+            'role' => ProjectMember::ROLE_BILLING,
+        ]);
+
+        $this->actingAs($member, 'customer')
+            ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
+            ->get($this->customerBaseUrl.'/wallet')
+            ->assertOk()
+            ->assertSee('فضای کاری جدید')
+            ->assertSee('شما به «'.$project->name.'» اضافه شده‌اید.')
+            ->assertDontSee('>پیش‌فرض</span>', false)
+            ->assertDontSee('>جدید</span>', false);
+
+        $this->get($this->customerBaseUrl.'/wallet')
+            ->assertOk()
+            ->assertDontSee('فضای کاری جدید');
     }
 
     public function test_opening_workspace_management_does_not_change_active_workspace(): void

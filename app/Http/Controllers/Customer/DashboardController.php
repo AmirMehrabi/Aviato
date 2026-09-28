@@ -8,7 +8,6 @@ use App\Models\VirtualMachine;
 use App\Models\VmDisk;
 use App\Services\BillingService;
 use App\Services\ProjectAccessService;
-use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -19,7 +18,6 @@ class DashboardController extends Controller
         private readonly WalletService $wallets,
         private readonly BillingService $billing,
         private readonly ProjectAccessService $projects,
-        private readonly UsageBillingService $usageBilling,
     ) {}
 
     public function __invoke(Request $request): View
@@ -54,16 +52,7 @@ class DashboardController extends Controller
             'failed' => $virtualMachines->where('provisioning_status', VirtualMachine::PROVISION_FAILED)->count(),
             'deleting' => $virtualMachines->where('status', VirtualMachine::STATUS_DELETING)->count(),
             'monthly_spend' => $canViewBilling ? $billingMachines->sum($monthlyCostFor) : 0,
-            'unbilled_accrued' => 0,
         ];
-        $pendingUsage = ! $canViewBilling
-            ? 0
-            : ($canViewVms
-                ? $virtualMachines
-                    ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
-                    ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount'])
-                : $this->usageBilling->projectPendingUsage($activeProject->id));
-        $summary['unbilled_accrued'] = $pendingUsage;
         $invoiceQuery = $canViewBilling
             ? $activeProject->owner->invoices()
                 ->whereHas('items', function ($query) use ($activeProject): void {
@@ -141,25 +130,16 @@ class DashboardController extends Controller
             'monthly_spend' => $summary['monthly_spend'],
         ];
         $projects = $this->projects->projectsFor($customer);
-        $newWorkspaceNotification = $customer->unreadNotifications()
-            ->get()
-            ->first(fn ($notification): bool => data_get($notification->data, 'event') === 'workspace_added');
-        $newWorkspaceProject = $newWorkspaceNotification
-            ? $projects->firstWhere('id', (int) data_get($newWorkspaceNotification->data, 'project_id'))
-            : null;
 
         return view('customer.dashboard', [
             'customer' => $customer,
             'activeProject' => $activeProject,
             'activeMembership' => $this->projects->membership($activeProject, $customer),
             'projects' => $projects,
-            'newWorkspaceProject' => $newWorkspaceProject,
-            'newWorkspaceNotification' => $newWorkspaceNotification,
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'virtualMachines' => $virtualMachines,
             'summary' => $summary,
-            'pendingUsage' => $pendingUsage,
             'vmRows' => $vmRows,
             'dashboardStats' => $dashboardStats,
             'latestInvoice' => $latestInvoice,

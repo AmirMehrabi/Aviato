@@ -347,7 +347,7 @@ class CustomerWalletBillingTest extends TestCase
             ->get($this->customerBaseUrl.'/dashboard')
             ->assertOk()
             ->assertSee('نمای مالی فضای کاری')
-            ->assertSee('مصرف ثبت‌نشده')
+            ->assertDontSee('مصرف ثبت‌نشده')
             ->assertDontSee('Owner wallet credit')
             ->assertDontSee('owner-financial-vm')
             ->assertDontSee(route('customer.servers.index', [], false))
@@ -493,6 +493,50 @@ class CustomerWalletBillingTest extends TestCase
             ->assertSee('مبلغ دلخواه خود را وارد کنید')
             ->assertSee('پرداخت و افزایش موجودی')
             ->assertSee('type="hidden" name="gateway" value="mellat"', false);
+    }
+
+    public function test_last_top_up_preset_matches_active_workspace_monthly_usage_only_when_it_has_servers(): void
+    {
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $this->enableMellatGateway();
+
+        $this->actingAs($customer, 'customer')
+            ->get($this->customerBaseUrl.'/wallet?tab=top-up')
+            ->assertOk()
+            ->assertViewHas('recommendedTopUpToman', null)
+            ->assertDontSee('مبلغ پیشنهادی');
+
+        $bundle = VmBundle::create([
+            'name' => 'Monthly recommendation',
+            'slug' => 'monthly-recommendation',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'monthly_price' => 3000000,
+            'is_active' => true,
+        ]);
+        VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'project_id' => $project->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'monthly-recommendation-server',
+            'cpu_cores' => 2,
+            'ram_gb' => 4,
+            'disk_gb' => 40,
+            'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'last_billed_at' => now(),
+        ]);
+
+        $this->get($this->customerBaseUrl.'/wallet?tab=top-up')
+            ->assertOk()
+            ->assertViewHas('recommendedTopUpToman', 300000)
+            ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000, 300000])
+            ->assertSee('مبلغ پیشنهادی')
+            ->assertSee('300,000');
     }
 
     public function test_wallet_page_shows_gateway_selector_when_multiple_gateways_are_available(): void

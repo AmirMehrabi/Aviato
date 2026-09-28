@@ -34,7 +34,6 @@
         $summary['delete_stale'] > 0 ? ['tone' => 'red', 'text' => $summary['delete_stale'].' حذف بیش از حد منتظر مانده است؛ از صفحه همان سرور دوباره تلاش کنید.'] : null,
         $summary['pending'] > 0 ? ['tone' => 'blue', 'text' => $summary['pending'].' ماشین هنوز در حال آماده سازی است؛ SSH بعد از آماده شدن فعال می شود.'] : null,
         $summary['deleting'] > 0 ? ['tone' => 'amber', 'text' => $summary['deleting'].' ماشین در حال حذف است؛ Billing آن متوقف شده و وضعیت از همین صفحه به‌روزرسانی می‌شود.'] : null,
-        $summary['pending_usage'] > 0 ? ['tone' => 'amber', 'text' => 'مصرف ثبت نشده فعلی: '.$wallets->format($summary['pending_usage'])] : null,
     ])->filter()->values();
 @endphp
 

@@ -12,9 +12,9 @@
             <dl class="grid gap-3 pb-7 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ([
                     ['label' => 'موجودی کیف پول', 'value' => $wallets->format($wallet->balance), 'tone' => $wallet->balance < 0 ? 'text-rose-600' : 'text-slate-950'],
-                    ['label' => 'موجودی پس از کارکرد ثبت‌نشده', 'value' => $wallets->format($effectiveBalance), 'tone' => $effectiveBalance < 0 ? 'text-rose-600' : 'text-slate-950'],
+                    ['label' => 'موجودی قابل استفاده', 'value' => $wallets->format($effectiveBalance), 'tone' => $effectiveBalance < 0 ? 'text-rose-600' : 'text-slate-950'],
                     ['label' => 'برآورد ماهانه کل کیف پول', 'value' => $wallets->format($monthlyEstimate), 'tone' => 'text-slate-950'],
-                    ['label' => 'شارژ پیشنهادی برای یک ماه', 'value' => $wallets->format($suggestedTopUp), 'tone' => 'text-[#0069FF]'],
+                    ['label' => 'کسری پوشش هزینه یک ماه', 'value' => $wallets->format($suggestedTopUp), 'tone' => 'text-[#0069FF]'],
                 ] as $item)
                     <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                         <dt class="text-xs font-bold text-slate-500">{{ $item['label'] }}</dt>

@@ -89,9 +89,6 @@ class ServerController extends Controller
             ->withQueryString();
 
         $summarySource = $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks', 'infrastructureLocation'])->get();
-        $pendingUsage = $summarySource
-            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
-            ->sum(fn (VirtualMachine $vm): int => $this->usageBilling->estimateVmUsage($vm)['amount']);
         $monthlySpend = $summarySource
             ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
             ->sum(fn (VirtualMachine $vm): int => ($vm->isRunning()
@@ -164,7 +161,6 @@ class ServerController extends Controller
                     ->whereNotNull('delete_failed_at')
                     ->count(),
                 'delete_stale' => $summarySource->filter->deleteAttemptIsStale()->count(),
-                'pending_usage' => $pendingUsage,
                 'monthly_spend' => $monthlySpend,
             ],
             'invoiceCount' => $customer->invoices()->count(),

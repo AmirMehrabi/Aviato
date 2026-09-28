@@ -45,11 +45,10 @@
                 </div>
             </div>
 
-            <div class="grid gap-4 sm:grid-cols-3">
+            <div class="grid gap-4 sm:grid-cols-2">
                 @foreach ([
                     ['label' => 'موجودی کیف پول', 'value' => $wallets->format($wallet->balance), 'color' => ($wallet->balance ?? 0) < 0 ? 'text-red-600' : 'text-slate-950'],
                     ['label' => 'پروژه فعال', 'value' => $activeProject->name, 'color' => 'text-slate-950'],
-                    ['label' => 'مصرف ثبت نشده', 'value' => $wallets->format($pendingUsage), 'color' => 'text-amber-600'],
                 ] as $item)
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
                         <p class="text-xs font-black text-slate-400">{{ $item['label'] }}</p>

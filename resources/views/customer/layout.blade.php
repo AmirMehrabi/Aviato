@@ -38,14 +38,16 @@
         $walletIsOverdrawn = $effectiveWalletBalance < 0;
         $walletIsLocked = (bool) ($wallet->is_locked ?? false);
         $activeNav = $activeNav ?? 'dashboard';
+        $newWorkspaceNotification = $customer->unreadNotifications()
+            ->where('type', \App\Notifications\WorkspaceAddedNotification::class)
+            ->oldest()
+            ->first();
+        $newWorkspaceProject = $newWorkspaceNotification
+            ? $projects->firstWhere('id', (int) data_get($newWorkspaceNotification->data, 'project_id'))
+            : null;
+        $newWorkspaceNotification?->markAsRead();
         $customerUnreadNotificationsCount = $customer->unreadNotifications()->count();
         $customerUnreadTicketNotificationsCount = app(\App\Services\Notifications\NotificationInboxService::class)->ticketUnreadCount($customer);
-        $newWorkspaceIds = $customer->unreadNotifications()
-            ->get()
-            ->filter(fn ($notification) => data_get($notification->data, 'event') === 'workspace_added')
-            ->pluck('data.project_id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
         $navGroups = [
             'فضای کاری' => [
                 ['key' => 'projects', 'label' => 'فضاهای کاری', 'route' => route('customer.projects.index', [], false), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
@@ -251,7 +253,7 @@
                         <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[#0069FF] text-sm font-black text-white">ف</span>
                         <span class="min-w-0 flex-1">
                             <span class="block text-[10px] font-black text-[#8FA6D2]">انتخاب فضای کاری</span>
-                            <span class="mt-1 block truncate text-sm font-black text-white">{{ $activeProject->name }}</span>
+                            <span class="mt-1 block text-sm font-black leading-6 text-white" style="overflow-wrap: anywhere">{{ $activeProject->name }}</span>
                             <span class="mt-1 block truncate text-[10px] font-bold text-[#9DB4DC]">{{ $activeWorkspaceRole }} · مالک: {{ $activeProject->owner?->name }}</span>
                         </span>
                         <svg class="mt-1 size-4 shrink-0 text-[#8FA6D2] transition" :class="workspaceOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -270,7 +272,6 @@
                                 $projectMembership = $project->members->firstWhere('customer_id', $customer->id);
                                 $projectRole = $workspaceRoleLabels[$projectMembership?->role ?? 'member'] ?? 'عضو';
                                 $isActiveWorkspace = (int) $activeProject->id === (int) $project->id;
-                                $isNewWorkspace = in_array((int) $project->id, $newWorkspaceIds, true);
                                 $workspaceState = $isActiveWorkspace ? 'فضای فعال' : 'ورود به فضای کاری';
                             @endphp
                             <form method="POST" action="{{ route('customer.projects.switch', [], false) }}">
@@ -279,12 +280,7 @@
                                 <button type="submit" @click="workspaceOpen = false" aria-label="{{ $workspaceState }} {{ $project->name }}" class="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] {{ $isActiveWorkspace ? 'bg-[#EBF3FF]' : 'hover:bg-slate-50' }}">
                                     <span class="grid size-8 shrink-0 place-items-center rounded-lg {{ $isActiveWorkspace ? 'bg-[#0069FF] text-white' : 'bg-slate-100 text-slate-500' }} text-xs font-black">{{ mb_substr($project->name, 0, 1) }}</span>
                                     <span class="min-w-0 flex-1">
-                                        <span class="flex items-center gap-2">
-                                            <span class="truncate text-sm font-black text-slate-900">{{ $project->name }}</span>
-                                            @if($isActiveWorkspace)<span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-[#0069FF]">فعال</span>@endif
-                                            @if($isNewWorkspace && ! $isActiveWorkspace)<span class="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-700">جدید</span>@endif
-                                            @if($project->is_default)<span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700">پیش‌فرض</span>@endif
-                                        </span>
+                                        <span class="block text-sm font-black leading-6 text-slate-900" style="overflow-wrap: anywhere">{{ $project->name }}</span>
                                         <span class="mt-1 block truncate text-[11px] font-bold text-slate-500">نقش شما: {{ $projectRole }} · مالک: {{ $project->owner?->name }}</span>
                                     </span>
                                     @if($isActiveWorkspace)<span class="mt-1 text-sm font-black text-[#0069FF]" aria-hidden="true">✓</span>@endif
@@ -625,6 +621,27 @@
             <script type="application/json" id="customer-search-data">@yield('search_data', '[]')</script>
         </main>
     </div>
+    @if ($newWorkspaceProject)
+        <div
+            x-data="{ visible: true, init() { setTimeout(() => this.visible = false, 10000) } }"
+            x-show="visible"
+            x-transition.opacity
+            role="status"
+            class="fixed bottom-4 right-4 z-50 max-w-sm rounded-2xl border border-[#B8D6FF] bg-white p-4 text-right shadow-xl sm:bottom-6 sm:right-6"
+            style="width: min(calc(100vw - 2rem), 24rem)"
+        >
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-xs font-black text-[#0069FF]">فضای کاری جدید</p>
+                    <p class="mt-1 text-sm font-bold leading-7 text-slate-800">شما به «{{ $newWorkspaceProject->name }}» اضافه شده‌اید.</p>
+                </div>
+                <button type="button" @click="visible = false" aria-label="بستن پیام" class="shrink-0 rounded-lg px-2 text-xl text-slate-500 hover:bg-slate-100">×</button>
+            </div>
+            @if ((int) $newWorkspaceProject->id !== (int) $activeProject->id)
+                <a href="{{ route('customer.projects.enter', $newWorkspaceProject, false) }}" class="mt-3 inline-flex rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white hover:bg-[#0050D0]">ورود به فضای کاری</a>
+            @endif
+        </div>
+    @endif
     @stack('scripts')
 </body>
 </html>

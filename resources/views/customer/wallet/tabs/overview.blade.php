@@ -5,9 +5,8 @@
                 <dl class="mt-6 divide-y divide-slate-100 text-sm">
                     <div class="flex items-center justify-between gap-4 py-3"><dt class="text-slate-600">برآورد این فضای کاری</dt><dd class="font-black text-slate-950">{{ $wallets->format($projectMonthlyEstimate) }}</dd></div>
                     <div class="flex items-center justify-between gap-4 py-3"><dt class="text-slate-600">برآورد تمام فضاهای کاری این کیف پول</dt><dd class="font-black text-slate-950">{{ $wallets->format($monthlyEstimate) }}</dd></div>
-                    <div class="flex items-center justify-between gap-4 py-3"><dt class="text-slate-600">کارکرد ثبت‌نشده این فضا</dt><dd class="font-black text-slate-950">{{ $wallets->format($pendingUsage) }}</dd></div>
                 </dl>
-                <p class="mt-4 text-xs leading-6 text-slate-500">شارژ پیشنهادی، کسری موجودی مؤثر نسبت به برآورد یک ماه تمام فضاهای کاری مشترک این کیف پول است.</p>
+                <p class="mt-4 text-xs leading-6 text-slate-500">کسری پوشش، تفاوت موجودی قابل استفاده با برآورد یک ماه تمام فضاهای کاری مشترک این کیف پول است.</p>
                 @if ($canTopUp)
                     <a href="{{ route('customer.wallet.show', ['tab' => 'top-up'], false) }}" class="mt-5 inline-flex min-h-11 items-center rounded-xl bg-[#0069FF] px-5 text-sm font-black text-white hover:bg-[#0050D0]">شارژ کیف پول</a>
                 @endif

@@ -12,12 +12,6 @@
             <div class="min-w-0 p-5 sm:p-7 lg:p-9">
                 <h2 class="text-xl font-black text-slate-950">افزایش موجودی</h2>
                 <p class="mt-2 text-sm leading-7 text-slate-500">مبلغ مورد نیاز را انتخاب کنید و پرداخت را انجام دهید.</p>
-                @if ($suggestedTopUpToman >= 250000 && $suggestedTopUpToman <= 50000000)
-                    <button type="button" @click="enterCustomAmount(@js($suggestedTopUpToman))" class="mt-5 flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-right text-sm font-bold text-[#0069FF]">
-                        <span>مبلغ پیشنهادی برای پوشش یک ماه</span>
-                        <span>{{ $wallets->format($suggestedTopUp) }} ←</span>
-                    </button>
-                @endif
                 @if (! $canTopUp)
                     <div class="mt-7 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold leading-7 text-amber-900">
                         فقط مالک یا نقش مالی فضای کاری می‌تواند موجودی این کیف پول را افزایش دهد.
@@ -48,7 +42,7 @@
                                         :class="selectedPreset === {{ $amount }} ? 'border-[#0069FF] bg-[#EBF3FF] text-[#0069FF] shadow-sm shadow-[#0069FF]/10' : 'border-slate-200 bg-white text-slate-700 hover:border-[#B8D6FF] hover:bg-slate-50'"
                                         class="relative rounded-2xl border px-3 py-4 text-center text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-[#0069FF]/10"
                                     >
-                                        @if ($loop->last)<span class="absolute -top-2 right-2 rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] text-white">پیشنهاد محبوب</span>@endif
+                                        @if ($loop->last && $recommendedTopUpToman !== null)<span class="absolute -top-2 right-2 rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] text-white">مبلغ پیشنهادی</span>@endif
                                         {{ number_format($amount) }}
                                         <span class="mt-1 block text-[11px] font-bold opacity-70">تومان</span>
                                     </button>

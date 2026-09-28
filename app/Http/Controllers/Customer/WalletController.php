@@ -10,7 +10,6 @@ use App\Models\WalletTransaction;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
 use App\Services\UsageBalanceService;
-use App\Services\UsageBillingService;
 use App\Services\WalletService;
 use App\Services\WorkspaceWalletAlertService;
 use Carbon\Carbon;
@@ -25,7 +24,6 @@ class WalletController extends Controller
     public function __construct(
         private readonly WalletService $wallets,
         private readonly ProjectAccessService $projects,
-        private readonly UsageBillingService $usageBilling,
         private readonly UsageBalanceService $usageBalances,
         private readonly PaymentGatewayManager $paymentGateways,
         private readonly WorkspaceWalletAlertService $walletAlerts,
@@ -80,6 +78,19 @@ class WalletController extends Controller
         $suggestedTopUpToman = AppSetting::currency() === 'IRR'
             ? (int) ceil($suggestedTopUp / 10)
             : $suggestedTopUp;
+        $projectMonthlyEstimate = $this->walletAlerts->projectMonthlyCost($activeProject);
+        $projectMonthlyEstimateToman = AppSetting::currency() === 'IRR'
+            ? (int) ceil($projectMonthlyEstimate / 10)
+            : $projectMonthlyEstimate;
+        $recommendedTopUpToman = $activeProject->virtualMachines()->notDeleted()->exists()
+            && $projectMonthlyEstimateToman >= 250000
+            && $projectMonthlyEstimateToman <= 50000000
+                ? $projectMonthlyEstimateToman
+                : null;
+        $topUpPresets = [250000, 500000, 1000000, 2500000];
+        $lastPreset = $recommendedTopUpToman ?? 10000000;
+        $topUpPresets = array_values(array_filter($topUpPresets, fn (int $amount): bool => $amount !== $lastPreset));
+        $topUpPresets[] = $lastPreset;
 
         return view('customer.wallet.show', [
             'customer' => $customer,
@@ -91,16 +102,16 @@ class WalletController extends Controller
             'transactions' => $transactions,
             'selectedType' => $selectedType,
             'selectedTab' => $selectedTab,
-            'pendingUsage' => $this->usageBilling->projectPendingUsage($activeProject->id),
             'effectiveBalance' => $effectiveBalance,
             'monthlyEstimate' => $monthlyEstimate,
-            'projectMonthlyEstimate' => $this->walletAlerts->projectMonthlyCost($activeProject),
+            'projectMonthlyEstimate' => $projectMonthlyEstimate,
             'suggestedTopUp' => $suggestedTopUp,
             'suggestedTopUpToman' => $suggestedTopUpToman,
+            'recommendedTopUpToman' => $recommendedTopUpToman,
             'monthlyCredits' => (int) (clone $baseQuery)->where('amount', '>', 0)->sum('amount'),
             'monthlyCharges' => (int) abs((clone $baseQuery)->where('amount', '<', 0)->sum('amount')),
             'canTopUp' => $this->projects->canViewBilling($activeProject, $customer),
-            'topUpPresets' => [250000, 500000, 1000000, 2500000, 10000000],
+            'topUpPresets' => $topUpPresets,
             'availablePaymentGateways' => $this->paymentGateways->available(),
             'defaultPaymentGateway' => AppSetting::defaultPaymentGateway(),
             'paymentNotice' => $paymentNotice,
@@ -175,7 +186,6 @@ class WalletController extends Controller
         $customer = $request->user('customer');
         $activeProject = $this->projects->activeProject($request, $customer);
         $wallet = $this->wallets->walletFor($activeProject->owner);
-        $pendingUsage = $this->usageBilling->projectPendingUsage($activeProject->id);
         $effectiveBalance = $this->usageBalances->effectiveBalance($activeProject->owner);
         $monthlyEstimate = $this->walletAlerts->snapshot($activeProject->owner)['monthly_cost'];
         $shutdownAt = -max(1, (int) ceil($monthlyEstimate * AppSetting::customerWalletShutdownPercentage() / 100));
@@ -187,7 +197,6 @@ class WalletController extends Controller
             'projects' => $this->projects->projectsFor($customer),
             'wallet' => $wallet,
             'wallets' => $this->wallets,
-            'pendingUsage' => $pendingUsage,
             'effectiveBalance' => $effectiveBalance,
             'shutdownAt' => $shutdownAt,
         ]);
