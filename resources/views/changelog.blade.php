@@ -8,8 +8,45 @@
 
     $releases = [
         [
-            'version' => '1.1.0',
+            'version' => '1.2.0',
             'date' => 'دوشنبه ششم مهر ۱۴۰۵',
+            'tag' => 'کنترل بیشتر هشدارها و کیف پول',
+            'summary' => 'در این نسخه، مالک و مدیران فضای کاری می‌توانند هشدارهای موجودی را از پنل مشتری تنظیم کنند. مبلغ موجودی در پیامک‌ها خواناتر شده و شارژ کیف پول، پیگیری هزینه‌ها و پیدا کردن بخش‌های مهم پنل آسان‌تر است.',
+            'sections' => [
+                [
+                    'title' => 'هشدارهای کیف پول',
+                    'items' => [
+                        'امکان تعیین درصدهای هشدار و انتخاب دریافت‌کنندگان از صفحه مدیریت فضای کاری برای مالک و مدیران؛ هر گزینه را می‌توان به تنظیمات پیش‌فرض بازگرداند',
+                        'نمایش نام فضای کاری و موجودی کیف پول به تومان، با جداکننده هزارگان، در پیامک هشدار برای تشخیص آسان‌تر حساب و مبلغ',
+                    ],
+                ],
+                [
+                    'title' => 'کیف پول و پنل مشتری',
+                    'items' => [
+                        'نمایش مبلغ پیشنهادی شارژ بر اساس برآورد هزینه ماهانه فضای کاری فعال، در کنار مبالغ آماده پرداخت',
+                        'روشن‌تر شدن تفاوت موجودی قابل استفاده و کسری پوشش هزینه یک ماه در صفحه کیف پول',
+                        'خواناتر شدن داشبورد و منوی پنل مشتری، با دسترسی مستقیم‌تر به ماشین‌ها، هزینه‌ها و وضعیت فضای کاری',
+                        'نمایش هشدار واضح‌تر هنگام قفل شدن کیف پول، همراه با مسیر دسترسی به صفحه کیف پول',
+                    ],
+                ],
+                [
+                    'title' => 'ارتباط با آویاتو',
+                    'items' => [
+                        'ساده‌تر شدن صفحه تماس با مسیرهای جداگانه برای مشاوره خرید و پشتیبانی سرویس‌های فعال؛ اعلام اندازه تیم در فرم درخواست اختیاری است',
+                        'مرتب‌تر شدن صفحه تغییرات نسخه‌ها برای مرور آسان‌تر امکانات هر انتشار',
+                    ],
+                ],
+            ],
+            'acknowledgment' => [
+                'before' => 'بهبود هشدارهای کیف پول، نمایش نام فضای کاری در پیامک و خوانایی پنل مشتری با پیشنهادهای ',
+                'name' => 'محمدامین امیری‌فر',
+                'url' => 'https://www.linkedin.com/in/mohammad-amin-amirifar-84523433b/',
+                'after' => ' شکل گرفت. از بازخورد ارزشمند ایشان سپاسگزاریم.',
+            ],
+        ],
+        [
+            'version' => '1.1.0',
+            'date' => 'شنبه چهارم مهر ۱۴۰۵',
             'tag' => 'مدیریت روشن‌تر هزینه‌ها و سرویس‌ها',
             'summary' => 'در این نسخه، پیگیری موجودی و هزینه‌های فضای کاری آسان‌تر شده و هشدارهای کیف پول پیش از تمام شدن اعتبار به دست افراد مناسب می‌رسند. صفحه‌های سرور، بکاپ و کیف پول هم بازطراحی شده‌اند تا کارهای روزمره و وضعیت سرویس‌ها را سریع‌تر دنبال کنید.',
             'sections' => [
@@ -293,6 +330,11 @@
                     @if (isset($latestRelease['summary']))
                         <p class="mt-5 text-base leading-8 text-slate-700">{{ $latestRelease['summary'] }}</p>
                     @endif
+                    @if (isset($latestRelease['acknowledgment']))
+                        <p class="mt-5 rounded-xl border border-[#DCEAFF] bg-white px-4 py-3 text-sm leading-7 text-slate-700">
+                            {{ $latestRelease['acknowledgment']['before'] }}<a href="{{ $latestRelease['acknowledgment']['url'] }}" target="_blank" rel="noopener noreferrer" class="font-black text-[#0055CC] underline underline-offset-4 hover:text-[#003B91]">{{ $latestRelease['acknowledgment']['name'] }}</a>{{ $latestRelease['acknowledgment']['after'] }}
+                        </p>
+                    @endif
                 </div>
 
                 <div class="divide-y divide-slate-100 px-5 md:px-9">
@@ -325,20 +367,34 @@
                         @if (isset($release['summary']))
                             <p class="mt-4 text-base leading-8 text-slate-700">{{ $release['summary'] }}</p>
                         @endif
+                        @if (isset($release['acknowledgment']))
+                            <p class="mt-4 text-sm leading-7 text-slate-600">
+                                {{ $release['acknowledgment']['before'] }}<a href="{{ $release['acknowledgment']['url'] }}" target="_blank" rel="noopener noreferrer" class="font-black text-[#0055CC] underline underline-offset-4 hover:text-[#003B91]">{{ $release['acknowledgment']['name'] }}</a>{{ $release['acknowledgment']['after'] }}
+                            </p>
+                        @endif
                         <details class="group mt-5 border-t border-slate-100 pt-4">
                             <summary class="flex cursor-pointer list-none items-center justify-between gap-4 rounded-lg text-sm font-black text-[#0069FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0069FF] [&::-webkit-details-marker]:hidden">
                                 <span class="group-open:hidden">مشاهده تغییرات این نسخه</span>
                                 <span class="hidden group-open:inline">بستن تغییرات این نسخه</span>
                                 <svg class="size-5 shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                             </summary>
-                            <ul class="mt-5 space-y-3 border-t border-slate-100 pt-5">
-                                @foreach ($release['items'] as $item)
-                                    <li class="flex gap-3 text-base leading-8 text-slate-700">
-                                        <span class="mt-3 size-1.5 shrink-0 rounded-full bg-[#0069FF]" aria-hidden="true"></span>
-                                        <span>{{ $item }}</span>
-                                    </li>
+                            <div class="mt-5 space-y-6 border-t border-slate-100 pt-5">
+                                @foreach ($release['sections'] ?? [['title' => null, 'items' => $release['items'] ?? []]] as $section)
+                                    <section>
+                                        @if ($section['title'])
+                                            <h4 class="font-black text-slate-950">{{ $section['title'] }}</h4>
+                                        @endif
+                                        <ul class="mt-3 space-y-3">
+                                            @foreach ($section['items'] as $item)
+                                                <li class="flex gap-3 text-base leading-8 text-slate-700">
+                                                    <span class="mt-3 size-1.5 shrink-0 rounded-full bg-[#0069FF]" aria-hidden="true"></span>
+                                                    <span>{{ $item }}</span>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </section>
                                 @endforeach
-                            </ul>
+                            </div>
                         </details>
                     </article>
                 @endforeach
