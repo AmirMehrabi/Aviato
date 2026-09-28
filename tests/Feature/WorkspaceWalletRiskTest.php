@@ -7,6 +7,7 @@ use App\Models\ProjectMember;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Services\ProjectAccessService;
+use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -94,6 +95,41 @@ class WorkspaceWalletRiskTest extends TestCase
             ->assertSee('Other workspace')
             ->assertSee('اعتبار رو به پایان')
             ->assertDontSee('اعتبار قابل استفاده:');
+    }
+
+    public function test_sidebar_and_navbar_keep_the_active_workspace_wallet_across_pages(): void
+    {
+        $owner = Customer::factory()->create();
+        $admin = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create(['customer_id' => $admin->id, 'role' => ProjectMember::ROLE_ADMIN]);
+        $owner->wallet()->update(['balance' => 1234560]);
+        $admin->wallet()->update(['balance' => 8765430]);
+
+        $this->actingAs($admin, 'customer')
+            ->post('https://cp.localhost/projects/switch', ['project_id' => $project->id])
+            ->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id);
+
+        $workspaceBalance = app(WalletService::class)->format(1234560);
+        $personalBalance = app(WalletService::class)->format(8765430);
+
+        foreach (['dashboard', 'projects', 'servers', 'backups', 'monitoring', 'wallet'] as $page) {
+            $response = $this->get('https://cp.localhost/'.$page)->assertOk();
+
+            $response->assertSee($workspaceBalance);
+            $response->assertDontSee($personalBalance);
+
+            if (str_contains($response->getContent(), 'aria-label="کیف پول"')) {
+                $this->assertGreaterThanOrEqual(3, substr_count($response->getContent(), $workspaceBalance), $page);
+            }
+        }
+
+        $owner->wallet()->update(['balance' => -100000, 'is_locked' => true]);
+        $this->get('https://cp.localhost/projects')
+            ->assertOk()
+            ->assertSee(app(WalletService::class)->format(-100000))
+            ->assertSee('قفل شده')
+            ->assertDontSee($personalBalance);
     }
 
     private function billableWorkspace(): array
