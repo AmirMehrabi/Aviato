@@ -11,6 +11,7 @@ use App\Models\UsageAccrual;
 use App\Models\UsageSettlement;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\HesabroAccountingService;
 use App\Services\WalletService;
 use App\Support\AdminTableSort;
 use Carbon\Carbon;
@@ -102,6 +103,21 @@ class BillingController extends Controller
             'payload' => $this->redact($payment->gateway_payload ?? []),
             'wallets' => $this->wallets,
         ]);
+    }
+
+    public function submitPaymentToHesabro(Payment $payment, HesabroAccountingService $hesabro)
+    {
+        if (! $payment->isSuccessful()) {
+            return back()->withErrors(['hesabro' => 'فقط پرداخت موفق قابل ارسال است.']);
+        }
+        if (! AppSetting::hesabroAccountingEnabled() || ! AppSetting::hesabroAccountingConfigured()) {
+            return back()->withErrors(['hesabro' => 'ابتدا اتصال مالی حسابرو را در تنظیمات فعال و تکمیل کنید.']);
+        }
+        if (! $hesabro->enqueue($payment)) {
+            return back()->with('status', 'ارسال این پرداخت ممکن نیست؛ وضعیت اتصال و صف را بررسی کنید.');
+        }
+
+        return back()->with('status', 'پرداخت برای ارسال به حسابرو در صف قرار گرفت.');
     }
 
     public function transactions(Request $request)

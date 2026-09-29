@@ -162,12 +162,12 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
         Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
         Route::get('settings/{section}', [SettingController::class, 'section'])
-            ->whereIn('section', ['general', 'billing', 'payments', 'verification', 'sms', 'email', 'tickets', 'protection'])
+            ->whereIn('section', ['general', 'billing', 'payments', 'hesabro-accounting', 'verification', 'sms', 'email', 'tickets', 'protection'])
             ->name('admin.settings.section');
         Route::get('api-activity', [ApiActivityController::class, 'index'])->name('admin.api-activity.index');
         Route::patch('settings', [SettingController::class, 'update'])->name('admin.settings.update');
         Route::patch('settings/{section}', [SettingController::class, 'updateSection'])
-            ->whereIn('section', ['general', 'billing', 'payments', 'verification', 'sms', 'email', 'tickets', 'protection'])
+            ->whereIn('section', ['general', 'billing', 'payments', 'hesabro-accounting', 'verification', 'sms', 'email', 'tickets', 'protection'])
             ->name('admin.settings.section.update');
         Route::post('hetzner-accounts/{hetznerAccount}/test', [HetznerAccountController::class, 'test'])
             ->name('admin.hetzner-accounts.test');
@@ -286,6 +286,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             Route::get('network/virtual-machines/{virtualMachine}', [NetworkBillingController::class, 'vm'])->name('network.vm');
             Route::get('/', [BillingController::class, 'overview'])->name('overview');
             Route::get('payments', [BillingController::class, 'payments'])->name('payments.index');
+            Route::post('payments/{payment}/hesabro', [BillingController::class, 'submitPaymentToHesabro'])->name('payments.hesabro.submit');
             Route::get('payments/{payment}', [BillingController::class, 'payment'])->name('payments.show');
             Route::get('transactions', [BillingController::class, 'transactions'])->name('transactions.index');
             Route::get('transactions/{transaction}', [BillingController::class, 'transaction'])->name('transactions.show');

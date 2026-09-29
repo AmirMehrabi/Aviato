@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -111,6 +112,23 @@ class SettingController extends Controller
             }
         }
 
+        if ($section === 'hesabro-accounting' && ($data['hesabro_accounting_enabled'] ?? false)) {
+            $validator = Validator::make([
+                'hesabro_accounting_username' => $data['hesabro_accounting_username'] ?? '',
+                'hesabro_accounting_password' => ($data['hesabro_accounting_password'] ?? '') ?: AppSetting::hesabroAccountingPassword(),
+                'hesabro_accounting_client' => $data['hesabro_accounting_client'] ?? '',
+                'hesabro_accounting_product_id' => $data['hesabro_accounting_product_id'] ?? null,
+            ], [
+                'hesabro_accounting_username' => ['required', 'string'],
+                'hesabro_accounting_password' => ['required', 'string'],
+                'hesabro_accounting_client' => ['required', 'string'],
+                'hesabro_accounting_product_id' => ['required', 'integer', 'min:1'],
+            ]);
+            if ($validator->fails()) {
+                return back()->withErrors($validator)->withInput();
+            }
+        }
+
         $this->persistSection($section, $data);
 
         return to_route('admin.settings.section', $section)->with('status', 'تنظیمات ذخیره شد.');
@@ -173,6 +191,20 @@ class SettingController extends Controller
             'hesabroClientId' => AppSetting::hesabroClientId(),
             'zibalPaymentEnabled' => AppSetting::zibalPaymentEnabled(),
             'zibalMerchant' => AppSetting::zibalMerchant(),
+            'hesabroAccountingEnabled' => AppSetting::hesabroAccountingEnabled(),
+            'hesabroAccountingSettings' => collect([
+                'username' => AppSetting::HESABRO_ACCOUNTING_USERNAME,
+                'client' => AppSetting::HESABRO_ACCOUNTING_CLIENT,
+                'branch_id' => AppSetting::HESABRO_ACCOUNTING_BRANCH_ID,
+                'model_id' => AppSetting::HESABRO_ACCOUNTING_MODEL_ID,
+                'product_id' => AppSetting::HESABRO_ACCOUNTING_PRODUCT_ID,
+                'm_id_debtor' => AppSetting::HESABRO_ACCOUNTING_M_ID_DEBTOR,
+                't_id_debtor_other' => AppSetting::HESABRO_ACCOUNTING_T_ID_DEBTOR_OTHER,
+                't_id_debtor' => AppSetting::HESABRO_ACCOUNTING_T_ID_DEBTOR,
+                'm_id_creditor' => AppSetting::HESABRO_ACCOUNTING_M_ID_CREDITOR,
+                't_id_creditor_other' => AppSetting::HESABRO_ACCOUNTING_T_ID_CREDITOR_OTHER,
+                't_id_creditor' => AppSetting::HESABRO_ACCOUNTING_T_ID_CREDITOR,
+            ])->mapWithKeys(fn (string $key, string $field): array => [$field => AppSetting::getValue($key, '')])->all(),
             'taxEnabled' => AppSetting::taxEnabled(),
             'taxRatePercentage' => AppSetting::taxRatePercentage(),
         ];
@@ -184,6 +216,7 @@ class SettingController extends Controller
             'general' => ['title' => 'تنظیمات عمومی', 'description' => 'واحد پول و گزینه‌های پایه‌ای که در سراسر پنل و صورتحساب‌ها استفاده می‌شوند.', 'label' => 'پایه'],
             'billing' => ['title' => 'مالی و قیمت‌گذاری', 'description' => 'مالیات، قیمت‌گذاری Hetzner و هزینه‌های مربوط به ساخت ماشین مجازی را مدیریت کنید.', 'label' => 'مالی'],
             'payments' => ['title' => 'پرداخت آنلاین', 'description' => 'درگاه‌های پرداخت و اطلاعات اتصال به بانک ملت، حسابرو و زیبال.', 'label' => 'پرداخت'],
+            'hesabro-accounting' => ['title' => 'ارسال پرداخت‌ها به حسابرو', 'description' => 'ارسال مستقل پرداخت‌های موفق به API مالی حسابرو.', 'label' => 'مالی'],
             'verification' => ['title' => 'تأیید مشتریان', 'description' => 'روش تأیید ثبت‌نام و استعلام برخط کد ملی مشتریان را تنظیم کنید.', 'label' => 'مشتریان'],
             'sms' => ['title' => 'ارسال پیامک', 'description' => 'درگاه پیامک پیش‌فرض و اطلاعات اتصال SMS0098 یا کاوه‌نگار را تنظیم کنید.', 'label' => 'ارتباطات'],
             'email' => ['title' => 'ارسال ایمیل', 'description' => 'اتصال SMTP و مشخصات فرستنده ایمیل‌های سیستم را مدیریت کنید.', 'label' => 'ارتباطات'],
@@ -230,6 +263,21 @@ class SettingController extends Controller
                 'zibal_payment_enabled' => ['nullable', 'boolean'],
                 'zibal_merchant' => ['nullable', 'string', 'max:255'],
             ],
+            'hesabro-accounting' => [
+                'hesabro_accounting_enabled' => ['nullable', 'boolean'],
+                'hesabro_accounting_username' => ['nullable', 'string', 'max:255'],
+                'hesabro_accounting_password' => ['nullable', 'string', 'max:2000'],
+                'hesabro_accounting_client' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9_-]+$/'],
+                'hesabro_accounting_branch_id' => ['nullable', 'integer', 'min:0'],
+                'hesabro_accounting_model_id' => ['nullable', 'integer', 'min:0'],
+                'hesabro_accounting_product_id' => ['nullable', 'integer', 'min:0'],
+                'hesabro_accounting_m_id_debtor' => ['nullable', 'integer', 'min:0'],
+                'hesabro_accounting_t_id_debtor_other' => ['nullable', 'integer', 'min:0'],
+                'hesabro_accounting_t_id_debtor' => ['nullable', 'integer', 'min:0'],
+                'hesabro_accounting_m_id_creditor' => ['nullable', 'integer', 'min:0'],
+                'hesabro_accounting_t_id_creditor_other' => ['nullable', 'integer', 'min:0'],
+                'hesabro_accounting_t_id_creditor' => ['nullable', 'integer', 'min:0'],
+            ],
             'verification' => [
                 'customer_verification_mode' => ['required', 'string', Rule::in(array_keys(AppSetting::customerVerificationModes()))],
                 'national_code_verification_enabled' => ['required', 'boolean'],
@@ -268,6 +316,30 @@ class SettingController extends Controller
 
     private function persistSection(string $section, array $data): void
     {
+        if ($section === 'hesabro-accounting') {
+            AppSetting::setValue(AppSetting::HESABRO_ACCOUNTING_ENABLED, (bool) ($data['hesabro_accounting_enabled'] ?? false), 'boolean', 'hesabro-accounting');
+            foreach ([
+                'username' => AppSetting::HESABRO_ACCOUNTING_USERNAME,
+                'client' => AppSetting::HESABRO_ACCOUNTING_CLIENT,
+                'branch_id' => AppSetting::HESABRO_ACCOUNTING_BRANCH_ID,
+                'model_id' => AppSetting::HESABRO_ACCOUNTING_MODEL_ID,
+                'product_id' => AppSetting::HESABRO_ACCOUNTING_PRODUCT_ID,
+                'm_id_debtor' => AppSetting::HESABRO_ACCOUNTING_M_ID_DEBTOR,
+                't_id_debtor_other' => AppSetting::HESABRO_ACCOUNTING_T_ID_DEBTOR_OTHER,
+                't_id_debtor' => AppSetting::HESABRO_ACCOUNTING_T_ID_DEBTOR,
+                'm_id_creditor' => AppSetting::HESABRO_ACCOUNTING_M_ID_CREDITOR,
+                't_id_creditor_other' => AppSetting::HESABRO_ACCOUNTING_T_ID_CREDITOR_OTHER,
+                't_id_creditor' => AppSetting::HESABRO_ACCOUNTING_T_ID_CREDITOR,
+            ] as $field => $key) {
+                AppSetting::setValue($key, $data['hesabro_accounting_'.$field] ?? '', 'string', 'hesabro-accounting');
+            }
+            if (! empty($data['hesabro_accounting_password'])) {
+                AppSetting::setValue(AppSetting::HESABRO_ACCOUNTING_PASSWORD, Crypt::encryptString($data['hesabro_accounting_password']), 'string', 'hesabro-accounting');
+            }
+
+            return;
+        }
+
         if ($section === 'general') {
             $company = AppSetting::companyProfile();
             $data += [

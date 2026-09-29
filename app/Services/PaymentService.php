@@ -86,7 +86,7 @@ class PaymentService
 
     public function completeTopUp(Payment $payment, array $payload = []): Payment
     {
-        return DB::transaction(function () use ($payment, $payload): Payment {
+        $completed = DB::transaction(function () use ($payment, $payload): Payment {
             $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
 
             if ($payment->isSuccessful()) {
@@ -126,6 +126,14 @@ class PaymentService
 
             return $payment->refresh();
         });
+
+        try {
+            app(HesabroAccountingService::class)->enqueue($completed);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        return $completed;
     }
 
     public function failTopUp(Payment $payment, array $payload = []): Payment

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['key', 'value', 'type', 'group'])]
@@ -127,6 +128,32 @@ class AppSetting extends Model
     public const HESABRO_CLIENT_ID = 'payment.hesabro.client_id';
 
     public const HESABRO_CLIENT_SECRET = 'payment.hesabro.client_secret';
+
+    public const HESABRO_ACCOUNTING_ENABLED = 'hesabro.accounting.enabled';
+
+    public const HESABRO_ACCOUNTING_USERNAME = 'hesabro.accounting.username';
+
+    public const HESABRO_ACCOUNTING_PASSWORD = 'hesabro.accounting.password';
+
+    public const HESABRO_ACCOUNTING_CLIENT = 'hesabro.accounting.client';
+
+    public const HESABRO_ACCOUNTING_BRANCH_ID = 'hesabro.accounting.branch_id';
+
+    public const HESABRO_ACCOUNTING_MODEL_ID = 'hesabro.accounting.model_id';
+
+    public const HESABRO_ACCOUNTING_PRODUCT_ID = 'hesabro.accounting.product_id';
+
+    public const HESABRO_ACCOUNTING_M_ID_DEBTOR = 'hesabro.accounting.m_id_debtor';
+
+    public const HESABRO_ACCOUNTING_T_ID_DEBTOR_OTHER = 'hesabro.accounting.t_id_debtor_other';
+
+    public const HESABRO_ACCOUNTING_T_ID_DEBTOR = 'hesabro.accounting.t_id_debtor';
+
+    public const HESABRO_ACCOUNTING_M_ID_CREDITOR = 'hesabro.accounting.m_id_creditor';
+
+    public const HESABRO_ACCOUNTING_T_ID_CREDITOR_OTHER = 'hesabro.accounting.t_id_creditor_other';
+
+    public const HESABRO_ACCOUNTING_T_ID_CREDITOR = 'hesabro.accounting.t_id_creditor';
 
     public const ZIBAL_PAYMENT_ENABLED = 'payment.zibal.enabled';
 
@@ -339,6 +366,26 @@ class AppSetting extends Model
     public static function hesabroPaymentConfigured(): bool
     {
         return static::hesabroClient() !== '' && static::hesabroClientId() !== '' && static::hesabroClientSecret() !== '';
+    }
+
+    public static function hesabroAccountingEnabled(): bool
+    {
+        return filter_var(static::getValue(self::HESABRO_ACCOUNTING_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function hesabroAccountingPassword(): string
+    {
+        $encrypted = (string) static::getValue(self::HESABRO_ACCOUNTING_PASSWORD, '');
+
+        return $encrypted === '' ? '' : Crypt::decryptString($encrypted);
+    }
+
+    public static function hesabroAccountingConfigured(): bool
+    {
+        return trim((string) static::getValue(self::HESABRO_ACCOUNTING_USERNAME, '')) !== ''
+            && static::hesabroAccountingPassword() !== ''
+            && trim((string) static::getValue(self::HESABRO_ACCOUNTING_CLIENT, '')) !== ''
+            && (int) static::getValue(self::HESABRO_ACCOUNTING_PRODUCT_ID, 0) > 0;
     }
 
     public static function zibalPaymentEnabled(): bool

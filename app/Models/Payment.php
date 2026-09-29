@@ -25,6 +25,12 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
     'gateway_payload',
     'paid_at',
     'failed_at',
+    'hesabro_status',
+    'hesabro_idempotency_key',
+    'hesabro_factor_id',
+    'hesabro_attempts',
+    'hesabro_error',
+    'hesabro_submitted_at',
 ])]
 class Payment extends Model
 {
@@ -81,6 +87,9 @@ class Payment extends Model
             'gateway_payload' => 'array',
             'paid_at' => 'datetime',
             'failed_at' => 'datetime',
+            'hesabro_factor_id' => 'integer',
+            'hesabro_attempts' => 'integer',
+            'hesabro_submitted_at' => 'datetime',
         ];
     }
 }
