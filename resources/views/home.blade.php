@@ -17,7 +17,7 @@
     ];
 
     $currentCustomers = [
-        ['name' => 'حسابرو', 'url' => 'https://hesabro.ir', 'logo' => 'assets/images/customers/hesabro-logo.png'],
+        ['name' => 'حسابرو', 'url' => 'https://hesabro.com', 'logo' => 'assets/images/customers/hesabro-logo.png'],
         ['name' => 'کارخانه نوآوری کرمان', 'url' => 'https://kermanif.ir', 'logo' => 'assets/images/customers/kermanif-logo.png'],
         ['name' => 'مبیت', 'url' => 'https://mobit.ir', 'logo' => 'assets/images/customers/mobit-logo.svg'],
     ];
