@@ -13,7 +13,11 @@
                 <h1 class="text-2xl font-black">IP Pools</h1>
                 <p class="mt-2 text-sm text-slate-500">خلاصه ظرفیت هر Pool را ببینید و برای مشاهده IPهای مصرف‌شده، آزاد و ماشین‌های متصل وارد جزئیات Pool شوید.</p>
             </div>
-            <a href="{{ route('admin.ip-pools.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Pool جدید</a>
+
+@adminRoute('admin.ip-pools.create')
+<a href="{{ route('admin.ip-pools.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Pool جدید</a>
+@endadminRoute
+
         </div>
         </section>
 
@@ -27,7 +31,9 @@
                     $used = $assigned + $reserved;
                     $usedPercent = $total > 0 ? (int) round(($used / $total) * 100) : 0;
                 @endphp
-                <a href="{{ route('admin.ip-pools.show', $pool) }}" class="group block overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-[#B8D6FF] hover:shadow-lg hover:shadow-[#0069FF]/10">
+
+@adminRoute('admin.ip-pools.show')
+<a href="{{ route('admin.ip-pools.show', $pool) }}" class="group block overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-[#B8D6FF] hover:shadow-lg hover:shadow-[#0069FF]/10">
                     <div class="border-b border-slate-100 p-5">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
@@ -66,11 +72,17 @@
                         </div>
                     </div>
                 </a>
+@endadminRoute
+
             @empty
                 <div class="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center md:col-span-2 xl:col-span-3">
                     <p class="text-lg font-black text-slate-950">IP pool ثبت نشده است.</p>
                     <p class="mt-2 text-sm text-slate-500">برای رزرو خودکار IP در Provisioning، اولین Pool را بسازید.</p>
-                    <a href="{{ route('admin.ip-pools.create') }}" class="mt-5 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Pool جدید</a>
+
+@adminRoute('admin.ip-pools.create')
+<a href="{{ route('admin.ip-pools.create') }}" class="mt-5 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Pool جدید</a>
+@endadminRoute
+
                 </div>
             @endforelse
         </section>

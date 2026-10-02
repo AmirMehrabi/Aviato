@@ -10,9 +10,13 @@
     @endif
 
     <div class="flex items-center gap-3">
-        <a href="{{ route('admin.resellers.index') }}" class="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600">
+
+@adminRoute('admin.resellers.index')
+<a href="{{ route('admin.resellers.index') }}" class="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600">
             <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7h8m0 0v8m0-8-8 8-4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
+@endadminRoute
+
         <h1 class="text-2xl font-black">درخواست‌های برداشت</h1>
     </div>
 
@@ -41,7 +45,11 @@
                 @forelse ($withdrawals as $withdrawal)
                     <tr class="hover:bg-slate-50/50">
                         <td class="whitespace-nowrap px-4 py-3">
-                            <a href="{{ route('admin.resellers.show', $withdrawal->reseller) }}" class="font-bold text-[#0069FF] hover:underline">{{ $withdrawal->reseller->name }}</a>
+
+@adminRoute('admin.resellers.show')
+<a href="{{ route('admin.resellers.show', $withdrawal->reseller) }}" class="font-bold text-[#0069FF] hover:underline">{{ $withdrawal->reseller->name }}</a>
+@endadminRoute
+
                             <span class="block text-xs text-slate-400">{{ $withdrawal->reseller->email }}</span>
                         </td>
                         <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $money->format($withdrawal->amount) }}</td>
@@ -61,20 +69,32 @@
                         <td class="whitespace-nowrap px-4 py-3">
                             @if ($withdrawal->status === 'pending')
                                 <div class="flex items-center gap-2">
-                                    <form method="POST" action="{{ route('admin.resellers.withdrawals.approve', $withdrawal) }}">
+
+@adminRoute('admin.resellers.withdrawals.approve')
+<form method="POST" action="{{ route('admin.resellers.withdrawals.approve', $withdrawal) }}">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100">تایید</button>
                                     </form>
-                                    <form method="POST" action="{{ route('admin.resellers.withdrawals.reject', $withdrawal) }}">
+@endadminRoute
+
+
+@adminRoute('admin.resellers.withdrawals.reject')
+<form method="POST" action="{{ route('admin.resellers.withdrawals.reject', $withdrawal) }}">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 transition hover:bg-red-100">رد</button>
                                     </form>
+@endadminRoute
+
                                 </div>
                             @elseif ($withdrawal->status === 'approved')
-                                <form method="POST" action="{{ route('admin.resellers.withdrawals.paid', $withdrawal) }}">
+
+@adminRoute('admin.resellers.withdrawals.paid')
+<form method="POST" action="{{ route('admin.resellers.withdrawals.paid', $withdrawal) }}">
                                     @csrf @method('PATCH')
                                     <button type="submit" class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100">پرداخت شد</button>
                                 </form>
+@endadminRoute
+
                             @endif
                         </td>
                     </tr>

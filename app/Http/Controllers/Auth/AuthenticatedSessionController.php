@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\AdminAuditService;
+use App\Support\AdminAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -85,7 +86,9 @@ class AuthenticatedSessionController extends Controller
             $audit->authentication($request, 'admin.login', 'success', $user);
         }
 
-        return redirect()->intended($this->portalPath($portal, 'home_path'));
+        return $portal === 'admin'
+            ? redirect()->route(AdminAccess::landingRoute($request->user('admin')))
+            : redirect()->intended($this->portalPath($portal, 'home_path'));
     }
 
     public function destroy(Request $request, AdminAuditService $audit): RedirectResponse
@@ -110,7 +113,7 @@ class AuthenticatedSessionController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('admin.dashboard');
+            return redirect()->route(AdminAccess::landingRoute(auth('admin')->user()));
         }
 
         $request->session()->invalidate();

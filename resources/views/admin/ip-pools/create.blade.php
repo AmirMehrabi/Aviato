@@ -45,9 +45,13 @@
                     <span class="rounded-md bg-[#EBF3FF] px-2.5 py-1 text-xs font-black text-[#0069FF]">Preview only</span>
                 </div>
 
-                <form method="POST" action="{{ route('admin.ip-pools.store') }}" class="mt-6">
+
+@adminRoute('admin.ip-pools.store')
+<form method="POST" action="{{ route('admin.ip-pools.store') }}" class="mt-6">
                     @include('admin.ip-pools._form')
                 </form>
+@endadminRoute
+
             </section>
 
             <aside class="space-y-4">

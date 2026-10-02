@@ -4,7 +4,11 @@
 <div class="mx-auto max-w-5xl p-4 md:p-6">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-            <a href="{{ route('admin.incidents.index') }}" class="text-sm font-black text-[#0069FF]">← گزارش رخدادها</a>
+
+@adminRoute('admin.incidents.index')
+<a href="{{ route('admin.incidents.index') }}" class="text-sm font-black text-[#0069FF]">← گزارش رخدادها</a>
+@endadminRoute
+
             <h1 class="mt-3 text-3xl font-black text-slate-950">{{ $incident->title }}</h1>
         </div>
         @if ($incident->is_published)
@@ -16,13 +20,17 @@
         <div class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
     @endif
 
-    <form method="POST" action="{{ route('admin.incidents.update', $incident) }}" class="mt-7">
+
+@adminRoute('admin.incidents.update')
+<form method="POST" action="{{ route('admin.incidents.update', $incident) }}" class="mt-7">
         @csrf @method('PUT')
         @include('admin.incidents._form')
         <div class="mt-6 flex flex-wrap gap-3">
             <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره رخداد</button>
         </div>
     </form>
+@endadminRoute
+
 
     <section class="mt-12 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
         <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -33,7 +41,9 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('admin.incidents.timeline.store', $incident) }}" class="mt-6 grid gap-4 rounded-xl bg-slate-50 p-4 md:grid-cols-2">
+
+@adminRoute('admin.incidents.timeline.store')
+<form method="POST" action="{{ route('admin.incidents.timeline.store', $incident) }}" class="mt-6 grid gap-4 rounded-xl bg-slate-50 p-4 md:grid-cols-2">
             @csrf
             <label>
                 <span class="text-xs font-black text-slate-600">زمان</span>
@@ -49,6 +59,8 @@
             </label>
             <button class="w-fit rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-black text-white">افزودن رویداد</button>
         </form>
+@endadminRoute
+
 
         <div class="mt-6 space-y-4">
             @forelse ($incident->timelineEvents as $event)
@@ -59,10 +71,14 @@
                             <h3 class="mt-1 font-black text-slate-950">{{ $event->title }}</h3>
                             <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{{ $event->description }}</p>
                         </div>
-                        <form method="POST" action="{{ route('admin.incidents.timeline.destroy', [$incident, $event]) }}" onsubmit="return confirm('این رویداد حذف شود؟')">
+
+@adminRoute('admin.incidents.timeline.destroy')
+<form method="POST" action="{{ route('admin.incidents.timeline.destroy', [$incident, $event]) }}" onsubmit="return confirm('این رویداد حذف شود؟')">
                             @csrf @method('DELETE')
                             <button class="text-sm font-black text-rose-600 hover:underline">حذف</button>
                         </form>
+@endadminRoute
+
                     </div>
                 </div>
             @empty
@@ -71,9 +87,13 @@
         </div>
     </section>
 
-    <form method="POST" action="{{ route('admin.incidents.destroy', $incident) }}" class="mt-8" onsubmit="return confirm('این رخداد و تمام رویدادهای زمانی آن حذف شود؟')">
+
+@adminRoute('admin.incidents.destroy')
+<form method="POST" action="{{ route('admin.incidents.destroy', $incident) }}" class="mt-8" onsubmit="return confirm('این رخداد و تمام رویدادهای زمانی آن حذف شود؟')">
         @csrf @method('DELETE')
         <button class="text-sm font-black text-rose-600 hover:underline">حذف رخداد</button>
     </form>
+@endadminRoute
+
 </div>
 @endsection

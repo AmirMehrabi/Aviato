@@ -10,12 +10,20 @@
             <h1 class="mt-1 text-2xl font-black text-slate-950">ویرایش {{ $server->name }}</h1>
             <p class="mt-2 text-sm text-slate-500">اگر endpoint آفلاین باشد، تغییرات ذخیره و به عنوان pending sync نگهداری می‌شود.</p>
         </div>
-        <a href="{{ route('admin.proxmox-servers.show', $server) }}" class="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-50">نمایش</a>
+
+@adminRoute('admin.proxmox-servers.show')
+<a href="{{ route('admin.proxmox-servers.show', $server) }}" class="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-50">نمایش</a>
+@endadminRoute
+
     </div>
 
-    <form method="POST" action="{{ route('admin.proxmox-servers.update', $server) }}">
+
+@adminRoute('admin.proxmox-servers.update')
+<form method="POST" action="{{ route('admin.proxmox-servers.update', $server) }}">
         @method('PUT')
         @include('admin.proxmox-servers._form')
     </form>
+@endadminRoute
+
 </div>
 @endsection

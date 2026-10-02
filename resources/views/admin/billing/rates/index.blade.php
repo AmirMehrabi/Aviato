@@ -11,7 +11,11 @@
             <h1 class="text-2xl font-black">قیمت منابع</h1>
             <p class="mt-2 text-sm text-slate-500">CPU و RAM فقط در حالت روشن، Disk و IP همیشه محاسبه می‌شوند.</p>
         </div>
-        <a href="{{ route('admin.billing.rates.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">قیمت جدید</a>
+
+@adminRoute('admin.billing.rates.create')
+<a href="{{ route('admin.billing.rates.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">قیمت جدید</a>
+@endadminRoute
+
     </div>
     <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table class="min-w-full text-right text-sm">
@@ -24,7 +28,11 @@
                         <td class="px-5 py-4 font-black">{{ $money->format($rate->monthly_price) }}</td>
                         <td class="px-5 py-4" dir="ltr">{{ \App\Support\PersianDigits::format((float) $rate->hourly_price, 2) }}</td>
                         <td class="px-5 py-4">{{ $rate->billing_policy === 'always' ? 'همیشه' : 'فقط روشن' }}</td>
-                        <td class="px-5 py-4"><x-admin.icon-action :href="route('admin.billing.rates.edit', $rate)" label="ویرایش قیمت منبع" icon="edit" tone="primary" /></td>
+                        <td class="px-5 py-4">
+@adminRoute('admin.billing.rates.edit')
+<x-admin.icon-action :href="route('admin.billing.rates.edit', $rate)" label="ویرایش قیمت منبع" icon="edit" tone="primary" />
+@endadminRoute
+</td>
                     </tr>
                 @empty
                     <tr><td colspan="6" class="px-5 py-10 text-center text-slate-500">قیمتی ثبت نشده است.</td></tr>

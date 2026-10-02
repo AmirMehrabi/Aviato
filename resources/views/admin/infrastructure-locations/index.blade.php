@@ -15,7 +15,11 @@
                     <x-admin.status-badge :value="$location->is_active && ! $location->maintenance_mode ? 'active' : ($location->maintenance_mode ? 'monitoring' : 'inactive')" :label="$location->is_active && ! $location->maintenance_mode ? 'قابل فروش' : ($location->maintenance_mode ? 'در حال نگهداری' : 'مخفی')" />
                 </div>
                 <p class="mt-4 text-sm text-slate-600">{{ $location->bundleMappings->where('is_active', true)->count() }} active bundle mapping(s)</p>
-                <div class="mt-4"><x-admin.icon-action :href="route('admin.infrastructure-locations.edit', $location)" label="ویرایش نگاشت‌ها" icon="edit" tone="primary" /></div>
+                <div class="mt-4">
+@adminRoute('admin.infrastructure-locations.edit')
+<x-admin.icon-action :href="route('admin.infrastructure-locations.edit', $location)" label="ویرایش نگاشت‌ها" icon="edit" tone="primary" />
+@endadminRoute
+</div>
             </div>
         @endforeach
     </div>

@@ -19,7 +19,7 @@
             'cpu_cores' => $bundle->cpu_cores,
             'ram_gb' => $bundle->ram_gb,
             'disk_gb' => $bundle->disk_gb,
-            'price' => $money->format($bundle->monthly_price),
+            'price' => auth('admin')->user()->allows('billing.read') ? $money->format($bundle->monthly_price) : '',
         ])->values()),
         images: @js($cloudImages->map(fn ($image) => [
             'id' => $image->id,
@@ -49,11 +49,17 @@
                 <h1 class="mt-2 text-3xl font-black">ساخت ماشین مجازی از Cloud Image</h1>
                 <p class="mt-3 max-w-3xl leading-8 text-white/75">Template VMID از کاتالوگ Cloud Images انتخاب می‌شود؛ IP از Pool رزرو و Provisioning در Queue انجام می‌شود.</p>
             </div>
-            <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E]">بازگشت</a>
+
+@adminRoute('admin.virtual-machines.index')
+<a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E]">بازگشت</a>
+@endadminRoute
+
         </div>
     </div>
 
-    <form method="POST" action="{{ route('admin.virtual-machines.store') }}" class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+@adminRoute('admin.virtual-machines.store')
+<form method="POST" action="{{ route('admin.virtual-machines.store') }}" class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         @csrf
         <div class="grid gap-5 md:grid-cols-2">
             <x-form.select name="customer_id" label="مشتری" :selected="$selectedCustomerId" :options="$customers->prepend('انتخاب مشتری', '')" />
@@ -150,8 +156,8 @@
                 این template بدون CloudInit است؛ hostname، username، password و SSH key تنظیم نمی‌شوند.
             </div>
 
-            <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="start_after_create" value="1" checked class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">بعد از Provisioning روشن شود</span></label>
-            <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="onboot" value="1" class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">Start on boot</span></label>
+            <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="start_after_create" value="1" @checked(auth('admin')->user()->allows('virtual-machines.power')) @disabled(! auth('admin')->user()->allows('virtual-machines.power')) class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">بعد از Provisioning روشن شود</span></label>
+            <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-4"><input type="checkbox" name="onboot" value="1" @disabled(! auth('admin')->user()->allows('virtual-machines.power')) class="size-4 rounded border-slate-300 text-[#0069FF]"><span class="text-sm font-black text-slate-700">Start on boot</span></label>
         </div>
 
         <div class="mt-6 rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-600" x-show="selectedImage">
@@ -161,9 +167,15 @@
 
         <div class="mt-6 flex gap-3">
             <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ثبت در صف ساخت</button>
-            <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a>
+
+@adminRoute('admin.virtual-machines.index')
+<a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a>
+@endadminRoute
+
         </div>
     </form>
+@endadminRoute
+
 </div>
 
 <script>

@@ -188,7 +188,7 @@
                 >
                 <span class="min-w-0">
                     <span class="block font-black text-slate-950">{{ $bundle->name }}</span>
-                    <span class="mt-1 block text-xs leading-5 text-slate-500">{{ $bundle->cpu_cores }} CPU / {{ $bundle->ram_gb }}GB RAM / {{ $bundle->disk_gb }}GB Disk - {{ $wallets->format($bundle->monthly_price) }} / ماه</span>
+                    <span class="mt-1 block text-xs leading-5 text-slate-500">{{ $bundle->cpu_cores }} CPU / {{ $bundle->ram_gb }}GB RAM / {{ $bundle->disk_gb }}GB Disk - {{ auth('admin')->user()->allows('billing.read') ? $wallets->format($bundle->monthly_price) : '' }} / ماه</span>
                 </span>
             </label>
         @endforeach
@@ -197,6 +197,10 @@
 
 <div class="mt-6 flex gap-3">
     <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره</button>
-    <a href="{{ route('admin.cloud-images.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a>
+
+@adminRoute('admin.cloud-images.index')
+<a href="{{ route('admin.cloud-images.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a>
+@endadminRoute
+
 </div>
 </div>

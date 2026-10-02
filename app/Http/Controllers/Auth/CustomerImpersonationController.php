@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,9 @@ class CustomerImpersonationController extends Controller
             403,
             'This impersonation link is invalid or has expired.',
         );
+
+        $admin = User::query()->find($impersonation['admin_id']);
+        abort_unless($admin && $admin->allows('customers.read') && $admin->allows('customers.impersonate'), 403);
 
         $customer = Customer::query()->findOrFail($impersonation['customer_id']);
 

@@ -66,7 +66,11 @@ document.addEventListener('alpine:init', () => {
             <h1 class="text-2xl font-black">فروشندگان</h1>
             <p class="mt-2 text-sm text-slate-500">مدیریت فروشندگان، کمیسیون و برداشت‌ها</p>
         </div>
-        <a href="{{ route('admin.resellers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن فروشنده</a>
+
+@adminRoute('admin.resellers.create')
+<a href="{{ route('admin.resellers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن فروشنده</a>
+@endadminRoute
+
     </div>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -78,7 +82,9 @@ document.addEventListener('alpine:init', () => {
         @endforeach
     </div>
 
-    <form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.resellers.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+
+@adminRoute('admin.resellers.index')
+<form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.resellers.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div class="relative flex-1">
                 <svg class="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke-linecap="round"/></svg>
@@ -91,6 +97,8 @@ document.addEventListener('alpine:init', () => {
             </select>
         </div>
     </form>
+@endadminRoute
+
 
     <div x-ref="results" class="mt-6">
         <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -111,7 +119,11 @@ document.addEventListener('alpine:init', () => {
                     @forelse ($resellers as $reseller)
                         <tr class="hover:bg-slate-50/50">
                             <td class="whitespace-nowrap px-4 py-3">
-                                <a href="{{ route('admin.resellers.show', $reseller) }}" class="font-bold text-[#0069FF] hover:underline">{{ $reseller->name }}</a>
+
+@adminRoute('admin.resellers.show')
+<a href="{{ route('admin.resellers.show', $reseller) }}" class="font-bold text-[#0069FF] hover:underline">{{ $reseller->name }}</a>
+@endadminRoute
+
                                 <span class="block text-xs text-slate-400">{{ $reseller->email }}</span>
                             </td>
                             <td class="whitespace-nowrap px-4 py-3">
@@ -130,7 +142,11 @@ document.addEventListener('alpine:init', () => {
                             <td class="whitespace-nowrap px-4 py-3">
                                 <x-admin.status-badge :value="$reseller->reseller_status" />
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3"><x-admin.icon-action :href="route('admin.resellers.show', $reseller)" label="مدیریت فروشنده" icon="settings" tone="primary" /></td>
+                            <td class="whitespace-nowrap px-4 py-3">
+@adminRoute('admin.resellers.show')
+<x-admin.icon-action :href="route('admin.resellers.show', $reseller)" label="مدیریت فروشنده" icon="settings" tone="primary" />
+@endadminRoute
+</td>
                         </tr>
                     @empty
                         <tr>

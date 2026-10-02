@@ -86,10 +86,16 @@ document.addEventListener('alpine:init', () => {
             <h1 class="text-2xl font-black">ماشین‌های مجازی</h1>
             <p class="mt-2 text-sm text-slate-500">اتصال VM به مشتری، Proxmox و محاسبه PAYG.</p>
         </div>
-        <a href="{{ route('admin.virtual-machines.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">VM جدید</a>
+
+@adminRoute('admin.virtual-machines.create')
+<a href="{{ route('admin.virtual-machines.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">VM جدید</a>
+@endadminRoute
+
     </div>
 
-    <form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.virtual-machines.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+
+@adminRoute('admin.virtual-machines.index')
+<form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.virtual-machines.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div class="relative flex-1">
                 <svg class="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke-linecap="round"/></svg>
@@ -113,11 +119,19 @@ document.addEventListener('alpine:init', () => {
                 <option value="stopped" @selected(($filters['status'] ?? '') === 'stopped')>خاموش</option>
                 <option value="suspended" @selected(($filters['status'] ?? '') === 'suspended')>تعلیق</option>
             </select>
-            <a href="{{ route('admin.virtual-machines.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
+
+@adminRoute('admin.virtual-machines.index')
+<a href="{{ route('admin.virtual-machines.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
+@endadminRoute
+
         </div>
     </form>
+@endadminRoute
 
-    <form
+
+
+@adminRoute('admin.virtual-machines.move-node')
+<form
         id="vm-node-move-form"
         method="POST"
         action="{{ route('admin.virtual-machines.move-node') }}"
@@ -143,6 +157,8 @@ document.addEventListener('alpine:init', () => {
         </label>
         <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">ثبت در صف</button>
     </form>
+@endadminRoute
+
 
     <section x-ref="results" class="mt-6">
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -158,7 +174,9 @@ document.addEventListener('alpine:init', () => {
                             <th class="px-5 py-4">مشتری صورتحساب</th>
                             <x-admin.sortable-heading label="منابع" column="cpu_cores" :sort="$sort" />
                             <x-admin.sortable-heading label="وضعیت" column="status" :sort="$sort" />
+                                                        @adminAbility('billing.read')
                             <th class="px-5 py-4">هزینه ماهانه فعلی</th>
+                            @endadminAbility
                             <th class="px-5 py-4">عملیات</th>
                         </tr>
                     </thead>
@@ -177,20 +195,40 @@ document.addEventListener('alpine:init', () => {
                                     >
                                 </td>
                                 <td class="px-5 py-4">
-                                    <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</a>
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</a>
+@endadminRoute
+
                                     <span class="block text-xs text-slate-500" dir="ltr">{{ $vm->name }} · {{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local' }} · {{ $vm->node ?: 'no-node' }}</span>
                                 </td>
                                 <td class="px-5 py-4 font-bold">{{ $vm->project?->name ?: '—' }}</td>
                                 <td class="px-5 py-4">{{ $vm->project?->owner?->name ?: '—' }}</td>
                                 <td class="px-5 py-4">{{ $vm->creator?->name ?: '—' }}</td>
-                                <td class="px-5 py-4"><a class="font-bold text-[#0069FF]" href="{{ route('admin.customers.show', $vm->customer) }}">{{ $vm->customer?->name ?: '—' }}</a></td>
+                                <td class="px-5 py-4">
+@adminRoute('admin.customers.show')
+<a class="font-bold text-[#0069FF]" href="{{ route('admin.customers.show', $vm->customer) }}">{{ $vm->customer?->name ?: '—' }}</a>
+@endadminRoute
+</td>
                                 <td class="px-5 py-4">{{ $vm->cpu_cores }} CPU / {{ $vm->ram_gb }}GB / {{ $vm->disk_gb }}GB</td>
                                 <td class="px-5 py-4"><x-admin.status-badge :value="$vm->status" /></td>
-                                <td class="px-5 py-4 font-black">{{ $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }}</td>
+
+                                @adminAbility('billing.read')
+<td class="px-5 py-4 font-black">{{ $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }}</td>
+                                @endadminAbility
+
                                 <td class="px-5 py-4">
                                     <div class="flex gap-1.5">
-                                        <x-admin.icon-action :href="route('admin.virtual-machines.show', $vm)" label="نمایش ماشین مجازی" icon="view" tone="primary" />
-                                        <x-admin.icon-action :href="route('admin.virtual-machines.transfer.show', $vm)" label="انتقال ماشین مجازی" icon="transfer" tone="purple" />
+
+@adminRoute('admin.virtual-machines.show')
+<x-admin.icon-action :href="route('admin.virtual-machines.show', $vm)" label="نمایش ماشین مجازی" icon="view" tone="primary" />
+@endadminRoute
+
+
+@adminRoute('admin.virtual-machines.transfer.show')
+<x-admin.icon-action :href="route('admin.virtual-machines.transfer.show', $vm)" label="انتقال ماشین مجازی" icon="transfer" tone="purple" />
+@endadminRoute
+
                                     </div>
                                 </td>
                             </tr>

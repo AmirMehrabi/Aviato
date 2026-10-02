@@ -17,7 +17,7 @@
     @endif
 
     @php
-        $walletBlocked = ($effectiveWalletBalance ?? 0) <= 0;
+        $walletBlocked = $walletBlocked ?? (($effectiveWalletBalance ?? 0) <= 0);
         $latestBackup = $vm->backups->first();
     @endphp
 
@@ -72,41 +72,73 @@
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
-                <a href="{{ route('admin.billing.network.vm', $vm) }}" class="rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">مصرف شبکه</a>
-                <a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
-                <a href="{{ route('admin.virtual-machines.transfer.show', $vm) }}" class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">انتقال مالکیت</a>
+
+@adminRoute('admin.billing.network.vm')
+<a href="{{ route('admin.billing.network.vm', $vm) }}" class="rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">مصرف شبکه</a>
+@endadminRoute
+
+
+@adminRoute('admin.virtual-machines.edit')
+<a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
+@endadminRoute
+
+
+@adminRoute('admin.virtual-machines.transfer.show')
+<a href="{{ route('admin.virtual-machines.transfer.show', $vm) }}" class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">انتقال مالکیت</a>
+@endadminRoute
+
                 @if($vm->proxmoxServer && $vm->node && $vm->vmid && ! $vm->isLxc() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $vm->isActionLocked())
-                    <a href="{{ route('admin.virtual-machines.console.show', $vm) }}" class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">کنسول</a>
+
+@adminRoute('admin.virtual-machines.console.show')
+<a href="{{ route('admin.virtual-machines.console.show', $vm) }}" class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">کنسول</a>
+@endadminRoute
+
                 @endif
 
                 {{-- Action buttons with confirmations --}}
                 @if($vm->provisioning_status === 'failed' && $vm->cloud_image_id)
-                    <button
+
+@adminAbility('virtual-machines.manage')
+<button
                         type="button"
                         @click="confirmAction = 'retry-provisioning'"
                         class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
                     >تلاش مجدد راه‌اندازی</button>
+@endadminAbility
+
                 @elseif($vm->isRunning())
-                    <button
+
+@adminAbility('virtual-machines.power')
+<button
                         type="button"
                         @click="confirmAction = 'stop'"
                         class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
                     >خاموش کردن</button>
+@endadminAbility
+
                 @else
-                    <button
+
+@adminAbility('virtual-machines.power')
+<button
                         type="button"
                         @click="{{ $walletBlocked ? 'null' : "confirmAction = 'start'" }}"
                         @disabled($walletBlocked)
                         class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
                     >روشن کردن</button>
+@endadminAbility
+
                 @endif
 
                 @if(! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at || $vm->deleteAttemptIsStale()))
-                    <button
+
+@adminAbility('virtual-machines.delete')
+<button
                         type="button"
                         @click="confirmAction = 'delete'"
                         class="rounded-lg bg-red-500/20 px-4 py-2.5 text-sm font-bold text-red-300 transition hover:bg-red-500/30"
                     >حذف سرور</button>
+@endadminAbility
+
                 @endif
             </div>
         </div>
@@ -135,6 +167,9 @@
             <p class="text-xs font-bold text-slate-500">وضعیت فعلی</p>
             <p class="mt-3 text-xl font-black {{ $statusTone }}">{{ $statusLabel }}</p>
         </div>
+
+@adminAbility('billing.read')
+
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-xs font-bold text-slate-500">هزینه تخمینی ماهانه</p>
             <p class="mt-3 text-xl font-black text-[#0069FF]">{{ $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }}</p>
@@ -147,6 +182,10 @@
             <p class="text-xs font-bold text-slate-500">مبلغ صدور نشده</p>
             <p class="mt-3 text-xl font-black {{ $currentAccrued > 0 ? 'text-amber-700' : 'text-slate-400' }}">{{ $money->format($currentAccrued) }}</p>
         </div>
+
+
+@endadminAbility
+
     </section>
 
     {{-- Wallet warning --}}
@@ -155,6 +194,9 @@
             کیف پول فضای کاری این VM منفی است. روشن کردن آن تا شارژ شدن کیف پول ممکن نیست.
         </div>
     @endif
+
+
+@adminAbility('billing.read')
 
     {{-- Billing & Usage section --}}
     <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -193,6 +235,10 @@
         </div>
     </section>
 
+
+
+@endadminAbility
+
     {{-- Hardware & Bundle --}}
     <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -215,6 +261,9 @@
                     <p class="text-xs text-slate-500">آدرس IP</p>
                 </div>
             </div>
+
+@adminAbility('billing.read')
+
             <div class="mt-5 rounded-xl border border-dashed border-slate-300 p-4">
                 <p class="font-black text-slate-950">باندل قیمت‌گذاری</p>
                 @if($vm->bundle)
@@ -223,6 +272,10 @@
                     <p class="mt-2 text-sm text-slate-500">قیمت‌گذاری اختصاصی بر اساس نرخ منابع</p>
                 @endif
             </div>
+
+@endadminAbility
+
+
             @if($vm->last_started_at || $vm->last_stopped_at)
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     @if($vm->last_started_at)
@@ -345,12 +398,15 @@
                             @endphp
                             <span class="rounded-lg px-3 py-1 text-xs font-black {{ $orderStatus }}">{{ $orderStatusLabel }}</span>
                         </div>
+                        @adminAbility('billing.read')
                         <p class="mt-2 text-xs font-bold text-slate-500">
                             تغییر ماهانه: {{ $money->format($order->estimated_monthly_delta) }}
                             @if($order->applied_at)
                                 · اعمال شده: {{ $order->applied_at->format('Y/m/d H:i') }}
                             @endif
                         </p>
+                        @endadminAbility
+
                         @if($order->failure_reason)
                             <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{{ $order->failure_reason }}</p>
                         @endif
@@ -364,17 +420,33 @@
 
     {{-- Hidden forms for actions --}}
     @if($vm->provisioning_status === 'failed' && $vm->cloud_image_id)
-        <form id="form-retry-provisioning" method="POST" action="{{ route('admin.virtual-machines.retry-provisioning', $vm) }}" class="hidden">@csrf</form>
+
+@adminRoute('admin.virtual-machines.retry-provisioning')
+<form id="form-retry-provisioning" method="POST" action="{{ route('admin.virtual-machines.retry-provisioning', $vm) }}" class="hidden">@csrf</form>
+@endadminRoute
+
     @elseif($vm->isRunning())
-        <form id="form-stop" method="POST" action="{{ route('admin.virtual-machines.stop', $vm) }}" class="hidden">
+
+@adminRoute('admin.virtual-machines.stop')
+<form id="form-stop" method="POST" action="{{ route('admin.virtual-machines.stop', $vm) }}" class="hidden">
             @csrf
             <input type="hidden" name="power_generation" value="{{ (int) data_get($vm->desired_state, 'power_generation', 0) }}">
         </form>
+@endadminRoute
+
     @else
-        <form id="form-start" method="POST" action="{{ route('admin.virtual-machines.start', $vm) }}" class="hidden">@csrf</form>
+
+@adminRoute('admin.virtual-machines.start')
+<form id="form-start" method="POST" action="{{ route('admin.virtual-machines.start', $vm) }}" class="hidden">@csrf</form>
+@endadminRoute
+
     @endif
     @if(! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at || $vm->deleteAttemptIsStale()))
-        <form id="form-delete" method="POST" action="{{ route('admin.virtual-machines.destroy', $vm) }}" class="hidden">@csrf @method('DELETE')</form>
+
+@adminRoute('admin.virtual-machines.destroy')
+<form id="form-delete" method="POST" action="{{ route('admin.virtual-machines.destroy', $vm) }}" class="hidden">@csrf @method('DELETE')</form>
+@endadminRoute
+
     @endif
 
     {{-- Confirmation modal --}}
@@ -385,7 +457,9 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm"
     >
         <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" @click.stop>
-            <template x-if="confirmAction === 'retry-provisioning'">
+
+            @adminAbility('virtual-machines.manage')
+<template x-if="confirmAction === 'retry-provisioning'">
                 <div>
                     <h3 class="text-lg font-black text-slate-950">تلاش مجدد راه‌اندازی</h3>
                     <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید راه‌اندازی این VM را مجدداً تلاش کنید؟</p>
@@ -395,7 +469,11 @@
                     </div>
                 </div>
             </template>
-            <template x-if="confirmAction === 'stop'">
+            @endadminAbility
+
+
+            @adminAbility('virtual-machines.power')
+<template x-if="confirmAction === 'stop'">
                 <div>
                     <h3 class="text-lg font-black text-slate-950">خاموش کردن سرور</h3>
                     <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این سرور را خاموش کنید؟ از این لحظه CPU و RAM هزینه‌ای نخواهند داشت.</p>
@@ -405,7 +483,11 @@
                     </div>
                 </div>
             </template>
-            <template x-if="confirmAction === 'start'">
+            @endadminAbility
+
+
+            @adminAbility('virtual-machines.power')
+<template x-if="confirmAction === 'start'">
                 <div>
                     <h3 class="text-lg font-black text-slate-950">روشن کردن سرور</h3>
                     <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این سرور را روشن کنید؟ از این لحظه CPU و RAM نیز هزینه خواهند داشت.</p>
@@ -415,7 +497,11 @@
                     </div>
                 </div>
             </template>
-            <template x-if="confirmAction === 'delete'">
+            @endadminAbility
+
+
+            @adminAbility('virtual-machines.delete')
+<template x-if="confirmAction === 'delete'">
                 <div>
                     <h3 class="text-lg font-black text-red-700">حذف سرور</h3>
                     <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این VM را از Proxmox و پنل حذف کنید؟ اگر قبلاً از Proxmox حذف شده باشد، فقط رکورد پنل حذف خواهد شد. <strong class="text-red-700">این عمل غیرقابل بازگشت است.</strong></p>
@@ -425,6 +511,8 @@
                     </div>
                 </div>
             </template>
+            @endadminAbility
+
         </div>
     </div>
 

@@ -16,7 +16,9 @@
     </div>
 
     <div class="mt-6 grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <form method="POST" action="{{ route('admin.ticket-categories.store') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+@adminRoute('admin.ticket-categories.store')
+<form method="POST" action="{{ route('admin.ticket-categories.store') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             @csrf
             <h1 class="text-xl font-black text-slate-950">دسته‌بندی جدید</h1>
             <label class="mt-4 block"><span class="text-sm font-black text-slate-700">نام</span><input name="name" required class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold"></label>
@@ -27,10 +29,14 @@
             <label class="mt-4 flex items-center gap-2 text-sm font-black text-slate-700"><input type="checkbox" name="is_active" value="1" checked class="rounded border-slate-300"> فعال</label>
             <button class="mt-4 w-full rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ساخت دسته‌بندی</button>
         </form>
+@endadminRoute
+
 
         <section class="space-y-4">
             @forelse($categories as $category)
-                <form method="POST" action="{{ route('admin.ticket-categories.update', $category) }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+@adminRoute('admin.ticket-categories.update')
+<form method="POST" action="{{ route('admin.ticket-categories.update', $category) }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     @csrf @method('PUT')
                     <div class="grid gap-4 lg:grid-cols-2">
                         <label class="block"><span class="text-sm font-black text-slate-700">نام</span><input name="name" value="{{ $category->name }}" required class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold"></label>
@@ -42,6 +48,8 @@
                     <label class="mt-4 flex items-center gap-2 text-sm font-black text-slate-700"><input type="checkbox" name="is_active" value="1" @checked($category->is_active) class="rounded border-slate-300"> فعال</label>
                     <button class="mt-4 rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-black text-white">ذخیره</button>
                 </form>
+@endadminRoute
+
             @empty
                 <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm font-bold text-slate-500">هنوز دسته‌بندی ساخته نشده است.</div>
             @endforelse

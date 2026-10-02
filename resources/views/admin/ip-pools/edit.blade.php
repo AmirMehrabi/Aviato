@@ -24,7 +24,11 @@
                 <div class="flex flex-col gap-3 border-b border-slate-100 pb-5 md:flex-row md:items-start md:justify-between">
                     <div>
                         <div class="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500">
-                            <a href="{{ route('admin.ip-pools.index') }}" class="transition hover:text-[#0069FF]">IP Pools</a>
+
+@adminRoute('admin.ip-pools.index')
+<a href="{{ route('admin.ip-pools.index') }}" class="transition hover:text-[#0069FF]">IP Pools</a>
+@endadminRoute
+
                             <span class="text-slate-300">/</span>
                             <span class="text-slate-900">{{ $pool->name }}</span>
                         </div>
@@ -38,10 +42,14 @@
                     </span>
                 </div>
 
-                <form method="POST" action="{{ route('admin.ip-pools.update', $pool) }}" class="mt-6">
+
+@adminRoute('admin.ip-pools.update')
+<form method="POST" action="{{ route('admin.ip-pools.update', $pool) }}" class="mt-6">
                     @method('PUT')
                     @include('admin.ip-pools._form')
                 </form>
+@endadminRoute
+
             </section>
 
             <aside class="space-y-4">
@@ -115,7 +123,9 @@
                     <h2 class="text-lg font-black text-slate-950">آدرس‌های IP</h2>
                     <p class="mt-1 text-sm text-slate-500">{{ $pool->proxmoxServer?->name ?: 'بدون Proxmox' }} · {{ $pool->node ?: 'all nodes' }}</p>
                 </div>
-                <form method="POST" action="{{ route('admin.ip-pools.addresses.reserve', $pool) }}" id="bulk-reserve-form" class="flex items-center gap-3">
+
+@adminRoute('admin.ip-pools.addresses.reserve')
+<form method="POST" action="{{ route('admin.ip-pools.addresses.reserve', $pool) }}" id="bulk-reserve-form" class="flex items-center gap-3">
                     @csrf
                     <template x-for="id in selectedAddresses" :key="`bulk-address-${id}`">
                         <input type="hidden" name="address_ids[]" :value="id">
@@ -128,6 +138,8 @@
                         رزرو موارد انتخاب‌شده
                     </button>
                 </form>
+@endadminRoute
+
             </div>
 
             <div class="border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs font-bold text-slate-500">
@@ -187,7 +199,11 @@
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-4">
                                     @if ($vm)
-                                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="block font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $vm->display_name }}</a>
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="block font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $vm->display_name }}</a>
+@endadminRoute
+
                                         <span class="mt-1 block text-xs text-slate-500">{{ \App\Support\AdminUi::status($vm->status) }} / {{ \App\Support\AdminUi::status($vm->provisioning_status) }}</span>
                                     @else
                                         <span class="text-slate-400">بدون ماشین</span>
@@ -195,7 +211,11 @@
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-4">
                                     @if ($vm?->customer)
-                                        <a href="{{ route('admin.customers.show', $vm->customer) }}" class="font-bold text-[#0069FF] transition hover:text-[#0050D0]">{{ $vm->customer->name }}</a>
+
+@adminRoute('admin.customers.show')
+<a href="{{ route('admin.customers.show', $vm->customer) }}" class="font-bold text-[#0069FF] transition hover:text-[#0050D0]">{{ $vm->customer->name }}</a>
+@endadminRoute
+
                                     @else
                                         <span class="text-slate-400">بدون مشتری</span>
                                     @endif
@@ -205,10 +225,14 @@
                                 <td class="whitespace-nowrap px-5 py-4 text-xs font-bold text-slate-500">{{ $address->released_at?->format('Y/m/d H:i') ?: '—' }}</td>
                                 <td class="whitespace-nowrap px-5 py-4">
                                     @if ($selectable)
-                                        <form method="POST" action="{{ route('admin.ip-pools.addresses.reserve-one', [$pool, $address]) }}">
+
+@adminRoute('admin.ip-pools.addresses.reserve-one')
+<form method="POST" action="{{ route('admin.ip-pools.addresses.reserve-one', [$pool, $address]) }}">
                                             @csrf
                                             <button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-black text-white transition hover:bg-[#0050D0]">رزرو</button>
                                         </form>
+@endadminRoute
+
                                     @elseif($address->status === 'assigned' && $vm)
                                         <div
                                             x-data="{
@@ -222,7 +246,9 @@
                                             }"
                                             class="flex min-w-72 flex-col gap-2"
                                         >
-                                            <form x-ref="form" method="POST" action="{{ route('admin.virtual-machines.ip-address.update', $vm) }}" class="flex items-center gap-2" onsubmit="return false;">
+
+@adminRoute('admin.virtual-machines.ip-address.update')
+<form x-ref="form" method="POST" action="{{ route('admin.virtual-machines.ip-address.update', $vm) }}" class="flex items-center gap-2" onsubmit="return false;">
                                                 @csrf
                                                 @method('PATCH')
                                                 <input type="hidden" name="sync_to_proxmox" :value="syncProxmox ? '1' : '0'">
@@ -234,18 +260,24 @@
                                                 </select>
                                                 <button type="button" @click="submit()" class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 transition hover:bg-amber-100">تغییر IP</button>
                                             </form>
+@endadminRoute
+
                                             <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-500">
                                                 <input type="checkbox" x-model="syncProxmox" class="size-3 rounded border-slate-300 text-[#0069FF]">
                                                 اعمال در Proxmox
                                             </label>
                                         </div>
                                     @elseif($address->status === 'reserved' || ($address->status === 'assigned' && !$vm))
-                                        <form method="POST" action="{{ route('admin.ip-pools.addresses.release', [$pool, $address]) }}" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این IP را آزاد کنید?');">
+
+@adminRoute('admin.ip-pools.addresses.release')
+<form method="POST" action="{{ route('admin.ip-pools.addresses.release', [$pool, $address]) }}" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این IP را آزاد کنید?');">
                                             @csrf
                                             <button class="rounded-lg bg-red-50 px-4 py-2 text-xs font-black text-red-700 transition hover:bg-red-100">
                                                 {{ $address->status === 'assigned' && !$vm ? 'آزادسازی (بدون ماشین)' : 'آزادسازی' }}
                                             </button>
                                         </form>
+@endadminRoute
+
                                     @else
                                         <span class="text-xs font-black text-slate-400">قفل‌شده</span>
                                     @endif

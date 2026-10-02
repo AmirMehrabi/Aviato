@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'role', 'is_active', 'last_login_at', 'last_login_ip'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'role', 'is_active', 'last_login_at', 'last_login_ip', 'permissions'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -57,7 +57,10 @@ class User extends Authenticatable
 
     public function scopeSupportAgents(Builder $query): Builder
     {
-        return $query->where('is_active', true)->whereIn('role', [AdminRole::Admin, AdminRole::Support]);
+        return $query->where('is_active', true)->where(function (Builder $query): void {
+            $query->whereIn('role', [AdminRole::Admin, AdminRole::Support])
+                ->orWhere(fn (Builder $custom) => $custom->where('role', AdminRole::Custom)->whereJsonContains('permissions', AdminAbility::TicketsManage->value));
+        });
     }
 
     /**
@@ -71,6 +74,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => AdminRole::class,
+            'permissions' => 'array',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
         ];

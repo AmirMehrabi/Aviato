@@ -199,6 +199,10 @@
         </div>
 
         <button class="w-full rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">ذخیره سرور</button>
-        <a href="{{ route('admin.proxmox-servers.index') }}" class="block rounded-lg border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">بازگشت</a>
+
+@adminRoute('admin.proxmox-servers.index')
+<a href="{{ route('admin.proxmox-servers.index') }}" class="block rounded-lg border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">بازگشت</a>
+@endadminRoute
+
     </aside>
 </div>

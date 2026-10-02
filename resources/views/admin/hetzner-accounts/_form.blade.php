@@ -7,5 +7,9 @@
 </div>
 <div class="mt-6 flex gap-3">
     <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره</button>
-    <a href="{{ route('admin.hetzner-accounts.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">Back</a>
+
+@adminRoute('admin.hetzner-accounts.index')
+<a href="{{ route('admin.hetzner-accounts.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">Back</a>
+@endadminRoute
+
 </div>

@@ -4,7 +4,9 @@
 
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
-    <form method="POST" action="{{ route('admin.tickets.store') }}" enctype="multipart/form-data" class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+
+@adminRoute('admin.tickets.store')
+<form method="POST" action="{{ route('admin.tickets.store') }}" enctype="multipart/form-data" class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         @csrf
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h1 class="text-2xl font-black text-slate-950">ایجاد تیکت برای مشتری</h1>
@@ -21,8 +23,14 @@
         </section>
         <aside class="space-y-3">
             <button class="w-full rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ثبت تیکت</button>
-            <a href="{{ route('admin.tickets.index') }}" class="block rounded-lg border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700">بازگشت</a>
+
+@adminRoute('admin.tickets.index')
+<a href="{{ route('admin.tickets.index') }}" class="block rounded-lg border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700">بازگشت</a>
+@endadminRoute
+
         </aside>
     </form>
+@endadminRoute
+
 </div>
 @endsection

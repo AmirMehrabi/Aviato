@@ -35,7 +35,7 @@ class TicketNotificationService
             ? collect([$ticket->assignee])
             : ($ticket->supportTeam?->activeUsers ?? User::query()->orderBy('name')->get());
 
-        $recipients->each(function (User $user) use ($ticket): void {
+        $recipients->filter(fn (User $user): bool => $user->allows('tickets.read'))->each(function (User $user) use ($ticket): void {
             $this->notifyDatabase($user, $ticket, 'ticket_created', 'تیکت جدید ثبت شد', $ticket->subject);
             $this->notifyEmail($user->email, 'تیکت جدید '.$ticket->number, $this->line($ticket, 'تیکت جدیدی توسط '.$ticket->customer->name.' ثبت شد.'));
             $this->notifySms($user->phone, AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE, $ticket, $ticket->customer->name, $ticket->category?->name ?? 'پشتیبانی');
@@ -50,7 +50,7 @@ class TicketNotificationService
             ? collect([$ticket->assignee])
             : ($ticket->supportTeam?->activeUsers ?? User::query()->orderBy('name')->get());
 
-        $recipients->each(function (User $user) use ($ticket): void {
+        $recipients->filter(fn (User $user): bool => $user->allows('tickets.read'))->each(function (User $user) use ($ticket): void {
             $this->notifyDatabase($user, $ticket, 'ticket_customer_reply', 'پاسخ جدید مشتری', $ticket->subject);
             $this->notifyEmail($user->email, 'پاسخ مشتری در '.$ticket->number, $this->line($ticket, 'مشتری در این تیکت پاسخ داد.'));
             $this->notifySms($user->phone, AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE, $ticket, $ticket->customer->name, $this->statusLabel($ticket));
@@ -70,6 +70,9 @@ class TicketNotificationService
     public function ticketAssigned(Ticket $ticket, User $assignee): void
     {
         $ticket->load('category');
+        if (! $assignee->allows('tickets.read')) {
+            return;
+        }
 
         $this->notifyDatabase($assignee, $ticket, 'ticket_assigned', 'تیکت به شما واگذار شد', $ticket->subject);
         $this->notifyEmail($assignee->email, 'واگذاری تیکت '.$ticket->number, $this->line($ticket, 'این تیکت به شما واگذار شد.'));

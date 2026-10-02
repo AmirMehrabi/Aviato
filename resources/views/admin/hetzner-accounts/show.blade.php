@@ -13,8 +13,16 @@
             <p class="mt-1 text-sm text-slate-500">آخرین همگام‌سازی: {{ $account->synced_at?->toDateTimeString() ?? 'هرگز' }}</p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('admin.hetzner-accounts.edit', $account) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700">Edit</a>
-            <form method="POST" action="{{ route('admin.hetzner-accounts.sync', $account) }}">@csrf<button class="rounded-lg bg-[#0069FF] px-4 py-2 text-sm font-black text-white">همگام‌سازی کاتالوگ</button></form>
+
+@adminRoute('admin.hetzner-accounts.edit')
+<a href="{{ route('admin.hetzner-accounts.edit', $account) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700">Edit</a>
+@endadminRoute
+
+
+@adminRoute('admin.hetzner-accounts.sync')
+<form method="POST" action="{{ route('admin.hetzner-accounts.sync', $account) }}">@csrf<button class="rounded-lg bg-[#0069FF] px-4 py-2 text-sm font-black text-white">همگام‌سازی کاتالوگ</button></form>
+@endadminRoute
+
         </div>
     </div>
 
@@ -26,7 +34,11 @@
                     <div class="rounded-xl border border-slate-200 p-4">
                         <div class="flex items-center justify-between gap-3">
                             <div><b>{{ $location->name }}</b><p class="text-xs text-slate-500">{{ $location->remote_name }} / {{ $location->country }}</p></div>
-                            <a href="{{ route('admin.infrastructure-locations.edit', $location) }}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black">Map bundles</a>
+
+@adminRoute('admin.infrastructure-locations.edit')
+<a href="{{ route('admin.infrastructure-locations.edit', $location) }}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black">Map bundles</a>
+@endadminRoute
+
                         </div>
                     </div>
                 @endforeach

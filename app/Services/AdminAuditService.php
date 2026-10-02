@@ -6,6 +6,7 @@ use App\Models\AdminAuditLog;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 class AdminAuditService
@@ -92,7 +93,11 @@ class AdminAuditService
                 continue;
             }
 
-            $redacted[$key] = is_array($value) ? $this->redact($value) : $value;
+            if ($value instanceof UploadedFile) {
+                $redacted[$key] = ['filename' => $value->getClientOriginalName(), 'size' => $value->getSize()];
+            } else {
+                $redacted[$key] = is_array($value) ? $this->redact($value) : $value;
+            }
         }
 
         return $redacted;

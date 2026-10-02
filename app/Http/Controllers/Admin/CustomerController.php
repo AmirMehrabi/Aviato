@@ -34,7 +34,7 @@ class CustomerController extends Controller
         ]);
 
         $query = Customer::query()
-            ->with('wallet')
+            ->when($request->user('admin')->allows('billing.read'), fn ($query) => $query->with('wallet'))
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
@@ -72,6 +72,7 @@ class CustomerController extends Controller
 
     public function store(StoreCustomerRequest $request): RedirectResponse
     {
+        abort_if($request->input('status') === Customer::STATUS_SUSPENDED && ! $request->user('admin')->allows('customers.suspend'), 403);
         $customer = Customer::create($this->normalizedInput($request->validated()));
 
         return redirect()->route('admin.customers.show', $customer)
@@ -80,23 +81,24 @@ class CustomerController extends Controller
 
     public function show(Customer $customer): View
     {
-        $wallet = $this->wallets->walletFor($customer);
+        $canReadBilling = auth('admin')->user()->allows('billing.read');
+        $wallet = $canReadBilling ? $this->wallets->walletFor($customer) : null;
         $customer->load([
             'virtualMachines' => fn ($query) => $query->notDeleted()->with(['bundle', 'proxmoxServer']),
         ]);
-        $transactions = $wallet->transactions()->with('createdBy')->limit(10)->get();
-        $summary = $this->billing->customerSummary($customer->id);
+        $transactions = $canReadBilling ? $wallet->transactions()->with('createdBy')->limit(10)->get() : collect();
+        $summary = $canReadBilling ? $this->billing->customerSummary($customer->id) : [];
 
         return view('admin.customers.show', [
             'customer' => $customer,
-            'financial' => [
+            'financial' => $canReadBilling ? [
                 'balance' => $wallet->balance,
                 'monthly_spend' => $summary['monthly_spend'],
                 'unpaid_total' => $summary['unbilled_accrued'],
                 'status' => $summary['unbilled_accrued'] > 0 ? 'در حال مصرف' : 'بدون مصرف',
-            ],
+            ] : null,
             'virtualMachines' => $customer->virtualMachines,
-            'invoices' => $this->dummyInvoices($customer),
+            'invoices' => $canReadBilling ? $this->dummyInvoices($customer) : [],
             'billing' => $this->billing,
             'wallet' => $wallet,
             'walletTransactions' => $transactions,
@@ -111,6 +113,9 @@ class CustomerController extends Controller
 
     public function update(UpdateCustomerRequest $request, Customer $customer): RedirectResponse
     {
+        abort_if($request->filled('password') && ! $request->user('admin')->allows('customers.credentials'), 403);
+        abort_if($request->input('status') !== $customer->status && ! $request->user('admin')->allows('customers.suspend'), 403);
+
         $customer->fill($this->normalizedInput($request->validated(), true))->save();
 
         return redirect()->route('admin.customers.show', $customer)

@@ -2,17 +2,43 @@
 @section('title', 'حسابداری شبکه')
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
-    <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><p class="text-sm font-black text-[#0069FF]">IPDR / Network Billing</p><h1 class="mt-1 text-2xl font-black text-slate-950">حسابداری شبکه</h1><p class="mt-2 text-sm text-slate-500">داده اندازه‌گیری‌شده، مصرف قیمت‌گذاری‌شده و مبلغ مالی به‌صورت مستقل نمایش داده می‌شوند.</p></div><a href="{{ route('admin.billing.bundles.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">تنظیم باندل‌ها</a></div>
+    <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><p class="text-sm font-black text-[#0069FF]">IPDR / Network Billing</p><h1 class="mt-1 text-2xl font-black text-slate-950">حسابداری شبکه</h1><p class="mt-2 text-sm text-slate-500">داده اندازه‌گیری‌شده، مصرف قیمت‌گذاری‌شده و مبلغ مالی به‌صورت مستقل نمایش داده می‌شوند.</p></div>
+@adminRoute('admin.billing.bundles.index')
+<a href="{{ route('admin.billing.bundles.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">تنظیم باندل‌ها</a>
+@endadminRoute
+</div>
     @include('admin.billing.network._nav')
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs font-black text-slate-500">مصرف ماه جاری</p><p class="mt-3 text-2xl font-black text-slate-950" dir="ltr">{{ $reports->bytes($stats['month_bytes']) }}</p></div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs font-black text-slate-500">هزینه محاسبه‌شده</p><p class="mt-3 text-2xl font-black text-[#0069FF]">{{ $wallets->format($stats['month_amount']) }}</p></div>
+        @adminAbility('billing.read')
+        <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs font-black text-slate-500">هزینه محاسبه‌شده</p>
+@adminAbility('billing.read')
+<p class="mt-3 text-2xl font-black text-[#0069FF]">{{ $wallets->format($stats['month_amount']) }}</p>
+@endadminAbility
+</div>
+        @endadminAbility
+
         <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs font-black text-slate-500">باکت قیمت‌گذاری‌شده</p><p class="mt-3 text-2xl font-black text-emerald-600">{{ number_format($stats['rated']) }}</p></div>
         <div class="rounded-2xl border {{ $stats['exceptions'] ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white' }} p-5"><p class="text-xs font-black text-slate-500">نیازمند بررسی</p><p class="mt-3 text-2xl font-black {{ $stats['exceptions'] ? 'text-amber-700' : 'text-slate-950' }}">{{ number_format($stats['exceptions']) }}</p></div>
     </div>
     <div class="mt-6 grid gap-6 xl:grid-cols-[1.4fr_.6fr]">
-        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 class="font-black text-slate-950">ماشین‌های اویاتو</h2><p class="mt-1 text-xs text-slate-500">همه ماشین‌های فعال؛ ماشین‌های بدون داده مصرف نیز نمایش داده می‌شوند.</p></div></div><div class="overflow-x-auto"><table class="w-full text-right text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-5 py-3">ماشین</th><th class="px-5 py-3">مصرف</th><th class="px-5 py-3">رایگان</th><th class="px-5 py-3">قابل پرداخت</th><th class="px-5 py-3">مبلغ</th></tr></thead><tbody class="divide-y divide-slate-100">@forelse($machines as $machine)@php($period = $machine->latestNetworkBillingPeriod)<tr><td class="px-5 py-4"><a class="font-black text-[#0069FF]" href="{{ route('admin.billing.network.vm', $machine) }}">{{ $machine->display_name }}</a><p class="mt-1 text-xs text-slate-400" dir="ltr">{{ $machine->uuid }}</p></td><td class="px-5 py-4" dir="ltr">{{ $period ? $reports->bytes($period->rated_bytes) : 'بدون داده' }}</td><td class="px-5 py-4" dir="ltr">{{ $period ? $reports->bytes($period->included_bytes) : '—' }}</td><td class="px-5 py-4" dir="ltr">{{ $period ? $reports->bytes($period->billable_bytes) : '—' }}</td><td class="px-5 py-4 font-black">{{ $period ? $wallets->format($period->accrued_amount) : '—' }}</td></tr>@empty<tr><td colspan="5" class="px-5 py-12 text-center text-slate-500">ماشین فعالی موجود نیست.</td></tr>@endforelse</tbody></table></div><div class="border-t border-slate-100 px-5 py-4">{{ $machines->links() }}</div></section>
-        <aside class="rounded-2xl border border-slate-200 bg-white p-5"><h2 class="font-black text-slate-950">سلامت دریافت داده</h2><div class="mt-5 space-y-4 text-sm"><div class="flex justify-between"><span class="text-slate-500">آخرین موفقیت</span><b dir="ltr">{{ $checkpoint?->last_succeeded_at?->diffForHumans() ?? 'هرگز' }}</b></div><div class="flex justify-between"><span class="text-slate-500">جدیدترین باکت</span><b dir="ltr">{{ $stats['latest'] ? date('Y-m-d H:i', strtotime($stats['latest'])) : 'بدون داده' }}</b></div><div class="flex justify-between"><span class="text-slate-500">آخرین خطا</span><b class="max-w-48 truncate text-red-600">{{ $checkpoint?->last_error ?: 'ندارد' }}</b></div></div><a href="{{ route('admin.billing.network.ipdr') }}" class="mt-6 flex justify-center rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white">مدیریت اتصال</a></aside>
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 class="font-black text-slate-950">ماشین‌های اویاتو</h2><p class="mt-1 text-xs text-slate-500">همه ماشین‌های فعال؛ ماشین‌های بدون داده مصرف نیز نمایش داده می‌شوند.</p></div></div><div class="overflow-x-auto"><table class="w-full text-right text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-5 py-3">ماشین</th><th class="px-5 py-3">مصرف</th><th class="px-5 py-3">رایگان</th><th class="px-5 py-3">قابل پرداخت</th>@adminAbility('billing.read')
+<th class="px-5 py-3">مبلغ</th>
+@endadminAbility
+</tr></thead><tbody class="divide-y divide-slate-100">@forelse($machines as $machine)@php($period = $machine->latestNetworkBillingPeriod)<tr><td class="px-5 py-4">
+@adminRoute('admin.billing.network.vm')
+<a class="font-black text-[#0069FF]" href="{{ route('admin.billing.network.vm', $machine) }}">{{ $machine->display_name }}</a>
+@endadminRoute
+<p class="mt-1 text-xs text-slate-400" dir="ltr">{{ $machine->uuid }}</p></td><td class="px-5 py-4" dir="ltr">{{ $period ? $reports->bytes($period->rated_bytes) : 'بدون داده' }}</td><td class="px-5 py-4" dir="ltr">{{ $period ? $reports->bytes($period->included_bytes) : '—' }}</td><td class="px-5 py-4" dir="ltr">{{ $period ? $reports->bytes($period->billable_bytes) : '—' }}</td>
+@adminAbility('billing.read')
+<td class="px-5 py-4 font-black">{{ $period ? $wallets->format($period->accrued_amount) : '—' }}</td>
+@endadminAbility
+</tr>@empty<tr><td colspan="5" class="px-5 py-12 text-center text-slate-500">ماشین فعالی موجود نیست.</td></tr>@endforelse</tbody></table></div><div class="border-t border-slate-100 px-5 py-4">{{ $machines->links() }}</div></section>
+        <aside class="rounded-2xl border border-slate-200 bg-white p-5"><h2 class="font-black text-slate-950">سلامت دریافت داده</h2><div class="mt-5 space-y-4 text-sm"><div class="flex justify-between"><span class="text-slate-500">آخرین موفقیت</span><b dir="ltr">{{ $checkpoint?->last_succeeded_at?->diffForHumans() ?? 'هرگز' }}</b></div><div class="flex justify-between"><span class="text-slate-500">جدیدترین باکت</span><b dir="ltr">{{ $stats['latest'] ? date('Y-m-d H:i', strtotime($stats['latest'])) : 'بدون داده' }}</b></div><div class="flex justify-between"><span class="text-slate-500">آخرین خطا</span><b class="max-w-48 truncate text-red-600">{{ $checkpoint?->last_error ?: 'ندارد' }}</b></div></div>
+@adminRoute('admin.billing.network.ipdr')
+<a href="{{ route('admin.billing.network.ipdr') }}" class="mt-6 flex justify-center rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white">مدیریت اتصال</a>
+@endadminRoute
+</aside>
     </div>
 </div>
 @endsection

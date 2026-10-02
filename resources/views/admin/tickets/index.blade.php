@@ -77,9 +77,21 @@ document.addEventListener('alpine:init', () => {
             <p class="mt-2 text-sm text-slate-500">ورودی پشتیبانی، پاسخ‌ها، دسته‌بندی و مسئول رسیدگی.</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <a href="{{ route('admin.ticket-categories.index') }}" class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700">دسته‌بندی‌ها</a>
-            <a href="{{ route('admin.support-teams.index') }}" class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700">تیم‌ها</a>
-            <a href="{{ route('admin.tickets.create') }}" class="rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">تیکت جدید</a>
+
+@adminRoute('admin.ticket-categories.index')
+<a href="{{ route('admin.ticket-categories.index') }}" class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700">دسته‌بندی‌ها</a>
+@endadminRoute
+
+
+@adminRoute('admin.support-teams.index')
+<a href="{{ route('admin.support-teams.index') }}" class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700">تیم‌ها</a>
+@endadminRoute
+
+
+@adminRoute('admin.tickets.create')
+<a href="{{ route('admin.tickets.create') }}" class="rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-black text-white">تیکت جدید</a>
+@endadminRoute
+
         </div>
     </div>
 
@@ -97,7 +109,9 @@ document.addEventListener('alpine:init', () => {
         @endforeach
     </section>
 
-    <form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.tickets.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+
+@adminRoute('admin.tickets.index')
+<form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.tickets.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div class="relative flex-1">
                 <svg class="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke-linecap="round"/></svg>
@@ -134,9 +148,15 @@ document.addEventListener('alpine:init', () => {
                     <option value="{{ $id }}" @selected(($filters['assigned_user_id'] ?? '') == $id)>{{ $name }}</option>
                 @endforeach
             </select>
-            <a href="{{ route('admin.tickets.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
+
+@adminRoute('admin.tickets.index')
+<a href="{{ route('admin.tickets.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
+@endadminRoute
+
         </div>
     </form>
+@endadminRoute
+
 
     <div x-show="error" x-cloak class="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
         <span x-text="error"></span>
@@ -150,7 +170,9 @@ document.addEventListener('alpine:init', () => {
         <div class="space-y-3 md:hidden">
             @forelse($tickets as $ticket)
                 @php($hasUnread = $ticket->unread_replies_count > 0)
-                <a href="{{ route('admin.tickets.show', $ticket) }}" class="relative block overflow-hidden rounded-2xl border bg-white p-4 shadow-sm {{ $hasUnread ? 'border-[#80B6FF]' : 'border-slate-200' }}">
+
+@adminRoute('admin.tickets.show')
+<a href="{{ route('admin.tickets.show', $ticket) }}" class="relative block overflow-hidden rounded-2xl border bg-white p-4 shadow-sm {{ $hasUnread ? 'border-[#80B6FF]' : 'border-slate-200' }}">
                     @if($hasUnread)<span class="absolute inset-y-0 start-0 w-1 bg-[#0069FF]" aria-hidden="true"></span>@endif
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="rounded-lg bg-slate-950 px-2 py-1 text-[11px] font-black text-white" dir="ltr">{{ $ticket->number }}</span>
@@ -165,6 +187,8 @@ document.addEventListener('alpine:init', () => {
                         <span dir="ltr">{{ \App\Support\Jalali::format($ticket->last_activity_at ?? $ticket->created_at) }}</span>
                     </div>
                 </a>
+@endadminRoute
+
             @empty
                 <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm font-bold text-slate-500">تیکتی با این فیلترها پیدا نشد.</div>
             @endforelse
@@ -190,7 +214,11 @@ document.addEventListener('alpine:init', () => {
                                 <td class="px-4 py-4">
                                     <div class="flex items-center gap-2">
                                         @if($ticket->unread_replies_count > 0)<span class="size-2.5 shrink-0 rounded-full bg-[#0069FF]" aria-label="پاسخ جدید مشتری"></span>@endif
-                                        <a href="{{ route('admin.tickets.show', $ticket) }}" class="font-black text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">{{ $ticket->subject }}</a>
+
+@adminRoute('admin.tickets.show')
+<a href="{{ route('admin.tickets.show', $ticket) }}" class="font-black text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">{{ $ticket->subject }}</a>
+@endadminRoute
+
                                     </div>
                                     <p class="mt-1 text-xs font-bold text-slate-400" dir="ltr">{{ $ticket->number }}</p>
                                     @if($ticket->latestPublicMessage)<p class="mt-2 max-w-sm truncate text-xs font-bold text-slate-500">{{ $ticket->latestPublicMessage->author_type === \App\Models\Customer::class ? 'مشتری: ' : 'پشتیبانی: ' }}{{ \Illuminate\Support\Str::limit($ticket->latestPublicMessage->body, 90) }}</p>@endif
@@ -201,7 +229,11 @@ document.addEventListener('alpine:init', () => {
                                 <td class="px-4 py-4 font-bold text-slate-700">{{ $ticket->assignee?->name ?? 'خودکار / بدون مسئول' }}</td>
                                 <td class="px-4 py-4"><x-admin.status-badge :value="$ticket->status" :label="$statuses[$ticket->status] ?? $ticket->status" /></td>
                                 <td class="px-4 py-4 text-xs font-bold text-slate-400" dir="ltr">{{ $ticket->last_activity_at?->format('Y-m-d H:i') ?? $ticket->created_at?->format('Y-m-d H:i') }}</td>
-                                <td class="px-4 py-4"><x-admin.icon-action :href="route('admin.tickets.show', $ticket)" label="مشاهده تیکت" icon="view" tone="primary" /></td>
+                                <td class="px-4 py-4">
+@adminRoute('admin.tickets.show')
+<x-admin.icon-action :href="route('admin.tickets.show', $ticket)" label="مشاهده تیکت" icon="view" tone="primary" />
+@endadminRoute
+</td>
                             </tr>
                         @empty
                             <tr><td colspan="7" class="px-4 py-10 text-center text-sm font-bold text-slate-500">تیکتی پیدا نشد.</td></tr>

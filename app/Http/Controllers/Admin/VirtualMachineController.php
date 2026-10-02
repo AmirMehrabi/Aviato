@@ -191,25 +191,27 @@ class VirtualMachineController extends Controller
         ]);
         $billingCustomer = $virtualMachine->project?->owner ?? $virtualMachine->customer;
 
+        $canReadBilling = auth('admin')->user()->allows('billing.read');
+        $effectiveBalance = $billingCustomer && ($canReadBilling || auth('admin')->user()->allows('virtual-machines.power'))
+            ? app(UsageBalanceService::class)->effectiveBalance($billingCustomer) : null;
         $currentMonthStart = now()->startOfMonth();
-        $currentMonthUsage = UsageAccrual::query()
+        $currentMonthUsage = ! $canReadBilling ? null : UsageAccrual::query()
             ->where('virtual_machine_id', $virtualMachine->id)
             ->where('service_date', '>=', $currentMonthStart)
             ->sum('amount');
 
-        $totalUsage = UsageAccrual::query()
+        $totalUsage = ! $canReadBilling ? null : UsageAccrual::query()
             ->where('virtual_machine_id', $virtualMachine->id)
             ->sum('amount');
 
-        $currentAccrued = $this->billing->currentAccrued($virtualMachine);
+        $currentAccrued = $canReadBilling ? $this->billing->currentAccrued($virtualMachine) : null;
 
         return view('admin.virtual-machines.show', [
             'vm' => $virtualMachine,
             'billing' => $this->billing,
-            'wallet' => $billingCustomer ? $this->wallets->walletFor($billingCustomer) : null,
-            'effectiveWalletBalance' => $billingCustomer
-                ? app(UsageBalanceService::class)->effectiveBalance($billingCustomer)
-                : null,
+            'wallet' => $canReadBilling && $billingCustomer ? $this->wallets->walletFor($billingCustomer) : null,
+            'effectiveWalletBalance' => $canReadBilling ? $effectiveBalance : null,
+            'walletBlocked' => $effectiveBalance !== null && $effectiveBalance <= 0,
             'wallets' => $this->wallets,
             'billingCustomer' => $billingCustomer,
             'currentMonthUsage' => $currentMonthUsage,
@@ -323,6 +325,14 @@ class VirtualMachineController extends Controller
         }
 
         $data = $this->validated($request, $virtualMachine);
+        abort_if($request->has('onboot') && $request->boolean('onboot') !== (bool) $virtualMachine->onboot && ! $request->user('admin')->allows('virtual-machines.power'), 403);
+        abort_if(isset($data['customer_id']) && (int) $data['customer_id'] !== (int) $virtualMachine->customer_id && ! $request->user('admin')->allows('virtual-machines.transfer'), 403);
+        abort_if(array_key_exists('project_id', $data) && (int) $data['project_id'] !== (int) $virtualMachine->project_id && ! $request->user('admin')->allows('virtual-machines.transfer'), 403);
+        abort_if(array_key_exists('node', $data) && $data['node'] !== $virtualMachine->node && ! $request->user('admin')->allows('virtual-machines.transfer'), 403);
+        if (! $request->user('admin')->allows('pricing.manage')) {
+            abort_if($request->has('tax_exempt') && $request->boolean('tax_exempt') !== (bool) $virtualMachine->tax_exempt, 403);
+            unset($data['tax_exempt']);
+        }
         $selectedIpAddressId = $data['ip_address_id'] ?? null;
         $syncToProxmox = (bool) ($data['sync_to_proxmox'] ?? true);
         unset($data['ip_pool_id'], $data['ip_address_id'], $data['sync_to_proxmox']);
@@ -762,8 +772,10 @@ class VirtualMachineController extends Controller
             'onboot' => ['nullable', 'boolean'],
         ]);
 
-        $data['start_after_create'] = $request->boolean('start_after_create', true);
+        $data['start_after_create'] = $request->boolean('start_after_create', $request->user('admin')->allows('virtual-machines.power'));
+        abort_if($data['start_after_create'] && ! $request->user('admin')->allows('virtual-machines.power'), 403);
         $data['onboot'] = $request->boolean('onboot');
+        abort_if($data['onboot'] && ! $request->user('admin')->allows('virtual-machines.power'), 403);
 
         return $data;
     }

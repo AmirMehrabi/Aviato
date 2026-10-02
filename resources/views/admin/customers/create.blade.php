@@ -10,8 +10,12 @@
         <p class="mt-2 text-sm text-slate-500">اطلاعات پایه و وضعیت دسترسی مشتری را ثبت کنید.</p>
     </div>
 
-    <form method="POST" action="{{ route('admin.customers.store') }}">
+
+@adminRoute('admin.customers.store')
+<form method="POST" action="{{ route('admin.customers.store') }}">
         @include('admin.customers._form')
     </form>
+@endadminRoute
+
 </div>
 @endsection

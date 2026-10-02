@@ -12,8 +12,12 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('admin.proxmox-servers.store') }}">
+
+@adminRoute('admin.proxmox-servers.store')
+<form method="POST" action="{{ route('admin.proxmox-servers.store') }}">
         @include('admin.proxmox-servers._form')
     </form>
+@endadminRoute
+
 </div>
 @endsection

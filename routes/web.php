@@ -66,6 +66,7 @@ use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\SitemapController;
 use App\Models\VmBundle;
 use App\Services\WalletService;
+use App\Support\AdminAccess;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
@@ -100,7 +101,7 @@ Route::domain(config('storage.s3_domain'))
     });
 
 Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () use ($adminLogin, $adminHome) {
-    Route::get('/', fn () => redirect('/'.trim($adminHome, '/')))
+    Route::get('/', fn () => redirect()->route(AdminAccess::landingRoute(Auth::guard('admin')->user())))
         ->middleware('auth:admin')
         ->name('admin.home');
 
@@ -577,7 +578,7 @@ Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap')
 
 Route::get('/changelog', function () {
     if (Auth::guard('admin')->check()) {
-        return redirect()->route('admin.dashboard');
+        return redirect()->route(AdminAccess::landingRoute(Auth::guard('admin')->user()));
     }
 
     if (Auth::guard('customer')->check()) {

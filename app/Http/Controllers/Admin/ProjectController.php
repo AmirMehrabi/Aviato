@@ -84,7 +84,7 @@ class ProjectController extends Controller
             $project->members->each->setRelation('specificVirtualMachines', collect());
         }
 
-        $vmPrices = $project->virtualMachines->mapWithKeys(function ($vm) {
+        $vmPrices = ! auth('admin')->user()->allows('billing.read') ? collect() : $project->virtualMachines->mapWithKeys(function ($vm) {
             return [$vm->uuid => $this->billing->estimateMonthly($vm)];
         });
 
@@ -112,7 +112,7 @@ class ProjectController extends Controller
                 ->whereDoesntHave('projectMemberships', fn ($query) => $query->where('project_id', $project->id))
                 ->orderBy('name')
                 ->get(['id', 'name', 'email', 'phone']),
-            'walletAlertSnapshot' => $this->walletAlerts->snapshot($project->owner),
+            'walletAlertSnapshot' => auth('admin')->user()->allows('billing.read') ? $this->walletAlerts->snapshot($project->owner) : null,
             'walletAlertThresholds' => $this->walletAlerts->thresholds($project),
             'walletAlertRecipientIds' => collect($this->walletAlerts->recipients($project))->pluck('id')->all(),
         ]);
@@ -131,7 +131,7 @@ class ProjectController extends Controller
         $jYear = $jalaliNow->getYear();
         $jMonth = $jalaliNow->getMonth();
 
-        $vmPrices = $project->virtualMachines->mapWithKeys(function ($vm) {
+        $vmPrices = ! auth('admin')->user()->allows('billing.read') ? collect() : $project->virtualMachines->mapWithKeys(function ($vm) {
             return [$vm->uuid => $this->billing->estimateMonthly($vm)];
         });
 

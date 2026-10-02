@@ -28,7 +28,9 @@
                 </div>
                 <span class="font-mono text-xs font-bold text-slate-500" dir="ltr">Current: {{ $vm->node }} / {{ $vm->vmid }}</span>
             </div>
-            <form method="POST" action="{{ route('admin.virtual-machines.move-node') }}" class="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] lg:items-center">
+
+@adminRoute('admin.virtual-machines.move-node')
+<form method="POST" action="{{ route('admin.virtual-machines.move-node') }}" class="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] lg:items-center">
                 @csrf
                 <input type="hidden" name="vm_ids[]" value="{{ $vm->id }}">
                 <select name="target_node" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
@@ -47,15 +49,21 @@
                 </label>
                 <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">ثبت در صف</button>
             </form>
+@endadminRoute
+
         </div>
     @endif
 
     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 class="mb-6 text-2xl font-black">ویرایش VM</h1>
-        <form method="POST" action="{{ route('admin.virtual-machines.update', $vm) }}">
+
+@adminRoute('admin.virtual-machines.update')
+<form method="POST" action="{{ route('admin.virtual-machines.update', $vm) }}">
             @method('PUT')
             @include('admin.virtual-machines._form')
         </form>
+@endadminRoute
+
     </div>
 </div>
 

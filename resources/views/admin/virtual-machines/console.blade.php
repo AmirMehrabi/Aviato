@@ -33,9 +33,13 @@
                 <button type="button" @click="disconnect()" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-50">
                     قطع اتصال
                 </button>
-                <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-50">
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-50">
                     جزئیات سرور
                 </a>
+@endadminRoute
+
             </div>
         </div>
 

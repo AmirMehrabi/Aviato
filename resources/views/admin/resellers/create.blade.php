@@ -17,13 +17,19 @@
     @endif
 
     <div class="flex items-center gap-3">
-        <a href="{{ route('admin.resellers.index') }}" class="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600">
+
+@adminRoute('admin.resellers.index')
+<a href="{{ route('admin.resellers.index') }}" class="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600">
             <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7h8m0 0v8m0-8-8 8-4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
+@endadminRoute
+
         <h1 class="text-2xl font-black">افزودن فروشنده جدید</h1>
     </div>
 
-    <form method="POST" action="{{ route('admin.resellers.store') }}" class="mt-6 max-w-2xl space-y-6">
+
+@adminRoute('admin.resellers.store')
+<form method="POST" action="{{ route('admin.resellers.store') }}" class="mt-6 max-w-2xl space-y-6">
         @csrf
 
         <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -82,8 +88,14 @@
 
         <div class="flex items-center gap-3">
             <button type="submit" class="rounded-lg bg-[#0069FF] px-6 py-3 text-sm font-black text-white transition hover:bg-[#0069FF]/90">فعال‌سازی فروشنده</button>
-            <a href="{{ route('admin.resellers.index') }}" class="rounded-lg border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50">انصراف</a>
+
+@adminRoute('admin.resellers.index')
+<a href="{{ route('admin.resellers.index') }}" class="rounded-lg border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50">انصراف</a>
+@endadminRoute
+
         </div>
     </form>
+@endadminRoute
+
 </div>
 @endsection

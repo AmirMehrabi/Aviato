@@ -67,7 +67,9 @@ document.addEventListener('alpine:init', () => {
         </div>
     </div>
 
-    <form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.projects.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+
+@adminRoute('admin.projects.index')
+<form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.projects.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div class="relative flex-1">
                 <svg class="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke-linecap="round"/></svg>
@@ -79,9 +81,15 @@ document.addEventListener('alpine:init', () => {
                     <option value="{{ $owner->id }}" @selected((string) ($filters['owner'] ?? '') === (string) $owner->id)>{{ $owner->name }} - {{ $owner->email ?: $owner->phone }}</option>
                 @endforeach
             </select>
-            <a href="{{ route('admin.projects.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
+
+@adminRoute('admin.projects.index')
+<a href="{{ route('admin.projects.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
+@endadminRoute
+
         </div>
     </form>
+@endadminRoute
+
 
     <section x-ref="results" class="mt-6">
         <x-admin.index-table :sort="$sort" :columns="[
@@ -96,7 +104,11 @@ document.addEventListener('alpine:init', () => {
                 <tr class="transition hover:bg-slate-50/80">
                     <td class="px-5 py-4">
                         <div>
-                            <a href="{{ route('admin.projects.show', $project) }}" class="font-black text-slate-950 hover:text-[#0069FF]">{{ $project->name }}</a>
+
+@adminRoute('admin.projects.show')
+<a href="{{ route('admin.projects.show', $project) }}" class="font-black text-slate-950 hover:text-[#0069FF]">{{ $project->name }}</a>
+@endadminRoute
+
                             <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
                                 <span>#{{ $project->id }}</span>
                                 @if($project->is_default)
@@ -106,7 +118,11 @@ document.addEventListener('alpine:init', () => {
                         </div>
                     </td>
                     <td class="px-5 py-4">
-                        <a href="{{ route('admin.customers.show', $project->owner) }}" class="font-bold text-slate-900 hover:text-[#0069FF]">{{ $project->owner?->name }}</a>
+
+@adminRoute('admin.customers.show')
+<a href="{{ route('admin.customers.show', $project->owner) }}" class="font-bold text-slate-900 hover:text-[#0069FF]">{{ $project->owner?->name }}</a>
+@endadminRoute
+
                         <p class="mt-1 text-xs text-slate-500">{{ $project->owner?->email ?: $project->owner?->phone }}</p>
                     </td>
                     <td class="px-5 py-4">
@@ -119,7 +135,11 @@ document.addEventListener('alpine:init', () => {
                     <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $project->created_at?->format('Y/m/d') }}</td>
                     <td class="px-5 py-4">
                         <div class="flex justify-end gap-2">
-                            <x-admin.icon-action :href="route('admin.projects.show', $project)" label="مشاهده فضای کاری" icon="view" tone="primary" />
+
+@adminRoute('admin.projects.show')
+<x-admin.icon-action :href="route('admin.projects.show', $project)" label="مشاهده فضای کاری" icon="view" tone="primary" />
+@endadminRoute
+
                         </div>
                     </td>
                 </tr>

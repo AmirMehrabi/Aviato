@@ -9,6 +9,7 @@
 
             <x-form.input name="phone" label="موبایل" :value="$customer->phone" placeholder="+98912..." dir-ltr />
 
+            @if(! $customer->exists || auth('admin')->user()->allows('customers.credentials'))
             <x-form.input
                 name="password"
                 label="رمز عبور"
@@ -26,6 +27,8 @@
                 :required="! $customer->exists"
             />
 
+            @endif
+
             <x-form.input
                 name="suspension_reason"
                 label="دلیل تعلیق"
@@ -41,7 +44,11 @@
             <h2 class="font-black">وضعیت حساب</h2>
             <p class="mt-2 text-sm leading-7 text-slate-500">مشتری فعال می‌تواند وارد پنل شود؛ مشتری تعلیق شده برای عملیات مدیریتی نگه داشته می‌شود.</p>
             <div class="mt-5 space-y-3">
+                @unless(auth('admin')->user()->allows('customers.suspend'))
+                    <input type="hidden" name="status" value="{{ $customer->status ?: 'active' }}">
+                @endunless
                 <x-form.select
+                    :disabled="! auth('admin')->user()->allows('customers.suspend')"
                     name="status"
                     label="وضعیت"
                     :options="['active' => 'فعال', 'suspended' => 'تعلیق شده']"
@@ -67,6 +74,10 @@
         </div>
 
         <button class="w-full rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">ذخیره مشتری</button>
-        <a href="{{ route('admin.customers.index') }}" class="block rounded-lg border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">بازگشت</a>
+
+@adminRoute('admin.customers.index')
+<a href="{{ route('admin.customers.index') }}" class="block rounded-lg border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">بازگشت</a>
+@endadminRoute
+
     </aside>
 </div>

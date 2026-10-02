@@ -41,7 +41,7 @@ class NetworkBillingController extends Controller
             'statusFilter' => $status,
             'stats' => [
                 'month_bytes' => (int) VmNetworkBillingPeriod::query()->where('period_end', '>', now())->sum('rated_bytes'),
-                'month_amount' => (int) VmNetworkBillingPeriod::query()->where('period_end', '>', now())->sum('accrued_amount'),
+                'month_amount' => ! $request->user('admin')->allows('billing.read') ? null : (int) VmNetworkBillingPeriod::query()->where('period_end', '>', now())->sum('accrued_amount'),
                 'rated' => NetworkUsageBucket::query()->where('processing_status', 'rated')->count(),
                 'exceptions' => NetworkUsageBucket::query()->whereIn('processing_status', ['quarantined'])->orWhereIn('completeness', ['partial', 'missing'])->count(),
                 'latest' => NetworkUsageBucket::query()->max('interval_end'),

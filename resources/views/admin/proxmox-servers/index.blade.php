@@ -34,7 +34,11 @@
             <h1 class="text-2xl font-black">سرورها و کلاسترهای Proxmox</h1>
             <p class="mt-2 text-sm text-slate-500">مدیریت endpointها، وضعیت اتصال، syncهای معوق و ظرفیت دیتاسنتر.</p>
         </div>
-        <a href="{{ route('admin.proxmox-servers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن سرور</a>
+
+@adminRoute('admin.proxmox-servers.create')
+<a href="{{ route('admin.proxmox-servers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن سرور</a>
+@endadminRoute
+
     </div>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -164,9 +168,21 @@
                     @endif
 
                     <div class="flex flex-wrap gap-2 pt-1">
-                        <x-admin.icon-action :href="route('admin.proxmox-servers.show', $server)" label="نمایش سرور" icon="view" tone="primary" />
-                        <x-admin.icon-action :href="route('admin.proxmox-servers.edit', $server)" label="ویرایش سرور" icon="edit" />
-                        <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <x-admin.icon-action type="submit" label="همگام‌سازی سرور" icon="sync" tone="warning" /></form>
+
+@adminRoute('admin.proxmox-servers.show')
+<x-admin.icon-action :href="route('admin.proxmox-servers.show', $server)" label="نمایش سرور" icon="view" tone="primary" />
+@endadminRoute
+
+
+@adminRoute('admin.proxmox-servers.edit')
+<x-admin.icon-action :href="route('admin.proxmox-servers.edit', $server)" label="ویرایش سرور" icon="edit" />
+@endadminRoute
+
+
+@adminRoute('admin.proxmox-servers.sync')
+<form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <x-admin.icon-action type="submit" label="همگام‌سازی سرور" icon="sync" tone="warning" /></form>
+@endadminRoute
+
                     </div>
                 </div>
             </article>
@@ -174,7 +190,11 @@
             <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center lg:col-span-2 2xl:col-span-3">
                 <h2 class="text-xl font-black text-slate-900">هنوز endpoint ثبت نشده است</h2>
                 <p class="mt-2 text-slate-500">اولین سرور یا کلاستر Proxmox را اضافه کنید.</p>
-                <a href="{{ route('admin.proxmox-servers.create') }}" class="mt-5 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن سرور</a>
+
+@adminRoute('admin.proxmox-servers.create')
+<a href="{{ route('admin.proxmox-servers.create') }}" class="mt-5 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن سرور</a>
+@endadminRoute
+
             </div>
         @endforelse
     </section>

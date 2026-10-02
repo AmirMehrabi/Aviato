@@ -4,6 +4,10 @@
         <p class="mt-2 text-sm leading-7 text-slate-500">{{ $subtitle }}</p>
     </div>
     @isset($export)
-        <a href="{{ route('admin.billing.exports', ['ledger' => $export] + request()->query()) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:text-[#0069FF]">خروجی CSV</a>
+
+@adminRoute('admin.billing.exports')
+<a href="{{ route('admin.billing.exports', ['ledger' => $export] + request()->query()) }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:text-[#0069FF]">خروجی CSV</a>
+@endadminRoute
+
     @endisset
 </div>

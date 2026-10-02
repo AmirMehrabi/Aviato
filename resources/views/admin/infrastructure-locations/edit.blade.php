@@ -4,7 +4,9 @@
 
 @section('content')
 <div class="px-4 py-6 md:px-8 lg:px-10">
-    <form method="POST" action="{{ route('admin.infrastructure-locations.update', $location) }}" class="max-w-5xl space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+@adminRoute('admin.infrastructure-locations.update')
+<form method="POST" action="{{ route('admin.infrastructure-locations.update', $location) }}" class="max-w-5xl space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         @csrf @method('PUT')
         <div>
             <h1 class="text-2xl font-black">Edit {{ $location->name }}</h1>
@@ -53,5 +55,7 @@
 
         <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Save location</button>
     </form>
+@endadminRoute
+
 </div>
 @endsection

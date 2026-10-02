@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\AdminRole;
 use App\Http\Controllers\Controller;
 use App\Models\AdminDashboardWarningDismissal;
 use App\Services\AdminDashboardActions;
@@ -18,7 +17,7 @@ class DashboardController extends Controller
 
     public function __invoke(Request $request): View|RedirectResponse
     {
-        if ($request->user('admin')->role !== AdminRole::Admin) {
+        if (! $request->user('admin')->allows('dashboard.view')) {
             return redirect()->route(AdminAccess::landingRoute($request->user('admin')));
         }
 
@@ -30,8 +29,9 @@ class DashboardController extends Controller
         $days = in_array($request->integer('period', 1), [1, 7, 30], true) ? $request->integer('period', 1) : 1;
 
         return view('admin.dashboard', [
-            'dashboard' => $this->actions->snapshot($dismissedKeys, max(1, $request->integer('page', 1)), $category),
-            'finance' => $this->finance->snapshot($days),
+            'dashboard' => $this->actions->snapshot($dismissedKeys, max(1, $request->integer('page', 1)), $category, $request->user('admin')),
+            'finance' => $request->user('admin')->allows('billing.read') ? $this->finance->snapshot($days) : null,
+            'period' => $days,
             'refreshedAt' => now(),
         ]);
     }
@@ -42,7 +42,7 @@ class DashboardController extends Controller
             'warning_key' => ['required', 'string', 'size:64'],
         ]);
 
-        if (! $this->actions->hasActiveKey($data['warning_key'])) {
+        if (! $this->actions->hasActiveKey($data['warning_key'], $request->user('admin'))) {
             return back()->with('status', 'این مورد دیگر فعال نیست.');
         }
 

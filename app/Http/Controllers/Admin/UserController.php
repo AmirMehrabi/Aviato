@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminAbility;
 use App\Enums\AdminRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AdminAccess;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,6 +68,7 @@ class UserController extends Controller
         $data = $this->validated($request, false, $user);
         $roleChanged = $user->role->value !== $data['role'];
         $statusChanged = (bool) $user->is_active !== (bool) $data['is_active'];
+        $permissionsChanged = ($user->permissions ?? []) !== ($data['permissions'] ?? []);
 
         DB::transaction(function () use ($request, $user, $data): void {
             $locked = User::query()->lockForUpdate()->findOrFail($user->id);
@@ -73,7 +76,7 @@ class UserController extends Controller
             $locked->update($data);
         });
 
-        if ($roleChanged || $statusChanged) {
+        if ($roleChanged || $statusChanged || $permissionsChanged) {
             $this->revokeUserSessions($user);
         }
 
@@ -119,12 +122,18 @@ class UserController extends Controller
             'phone' => ['nullable', 'required_without:email', 'string', 'max:30', Rule::unique('users')->ignore($user)],
             'role' => ['required', Rule::enum(AdminRole::class)],
             'is_active' => ['required', 'boolean'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', 'distinct', Rule::in(array_values(array_diff(array_column(AdminAbility::cases(), 'value'), [AdminAbility::UsersManage->value])))],
         ];
         if ($creating) {
             $rules['password'] = ['required', 'confirmed', Password::defaults()];
         }
 
-        return $request->validate($rules);
+        $data = $request->validate($rules);
+        $data['permissions'] = $data['role'] === AdminRole::Custom->value
+            ? AdminAccess::normalizePermissions($data['permissions'] ?? []) : null;
+
+        return $data;
     }
 
     private function guardCriticalChange(Request $request, User $user, string $newRole, bool $active): void

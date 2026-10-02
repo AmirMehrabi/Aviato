@@ -20,7 +20,11 @@
             <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
-                        <a href="{{ route('admin.ip-pools.index') }}" class="text-sm font-bold text-white/60 transition hover:text-white">IP Pools</a>
+
+@adminRoute('admin.ip-pools.index')
+<a href="{{ route('admin.ip-pools.index') }}" class="text-sm font-bold text-white/60 transition hover:text-white">IP Pools</a>
+@endadminRoute
+
                         <span class="text-white/35">/</span>
                         <span class="text-sm font-black text-white">{{ $pool->name }}</span>
                     </div>
@@ -36,8 +40,16 @@
                     </div>
                 </div>
                 <div class="flex shrink-0 flex-wrap gap-2">
-                    <a href="{{ route('admin.ip-pools.edit', $pool) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
-                    <a href="{{ route('admin.ip-pools.index') }}" class="rounded-lg border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white transition hover:bg-white/15">بازگشت</a>
+
+@adminRoute('admin.ip-pools.edit')
+<a href="{{ route('admin.ip-pools.edit', $pool) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
+@endadminRoute
+
+
+@adminRoute('admin.ip-pools.index')
+<a href="{{ route('admin.ip-pools.index') }}" class="rounded-lg border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white transition hover:bg-white/15">بازگشت</a>
+@endadminRoute
+
                 </div>
             </div>
         </section>
@@ -101,7 +113,11 @@
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-4">
                                     @if ($vm)
-                                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="block font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $vm->display_name }}</a>
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="block font-black text-slate-950 transition hover:text-[#0069FF]" dir="ltr">{{ $vm->display_name }}</a>
+@endadminRoute
+
                                         <span class="mt-1 block text-xs text-slate-500">{{ \App\Support\AdminUi::status($vm->status) }} / {{ \App\Support\AdminUi::status($vm->provisioning_status) }}</span>
                                     @else
                                         <span class="text-slate-400">بدون ماشین</span>
@@ -109,7 +125,11 @@
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-4">
                                     @if ($vm?->customer)
-                                        <a href="{{ route('admin.customers.show', $vm->customer) }}" class="font-bold text-[#0069FF] transition hover:text-[#0050D0]">{{ $vm->customer->name }}</a>
+
+@adminRoute('admin.customers.show')
+<a href="{{ route('admin.customers.show', $vm->customer) }}" class="font-bold text-[#0069FF] transition hover:text-[#0050D0]">{{ $vm->customer->name }}</a>
+@endadminRoute
+
                                     @else
                                         <span class="text-slate-400">بدون مشتری</span>
                                     @endif

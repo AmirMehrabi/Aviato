@@ -8,6 +8,7 @@ enum AdminRole: string
     case Accountant = 'accountant';
     case Support = 'support';
     case Infrastructure = 'infrastructure';
+    case Custom = 'custom';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum AdminRole: string
             self::Accountant => 'حسابدار',
             self::Support => 'پشتیبانی',
             self::Infrastructure => 'زیرساخت',
+            self::Custom => 'دسترسی سفارشی',
         };
     }
 

@@ -10,12 +10,20 @@
             <h1 class="mt-1 text-2xl font-black text-slate-950">ویرایش {{ $customer->name }}</h1>
             <p class="mt-2 text-sm text-slate-500">اطلاعات تماس، رمز عبور و وضعیت تعلیق را مدیریت کنید.</p>
         </div>
-        <a href="{{ route('admin.customers.show', $customer) }}" class="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-50">نمایش</a>
+
+@adminRoute('admin.customers.show')
+<a href="{{ route('admin.customers.show', $customer) }}" class="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-50">نمایش</a>
+@endadminRoute
+
     </div>
 
-    <form method="POST" action="{{ route('admin.customers.update', $customer) }}">
+
+@adminRoute('admin.customers.update')
+<form method="POST" action="{{ route('admin.customers.update', $customer) }}">
         @method('PUT')
         @include('admin.customers._form')
     </form>
+@endadminRoute
+
 </div>
 @endsection

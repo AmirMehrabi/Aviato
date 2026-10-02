@@ -41,12 +41,20 @@
     <div class="rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
         <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div class="min-w-0">
-                <a href="{{ route('admin.projects.index') }}" class="text-sm font-black text-white/60 transition hover:text-white">فضاهای کاری</a>
+
+@adminRoute('admin.projects.index')
+<a href="{{ route('admin.projects.index') }}" class="text-sm font-black text-white/60 transition hover:text-white">فضاهای کاری</a>
+@endadminRoute
+
                 <h1 class="mt-2 truncate text-2xl font-black md:text-4xl">{{ $project->name }}</h1>
                 <p class="mt-2 text-sm leading-7 text-white/70">مسئول پرداخت: {{ $project->owner?->name }}</p>
             </div>
             <div class="flex items-center gap-3">
-                <a href="{{ route('admin.projects.proforma', $project) }}" class="w-fit rounded-lg bg-white/20 px-4 py-2 text-sm font-black text-white transition hover:bg-white/30">پیش فاکتور</a>
+
+@adminRoute('admin.projects.proforma')
+<a href="{{ route('admin.projects.proforma', $project) }}" class="w-fit rounded-lg bg-white/20 px-4 py-2 text-sm font-black text-white transition hover:bg-white/30">پیش فاکتور</a>
+@endadminRoute
+
                 <span class="w-fit rounded-lg bg-white/10 px-4 py-2 text-sm font-black text-white">{{ $project->is_default ? 'فضای کاری پیش‌فرض' : 'فضای کاری' }}</span>
             </div>
         </div>
@@ -55,7 +63,11 @@
     <section class="mt-6 grid gap-5 lg:grid-cols-4">
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <p class="text-xs font-black tracking-wide text-slate-500">مالک</p>
-            <a href="{{ route('admin.customers.show', $project->owner) }}" class="mt-2 block truncate text-xl font-black text-slate-950 hover:text-[#0069FF]">{{ $project->owner?->name }}</a>
+
+@adminRoute('admin.customers.show')
+<a href="{{ route('admin.customers.show', $project->owner) }}" class="mt-2 block truncate text-xl font-black text-slate-950 hover:text-[#0069FF]">{{ $project->owner?->name }}</a>
+@endadminRoute
+
             <p class="mt-1 truncate text-sm font-bold text-slate-500">{{ $project->owner?->email ?: $project->owner?->phone }}</p>
         </article>
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
@@ -68,17 +80,29 @@
             <p class="mt-2 text-xl font-black text-slate-950">{{ \App\Support\PersianDigits::format($project->virtual_machines_count) }}</p>
             <p class="mt-1 text-sm font-bold text-slate-500">هزینه با مالک است</p>
         </article>
+
+@adminAbility('billing.read')
+
         <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <p class="text-xs font-black tracking-wide text-slate-500">هزینه ماهانه</p>
             <p class="mt-2 text-xl font-black text-[#0069FF]">{{ \App\Support\PersianDigits::format($totalMonthlyCost / 10) }} تومان</p>
             <p class="mt-1 text-sm font-bold text-slate-500">جمع تقریبی ماشین‌ها</p>
         </article>
+
+@endadminAbility
+
+
     </section>
+
+
+@adminAbility('billing.read')
 
     <section class="mt-6 rounded-xl border border-slate-200 bg-white p-5">
         <h2 class="text-lg font-black text-slate-950">هشدارهای کیف‌پول</h2>
         <p class="mt-2 text-sm text-slate-600">موجودی مؤثر کیف‌پول مالک: {{ app(\App\Services\WalletService::class)->format($walletAlertSnapshot['balance']) }} · هزینه ماهانه برآوردی همه فضاهای کاری مالک: {{ app(\App\Services\WalletService::class)->format($walletAlertSnapshot['monthly_cost']) }} · باقیمانده: {{ $walletAlertSnapshot['percent'] === null ? 'بدون هزینه ماهانه' : $walletAlertSnapshot['percent'].'٪' }}</p>
-        <form method="POST" action="{{ route('admin.projects.wallet-alerts.update', $project) }}" class="mt-5 space-y-4">
+
+@adminRoute('admin.projects.wallet-alerts.update')
+<form method="POST" action="{{ route('admin.projects.wallet-alerts.update', $project) }}" class="mt-5 space-y-4">
             @csrf @method('PATCH')
             <div class="grid gap-4 md:grid-cols-2">
                 <label class="block"><span class="text-sm font-black">درصدهای هشدار</span><select name="threshold_mode" class="mt-2 w-full rounded-lg border border-slate-300 p-3"><option value="default" @selected($project->wallet_alert_thresholds === null)>پیش‌فرض تنظیمات مدیر</option><option value="custom" @selected($project->wallet_alert_thresholds !== null)>مقدار سفارشی این فضا</option></select></label>
@@ -88,11 +112,22 @@
             </div>
             <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره تنظیمات هشدار</button>
         </form>
-        <form method="POST" action="{{ route('admin.projects.wallet-alerts.send', $project) }}" class="mt-5 border-t border-slate-100 pt-5">@csrf<p class="mb-3 text-xs text-slate-500">ارسال به {{ count($walletAlertRecipientIds) }} دریافت‌کننده ذخیره‌شده انجام می‌شود. اگر انتخاب‌ها را تغییر داده‌اید، ابتدا تنظیمات هشدار را ذخیره کنید.</p><button class="rounded-lg border border-[#0069FF] px-5 py-3 text-sm font-black text-[#0069FF]">ارسال دستی اعلان موجودی</button></form>
+@endadminRoute
+
+
+@adminRoute('admin.projects.wallet-alerts.send')
+<form method="POST" action="{{ route('admin.projects.wallet-alerts.send', $project) }}" class="mt-5 border-t border-slate-100 pt-5">@csrf<p class="mb-3 text-xs text-slate-500">ارسال به {{ count($walletAlertRecipientIds) }} دریافت‌کننده ذخیره‌شده انجام می‌شود. اگر انتخاب‌ها را تغییر داده‌اید، ابتدا تنظیمات هشدار را ذخیره کنید.</p><button class="rounded-lg border border-[#0069FF] px-5 py-3 text-sm font-black text-[#0069FF]">ارسال دستی اعلان موجودی</button></form>
+@endadminRoute
+
     </section>
+
+@endadminAbility
+
+
 
     <section class="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div class="space-y-5">
+            @adminAbility('virtual-machines.read')
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <h2 class="text-lg font-black text-slate-950">ماشین‌ها</h2>
                 <div class="mt-4 overflow-x-auto">
@@ -103,7 +138,11 @@
                                 <th class="px-4 py-3 text-right">ساخته‌شده توسط</th>
                                 <th class="px-4 py-3 text-right">مسئول پرداخت</th>
                                 <th class="px-4 py-3 text-right">وضعیت</th>
-                                <th class="px-4 py-3 text-left">هزینه ماهانه</th>
+
+@adminAbility('billing.read')
+<th class="px-4 py-3 text-left">هزینه ماهانه</th>
+@endadminAbility
+
                                 <th class="px-4 py-3 text-left">عملیات</th>
                             </tr>
                         </thead>
@@ -118,9 +157,17 @@
                                     <td class="px-4 py-3 text-slate-600">{{ $vm->creator?->name ?: $vm->customer?->name }}</td>
                                     <td class="px-4 py-3 font-bold text-slate-900">{{ $project->owner?->name }}</td>
                                     <td class="px-4 py-3"><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">{{ \App\Support\AdminUi::status($vm->status) }}</span></td>
-                                    <td class="px-4 py-3 text-left font-black text-slate-950">{{ \App\Support\PersianDigits::format($vmPrices->get($vm->uuid, 0) / 10) }} <span class="text-xs font-bold text-slate-500">تومان</span></td>
+
+@adminAbility('billing.read')
+<td class="px-4 py-3 text-left font-black text-slate-950">{{ \App\Support\PersianDigits::format($vmPrices->get($vm->uuid, 0) / 10) }} <span class="text-xs font-bold text-slate-500">تومان</span></td>
+@endadminAbility
+
                                     <td class="px-4 py-3 text-left">
-                                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white">مشاهده</a>
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white">مشاهده</a>
+@endadminRoute
+
                                     </td>
                                 </tr>
                             @empty
@@ -133,6 +180,7 @@
                 </div>
             </div>
 
+            @endadminAbility
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -142,10 +190,15 @@
                     <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{{ \App\Support\PersianDigits::format($project->members_count) }} عضو</span>
                 </div>
 
+
+@adminAbility('projects.manage')
+
                 <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4" x-data="{ role: @js($defaultMemberRole), scope: @js($defaultMemberScope), scopeTouched: @js(old('vm_access_scope') !== null), syncScope() { if (! this.scopeTouched) { this.scope = this.role === 'member' ? 'own' : 'all'; } } }">
                     <h3 class="text-sm font-black text-slate-900">افزودن عضو جدید</h3>
                     <p class="mt-1 text-xs leading-6 text-slate-500">یک یا چند مشتری خارج از این workspace را انتخاب کنید.</p>
-                    <form method="POST" action="{{ route('admin.projects.members.store', $project) }}" class="mt-4 space-y-4">
+
+@adminRoute('admin.projects.members.store')
+<form method="POST" action="{{ route('admin.projects.members.store', $project) }}" class="mt-4 space-y-4">
                         @csrf
                         <div class="grid gap-4 md:grid-cols-2">
                             <label class="block md:col-span-2">
@@ -187,7 +240,12 @@
 
                         <button class="rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">افزودن عضو</button>
                     </form>
+@endadminRoute
+
                 </div>
+
+@endadminAbility
+
 
                 <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -226,26 +284,34 @@
                                 @endphp
                                 <tr x-data="{ scope: @js($member->vm_access_scope) }">
                                     <td class="px-4 py-4">
-                                        <form id="{{ $updateFormId }}" method="POST" action="{{ route('admin.projects.members.update', [$project, $member]) }}">
+
+@adminRoute('admin.projects.members.update')
+<form id="{{ $updateFormId }}" method="POST" action="{{ route('admin.projects.members.update', [$project, $member]) }}">
                                             @csrf
                                             @method('PATCH')
                                         </form>
-                                        <form id="{{ $deleteFormId }}" method="POST" action="{{ route('admin.projects.members.destroy', [$project, $member]) }}" onsubmit="return confirm('این عضو از workspace حذف شود؟')">
+@endadminRoute
+
+
+@adminRoute('admin.projects.members.destroy')
+<form id="{{ $deleteFormId }}" method="POST" action="{{ route('admin.projects.members.destroy', [$project, $member]) }}" onsubmit="return confirm('این عضو از workspace حذف شود؟')">
                                             @csrf
                                             @method('DELETE')
                                         </form>
+@endadminRoute
+
                                         <p class="font-black text-slate-950">{{ $member->customer?->name }}</p>
                                         <p class="mt-1 text-xs text-slate-500">{{ $member->customer?->email ?: $member->customer?->phone }}</p>
                                     </td>
                                     <td class="px-4 py-4">
-                                        <select form="{{ $updateFormId }}" name="role" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-[#0069FF] focus:outline-none" aria-label="نقش عضو">
+                                        <select @disabled(! auth('admin')->user()->allows('projects.manage')) form="{{ $updateFormId }}" name="role" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-[#0069FF] focus:outline-none" aria-label="نقش عضو">
                                             @foreach($roleLabels as $value => $label)
                                                 <option value="{{ $value }}" @selected($member->role === $value)>{{ $label }}</option>
                                             @endforeach
                                         </select>
                                     </td>
                                     <td class="px-4 py-4">
-                                        <select form="{{ $updateFormId }}" name="vm_access_scope" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-[#0069FF] focus:outline-none" aria-label="دسترسی VM" x-model="scope">
+                                        <select @disabled(! auth('admin')->user()->allows('projects.manage')) form="{{ $updateFormId }}" name="vm_access_scope" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-[#0069FF] focus:outline-none" aria-label="دسترسی VM" x-model="scope">
                                             @foreach($scopeLabels as $value => $label)
                                                 <option value="{{ $value }}" @selected($member->vm_access_scope === $value)>{{ $label }}</option>
                                             @endforeach
@@ -257,7 +323,7 @@
                                             <div class="grid gap-2 xl:grid-cols-2">
                                                 @forelse($workspaceVirtualMachines as $vm)
                                                     <label class="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-2 text-xs">
-                                                        <input form="{{ $updateFormId }}" type="checkbox" name="vm_ids[]" value="{{ $vm->id }}" @checked(in_array($vm->id, $memberVmIds, true)) class="mt-1 rounded border-slate-300 text-[#0069FF] focus:ring-[#0069FF]" :disabled="scope !== 'specific'">
+                                                        <input @disabled(! auth('admin')->user()->allows('projects.manage')) form="{{ $updateFormId }}" type="checkbox" name="vm_ids[]" value="{{ $vm->id }}" @checked(in_array($vm->id, $memberVmIds, true)) class="mt-1 rounded border-slate-300 text-[#0069FF] focus:ring-[#0069FF]" :disabled="scope !== 'specific'">
                                                         <span class="min-w-0">
                                                             <span class="block truncate font-black text-slate-900">{{ $vm->display_name }}</span>
                                                             <span class="block truncate text-[11px] text-slate-500" dir="ltr">{{ $vm->name }}</span>
@@ -272,8 +338,16 @@
                                     </td>
                                     <td class="px-4 py-4 text-left">
                                         <div class="flex flex-col gap-2">
-                                            <button form="{{ $updateFormId }}" class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white transition hover:bg-[#0050D0]">ذخیره</button>
-                                            <button form="{{ $deleteFormId }}" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:bg-red-100">حذف</button>
+
+@adminAbility('projects.manage')
+<button form="{{ $updateFormId }}" class="rounded-lg bg-[#0069FF] px-3 py-2 text-xs font-black text-white transition hover:bg-[#0050D0]">ذخیره</button>
+@endadminAbility
+
+
+@adminAbility('projects.manage')
+<button form="{{ $deleteFormId }}" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:bg-red-100">حذف</button>
+@endadminAbility
+
                                         </div>
                                     </td>
                                 </tr>
@@ -287,7 +361,9 @@
         <aside class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <h2 class="text-lg font-black text-slate-950">تنظیمات مدیریت</h2>
             <p class="mt-2 text-sm leading-7 text-slate-500">تغییر نام فضای کاری، مالک، اعضا، ماشین‌ها یا مسئول پرداخت را عوض نمی‌کند.</p>
-            <form method="POST" action="{{ route('admin.projects.update', $project) }}" class="mt-5 space-y-4">
+
+@adminRoute('admin.projects.update')
+<form method="POST" action="{{ route('admin.projects.update', $project) }}" class="mt-5 space-y-4">
                 @csrf
                 @method('PATCH')
                 <label class="block">
@@ -296,6 +372,8 @@
                 </label>
                 <button class="w-full rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">تغییر نام فضای کاری</button>
             </form>
+@endadminRoute
+
 
             <div class="mt-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] p-4">
                 <p class="text-sm font-black text-[#031B4E]">راهنمای پشتیبانی</p>

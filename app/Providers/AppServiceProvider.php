@@ -11,6 +11,8 @@ use App\Services\Payments\MellatPaymentGateway;
 use App\Services\Payments\MellatSoapClient;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Payments\ZibalPaymentGateway;
+use App\Support\AdminAccess;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
@@ -37,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Blade::if('adminAbility', fn (string $ability): bool => auth('admin')->user()?->allows($ability) ?? false);
+        Blade::if('adminRoute', fn (string $name): bool => auth('admin')->user() && AdminAccess::canVisit(auth('admin')->user(), $name));
+
         $sync = function (VirtualMachine $vm): void {
             if (Schema::hasTable('metering_inventory_assignments')) {
                 app(MeteringInventoryService::class)->syncVm($vm->fresh()->load('reservedIpAddress'));

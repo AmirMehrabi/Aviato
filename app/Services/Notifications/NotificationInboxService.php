@@ -2,8 +2,12 @@
 
 namespace App\Services\Notifications;
 
+use App\Enums\AdminRole;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Notifications\TicketDatabaseNotification;
+use App\Notifications\VmNodeMoveNotification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\DatabaseNotification;
 
@@ -14,7 +18,7 @@ class NotificationInboxService
      */
     public function feed(Model $notifiable, string $fallbackUrl, int $limit = 10): array
     {
-        $items = $notifiable->notifications()
+        $items = $this->visibleQuery($notifiable)
             ->latest()
             ->limit($limit)
             ->get()
@@ -37,7 +41,7 @@ class NotificationInboxService
 
         return [
             'items' => $items,
-            'unread_count' => $notifiable->unreadNotifications()->count(),
+            'unread_count' => $this->visibleQuery($notifiable)->whereNull('read_at')->count(),
             'ticket_unread_count' => $this->ticketUnreadCount($notifiable),
         ];
     }
@@ -48,7 +52,7 @@ class NotificationInboxService
     public function markRead(Model $notifiable, string $notificationId): array
     {
         /** @var DatabaseNotification $notification */
-        $notification = $notifiable->notifications()->whereKey($notificationId)->firstOrFail();
+        $notification = $this->visibleQuery($notifiable)->whereKey($notificationId)->firstOrFail();
 
         if ($notification->read_at === null) {
             $notification->markAsRead();
@@ -56,7 +60,7 @@ class NotificationInboxService
 
         return [
             'notification_id' => $notification->id,
-            'unread_count' => $notifiable->unreadNotifications()->count(),
+            'unread_count' => $this->visibleQuery($notifiable)->whereNull('read_at')->count(),
             'ticket_unread_count' => $this->ticketUnreadCount($notifiable),
             'read_at' => $notification->read_at?->toISOString(),
         ];
@@ -67,10 +71,10 @@ class NotificationInboxService
      */
     public function markAllRead(Model $notifiable): array
     {
-        $count = $notifiable->unreadNotifications()->count();
+        $count = $this->visibleQuery($notifiable)->whereNull('read_at')->count();
 
         if ($count > 0) {
-            $notifiable->unreadNotifications()->update(['read_at' => now()]);
+            $this->visibleQuery($notifiable)->whereNull('read_at')->update(['read_at' => now()]);
         }
 
         return ['unread_count' => 0, 'ticket_unread_count' => 0, 'marked_count' => $count];
@@ -78,13 +82,35 @@ class NotificationInboxService
 
     public function ticketUnreadCount(Model $notifiable): int
     {
-        return $notifiable->unreadNotifications()->where('type', TicketDatabaseNotification::class)->count();
+        return $this->visibleQuery($notifiable)->whereNull('read_at')->where('type', TicketDatabaseNotification::class)->count();
     }
 
     public function markTicketRead(Model $notifiable, Ticket $ticket): int
     {
-        return $notifiable->unreadNotifications()
+        return $this->visibleQuery($notifiable)->whereNull('read_at')
             ->where('data->ticket_id', $ticket->id)
             ->update(['read_at' => now()]);
+    }
+
+    public function unreadCount(Model $notifiable): int
+    {
+        return $this->visibleQuery($notifiable)->whereNull('read_at')->count();
+    }
+
+    private function visibleQuery(Model $notifiable): Builder
+    {
+        $query = $notifiable->notifications()->getQuery();
+        if ($notifiable instanceof User && $notifiable->role !== AdminRole::Admin) {
+            $types = [];
+            if ($notifiable->allows('tickets.read')) {
+                $types[] = TicketDatabaseNotification::class;
+            }
+            if ($notifiable->allows('virtual-machines.read')) {
+                $types[] = VmNodeMoveNotification::class;
+            }
+            $query->whereIn('type', $types);
+        }
+
+        return $query;
     }
 }

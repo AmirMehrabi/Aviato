@@ -34,9 +34,29 @@
         </div>
         <aside class="space-y-4">
             <div class="rounded-xl border border-slate-200 bg-white p-5"><h2 class="font-black">خلاصه تطبیق</h2><dl class="mt-4 space-y-3 text-sm"><div class="flex justify-between gap-2"><dt>وصول‌شده</dt><dd class="text-left font-black text-blue-600">@forelse ($cashByCurrency as $row)<div>{{ $wallets->format((int) $row->total, $row->currency) }} <span class="text-xs" dir="ltr">({{ $row->currency }})</span></div>@empty {{ $wallets->format(0) }} @endforelse</dd></div><div class="flex justify-between"><dt>مصرف‌شده</dt><dd class="font-black text-amber-600">{{ $wallets->format($consumption) }}</dd></div><div class="flex justify-between border-t pt-3"><dt>مانده کیف پول‌ها</dt><dd class="font-black">{{ $wallets->format($walletBalance) }}</dd></div></dl><p class="mt-4 rounded-lg bg-blue-50 p-3 text-xs leading-6 text-blue-800">شارژ کیف پول درآمد نیست؛ فقط مصرف تسویه‌شده به‌عنوان درآمد مصرفی نمایش داده می‌شود.</p></div>
-            <div class="rounded-xl border border-slate-200 bg-white p-5"><h2 class="font-black">نیازمند بررسی</h2><div class="mt-3 space-y-2 text-sm"><a class="flex justify-between text-amber-700" href="{{ route('admin.billing.payments.index', ['status'=>'pending']) }}"><span>پرداخت در انتظار</span><b>{{ $pendingPayments }}</b></a><a class="flex justify-between text-red-700" href="{{ route('admin.billing.payments.index', ['status'=>'failed']) }}"><span>ناموفق ۷ روز اخیر</span><b>{{ $failedPayments }}</b></a><a class="flex justify-between text-red-700" href="{{ route('admin.billing.wallets.index', ['state'=>'negative']) }}"><span>کیف پول منفی</span><b>{{ $negativeWallets }}</b></a><a class="flex justify-between border-t pt-2 text-slate-700" href="{{ route('admin.resellers.withdrawals') }}"><span>تعهد فروشندگان</span><b>{{ $wallets->format($resellerLiability) }}</b></a></div></div>
+            <div class="rounded-xl border border-slate-200 bg-white p-5"><h2 class="font-black">نیازمند بررسی</h2><div class="mt-3 space-y-2 text-sm">
+@adminRoute('admin.billing.payments.index')
+<a class="flex justify-between text-amber-700" href="{{ route('admin.billing.payments.index', ['status'=>'pending']) }}"><span>پرداخت در انتظار</span><b>{{ $pendingPayments }}</b></a>
+@endadminRoute
+
+@adminRoute('admin.billing.payments.index')
+<a class="flex justify-between text-red-700" href="{{ route('admin.billing.payments.index', ['status'=>'failed']) }}"><span>ناموفق ۷ روز اخیر</span><b>{{ $failedPayments }}</b></a>
+@endadminRoute
+
+@adminRoute('admin.billing.wallets.index')
+<a class="flex justify-between text-red-700" href="{{ route('admin.billing.wallets.index', ['state'=>'negative']) }}"><span>کیف پول منفی</span><b>{{ $negativeWallets }}</b></a>
+@endadminRoute
+
+@adminRoute('admin.resellers.withdrawals')
+<a class="flex justify-between border-t pt-2 text-slate-700" href="{{ route('admin.resellers.withdrawals') }}"><span>تعهد فروشندگان</span><b>{{ $wallets->format($resellerLiability) }}</b></a>
+@endadminRoute
+</div></div>
         </aside>
     </section>
-    <section class="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div class="flex items-center justify-between border-b p-5"><h2 class="font-black">آخرین رویدادهای مالی</h2><a href="{{ route('admin.billing.transactions.index') }}" class="text-sm font-black text-[#0069FF]">مشاهده همه</a></div><div class="overflow-x-auto"><table class="min-w-full text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-5 py-3 text-right">مشتری</th><th>رویداد</th><th>مرجع</th><th>مبلغ</th><th>وضعیت</th><th>زمان</th><th></th></tr></thead><tbody class="divide-y">@foreach($recent as $event)<tr><td class="px-5 py-4 font-bold">{{ $event['customer']?->name }}</td><td>{{ $event['label'] }}</td><td dir="ltr">{{ $event['reference'] }}</td><td class="font-black {{ $event['amount'] < 0 ? 'text-red-600':'text-emerald-600' }}">{{ $wallets->format($event['amount']) }}</td><td>{{ $event['status'] }}</td><td>{{ \Morilog\Jalali\Jalalian::fromCarbon($event['at'])->format('Y/m/d H:i') }}</td><td><a class="font-black text-blue-600" href="{{ $event['url'] }}">جزئیات</a></td></tr>@endforeach</tbody></table></div></section>
+    <section class="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div class="flex items-center justify-between border-b p-5"><h2 class="font-black">آخرین رویدادهای مالی</h2>
+@adminRoute('admin.billing.transactions.index')
+<a href="{{ route('admin.billing.transactions.index') }}" class="text-sm font-black text-[#0069FF]">مشاهده همه</a>
+@endadminRoute
+</div><div class="overflow-x-auto"><table class="min-w-full text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-5 py-3 text-right">مشتری</th><th>رویداد</th><th>مرجع</th><th>مبلغ</th><th>وضعیت</th><th>زمان</th><th></th></tr></thead><tbody class="divide-y">@foreach($recent as $event)<tr><td class="px-5 py-4 font-bold">{{ $event['customer']?->name }}</td><td>{{ $event['label'] }}</td><td dir="ltr">{{ $event['reference'] }}</td><td class="font-black {{ $event['amount'] < 0 ? 'text-red-600':'text-emerald-600' }}">{{ $wallets->format($event['amount']) }}</td><td>{{ $event['status'] }}</td><td>{{ \Morilog\Jalali\Jalalian::fromCarbon($event['at'])->format('Y/m/d H:i') }}</td><td><a class="font-black text-blue-600" href="{{ $event['url'] }}">جزئیات</a></td></tr>@endforeach</tbody></table></div></section>
 </div>
 @endsection

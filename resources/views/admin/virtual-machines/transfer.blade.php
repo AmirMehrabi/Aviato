@@ -38,9 +38,13 @@
     @endif
 
     <div class="mb-6">
-        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="text-sm font-bold text-[#0069FF] hover:underline">
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="text-sm font-bold text-[#0069FF] hover:underline">
             ← بازگشت به VM
         </a>
+@endadminRoute
+
     </div>
 
     <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
@@ -76,7 +80,9 @@
                     این ماشین سفارش ارتقای در حال انجام دارد. بعد از پایان ارتقا می‌توانید آن را منتقل کنید.
                 </div>
             @else
-                <form method="POST" action="{{ route('admin.virtual-machines.transfer', $vm) }}" class="mt-6 space-y-5">
+
+@adminRoute('admin.virtual-machines.transfer')
+<form method="POST" action="{{ route('admin.virtual-machines.transfer', $vm) }}" class="mt-6 space-y-5">
                     @csrf
 
                     <div>
@@ -130,7 +136,11 @@
                             </li>
                             <li class="flex items-start gap-2">
                                 <span class="mt-0.5">•</span>
-                                <span>مبلغ محاسبه‌نشده فعلی ({{ $money->format($vm->unbilled_amount ?? 0) }}) به انتقال ثبت می‌شود.</span>
+
+                                @adminAbility('billing.read')
+<span>مبلغ محاسبه‌نشده فعلی ({{ $money->format($vm->unbilled_amount ?? 0) }}) به انتقال ثبت می‌شود.</span>
+                                @endadminAbility
+
                             </li>
                             <li class="flex items-start gap-2">
                                 <span class="mt-0.5">•</span>
@@ -161,11 +171,17 @@
                         <button type="submit" class="rounded-lg bg-[#0069FF] px-6 py-3 text-sm font-black text-white hover:bg-[#0052CC]">
                             انتقال ماشین
                         </button>
-                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg border border-slate-200 bg-white px-6 py-3 text-sm font-black text-slate-700 hover:bg-slate-50">
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg border border-slate-200 bg-white px-6 py-3 text-sm font-black text-slate-700 hover:bg-slate-50">
                             لغو
                         </a>
+@endadminRoute
+
                     </div>
                 </form>
+@endadminRoute
+
             @endif
         </section>
 
@@ -185,14 +201,24 @@
                         <span class="font-bold text-slate-500">منابع:</span>
                         <span class="font-black">{{ $vm->cpu_cores }}C / {{ $vm->ram_gb }}GB / {{ $vm->disk_gb }}GB</span>
                     </div>
+                    @adminAbility('billing.read')
                     <div class="flex justify-between">
                         <span class="font-bold text-slate-500">هزینه ماهانه:</span>
                         <span class="font-black">{{ $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }}</span>
                     </div>
+                    @endadminAbility
+
+                    @adminAbility('billing.read')
                     <div class="flex justify-between">
                         <span class="font-bold text-slate-500">مبلغ محاسبه‌نشده:</span>
-                        <span class="font-black">{{ $money->format($vm->unbilled_amount ?? 0) }}</span>
+
+                                @adminAbility('billing.read')
+<span class="font-black">{{ $money->format($vm->unbilled_amount ?? 0) }}</span>
+                                @endadminAbility
+
                     </div>
+                    @endadminAbility
+
                 </div>
             </div>
 
@@ -251,7 +277,11 @@
                                 @endif
                                 <div class="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
                                     <span>ثبت‌کننده: <span class="font-bold">{{ $transfer->initiatedBy?->name }}</span></span>
-                                    <span>مبلغ انتقال: <span class="font-bold">{{ $money->format($transfer->unbilled_amount_transferred) }}</span></span>
+
+                                    @adminAbility('billing.read')
+<span>مبلغ انتقال: <span class="font-bold">{{ $money->format($transfer->unbilled_amount_transferred) }}</span></span>
+                                    @endadminAbility
+
                                 </div>
                             </div>
                         </div>
@@ -265,13 +295,13 @@
                                     @if($transfer->snapshot_before)
                                         <div class="rounded-lg bg-slate-50 p-3">
                                             <p class="text-xs font-black text-slate-700">قبل از انتقال</p>
-                                            <pre class="mt-2 overflow-x-auto text-xs text-slate-600">{{ json_encode($transfer->snapshot_before, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            <pre class="mt-2 overflow-x-auto text-xs text-slate-600">{{ json_encode(auth('admin')->user()->allows('billing.read') ? $transfer->snapshot_before : \App\Support\AdminAccess::redactFinancialData($transfer->snapshot_before), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                         </div>
                                     @endif
                                     @if($transfer->snapshot_after)
                                         <div class="rounded-lg bg-slate-50 p-3">
                                             <p class="text-xs font-black text-slate-700">بعد از انتقال</p>
-                                            <pre class="mt-2 overflow-x-auto text-xs text-slate-600">{{ json_encode($transfer->snapshot_after, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            <pre class="mt-2 overflow-x-auto text-xs text-slate-600">{{ json_encode(auth('admin')->user()->allows('billing.read') ? $transfer->snapshot_after : \App\Support\AdminAccess::redactFinancialData($transfer->snapshot_after), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                         </div>
                                     @endif
                                 </div>

@@ -12,7 +12,11 @@
             <h1 class="text-2xl font-black">حساب‌های هتزنر</h1>
             <p class="mt-1 text-sm text-slate-500">حساب‌های API برای ارائه موقعیت‌های زیرساخت قابل فروش.</p>
         </div>
-        <a href="{{ route('admin.hetzner-accounts.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">New account</a>
+
+@adminRoute('admin.hetzner-accounts.create')
+<a href="{{ route('admin.hetzner-accounts.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">New account</a>
+@endadminRoute
+
     </div>
 
     <div class="grid gap-4 lg:grid-cols-2">
@@ -34,9 +38,21 @@
                     <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{{ $account->sync_error }}</p>
                 @endif
                 <div class="mt-5 flex flex-wrap gap-2">
-                    <x-admin.icon-action :href="route('admin.hetzner-accounts.show', $account)" label="نمایش حساب" icon="view" tone="primary" />
-                    <form method="POST" action="{{ route('admin.hetzner-accounts.sync', $account) }}">@csrf <x-admin.icon-action type="submit" label="همگام‌سازی حساب" icon="sync" tone="warning" /></form>
-                    <form method="POST" action="{{ route('admin.hetzner-accounts.test', $account) }}">@csrf <x-admin.icon-action type="submit" label="آزمایش اتصال" icon="test" tone="info" /></form>
+
+@adminRoute('admin.hetzner-accounts.show')
+<x-admin.icon-action :href="route('admin.hetzner-accounts.show', $account)" label="نمایش حساب" icon="view" tone="primary" />
+@endadminRoute
+
+
+@adminRoute('admin.hetzner-accounts.sync')
+<form method="POST" action="{{ route('admin.hetzner-accounts.sync', $account) }}">@csrf <x-admin.icon-action type="submit" label="همگام‌سازی حساب" icon="sync" tone="warning" /></form>
+@endadminRoute
+
+
+@adminRoute('admin.hetzner-accounts.test')
+<form method="POST" action="{{ route('admin.hetzner-accounts.test', $account) }}">@csrf <x-admin.icon-action type="submit" label="آزمایش اتصال" icon="test" tone="info" /></form>
+@endadminRoute
+
                 </div>
             </div>
         @empty

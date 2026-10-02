@@ -23,10 +23,16 @@
                     <p class="mt-3 leading-8 text-white/75" dir="ltr">{{ $customer->email ?: 'no-email' }} · {{ $customer->phone ?: 'no-phone' }}</p>
                 </div>
             </div>
-            @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)
+            @if(auth('admin')->user()->is_active)
             <div class="flex flex-wrap gap-2">
-                <a href="{{ route('admin.customers.edit', $customer) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
-                <form method="POST" action="{{ route('admin.customers.sms-notifications.update', $customer) }}">
+
+@adminRoute('admin.customers.edit')
+<a href="{{ route('admin.customers.edit', $customer) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
+@endadminRoute
+
+
+@adminRoute('admin.customers.sms-notifications.update')
+<form method="POST" action="{{ route('admin.customers.sms-notifications.update', $customer) }}">
                     @csrf
                     @method('PATCH')
                     <input type="hidden" name="sms_notifications_enabled" value="{{ $customer->sms_notifications_enabled ? 0 : 1 }}">
@@ -34,10 +40,20 @@
                         {{ $customer->sms_notifications_enabled ? 'غیرفعال‌سازی پیامک' : 'فعال‌سازی پیامک' }}
                     </button>
                 </form>
+@endadminRoute
+
                 @if($customer->status === 'suspended')
-                    <form method="POST" action="{{ route('admin.customers.activate', $customer) }}">@csrf @method('PATCH') <button class="rounded-lg bg-[#B8D6FF] px-5 py-3 text-sm font-black text-[#031B4E]">فعال‌سازی</button></form>
+
+@adminRoute('admin.customers.activate')
+<form method="POST" action="{{ route('admin.customers.activate', $customer) }}">@csrf @method('PATCH') <button class="rounded-lg bg-[#B8D6FF] px-5 py-3 text-sm font-black text-[#031B4E]">فعال‌سازی</button></form>
+@endadminRoute
+
                 @else
-                    <form method="POST" action="{{ route('admin.customers.suspend', $customer) }}">@csrf @method('PATCH') <button class="rounded-lg bg-red-400 px-5 py-3 text-sm font-black text-red-950">تعلیق مشتری</button></form>
+
+@adminRoute('admin.customers.suspend')
+<form method="POST" action="{{ route('admin.customers.suspend', $customer) }}">@csrf @method('PATCH') <button class="rounded-lg bg-red-400 px-5 py-3 text-sm font-black text-red-950">تعلیق مشتری</button></form>
+@endadminRoute
+
                 @endif
             </div>
             @endif
@@ -48,8 +64,10 @@
         @foreach ([
             ['label' => 'وضعیت حساب', 'value' => $customer->status === 'suspended' ? 'تعلیق شده' : 'فعال', 'tone' => $customer->status === 'suspended' ? 'text-red-600' : 'text-[#0069FF]'],
             ['label' => 'اعلان پیامکی', 'value' => $customer->sms_notifications_enabled ? 'فعال' : 'غیرفعال', 'tone' => $customer->sms_notifications_enabled ? 'text-[#0069FF]' : 'text-slate-500'],
+            ...(auth('admin')->user()->allows('billing.read') ? [
             ['label' => 'موجودی کیف پول', 'value' => $wallets->format($financial['balance']), 'tone' => $financial['balance'] < 0 ? 'text-red-600' : 'text-[#0069FF]'],
             ['label' => 'مصرف ماهانه', 'value' => $wallets->format($financial['monthly_spend']), 'tone' => 'text-slate-950'],
+            ] : []),
         ] as $card)
             <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-bold text-slate-500">{{ $card['label'] }}</p>
@@ -58,14 +76,19 @@
         @endforeach
     </section>
 
-    @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)<section class="mt-6 rounded-2xl border {{ $customer->auto_suspend_vms ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50' }} p-5">
+
+@adminAbility('wallet.manage')
+
+    @if(auth('admin')->user()->is_active)<section class="mt-6 rounded-2xl border {{ $customer->auto_suspend_vms ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50' }} p-5">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
                 <h2 class="text-xl font-black text-slate-950">محافظت خودکار کیف پول</h2>
                 <p class="mt-2 text-sm leading-7 text-slate-600">در موجودی مؤثر صفر، شبکه ماشین‌های متصل به کیف پول قطع می‌شود. در حد بدهی تعیین‌شده در تنظیمات، ماشین‌های روشن خاموش می‌شوند. شارژ کیف پول شبکه را وصل می‌کند و ماشین‌هایی را که به‌دلیل بدهی خاموش شده‌اند روشن می‌کند.</p>
                 <p class="mt-2 text-sm font-black {{ $customer->auto_suspend_vms ? 'text-amber-800' : 'text-emerald-800' }}">وضعیت: {{ $customer->auto_suspend_vms ? 'فعال' : 'غیرفعال' }}</p>
             </div>
-            <form method="POST" action="{{ route('admin.customers.auto-suspension.update', $customer) }}" class="shrink-0">
+
+@adminRoute('admin.customers.auto-suspension.update')
+<form method="POST" action="{{ route('admin.customers.auto-suspension.update', $customer) }}" class="shrink-0">
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="auto_suspend_vms" value="{{ $customer->auto_suspend_vms ? 0 : 1 }}">
@@ -73,8 +96,17 @@
                     {{ $customer->auto_suspend_vms ? 'غیرفعال کردن' : 'فعال کردن' }}
                 </button>
             </form>
+@endadminRoute
+
         </div>
     </section>@endif
+
+@endadminAbility
+
+
+
+
+@adminAbility('billing.read')
 
     <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)]">
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -86,7 +118,9 @@
                 <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $wallet->is_locked ? 'bg-red-50 text-red-700' : 'bg-[#EBF3FF] text-[#0069FF]' }}">{{ $wallet->is_locked ? 'قفل' : 'فعال' }}</span>
             </div>
             <p class="mt-6 text-4xl font-black {{ $wallet->balance < 0 ? 'text-red-600' : 'text-[#0069FF]' }}">{{ $wallets->format($wallet->balance) }}</p>
-            @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)<form method="POST" action="{{ route('admin.customers.wallet-transactions.store', $customer) }}" class="mt-6 grid gap-3 md:grid-cols-2">
+            @if(auth('admin')->user()->is_active)
+@adminRoute('admin.customers.wallet-transactions.store')
+<form method="POST" action="{{ route('admin.customers.wallet-transactions.store', $customer) }}" class="mt-6 grid gap-3 md:grid-cols-2">
                 @csrf
                 <select name="type" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-bold focus:border-[#0069FF] focus:outline-none">
                     <option value="credit">افزایش اعتبار</option>
@@ -100,14 +134,20 @@
                 </label>
                 <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white md:col-span-2">ثبت تراکنش</button>
             </form>
-            <form method="POST" action="{{ route('admin.customers.wallet-lock.update', $customer) }}" class="mt-4 rounded-xl border border-dashed border-slate-300 p-4">
+@endadminRoute
+
+
+@adminRoute('admin.customers.wallet-lock.update')
+<form method="POST" action="{{ route('admin.customers.wallet-lock.update', $customer) }}" class="mt-4 rounded-xl border border-dashed border-slate-300 p-4">
                 @csrf @method('PATCH')
                 <input type="hidden" name="is_locked" value="{{ $wallet->is_locked ? 0 : 1 }}">
                 @unless($wallet->is_locked)
                     <input name="lock_reason" placeholder="دلیل قفل کردن کیف پول" class="mb-3 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm focus:border-[#0069FF] focus:outline-none">
                 @endunless
                 <button class="rounded-lg {{ $wallet->is_locked ? 'bg-[#0069FF]' : 'bg-red-600' }} px-5 py-3 text-sm font-black text-white">{{ $wallet->is_locked ? 'باز کردن کیف پول' : 'قفل کردن کیف پول' }}</button>
-            </form>@endif
+            </form>
+@endadminRoute
+@endif
         </div>
 
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -131,6 +171,10 @@
         </div>
     </section>
 
+
+
+@endadminAbility
+
     @if($customer->status === 'suspended')
         <div class="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800">
             <p class="font-black">این مشتری تعلیق شده است.</p>
@@ -139,6 +183,8 @@
     @endif
 
     <div class="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+
+@adminAbility('virtual-machines.read')
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-4">
                 <div>
@@ -153,7 +199,11 @@
                     <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</a>
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</a>
+@endadminRoute
+
                                 <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
                                 <p class="mt-1 text-xs text-slate-500">Node: {{ $vm->node ?: '—' }}</p>
                             </div>
@@ -171,13 +221,26 @@
                             <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->ram_gb }} GB</span><span class="text-slate-500">RAM</span></div>
                             <div class="rounded-lg bg-white p-2"><span class="block font-black">{{ $vm->disk_gb }} GB</span><span class="text-slate-500">Disk</span></div>
                         </div>
-                        <p class="mt-4 text-left text-sm font-black text-[#0069FF]">{{ $wallets->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }} / ماه</p>
+
+@adminAbility('billing.read')
+<p class="mt-4 text-left text-sm font-black text-[#0069FF]">{{ $wallets->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }} / ماه</p>
+@endadminAbility
+
                     </article>
                 @empty
-                    <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 lg:col-span-3">هنوز VM برای این مشتری ثبت نشده است. <a class="font-black text-[#0069FF]" href="{{ route('admin.virtual-machines.create', ['customer_id' => $customer->id]) }}">ساخت VM</a></div>
+                    <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 lg:col-span-3">هنوز VM برای این مشتری ثبت نشده است.
+@adminRoute('admin.virtual-machines.create')
+<a class="font-black text-[#0069FF]" href="{{ route('admin.virtual-machines.create', ['customer_id' => $customer->id]) }}">ساخت VM</a>
+@endadminRoute
+</div>
                 @endforelse
             </div>
         </section>
+@endadminAbility
+
+
+
+@adminAbility('billing.read')
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">صورتحساب‌ها</h2>
@@ -197,6 +260,10 @@
                 @endforeach
             </div>
         </section>
+
+@endadminAbility
+
+
     </div>
 
     <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

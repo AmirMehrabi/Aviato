@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Payment;
 use App\Models\ProxmoxServer;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
 use App\Models\VmUpgradeOrder;
@@ -18,9 +19,9 @@ class AdminDashboardActions
 
     public function __construct(private readonly AdminDashboardFinance $finance) {}
 
-    public function snapshot(Collection $dismissedKeys, int $page = 1, ?string $category = null): array
+    public function snapshot(Collection $dismissedKeys, int $page = 1, ?string $category = null, ?User $user = null): array
     {
-        $queries = $this->issueQueries();
+        $queries = $this->issueQueries($user);
         $counts = collect($queries)->map(fn (Builder $query): int => (clone $query)->count());
         $categoryTypes = match ($category) {
             'servers' => ['server-offline'],
@@ -30,7 +31,7 @@ class AdminDashboardActions
             default => array_keys($queries),
         };
         $queueQueries = array_intersect_key($queries, array_flip($categoryTypes));
-        $queueTotal = collect($categoryTypes)->sum(fn (string $type): int => $counts[$type]);
+        $queueTotal = collect($categoryTypes)->sum(fn (string $type): int => ($counts[$type] ?? 0));
         $dismissed = $dismissedKeys->flip();
         $hiddenCount = 0;
 
@@ -76,38 +77,43 @@ class AdminDashboardActions
                 'payments' => 'پرداخت‌های نیازمند بررسی',
                 default => null,
             },
-            'health' => [
+            'health' => array_values(array_filter([
                 [
                     'label' => 'سرور آفلاین',
-                    'count' => $counts['server-offline'],
+                    'count' => ($counts['server-offline'] ?? 0),
                     'category' => 'servers',
                     'url' => route('admin.dashboard', ['category' => 'servers']),
                 ],
                 [
                     'label' => 'ماشین نیازمند بررسی',
-                    'count' => $counts['vm-provisioning'] + $counts['vm-delete'],
+                    'count' => ($counts['vm-provisioning'] ?? 0) + ($counts['vm-delete'] ?? 0),
                     'category' => 'machines',
                     'url' => route('admin.dashboard', ['category' => 'machines']),
                 ],
                 [
                     'label' => 'پرداخت نیازمند بررسی',
-                    'count' => $counts['payment-reconciliation'] + $counts['payment-pending'],
+                    'count' => ($counts['payment-reconciliation'] ?? 0) + ($counts['payment-pending'] ?? 0),
                     'category' => 'payments',
                     'url' => route('admin.dashboard', ['category' => 'payments']),
                 ],
                 [
                     'label' => 'تیکت در انتظار پاسخ',
-                    'count' => $counts['ticket'],
+                    'count' => ($counts['ticket'] ?? 0),
                     'category' => 'tickets',
                     'url' => route('admin.dashboard', ['category' => 'tickets']),
                 ],
-            ],
+            ], fn (array $card): bool => match ($card['category']) {
+                'servers' => isset($queries['server-offline']),
+                'machines' => isset($queries['vm-provisioning']),
+                'payments' => isset($queries['payment-pending']),
+                'tickets' => isset($queries['ticket']),
+            })),
         ];
     }
 
-    public function hasActiveKey(string $key): bool
+    public function hasActiveKey(string $key, ?User $user = null): bool
     {
-        foreach ($this->issueQueries() as $type => $query) {
+        foreach ($this->issueQueries($user) as $type => $query) {
             foreach ((clone $query)->select(['id', 'updated_at'])->cursor() as $record) {
                 if (hash_equals($key, $this->warningKey($type, $record->id, $record->updated_at?->getTimestamp()))) {
                     return true;
@@ -118,7 +124,7 @@ class AdminDashboardActions
         return false;
     }
 
-    private function issueQueries(): array
+    private function issueQueries(?User $user = null): array
     {
         $staleDeletion = VirtualMachine::query()
             ->notDeleted()
@@ -129,7 +135,7 @@ class AdminDashboardActions
                     ->orWhere('delete_requested_at', '<=', now()->subMinutes(15));
             });
 
-        return [
+        $queries = [
             'payment-reconciliation' => $this->finance->uncreditedPayments(),
             'payment-pending' => Payment::query()->where('status', Payment::STATUS_PENDING)
                 ->where('created_at', '<=', now()->subMinutes(AdminDashboardFinance::PENDING_AGE_MINUTES)),
@@ -157,6 +163,17 @@ class AdminDashboardActions
                 $query->where('balance', '<', 0)->orWhere('is_locked', true);
             }),
         ];
+        if ($user) {
+            $queries = array_filter($queries, fn (Builder $query, string $type): bool => match ($type) {
+                'payment-reconciliation', 'payment-pending' => $user->allows('billing.read'),
+                'wallet' => $user->allows('billing.read') && $user->allows('customers.read'),
+                'ticket' => $user->allows('tickets.read'),
+                'server-offline', 'server-sync' => $user->allows('infrastructure.read'),
+                default => $user->allows('virtual-machines.read'),
+            }, ARRAY_FILTER_USE_BOTH);
+        }
+
+        return $queries;
     }
 
     private function candidates(string $type, Builder $query, int $limit): Collection

@@ -8,7 +8,11 @@
             <h1 class="text-2xl font-black">Cloud Images</h1>
             <p class="mt-2 text-sm text-slate-500">Published Proxmox template VMIDs available for cloud-init virtual machine creation.</p>
         </div>
-        <a href="{{ route('admin.cloud-images.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Image جدید</a>
+
+@adminRoute('admin.cloud-images.create')
+<a href="{{ route('admin.cloud-images.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">Image جدید</a>
+@endadminRoute
+
     </div>
     <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         @forelse($images as $image)
@@ -37,12 +41,20 @@
                     @endforeach
                 </div>
                 <div class="mt-4 flex items-center gap-2">
-                    <x-admin.icon-action :href="route('admin.cloud-images.edit', $image)" label="ویرایش Cloud Image" icon="edit" tone="primary" />
-                    <form method="POST" action="{{ route('admin.cloud-images.destroy', $image) }}" onsubmit="return confirm('آیا از حذف این Cloud Image مطمئن هستید؟ این عمل قابل بازگشت نیست.');">
+
+@adminRoute('admin.cloud-images.edit')
+<x-admin.icon-action :href="route('admin.cloud-images.edit', $image)" label="ویرایش Cloud Image" icon="edit" tone="primary" />
+@endadminRoute
+
+
+@adminRoute('admin.cloud-images.destroy')
+<form method="POST" action="{{ route('admin.cloud-images.destroy', $image) }}" onsubmit="return confirm('آیا از حذف این Cloud Image مطمئن هستید؟ این عمل قابل بازگشت نیست.');">
                         @csrf
                         @method('DELETE')
                         <x-admin.icon-action type="submit" label="حذف Cloud Image" icon="delete" tone="danger" />
                     </form>
+@endadminRoute
+
                 </div>
             </article>
         @empty

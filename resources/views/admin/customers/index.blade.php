@@ -66,7 +66,11 @@ document.addEventListener('alpine:init', () => {
             <h1 class="text-2xl font-black">مشتریان</h1>
             <p class="mt-2 text-sm text-slate-500">مدیریت مشتریان و وضعیت سرویس‌ها</p>
         </div>
-        @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)<a href="{{ route('admin.customers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن مشتری</a>@endif
+        @if(auth('admin')->user()->is_active)
+@adminRoute('admin.customers.create')
+<a href="{{ route('admin.customers.create') }}" class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن مشتری</a>
+@endadminRoute
+@endif
     </div>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -78,7 +82,9 @@ document.addEventListener('alpine:init', () => {
         @endforeach
     </div>
 
-    <form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.customers.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+
+@adminRoute('admin.customers.index')
+<form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.customers.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div class="relative flex-1">
                 <svg class="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke-linecap="round"/></svg>
@@ -94,16 +100,22 @@ document.addEventListener('alpine:init', () => {
                 <option value="verified" @selected(($filters['verification'] ?? '') === 'verified')>تایید شده</option>
                 <option value="unverified" @selected(($filters['verification'] ?? '') === 'unverified')>تایید نشده</option>
             </select>
-            <a href="{{ route('admin.customers.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
+
+@adminRoute('admin.customers.index')
+<a href="{{ route('admin.customers.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
+@endadminRoute
+
         </div>
     </form>
+@endadminRoute
+
 
     <section x-ref="results" class="mt-6">
         <x-admin.index-table :sort="$sort" :columns="[
             ['label' => 'مشتری', 'sort' => 'name'],
             ['label' => 'تماس', 'sort' => 'email'],
             ['label' => 'وضعیت', 'sort' => 'status'],
-            ['label' => 'کیف پول'],
+            ...(auth('admin')->user()->allows('billing.read') ? [['label' => 'کیف پول']] : []),
             ['label' => 'تاریخ ایجاد', 'sort' => 'created_at'],
             ['label' => 'عملیات', 'class' => 'text-left'],
         ]">
@@ -116,7 +128,11 @@ document.addEventListener('alpine:init', () => {
                         <div class="flex items-center gap-3">
                             <span class="grid size-11 place-items-center rounded-xl bg-[#EBF3FF] font-black text-[#0069FF]">{{ mb_substr($customer->name, 0, 1) }}</span>
                             <div>
-                                <a href="{{ route('admin.customers.show', $customer) }}" class="font-black text-slate-950 hover:text-[#0069FF]">{{ $customer->name }}</a>
+
+@adminRoute('admin.customers.show')
+<a href="{{ route('admin.customers.show', $customer) }}" class="font-black text-slate-950 hover:text-[#0069FF]">{{ $customer->name }}</a>
+@endadminRoute
+
                                 <p class="mt-1 text-xs text-slate-500">#{{ $customer->id }}</p>
                             </div>
                         </div>
@@ -129,24 +145,47 @@ document.addEventListener('alpine:init', () => {
                         <x-admin.status-badge :value="$customer->status" />
                         <p class="mt-2 text-xs text-slate-500">{{ $customer->national_code_verified_at ? 'حساب تایید شده' : 'حساب تایید نشده' }}</p>
                     </td>
+                    @adminAbility('billing.read')
                     <td class="px-5 py-4">
                         <p class="font-black {{ $credit < 0 ? 'text-red-600' : 'text-[#0069FF]' }}">{{ $money->format($credit) }}</p>
                         <p class="mt-1 text-xs text-slate-500">موجودی فعلی کیف پول</p>
                     </td>
+                    @endadminAbility
+
                     <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $customer->created_at?->format('Y/m/d') }}</td>
                     <td class="px-5 py-4">
                         <div class="flex justify-end gap-1.5">
-                            <x-admin.icon-action :href="route('admin.customers.show', $customer)" label="نمایش مشتری" icon="view" tone="primary" />
-                            @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)
-                            <x-admin.icon-action :href="route('admin.customers.edit', $customer)" label="ویرایش مشتری" icon="edit" />
-                            <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}" target="_blank">
+
+@adminRoute('admin.customers.show')
+<x-admin.icon-action :href="route('admin.customers.show', $customer)" label="نمایش مشتری" icon="view" tone="primary" />
+@endadminRoute
+
+                            @if(auth('admin')->user()->is_active)
+
+@adminRoute('admin.customers.edit')
+<x-admin.icon-action :href="route('admin.customers.edit', $customer)" label="ویرایش مشتری" icon="edit" />
+@endadminRoute
+
+
+@adminRoute('admin.customers.impersonate')
+<form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}" target="_blank">
                                 @csrf
                                 <x-admin.icon-action type="submit" label="ورود به‌جای مشتری" icon="login" tone="info" />
                             </form>
+@endadminRoute
+
                             @if($customer->status === 'suspended')
-                                <form method="POST" action="{{ route('admin.customers.activate', $customer) }}">@csrf @method('PATCH') <x-admin.icon-action type="submit" label="فعال‌سازی مشتری" icon="activate" tone="success" /></form>
+
+@adminRoute('admin.customers.activate')
+<form method="POST" action="{{ route('admin.customers.activate', $customer) }}">@csrf @method('PATCH') <x-admin.icon-action type="submit" label="فعال‌سازی مشتری" icon="activate" tone="success" /></form>
+@endadminRoute
+
                             @else
-                                <form method="POST" action="{{ route('admin.customers.suspend', $customer) }}">@csrf @method('PATCH') <x-admin.icon-action type="submit" label="تعلیق مشتری" icon="suspend" tone="danger" /></form>
+
+@adminRoute('admin.customers.suspend')
+<form method="POST" action="{{ route('admin.customers.suspend', $customer) }}">@csrf @method('PATCH') <x-admin.icon-action type="submit" label="تعلیق مشتری" icon="suspend" tone="danger" /></form>
+@endadminRoute
+
                             @endif
                             @endif
                         </div>
@@ -157,7 +196,11 @@ document.addEventListener('alpine:init', () => {
                     <td colspan="6" class="px-5 py-14 text-center">
                         <h2 class="text-xl font-black text-slate-900">مشتری‌ای پیدا نشد</h2>
                         <p class="mt-2 text-slate-500">فیلترها را تغییر دهید یا اولین مشتری را اضافه کنید.</p>
-                        @if(auth('admin')->user()->role === \App\Enums\AdminRole::Admin)<a href="{{ route('admin.customers.create') }}" class="mt-5 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن مشتری</a>@endif
+                        @if(auth('admin')->user()->is_active)
+@adminRoute('admin.customers.create')
+<a href="{{ route('admin.customers.create') }}" class="mt-5 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">افزودن مشتری</a>
+@endadminRoute
+@endif
                     </td>
                 </tr>
             @endforelse

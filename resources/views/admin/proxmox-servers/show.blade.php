@@ -76,7 +76,11 @@
                     @click="confirmAction = 'sync'"
                     class="rounded-lg bg-white px-5 py-3 text-sm font-bold text-[#031B4E] transition hover:bg-slate-100"
                 >همگام‌سازی</button>
-                <a href="{{ route('admin.proxmox-servers.edit', $server) }}" class="rounded-lg bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/20">ویرایش</a>
+
+@adminRoute('admin.proxmox-servers.edit')
+<a href="{{ route('admin.proxmox-servers.edit', $server) }}" class="rounded-lg bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/20">ویرایش</a>
+@endadminRoute
+
                 <button
                     type="button"
                     @click="confirmAction = 'delete'"
@@ -339,7 +343,11 @@
                                 <th class="py-3">وضعیت</th>
                                 <th class="py-3">منابع</th>
                                 <th class="py-3">باندل</th>
-                                <th class="py-3">هزینه ماهانه</th>
+
+@adminAbility('billing.read')
+<th class="py-3">هزینه ماهانه</th>
+@endadminAbility
+
                                 <th class="py-3">عملیات</th>
                             </tr>
                         </thead>
@@ -360,13 +368,17 @@
                                         default => 'bg-slate-100 text-slate-600',
                                     };
                                     $vmOwner = $vm->project?->owner?->name ?? $vm->customer?->name ?? '—';
-                                    $monthlyCost = $vm->isRunning()
+                                    $monthlyCost = ! auth('admin')->user()->allows('billing.read') ? 0 : ($vm->isRunning()
                                         ? $billing->estimateMonthly($vm) + $vm->disks->where('status', \App\Models\VmDisk::STATUS_READY)->sum(fn (\App\Models\VmDisk $d): int => (int) round($billing->extraDiskHourly($d) * \App\Models\ResourceRate::hoursPerMonth()))
-                                        : $billing->estimateStoppedMonthly($vm) + $vm->disks->where('status', \App\Models\VmDisk::STATUS_READY)->sum(fn (\App\Models\VmDisk $d): int => (int) round($billing->extraDiskHourly($d) * \App\Models\ResourceRate::hoursPerMonth()));
+                                        : $billing->estimateStoppedMonthly($vm) + $vm->disks->where('status', \App\Models\VmDisk::STATUS_READY)->sum(fn (\App\Models\VmDisk $d): int => (int) round($billing->extraDiskHourly($d) * \App\Models\ResourceRate::hoursPerMonth())));
                                 @endphp
                                 <tr class="align-top">
                                     <td class="py-4">
-                                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-[#0069FF] hover:underline">{{ $vm->display_name }}</a>
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-[#0069FF] hover:underline">{{ $vm->display_name }}</a>
+@endadminRoute
+
                                         <p class="mt-1 text-xs text-slate-500" dir="ltr">{{ $vm->name }}</p>
                                     </td>
                                     <td class="py-4 text-slate-700">{{ $vmOwner }}</td>
@@ -377,11 +389,19 @@
                                         <span dir="ltr">{{ $vm->cpu_cores }}C · {{ $vm->ram_gb }}GB · {{ $vm->disk_gb }}GB</span>
                                     </td>
                                     <td class="py-4 text-slate-700">{{ $vm->bundle?->name ?? '—' }}</td>
-                                    <td class="py-4">
+
+@adminAbility('billing.read')
+<td class="py-4">
                                         <p class="font-bold text-slate-950">{{ $money->format($monthlyCost) }}</p>
                                     </td>
+@endadminAbility
+
                                     <td class="py-4">
-                                        <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200">مشاهده</a>
+
+@adminRoute('admin.virtual-machines.show')
+<a href="{{ route('admin.virtual-machines.show', $vm) }}" class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200">مشاهده</a>
+@endadminRoute
+
                                     </td>
                                 </tr>
                             @endforeach
@@ -402,7 +422,11 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="rounded-lg px-3 py-2 text-xs font-bold {{ $staleAnomalySource === 'live' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-amber-50 text-amber-700' }}">{{ $staleAnomalySource === 'live' ? 'اسکن زنده' : 'موجودی کش‌شده' }}</span>
-                    <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">بروزرسانی موجودی</button></form>
+
+@adminRoute('admin.proxmox-servers.sync')
+<form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}">@csrf <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">بروزرسانی موجودی</button></form>
+@endadminRoute
+
                 </div>
             </div>
 
@@ -430,10 +454,14 @@
                     </div>
                 </div>
 
-                <form id="bulk-stale-cleanup" method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy-bulk', $server) }}" class="hidden">
+
+@adminRoute('admin.proxmox-servers.stale-virtual-machines.destroy-bulk')
+<form id="bulk-stale-cleanup" method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy-bulk', $server) }}" class="hidden">
                     @csrf
                     @method('DELETE')
                 </form>
+@endadminRoute
+
 
                 <div class="flex flex-col gap-3 border-b border-slate-100 p-5 lg:flex-row lg:items-center lg:justify-between">
                     <div class="flex flex-wrap items-center gap-3">
@@ -485,11 +513,15 @@
                                         <p class="mt-1 text-xs text-slate-500">صادر نشده: {{ \App\Support\PersianDigits::format((int) ($vm->unbilled_amount ?? 0)) }}</p>
                                     </td>
                                     <td class="py-4">
-                                        <form method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy', [$server, $vm]) }}" onsubmit="return confirm('آیا این رکورد محلی حذف شود؟ قبل از پاکسازی، Proxmox دوباره بررسی خواهد شد.');">
+
+@adminRoute('admin.proxmox-servers.stale-virtual-machines.destroy')
+<form method="POST" action="{{ route('admin.proxmox-servers.stale-virtual-machines.destroy', [$server, $vm]) }}" onsubmit="return confirm('آیا این رکورد محلی حذف شود؟ قبل از پاکسازی، Proxmox دوباره بررسی خواهد شد.');">
                                             @csrf
                                             @method('DELETE')
                                             <button class="rounded-lg bg-red-50 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100">حذف رکورد محلی</button>
                                         </form>
+@endadminRoute
+
                                     </td>
                                 </tr>
                             @endforeach
@@ -598,7 +630,11 @@
                     <h3 class="text-lg font-black text-slate-950">همگام‌سازی با Proxmox</h3>
                     <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید موجودی سرور را از Proxmox بروزرسانی کنید؟</p>
                     <div class="mt-6 flex gap-3">
-                        <form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}" class="flex-1">@csrf <button class="w-full rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، همگام‌سازی کن</button></form>
+
+@adminRoute('admin.proxmox-servers.sync')
+<form method="POST" action="{{ route('admin.proxmox-servers.sync', $server) }}" class="flex-1">@csrf <button class="w-full rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، همگام‌سازی کن</button></form>
+@endadminRoute
+
                         <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
                     </div>
                 </div>
@@ -608,7 +644,11 @@
                     <h3 class="text-lg font-black text-red-700">حذف سرور</h3>
                     <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این سرور Proxmox را از پنل حذف کنید؟ <strong class="text-red-700">این عمل غیرقابل بازگشت است.</strong></p>
                     <div class="mt-6 flex gap-3">
-                        <form method="POST" action="{{ route('admin.proxmox-servers.destroy', $server) }}" class="flex-1">@csrf @method('DELETE') <button class="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700">بله، حذف کن</button></form>
+
+@adminRoute('admin.proxmox-servers.destroy')
+<form method="POST" action="{{ route('admin.proxmox-servers.destroy', $server) }}" class="flex-1">@csrf @method('DELETE') <button class="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700">بله، حذف کن</button></form>
+@endadminRoute
+
                         <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
                     </div>
                 </div>

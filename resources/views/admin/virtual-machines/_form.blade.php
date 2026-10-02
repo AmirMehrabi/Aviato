@@ -30,7 +30,7 @@
         </select>
         @error('proxmox_server_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
     </label>
-    <label class="block md:col-span-2"><span class="text-sm font-black text-slate-700">باندل سخت‌افزاری</span><select name="vm_bundle_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none"><option value="">Custom منابع دستی</option>@foreach($bundles as $bundle)<option value="{{ $bundle->id }}" @selected((string) old('vm_bundle_id', $vm->vm_bundle_id) === (string) $bundle->id)>{{ $bundle->name }} - {{ $bundle->cpu_cores }} CPU / {{ $bundle->ram_gb }}GB RAM / {{ $bundle->disk_gb }}GB - {{ app(App\Services\WalletService::class)->format($bundle->monthly_price) }}</option>@endforeach</select>@error('vm_bundle_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror<p class="mt-1 text-xs text-slate-500">اگر باندل انتخاب شود CPU/RAM/Disk/IP از باندل برداشته می‌شود.</p></label>
+    <label class="block md:col-span-2"><span class="text-sm font-black text-slate-700">باندل سخت‌افزاری</span><select name="vm_bundle_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none"><option value="">Custom منابع دستی</option>@foreach($bundles as $bundle)<option value="{{ $bundle->id }}" @selected((string) old('vm_bundle_id', $vm->vm_bundle_id) === (string) $bundle->id)>{{ $bundle->name }} - {{ $bundle->cpu_cores }} CPU / {{ $bundle->ram_gb }}GB RAM / {{ $bundle->disk_gb }}GB - {{ auth('admin')->user()->allows('billing.read') ? app(App\Services\WalletService::class)->format($bundle->monthly_price) : '' }}</option>@endforeach</select>@error('vm_bundle_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror<p class="mt-1 text-xs text-slate-500">اگر باندل انتخاب شود CPU/RAM/Disk/IP از باندل برداشته می‌شود.</p></label>
     <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 md:col-span-2">
         <p class="text-sm font-black text-slate-700">منابع فعلی از باندل خوانده می‌شود</p>
         <div class="mt-3 grid gap-3 text-sm md:grid-cols-4">
@@ -40,7 +40,11 @@
             <div class="rounded-lg bg-white p-3"><span class="block text-xs font-bold text-slate-500">IP Count</span><span class="font-black" dir="ltr">{{ $vm->ip_count ?? 1 }}</span></div>
         </div>
     </div>
-    <x-form.checkbox name="tax_exempt" label="معاف از مالیات (Tax Exempt)" :checked="old('tax_exempt', $vm->tax_exempt)" help="اگر غیرفعال باشد، مشتری صورتحساب رسمی دریافت می‌کند و شامل مالیات می‌شود." wrapper-class="md:col-span-2" />
+
+    @adminAbility('pricing.manage')
+<x-form.checkbox name="tax_exempt" label="معاف از مالیات (Tax Exempt)" :checked="old('tax_exempt', $vm->tax_exempt)" help="اگر غیرفعال باشد، مشتری صورتحساب رسمی دریافت می‌کند و شامل مالیات می‌شود." wrapper-class="md:col-span-2" />
+    @endadminAbility
+
     <label>
         <span class="text-sm font-black text-slate-700">IP Pool</span>
         <select name="ip_pool_id" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
@@ -124,11 +128,23 @@
     <div class="mt-4 grid gap-4 md:grid-cols-2">
         <label><span class="text-sm font-black text-slate-700">وضعیت</span><select name="network_accounting_enabled_override" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3"><option value="">ارث‌بری از باندل</option><option value="1" @selected(old('network_accounting_enabled_override', $vm->network_accounting_enabled_override) === true)>فعال</option><option value="0" @selected(old('network_accounting_enabled_override', $vm->network_accounting_enabled_override) === false)>غیرفعال</option></select></label>
         <x-form.input name="network_included_bytes_monthly_override" type="number" label="حجم رایگان (byte)" :value="$vm->network_included_bytes_monthly_override" dir-ltr />
-        <x-form.input name="network_overage_price_override" type="number" label="هزینه واحد (IRR)" :value="$vm->network_overage_price_override" dir-ltr />
-        <x-form.input name="network_overage_price_unit_bytes_override" type="number" label="اندازه واحد (byte)" :value="$vm->network_overage_price_unit_bytes_override" dir-ltr />
+
+@adminAbility('pricing.manage')
+<x-form.input name="network_overage_price_override" type="number" label="هزینه واحد (IRR)" :value="$vm->network_overage_price_override" dir-ltr />
+@endadminAbility
+
+
+@adminAbility('pricing.manage')
+<x-form.input name="network_overage_price_unit_bytes_override" type="number" label="اندازه واحد (byte)" :value="$vm->network_overage_price_unit_bytes_override" dir-ltr />
+@endadminAbility
+
         <label><span class="text-sm font-black text-slate-700">جهت ترافیک</span><select name="network_usage_direction_override" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3"><option value="">ارث‌بری</option><option value="both" @selected(old('network_usage_direction_override', $vm->network_usage_direction_override) === 'both')>ورودی + خروجی</option><option value="egress" @selected(old('network_usage_direction_override', $vm->network_usage_direction_override) === 'egress')>خروجی</option><option value="ingress" @selected(old('network_usage_direction_override', $vm->network_usage_direction_override) === 'ingress')>ورودی</option></select></label>
         <x-form.input name="network_billing_timezone_override" label="منطقه زمانی" :value="$vm->network_billing_timezone_override" dir-ltr />
     </div>
 </div>
 @endif
-<div class="mt-6 flex gap-3"><button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره VM</button><a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a></div>
+<div class="mt-6 flex gap-3"><button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ذخیره VM</button>
+@adminRoute('admin.virtual-machines.index')
+<a href="{{ route('admin.virtual-machines.index') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-700">بازگشت</a>
+@endadminRoute
+</div>

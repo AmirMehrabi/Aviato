@@ -9,20 +9,32 @@
     @endif
 
     <div class="w-full">
-        <a href="{{ route('admin.settings.edit') }}" class="inline-flex items-center gap-2 text-sm font-black text-[#0069FF]">→ بازگشت به تنظیمات</a>
+
+@adminRoute('admin.settings.edit')
+<a href="{{ route('admin.settings.edit') }}" class="inline-flex items-center gap-2 text-sm font-black text-[#0069FF]">→ بازگشت به تنظیمات</a>
+@endadminRoute
+
         <div class="mt-5 w-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
             <p class="text-sm font-black text-[#0069FF]">{{ $sectionMeta['label'] }}</p>
             <h1 class="mt-2 text-2xl font-black text-slate-950">{{ $sectionMeta['title'] }}</h1>
             <p class="mt-2 text-sm leading-7 text-slate-500">{{ $sectionMeta['description'] }}</p>
 
-            <form method="POST" action="{{ route('admin.settings.section.update', $section) }}" enctype="multipart/form-data" class="mt-7 space-y-6">
+
+@adminRoute('admin.settings.section.update')
+<form method="POST" action="{{ route('admin.settings.section.update', $section) }}" enctype="multipart/form-data" class="mt-7 space-y-6">
                 @csrf @method('PATCH')
                 @include('admin.settings.sections.'.$section)
                 <div class="flex items-center gap-3 border-t border-slate-100 pt-5">
                     <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white hover:bg-[#0050D0]">ذخیره تنظیمات</button>
-                    <a href="{{ route('admin.settings.edit') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-600">انصراف</a>
+
+@adminRoute('admin.settings.edit')
+<a href="{{ route('admin.settings.edit') }}" class="rounded-lg border border-slate-200 px-5 py-3 text-sm font-black text-slate-600">انصراف</a>
+@endadminRoute
+
                 </div>
             </form>
+@endadminRoute
+
         </div>
     </div>
 </div>
