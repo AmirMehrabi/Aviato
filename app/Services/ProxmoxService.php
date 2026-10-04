@@ -624,6 +624,13 @@ class ProxmoxService
     /**
      * @return array<string, mixed>
      */
+    public function setCloudInitPassword(ProxmoxServer $server, string $node, int $vmid, string $passwordHash): void
+    {
+        $this->request($server)->asForm()
+            ->put("/nodes/{$node}/qemu/{$vmid}/config", ['cipassword' => $passwordHash])
+            ->throw();
+    }
+
     public function regenerateCloudInit(ProxmoxServer $server, string $node, int $vmid): array
     {
         $taskId = $this->request($server)
@@ -958,10 +965,11 @@ class ProxmoxService
         int $vmid,
         bool $forceStopFallback = true,
         array $context = [],
+        bool $forceStopOnTimeout = true,
     ): array {
         $payload = [
             'timeout' => 60,
-            'forceStop' => 1,
+            'forceStop' => $forceStopOnTimeout ? 1 : 0,
         ];
 
         $this->logInfo('Proxmox VM shutdown command requested', $server, [

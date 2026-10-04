@@ -79,7 +79,7 @@ class VirtualMachineIpReassignmentService
                 'ram_gb' => $vm->ram_gb,
                 'network_bridge' => $vm->network_bridge,
                 'login_username' => $vm->login_username,
-                'login_password' => $vm->login_password,
+                'login_password' => $vm->cloudInitPassword(),
                 'ssh_public_key' => $vm->ssh_public_key,
                 'ipconfig0' => $this->ipPools->ipConfig($address),
                 'nameserver' => $this->ipPools->nameservers($address),

@@ -20,6 +20,7 @@ use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\FundsCustomerWallet;
 use Tests\TestCase;
@@ -64,7 +65,12 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertSame(strtolower($vm->name), $vm->hostname);
         $this->assertSame('192.168.10.50', $vm->ip_address);
         $this->assertSame('vmbr0', $vm->network_bridge);
-        $this->assertNotNull($vm->login_password);
+        $this->assertNull($vm->login_password);
+        $this->assertFalse($vm->retain_login_password);
+        $this->assertStringStartsWith('$6$', $vm->login_password_hash);
+        $password = session('provisioning_password');
+        $this->assertSame($vm->login_password_hash, crypt($password, $vm->login_password_hash));
+        $this->assertArrayNotHasKey('login_password_hash', $vm->toArray());
         $this->assertSame(VirtualMachine::PROVISION_PENDING, $vm->provisioning_status);
 
         $this->assertDatabaseHas('ip_addresses', [
@@ -1246,6 +1252,41 @@ class CloudVmProvisioningTest extends TestCase
     /**
      * @return array{CloudImage, VmBundle}
      */
+    public function test_new_server_rebuild_preserves_hash_without_recoverable_password(): void
+    {
+        Bus::fake();
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => 10000000]);
+        [$image, $bundle] = $this->catalog();
+        $hash = VirtualMachine::hashCloudInitPassword('original-secret');
+        $vm = VirtualMachine::create([
+            'customer_id' => $customer->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'cloud_image_id' => $image->id,
+            'vm_bundle_id' => $bundle->id,
+            'name' => 'modern-server', 'node' => $image->node,
+            'vmid' => 101, 'template_vmid' => $image->template_vmid,
+            'cpu_cores' => 2, 'ram_gb' => 4, 'disk_gb' => 40,
+            'status' => 'running', 'provisioning_status' => 'ready',
+            'retain_login_password' => false, 'login_password_hash' => $hash,
+        ]);
+        $this->actingAs($customer, 'customer');
+        $this->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/rebuild', ['rebuild_confirmation' => 'modern-server'])->assertSessionHasNoErrors();
+        $this->assertSame($hash, $vm->refresh()->cloudInitPassword());
+        $this->assertNull($vm->login_password);
+        Bus::assertDispatched(RebuildCloudVirtualMachine::class);
+    }
+
+    public function test_windows_bootstrap_password_is_encrypted_in_queue_payload(): void
+    {
+        $job = new ProvisionCloudVirtualMachine(123, ['bootstrap_password' => 'temporary-windows-secret']);
+        $queue = app('queue')->connection('sync');
+        $payload = (new \ReflectionMethod($queue, 'createPayload'))->invoke($queue, $job, 'provisioning');
+        $this->assertStringNotContainsString('temporary-windows-secret', $payload);
+        $command = json_decode($payload, true)['data']['command'];
+        $this->assertStringContainsString('temporary-windows-secret', Crypt::decryptString($command));
+    }
+
     private function catalog(string $poolEnd = '192.168.10.50'): array
     {
         $server = ProxmoxServer::create([

@@ -1,4 +1,7 @@
 import Alpine from 'alpinejs';
+import { walletTopUp } from './wallet-top-up';
+
+window.walletTopUp = walletTopUp;
 import './auth-validation.js';
 
 document.addEventListener('click', async (event) => {

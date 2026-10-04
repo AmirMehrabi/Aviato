@@ -42,6 +42,9 @@ use Illuminate\Support\Str;
     'ip_address',
     'login_username',
     'login_password',
+    'login_password_hash',
+    'retain_login_password',
+    'password_reset_status',
     'ssh_public_key',
     'cpu_cores',
     'ram_gb',
@@ -75,6 +78,8 @@ use Illuminate\Support\Str;
 ])]
 class VirtualMachine extends Model
 {
+    protected $hidden = ['login_password', 'login_password_hash'];
+
     public const PROVIDER_PROXMOX = 'proxmox';
 
     public const PROVIDER_HETZNER = 'hetzner';
@@ -241,7 +246,31 @@ class VirtualMachine extends Model
 
     public function isActionLocked(): bool
     {
-        return in_array($this->status, [self::STATUS_DELETING, self::STATUS_DELETED], true);
+        return $this->password_reset_status === 'pending'
+            || in_array($this->status, [self::STATUS_DELETING, self::STATUS_DELETED], true);
+    }
+
+    public function supportsCloudInitPasswordReset(): bool
+    {
+        return $this->isProxmox() && ! $this->isLxc()
+            && (bool) $this->cloudImage?->cloud_init_enabled
+            && $this->cloudImage?->os_family !== 'windows';
+    }
+
+    public function cloudInitPassword(): ?string
+    {
+        return $this->login_password_hash ?: $this->login_password;
+    }
+
+    public static function hashCloudInitPassword(string $password): string
+    {
+        // Linux crypt hashes can be consumed directly by Proxmox and cloud-init.
+        $hash = crypt($password, '$6$rounds=100000$'.bin2hex(random_bytes(8)).'$');
+        if (! str_starts_with($hash, '$6$')) {
+            throw new \RuntimeException('SHA-512 crypt is unavailable.');
+        }
+
+        return $hash;
     }
 
     public function isProxmox(): bool
@@ -331,6 +360,7 @@ class VirtualMachine extends Model
             'placement_snapshot' => 'array',
             'vlan_tag' => 'integer',
             'login_password' => 'encrypted',
+            'retain_login_password' => 'boolean',
             'last_seen_at' => 'datetime',
             'last_started_at' => 'datetime',
             'last_stopped_at' => 'datetime',

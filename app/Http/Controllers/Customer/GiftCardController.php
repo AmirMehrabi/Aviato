@@ -8,9 +8,12 @@ use App\Services\ProjectAccessService;
 use App\Services\PromotionService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class GiftCardController extends Controller
 {
@@ -33,12 +36,40 @@ class GiftCardController extends Controller
         return redirect()->route($action === 'register' ? 'customer.register' : 'customer.login');
     }
 
+    public function preview(Request $request): JsonResponse
+    {
+        $customer = $request->user('customer');
+        $project = $this->projects->activeProject($request, $customer);
+        abort_unless($this->projects->canViewBilling($project, $customer), 404);
+        try {
+            $data = $request->validate([
+                'code' => ['required', 'string', 'max:64'],
+                'project_id' => ['sometimes', 'integer', Rule::in([$project->id])],
+            ], ['project_id.in' => 'فضای کاری تغییر کرده است. صفحه کیف پول را تازه‌سازی کنید.']);
+
+            $customerKey = 'promotion:preview:customer:'.$customer->id;
+            $ipKey = 'promotion:preview:ip:'.sha1((string) $request->ip());
+            if (RateLimiter::tooManyAttempts($customerKey, 10) || RateLimiter::tooManyAttempts($ipKey, 30)) {
+                return response()->json(['message' => 'تعداد بررسی‌ها بیش از حد مجاز است. لطفاً بعداً دوباره تلاش کنید.'], 429);
+            }
+            RateLimiter::hit($customerKey, 600);
+            RateLimiter::hit($ipKey, 3600);
+
+            return response()->json(['promotion' => $this->promotions->preview($data['code'], $project)]);
+        } catch (ValidationException $exception) {
+            return response()->json(['errors' => $exception->errors()], 422);
+        }
+    }
+
     public function redeem(Request $request): RedirectResponse
     {
         $customer = $request->user('customer');
         $project = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canViewBilling($project, $customer), 404);
-        $data = $request->validate(['code' => ['required', 'string', 'max:64']]);
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:64'],
+            'project_id' => ['sometimes', 'integer', Rule::in([$project->id])],
+        ], ['project_id.in' => 'فضای کاری تغییر کرده است. صفحه کیف پول را تازه‌سازی کنید.']);
 
         $customerKey = 'promotion:redeem:customer:'.$customer->id;
         $ipKey = 'promotion:redeem:ip:'.sha1((string) $request->ip());

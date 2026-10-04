@@ -180,9 +180,7 @@
                 @endif
             </section>
 
-            @if($ticket->status === \App\Models\Ticket::STATUS_CLOSED)
-                <form method="POST" action="{{ route('customer.tickets.reopen', $ticket, false) }}">@csrf @method('PATCH')<button class="w-full rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white">باز کردن دوباره تیکت</button></form>
-            @else
+            @if($ticket->status !== \App\Models\Ticket::STATUS_CLOSED)
                 <form method="POST" action="{{ route('customer.tickets.close', $ticket, false) }}">@csrf @method('PATCH')<button class="w-full rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">بستن تیکت</button></form>
             @endif
         </aside>

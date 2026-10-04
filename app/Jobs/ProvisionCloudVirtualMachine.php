@@ -9,13 +9,14 @@ use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\RouterOsPostInstallationService;
 use App\Services\WalletService;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
-class ProvisionCloudVirtualMachine implements ShouldQueue
+class ProvisionCloudVirtualMachine implements ShouldBeEncrypted, ShouldQueue
 {
     use FoundationQueueable;
 
@@ -103,7 +104,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
 
             if (! $cloudInitEnabled) {
                 $verifiedConfig = $proxmox->vmConfig($server, $vm->node, $vmid);
-                $history[] = ['step' => 'config_verify', 'result' => $verifiedConfig];
+                $history[] = ['step' => 'config_verify', 'result' => array_diff_key($verifiedConfig, ['cipassword' => true])];
 
                 $actualCpu = (int) ($verifiedConfig['cores'] ?? $vm->cpu_cores);
                 $actualRamMb = (int) ($verifiedConfig['memory'] ?? ($vm->ram_gb * 1024));
@@ -156,7 +157,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
                 'cpu_cores' => $vm->cpu_cores,
                 'ram_gb' => $vm->ram_gb,
                 'login_username' => $vm->login_username,
-                'login_password' => $vm->login_password,
+                'login_password' => $vm->cloudInitPassword() ?? ($this->options['bootstrap_password'] ?? null),
                 'ssh_public_key' => $vm->ssh_public_key,
                 'ipconfig0' => $address ? $ipPools->ipConfig($address) : null,
                 'nameserver' => $address ? $ipPools->nameservers($address) : null,
@@ -202,7 +203,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             }
 
             $verifiedConfig = $proxmox->vmConfig($server, $vm->node, $vmid);
-            $history[] = ['step' => 'config_verify', 'result' => $verifiedConfig];
+            $history[] = ['step' => 'config_verify', 'result' => array_diff_key($verifiedConfig, ['cipassword' => true])];
 
             if ($address) {
                 $ipPools->assign($address, $vm);
@@ -306,7 +307,7 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             $create = $hetzner->createServer($account, $payload);
             $server = $create['server'] ?? [];
             $actionId = $create['action']['id'] ?? null;
-            $history[] = ['step' => 'create', 'result' => $create, 'at' => now()->toISOString()];
+            $history[] = ['step' => 'create', 'result' => array_diff_key($create, ['root_password' => true]), 'at' => now()->toISOString()];
 
             if ($actionId) {
                 $history[] = ['step' => 'create_wait', 'result' => $hetzner->waitForAction($account, $actionId), 'at' => now()->toISOString()];
@@ -385,13 +386,13 @@ class ProvisionCloudVirtualMachine implements ShouldQueue
             }
         }
 
-        if ($vm->login_password) {
+        if ($vm->cloudInitPassword()) {
             $lines[] = 'chpasswd:';
             $lines[] = '  expire: false';
             $lines[] = '  users:';
             $lines[] = '    - name: '.($vm->login_username ?: 'root');
-            $lines[] = '      password: '.$vm->login_password;
-            $lines[] = '      type: text';
+            $lines[] = '      password: '.$vm->cloudInitPassword();
+            $lines[] = '      type: '.($vm->login_password_hash ? 'hash' : 'text');
             $lines[] = 'ssh_pwauth: true';
         }
 

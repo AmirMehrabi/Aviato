@@ -41,17 +41,3 @@
     @include('customer.wallet.tabs.'.$selectedTab)
     </div>
 @endsection
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const code = sessionStorage.getItem('aviato.gift_card_code');
-    const type = sessionStorage.getItem('aviato.gift_card_type');
-    if (!code) return;
-    const target = document.getElementById(type === 'instant' ? 'gift-credit-code' : 'promotion-code');
-    if (target) { target.value = code; target.scrollIntoView({ behavior: 'smooth', block: 'center' }); target.focus(); }
-    sessionStorage.removeItem('aviato.gift_card_code');
-    sessionStorage.removeItem('aviato.gift_card_type');
-});
-</script>
-@endpush

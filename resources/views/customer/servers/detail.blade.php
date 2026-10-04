@@ -10,6 +10,7 @@
 
 @section('content')
     <div class="mx-auto max-w-7xl">
+        @include('customer.servers.partials.password-reset-status')
         @include('customer.servers.tabs.'.$tab)
     </div>
 @endsection

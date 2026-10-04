@@ -629,11 +629,15 @@
                 @if (session('error'))
                     <div class="mb-6 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>
                 @endif
-                @if (session('provisioning_password'))
-                    <div class="mb-6 w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
-                        Password اولیه فقط همین حالا نمایش داده می‌شود:
-                        <span dir="ltr">{{ session('provisioning_password') }}</span>
-                    </div>
+                @if (session()->has('provisioning_password') && session('provisioning_password'))
+                    @php($initialPassword = session()->pull('provisioning_password'))
+                    <section class="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" x-data="{ copied: false }" role="status">
+                        <p class="font-black">رمز عبور فقط همین حالا نمایش داده می‌شود؛ آن را در محل امن ذخیره کنید.</p>
+                        <div class="mt-3 flex flex-wrap items-center gap-3">
+                            <code dir="ltr" class="select-all break-all rounded-lg bg-white px-3 py-2 font-bold">{{ $initialPassword }}</code>
+                            <button type="button" @click="navigator.clipboard.writeText(@js($initialPassword)).then(() => copied = true).catch(() => copied = false)" class="rounded-lg border border-amber-200 bg-white px-3 py-2 font-bold" x-text="copied ? 'کپی شد' : 'کپی رمز'">کپی رمز</button>
+                        </div>
+                    </section>
                 @endif
                 @if ($errors->any())
                     <div class="mb-6 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ $errors->first() }}</div>

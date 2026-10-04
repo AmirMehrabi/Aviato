@@ -8,6 +8,7 @@ use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\VmActivityRecorder;
 use App\Services\WalletService;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
-class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
+class RebuildCloudVirtualMachine implements ShouldBeEncrypted, ShouldBeUnique, ShouldQueue
 {
     use FoundationQueueable;
 
@@ -32,7 +33,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 1200;
 
-    public function __construct(public readonly int $virtualMachineId) {}
+    public function __construct(public readonly int $virtualMachineId, public readonly ?string $bootstrapPassword = null) {}
 
     public function uniqueId(): string
     {
@@ -166,7 +167,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
                     'cpu_cores' => $vm->cpu_cores,
                     'ram_gb' => $vm->ram_gb,
                     'login_username' => $vm->login_username,
-                    'login_password' => $vm->login_password,
+                    'login_password' => $vm->cloudInitPassword() ?? $this->bootstrapPassword,
                     'ssh_public_key' => $vm->ssh_public_key,
                     'ipconfig0' => $address ? $ipPools->ipConfig($address) : null,
                     'nameserver' => $address ? $ipPools->nameservers($address) : null,
@@ -214,7 +215,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
             }
 
             $verifiedConfig = $proxmox->vmConfig($server, $node, $vmid);
-            $history[] = ['step' => 'config_verify', 'result' => $verifiedConfig, 'at' => now()->toISOString()];
+            $history[] = ['step' => 'config_verify', 'result' => array_diff_key($verifiedConfig, ['cipassword' => true]), 'at' => now()->toISOString()];
 
             if ($address) {
                 $ipPools->assign($address, $vm);
@@ -303,7 +304,7 @@ class RebuildCloudVirtualMachine implements ShouldBeUnique, ShouldQueue
             }
 
             $rebuild = $hetzner->rebuild($account, $vm->remote_id, (string) $image->remote_image_id);
-            $history[] = ['step' => 'rebuild', 'result' => $rebuild, 'at' => now()->toISOString()];
+            $history[] = ['step' => 'rebuild', 'result' => array_diff_key($rebuild, ['root_password' => true]), 'at' => now()->toISOString()];
             $hetzner->waitForAction($account, $rebuild['action']['id'] ?? null, 600);
 
             $startAllowed = ! $billingCustomer || ! $wallets->isWalletDepleted($billingCustomer);

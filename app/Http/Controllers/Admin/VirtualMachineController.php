@@ -853,7 +853,7 @@ class VirtualMachineController extends Controller
             'cpu_cores' => $virtualMachine->cpu_cores,
             'ram_gb' => $virtualMachine->ram_gb,
             'login_username' => $virtualMachine->login_username,
-            'login_password' => $virtualMachine->login_password,
+            'login_password' => $virtualMachine->cloudInitPassword(),
             'ssh_public_key' => $virtualMachine->ssh_public_key,
             'ipconfig0' => $this->ipPools->ipConfig($virtualMachine->reservedIpAddress),
             'nameserver' => $this->ipPools->nameservers($virtualMachine->reservedIpAddress),

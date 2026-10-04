@@ -14,6 +14,10 @@
             @elseif ($loginPassword)
                 <div class="mt-4 flex flex-wrap items-center gap-2 text-sm"><span class="font-bold text-slate-500">رمز عبور</span><code class="rounded-lg bg-slate-50 px-3 py-2" dir="ltr" x-text="reveal ? @js($loginPassword) : '••••••••'">••••••••</code><button type="button" @click="reveal = !reveal" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold" x-text="reveal ? 'پنهان کردن' : 'نمایش'"></button><button type="button" @click="copy(@js($loginPassword), 'password')" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold" x-text="copied === 'password' ? 'کپی شد' : 'کپی رمز'"></button></div>
             @endif
+            @if (! $server->retain_login_password)
+                <p class="mt-4 text-sm leading-7 text-slate-500">رمز عبور فقط هنگام ساخت یا بازنشانی نمایش داده می‌شود و قابل بازیابی نیست.</p>
+            @endif
+            @include('customer.servers.partials.password-reset')
             @if ($server->ssh_public_key)
                 <details class="mt-4 rounded-xl border border-slate-200 p-4"><summary class="cursor-pointer text-sm font-black">کلید عمومی SSH</summary><code class="mt-3 block break-all text-xs" dir="ltr">{{ $server->ssh_public_key }}</code><button type="button" @click="copy(@js($server->ssh_public_key), 'key')" class="mt-3 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-[#0069FF]" x-text="copied === 'key' ? 'کپی شد' : 'کپی کلید'" aria-label="کپی کلید عمومی SSH"></button></details>
             @endif

@@ -9,7 +9,9 @@ use App\Models\TicketCategory;
 use App\Models\TicketMessage;
 use App\Models\User;
 use App\Models\VirtualMachine;
+use App\Services\Tickets\TicketService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class TicketingTest extends TestCase
@@ -235,6 +237,76 @@ class TicketingTest extends TestCase
             ->assertJson(['unread_replies_count' => 0]);
 
         $this->assertNotNull($customerMessage->fresh()->seen_by_admin_at);
+    }
+
+    public function test_customer_cannot_reopen_or_reply_to_an_admin_closed_ticket(): void
+    {
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $ticket = Ticket::create([
+            'customer_id' => $customer->id, 'number' => 'T-CLOSED-1',
+            'subject' => 'Closed support request', 'status' => Ticket::STATUS_OPEN,
+            'priority' => Ticket::PRIORITY_NORMAL,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->patch('https://admin.localhost/tickets/'.$ticket->number.'/status', ['status' => Ticket::STATUS_CLOSED])
+            ->assertRedirect();
+        $closedAt = $ticket->refresh()->closed_at;
+        $messageCount = $ticket->messages()->count();
+        $eventCount = $ticket->events()->count();
+
+        $this->actingAs($customer, 'customer')
+            ->get('https://cp.localhost/tickets/'.$ticket->number)
+            ->assertOk()->assertDontSee('باز کردن دوباره تیکت')
+            ->assertDontSee('customer-ticket-reply');
+        $this->patch('https://cp.localhost/tickets/'.$ticket->number.'/reopen')->assertNotFound();
+        $this->post('https://cp.localhost/tickets/'.$ticket->number.'/reply', ['body' => 'Please reopen this ticket.'])
+            ->assertForbidden();
+
+        $this->assertSame(Ticket::STATUS_CLOSED, $ticket->refresh()->status);
+        $this->assertTrue($closedAt->equalTo($ticket->closed_at));
+        $this->assertSame($messageCount, $ticket->messages()->count());
+        $this->assertSame($eventCount, $ticket->events()->count());
+
+        $this->actingAs($admin, 'admin')
+            ->patch('https://admin.localhost/tickets/'.$ticket->number.'/status', ['status' => Ticket::STATUS_OPEN])
+            ->assertRedirect();
+        $this->assertNull($ticket->refresh()->closed_at);
+        $this->actingAs($customer, 'customer')
+            ->post('https://cp.localhost/tickets/'.$ticket->number.'/reply', ['body' => 'Reply after support reopened the ticket.'])
+            ->assertRedirect();
+        $this->assertSame($messageCount + 1, $ticket->messages()->count());
+    }
+
+    public function test_ticket_service_rejects_customer_reopening_a_closed_ticket(): void
+    {
+        $customer = Customer::factory()->create();
+        $ticket = Ticket::create([
+            'customer_id' => $customer->id, 'number' => 'T-CLOSED-2',
+            'subject' => 'Closed support request', 'status' => Ticket::STATUS_OPEN,
+            'priority' => Ticket::PRIORITY_NORMAL,
+        ]);
+        $staleTicket = $ticket->fresh();
+        $ticket->update(['status' => Ticket::STATUS_CLOSED, 'closed_at' => now()]);
+        $service = app(TicketService::class);
+
+        foreach (['status', 'reply'] as $operation) {
+            try {
+                if ($operation === 'status') {
+                    $service->updateStatus($ticket, $customer, Ticket::STATUS_OPEN);
+                } else {
+                    $service->reply($staleTicket, $customer, 'Please reopen this ticket.');
+                }
+                $this->fail('Customers must not reopen closed tickets through '.$operation.'.');
+            } catch (HttpException $exception) {
+                $this->assertSame(403, $exception->getStatusCode());
+            }
+        }
+
+        $this->assertSame(Ticket::STATUS_CLOSED, $ticket->refresh()->status);
+        $this->assertSame(0, $ticket->messages()->count());
+        $this->assertSame(0, $ticket->events()->count());
     }
 
     private function vmFor(Customer $customer): VirtualMachine

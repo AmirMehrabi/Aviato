@@ -150,14 +150,6 @@ class TicketController extends Controller
         return back()->with('status', 'تیکت بسته شد.');
     }
 
-    public function reopen(Request $request, Ticket $ticket): RedirectResponse
-    {
-        abort_unless((int) $ticket->customer_id === (int) $request->user('customer')->id, 404);
-        $this->tickets->updateStatus($ticket, $request->user('customer'), Ticket::STATUS_OPEN);
-
-        return back()->with('status', 'تیکت دوباره باز شد.');
-    }
-
     private function rules(): array
     {
         return [

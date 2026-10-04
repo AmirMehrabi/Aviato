@@ -70,6 +70,9 @@ class TicketService
     public function reply(Ticket $ticket, Customer|User $actor, string $body, array $attachments = [], bool $internal = false): TicketMessage
     {
         $message = DB::transaction(function () use ($ticket, $actor, $body, $attachments, $internal): TicketMessage {
+            $ticket = Ticket::query()->lockForUpdate()->findOrFail($ticket->getKey());
+            abort_if($actor instanceof Customer && $ticket->status === Ticket::STATUS_CLOSED, 403);
+
             $type = $internal ? TicketMessage::TYPE_INTERNAL : TicketMessage::TYPE_REPLY;
             $message = $this->message($ticket, $actor, $type, $body);
             $this->storeAttachments($message, $attachments);
@@ -131,6 +134,8 @@ class TicketService
 
     public function updateStatus(Ticket $ticket, User|Customer $actor, string $status): Ticket
     {
+        abort_if($actor instanceof Customer && $status !== Ticket::STATUS_CLOSED, 403);
+
         $ticket->forceFill([
             'status' => $status,
             'closed_at' => $status === Ticket::STATUS_CLOSED ? now() : null,

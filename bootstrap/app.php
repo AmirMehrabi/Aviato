@@ -67,6 +67,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->dontFlash([
             'code',
             'promotion_code',
+            'login_password',
+            'login_password_confirmation',
         ]);
         $exceptions->shouldRenderJsonWhen(fn (Request $request): bool => $request->is('api/*'));
         $exceptions->render(function (AuthenticationException $exception, Request $request) {

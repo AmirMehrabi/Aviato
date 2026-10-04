@@ -15,6 +15,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
@@ -39,11 +40,13 @@ class PaymentController extends Controller
             'amount_toman' => ['required', 'integer', 'min:250000', 'max:50000000'],
             'gateway' => ['required', 'string', 'in:'.implode(',', array_keys($this->gateways->available()))],
             'promotion_code' => ['nullable', 'string', 'max:64'],
+            'project_id' => ['sometimes', 'integer', Rule::in([$activeProject->id])],
         ], [
             'amount_toman.required' => 'مبلغ شارژ را انتخاب یا وارد کنید.',
             'amount_toman.integer' => 'مبلغ شارژ باید یک عدد معتبر باشد.',
             'amount_toman.min' => 'حداقل مبلغ شارژ ۲۵۰٬۰۰۰ تومان است.',
             'amount_toman.max' => 'حداکثر مبلغ شارژ ۵۰٬۰۰۰٬۰۰۰ تومان است.',
+            'project_id.in' => 'فضای کاری تغییر کرده است. صفحه کیف پول را تازه‌سازی کنید.',
             'gateway.required' => 'درگاه پرداخت را انتخاب کنید.',
             'gateway.in' => 'درگاه پرداخت انتخاب‌شده در دسترس نیست.',
         ]);

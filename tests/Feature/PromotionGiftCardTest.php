@@ -3,10 +3,14 @@
 namespace Tests\Feature;
 
 use App\Enums\AdminRole;
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\Payment;
+use App\Models\ProjectMember;
 use App\Models\PromotionCampaign;
+use App\Models\PromotionEvent;
 use App\Models\User;
+use App\Services\ProjectAccessService;
 use App\Services\PromotionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -211,6 +215,119 @@ class PromotionGiftCardTest extends TestCase
             ->post('https://localhost/e/claim', ['code' => 'AVT-NOT-A-REAL-CODE'])
             ->assertRedirect('https://localhost/e')
             ->assertSessionHasErrors(['code' => 'کد هدیه معتبر یا قابل استفاده نیست.']);
+    }
+
+    public function test_preview_shows_credit_value_without_reserving_or_redeeming(): void
+    {
+        $manager = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, [
+            'claim_mode' => PromotionCampaign::CLAIM_INSTANT, 'credit_amount' => 2_000_000,
+        ]);
+        $code = app(PromotionService::class)->generateCodes($campaign, $manager)[0];
+        $before = $code->refresh()->getRawOriginal();
+        $events = PromotionEvent::count();
+        $this->actingAs($customer, 'customer')->postJson('https://cp.localhost/wallet/gift-cards/preview', [
+            'code' => strtolower(str_replace('-', ' ', $code->encrypted_code)), 'project_id' => $project->id,
+        ])->assertOk()->assertJsonPath('promotion.credit_amount', 2_000_000)->assertJsonPath('promotion.requires_payment', false)
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private');
+        $this->assertSame($before, $code->refresh()->getRawOriginal());
+        $this->assertSame(0, $customer->wallet()->firstOrFail()->balance);
+        $this->assertDatabaseCount('promotion_redemptions', 0);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame($events, PromotionEvent::count());
+    }
+
+    public function test_preview_exposes_percentage_minimum_and_cap_and_fixed_payment_bonus(): void
+    {
+        $manager = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $this->actingAs($customer, 'customer');
+        $percentage = $this->campaign($manager, PromotionCampaign::TYPE_PERCENTAGE, [
+            'percentage' => 20, 'minimum_top_up' => 5_000_000, 'maximum_bonus' => 2_000_000,
+        ]);
+        $code = app(PromotionService::class)->generateCodes($percentage, $manager)[0];
+        $this->postJson('https://cp.localhost/wallet/gift-cards/preview', ['code' => $code->encrypted_code])
+            ->assertOk()->assertJsonPath('promotion.percentage', 20)->assertJsonPath('promotion.minimum_top_up', 5_000_000)
+            ->assertJsonPath('promotion.maximum_bonus', 2_000_000)->assertJsonPath('promotion.requires_payment', true);
+        $fixed = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, [
+            'claim_mode' => PromotionCampaign::CLAIM_PAYMENT_REQUIRED, 'credit_amount' => 1_500_000,
+        ]);
+        $code = app(PromotionService::class)->generateCodes($fixed, $manager)[0];
+        $this->postJson('https://cp.localhost/wallet/gift-cards/preview', ['code' => $code->encrypted_code])
+            ->assertOk()->assertJsonPath('promotion.credit_amount', 1_500_000)->assertJsonPath('promotion.requires_payment', true);
+    }
+
+    public function test_preview_treats_expired_reservation_as_available_without_mutating_it(): void
+    {
+        $manager = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, ['credit_amount' => 1_000_000]);
+        $code = app(PromotionService::class)->generateCodes($campaign, $manager)[0];
+        $code->update(['status' => 'reserved', 'reserved_until' => now()->subMinute()]);
+        $this->actingAs($customer, 'customer')->postJson('https://cp.localhost/wallet/gift-cards/preview', ['code' => $code->encrypted_code])->assertOk();
+        $this->assertSame('reserved', $code->refresh()->status);
+        $this->assertTrue($code->reserved_until->isPast());
+    }
+
+    public function test_preview_rejects_ineligible_codes_and_requires_billing_access(): void
+    {
+        $manager = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, ['credit_amount' => 1_000_000]);
+        $code = app(PromotionService::class)->generateCodes($campaign, $manager)[0];
+        $this->actingAs($customer, 'customer');
+        $url = 'https://cp.localhost/wallet/gift-cards/preview';
+        $this->postJson($url, ['code' => 'INVALID'])->assertUnprocessable()->assertJsonValidationErrors('code');
+        $code->update(['status' => 'reserved', 'reserved_until' => now()->addMinute()]);
+        $this->postJson($url, ['code' => $code->encrypted_code])->assertUnprocessable()->assertJsonValidationErrors('code');
+        $code->update(['status' => 'available']);
+        $campaign->update(['audience' => PromotionCampaign::AUDIENCE_ALLOWLIST]);
+        $this->postJson($url, ['code' => $code->encrypted_code])->assertUnprocessable()->assertJsonValidationErrors('code');
+        $campaign->update(['audience' => PromotionCampaign::AUDIENCE_ALL, 'expires_at' => now()->subMinute()]);
+        $this->postJson($url, ['code' => $code->encrypted_code])->assertUnprocessable()->assertJsonValidationErrors('code');
+        $viewer = Customer::factory()->create();
+        ProjectMember::create(['project_id' => $project->id, 'customer_id' => $viewer->id, 'role' => ProjectMember::ROLE_VIEWER]);
+        $this->actingAs($viewer, 'customer')->withSession([ProjectAccessService::SESSION_KEY => $project->id]);
+        $this->postJson($url, ['code' => $code->encrypted_code])->assertNotFound();
+    }
+
+    public function test_preview_rate_limits_guesses_and_rejects_stale_workspace(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->actingAs($customer, 'customer');
+        $url = 'https://cp.localhost/wallet/gift-cards/preview';
+        $this->postJson($url, ['code' => 'INVALID', 'project_id' => 99999])->assertUnprocessable()->assertJsonValidationErrors('project_id');
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $this->postJson($url, ['code' => 'INVALID'])->assertUnprocessable();
+        }
+        $this->postJson($url, ['code' => 'INVALID'])->assertStatus(429);
+        $this->assertDatabaseCount('promotion_redemptions', 0);
+    }
+
+    public function test_redeeming_revalidates_a_code_that_was_previously_previewed(): void
+    {
+        $manager = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $campaign = $this->campaign($manager, PromotionCampaign::TYPE_CREDIT, [
+            'claim_mode' => PromotionCampaign::CLAIM_INSTANT, 'credit_amount' => 2_000_000,
+        ]);
+        $code = app(PromotionService::class)->generateCodes($campaign, $manager)[0];
+        $this->actingAs($customer, 'customer');
+        $this->postJson('https://cp.localhost/wallet/gift-cards/preview', ['code' => $code->encrypted_code])->assertOk();
+        $code->update(['status' => 'revoked']);
+        $this->post('https://cp.localhost/wallet/gift-cards/redeem', ['code' => $code->encrypted_code])->assertSessionHasErrors('code');
+        $this->assertSame(0, $customer->wallet()->firstOrFail()->balance);
+    }
+
+    public function test_wallet_keeps_instant_gift_entry_available_without_payment_gateways(): void
+    {
+        AppSetting::setValue(AppSetting::PAYMENTS_ENABLED, false, 'boolean', 'payments');
+        $customer = Customer::factory()->create();
+        $this->actingAs($customer, 'customer')->get('https://cp.localhost/wallet?gift_card=1')->assertOk()
+            ->assertSee('کد هدیه یا پاداش')->assertSee('بررسی کد')->assertSee('/wallet/gift-cards/redeem', false);
     }
 
     private function campaign(User $manager, string $type, array $overrides = []): PromotionCampaign

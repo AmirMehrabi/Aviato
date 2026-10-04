@@ -12,6 +12,7 @@ use App\Models\PromotionException;
 use App\Models\PromotionRedemption;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Support\Jalali;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,34 @@ class PromotionService
 
             return $codes;
         });
+    }
+
+    /** Preview eligibility without reserving a code or changing the wallet. */
+    public function preview(string $plainCode, Project $project): array
+    {
+        $code = PromotionCode::query()->with('campaign')->where('code_digest', $this->digest($plainCode))->first();
+        if (! $code) {
+            throw ValidationException::withMessages(['code' => 'کد هدیه معتبر یا قابل استفاده نیست.']);
+        }
+
+        // Treat expired reservations as available in memory; preview never saves.
+        if ($code->status === 'reserved' && $code->reserved_until?->isPast()) {
+            $code->status = 'available';
+        }
+        $wallet = $project->owner->wallet()->firstOrFail();
+        $campaign = $code->campaign;
+        $this->assertRedeemable($code, $campaign, $project->owner, $wallet);
+
+        return [
+            'type' => $campaign->type,
+            'requires_payment' => $campaign->requiresPayment(),
+            'credit_amount' => (int) $campaign->credit_amount,
+            'percentage' => (int) $campaign->percentage,
+            'minimum_top_up' => (int) $campaign->minimum_top_up,
+            'maximum_bonus' => (int) $campaign->maximum_bonus,
+            'expires_label' => Jalali::format($campaign->expires_at, 'Y/m/d'),
+            'terms' => $campaign->terms,
+        ];
     }
 
     public function redeemCredit(string $plainCode, Customer $redeemer, Project $project, ?Request $request = null): PromotionRedemption

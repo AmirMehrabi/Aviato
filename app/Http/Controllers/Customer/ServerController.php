@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Jobs\RebuildCloudVirtualMachine;
+use App\Jobs\ResetVirtualMachinePassword;
 use App\Models\AppSetting;
 use App\Models\CloudImage;
 use App\Models\Customer;
@@ -35,6 +37,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -197,6 +201,8 @@ class ServerController extends Controller
                 'ip_address',
                 'login_username',
                 'login_password',
+                'login_password_hash',
+                'password_reset_status',
                 'status',
                 'provisioning_status',
                 'remote_state',
@@ -216,7 +222,8 @@ class ServerController extends Controller
                 'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
-                'action_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null && ! $server->deleteAttemptIsStale()),
+                'password_reset_status' => $server->password_reset_status,
+                'action_pending' => $server->password_reset_status === 'pending' || $server->provisioning_status === VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null && ! $server->deleteAttemptIsStale()),
                 'is_deleting' => $server->isDeleting(),
                 'delete_failed' => $server->isDeleting() && $server->delete_failed_at !== null,
                 'delete_stale' => $server->deleteAttemptIsStale(),
@@ -228,7 +235,7 @@ class ServerController extends Controller
                 'ssh_class' => $server->ip_address && $server->provisioning_status === VirtualMachine::PROVISION_READY ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
                 'hostname' => $server->hostname ?: 'hostname-not-set',
                 'login_username' => $server->login_username ?: '-',
-                'has_password' => filled($server->getRawOriginal('login_password')),
+                'has_password' => filled($server->getRawOriginal('login_password')) || filled($server->login_password_hash),
                 'console_ready' => $server->isProxmox() && ! $server->isLxc() && $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === VirtualMachine::PROVISION_READY && ! $server->isActionLocked(),
                 'ssh_command' => $server->ip_address ? 'ssh '.($server->login_username ?: 'root').'@'.$server->ip_address : null,
                 'updated_at' => $server->updated_at?->toISOString(),
@@ -555,7 +562,7 @@ class ServerController extends Controller
         $loginPassword = null;
         $credentialDecryptionFailed = false;
 
-        if (filled($server->getRawOriginal('login_password'))) {
+        if ($server->retain_login_password && filled($server->getRawOriginal('login_password'))) {
             try {
                 $loginPassword = $server->login_password;
             } catch (Throwable $exception) {
@@ -674,7 +681,8 @@ class ServerController extends Controller
             $server->forceFill([
                 'hostname' => $hostname,
                 'login_username' => $username,
-                'login_password' => $password,
+                'login_password' => $server->retain_login_password ? $password : null,
+                'login_password_hash' => $server->retain_login_password ? null : ($password !== null ? ($server->cloudImage->os_family === 'windows' ? null : VirtualMachine::hashCloudInitPassword($password)) : $server->login_password_hash),
                 'ssh_public_key' => $sshPublicKey !== '' ? $sshPublicKey : null,
             ]);
         }
@@ -704,7 +712,7 @@ class ServerController extends Controller
             ]),
         ])->save();
 
-        RebuildCloudVirtualMachine::dispatch($server->id)->onQueue(RebuildCloudVirtualMachine::QUEUE);
+        RebuildCloudVirtualMachine::dispatch($server->id, ! $server->retain_login_password && $server->cloudImage->os_family === 'windows' ? $password : null)->onQueue(RebuildCloudVirtualMachine::QUEUE);
         $this->activities->record($server, 'rebuild', 'requested', 'درخواست بازسازی ثبت شد', 'نصب دوباره سیستم عامل '.$server->cloudImage->name, $request->user('customer'));
 
         $redirect = redirect()
@@ -716,6 +724,50 @@ class ServerController extends Controller
         }
 
         return $redirect;
+    }
+
+    public function resetPassword(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+        $server->loadMissing('cloudImage');
+        abort_unless($server->supportsCloudInitPasswordReset(), 404);
+        $request->validate(['confirm_reboot' => ['accepted']]);
+
+        $password = Str::password(20, symbols: false);
+        $hash = VirtualMachine::hashCloudInitPassword($password);
+        $resetId = (string) Str::uuid();
+        $accepted = DB::transaction(function () use ($server, $resetId): bool {
+            $vm = VirtualMachine::query()->lockForUpdate()->findOrFail($server->id);
+            if ($vm->isActionLocked() || ! $vm->isRunning() || $vm->provisioning_status !== VirtualMachine::PROVISION_READY
+                || $vm->pendingUpgradeOrders()->exists() || ! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid) {
+                return false;
+            }
+            $vm->forceFill([
+                'password_reset_status' => 'pending',
+                'remote_state' => array_merge($vm->remote_state ?? [], ['password_reset_id' => $resetId]),
+            ])->save();
+
+            return true;
+        });
+        if (! $accepted) {
+            return back()->with('error', 'بازنشانی رمز فقط برای سرور روشن و آماده، بدون عملیات در حال اجرا، امکان‌پذیر است.');
+        }
+
+        try {
+            ResetVirtualMachinePassword::dispatch($server->id, $resetId, $hash,
+                $server->retain_login_password ? Crypt::encryptString($password) : null)
+                ->onQueue(ProvisionCloudVirtualMachine::QUEUE);
+        } catch (Throwable $exception) {
+            VirtualMachine::whereKey($server->id)->update(['password_reset_status' => 'failed']);
+            report($exception);
+
+            return back()->with('error', 'درخواست بازنشانی رمز ثبت نشد. دوباره تلاش کنید.');
+        }
+        $this->activities->record($server, 'password_reset', 'requested', 'درخواست بازنشانی رمز و راه‌اندازی مجدد ثبت شد', null, $request->user('customer'));
+
+        return redirect()->route('customer.servers.show', $server)
+            ->with('status', 'بازنشانی رمز در صف است. سرور خاموش و دوباره روشن می‌شود و اتصال موقتاً قطع خواهد شد.')
+            ->with('password_reset_password', $password);
     }
 
     public function start(Request $request, VirtualMachine $virtualMachine): RedirectResponse
@@ -955,6 +1007,9 @@ class ServerController extends Controller
     public function destroy(Request $request, VirtualMachine $virtualMachine): RedirectResponse
     {
         $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+        if ($server->password_reset_status === 'pending') {
+            return back()->with('error', 'تا پایان بازنشانی رمز، حذف سرور در دسترس نیست.');
+        }
         $server->loadMissing(['reservedIpAddress', 'proxmoxServer', 'customer', 'bundle']);
         $request->validate([
             'delete_confirmation' => ['required', 'string', Rule::in([$server->display_name])],
@@ -1205,6 +1260,10 @@ class ServerController extends Controller
 
         if ($requestedPassword !== '') {
             return $requestedPassword;
+        }
+
+        if (! $server->retain_login_password && $server->login_password_hash) {
+            return null;
         }
 
         if (filled($server->login_password)) {

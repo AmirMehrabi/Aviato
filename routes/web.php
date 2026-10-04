@@ -440,21 +440,22 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::middleware('customer.vm.access')->group(function (): void {
             Route::get('network', [NetworkUsageController::class, 'index'])->name('customer.network.index');
             Route::get('servers/{virtualMachine}/network', [NetworkUsageController::class, 'show'])->name('customer.network.show');
-            Route::get('servers', [ServerController::class, 'index'])->name('customer.servers.index');
+            Route::get('servers', [ServerController::class, 'index'])->middleware('cache.headers:no_store;private')->name('customer.servers.index');
             Route::get('servers/create', [ServerController::class, 'create'])->name('customer.servers.create');
             Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');
             Route::get('servers/statuses', [ServerController::class, 'statuses'])->name('customer.servers.statuses');
             Route::get('servers/{virtualMachine}/console', [ServerConsoleController::class, 'show'])->name('customer.servers.console.show');
             Route::get('servers/{virtualMachine}/console/session', [ServerConsoleController::class, 'redirectSession'])->name('customer.servers.console.session.redirect');
             Route::post('servers/{virtualMachine}/console/session', [ServerConsoleController::class, 'session'])->name('customer.servers.console.session');
+            Route::post('servers/{virtualMachine}/reset-password', [ServerController::class, 'resetPassword'])->middleware('throttle:3,1')->name('customer.servers.reset-password');
             Route::post('servers/{virtualMachine}/rebuild', [ServerController::class, 'rebuild'])->name('customer.servers.rebuild');
             Route::post('servers/{virtualMachine}/start', [ServerController::class, 'start'])->name('customer.servers.start');
             Route::post('servers/{virtualMachine}/stop', [ServerController::class, 'stop'])->name('customer.servers.stop');
             Route::post('servers/{virtualMachine}/restart', [ServerController::class, 'restart'])->name('customer.servers.restart');
-            Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->name('customer.servers.show');
+            Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->middleware('cache.headers:no_store;private')->name('customer.servers.show');
             Route::get('servers/{virtualMachine}/{tab}', [ServerController::class, 'tab'])
                 ->whereIn('tab', ['resources', 'billing', 'upgrade', 'rebuild', 'delete', 'activity'])
-                ->name('customer.servers.tab');
+                ->middleware('cache.headers:no_store;private')->name('customer.servers.tab');
             Route::post('servers/{virtualMachine}/upgrades/bundle', [VmUpgradeController::class, 'storeBundle'])->name('customer.servers.upgrades.bundle.store');
             Route::post('servers/{virtualMachine}/upgrades/extra-disk', [VmUpgradeController::class, 'storeExtraDisk'])->name('customer.servers.upgrades.extra-disk.store');
             Route::delete('servers/{virtualMachine}', [ServerController::class, 'destroy'])->name('customer.servers.destroy');
@@ -467,12 +468,12 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::post('tickets/{ticket}/reply', [TicketController::class, 'reply'])->name('customer.tickets.reply');
         Route::post('tickets/{ticket}/seen', [TicketController::class, 'seen'])->name('customer.tickets.seen');
         Route::patch('tickets/{ticket}/close', [TicketController::class, 'close'])->name('customer.tickets.close');
-        Route::patch('tickets/{ticket}/reopen', [TicketController::class, 'reopen'])->name('customer.tickets.reopen');
         Route::get('tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'show'])->name('customer.tickets.attachments.show');
         Route::resource('tickets', TicketController::class)->only(['index', 'create', 'store', 'show'])->names('customer.tickets');
         Route::get('wallet', [CustomerWalletController::class, 'show'])->name('customer.wallet.show');
         Route::get('wallet/transactions', [CustomerWalletController::class, 'transactionsJson'])->name('customer.wallet.transactions.json');
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');
+        Route::post('wallet/gift-cards/preview', [GiftCardController::class, 'preview'])->middleware('no-store')->name('customer.gift-cards.preview');
         Route::post('wallet/gift-cards/redeem', [GiftCardController::class, 'redeem'])->name('customer.gift-cards.redeem');
         Route::get('wallet/payments/{payment}/gateway', [PaymentController::class, 'showGateway'])->name('customer.wallet.payments.gateway.show');
         Route::post('wallet/payments/{payment}/gateway', [PaymentController::class, 'submitGateway'])->name('customer.wallet.payments.gateway.store');

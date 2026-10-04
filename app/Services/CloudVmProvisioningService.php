@@ -108,7 +108,9 @@ class CloudVmProvisioningService
                 'network_bridge' => $networkBridge,
                 'vlan_tag' => $vlanTag,
                 'login_username' => $username,
-                'login_password' => $password,
+                'login_password' => null,
+                'retain_login_password' => false,
+                'login_password_hash' => $password !== null && $image->os_family !== 'windows' ? VirtualMachine::hashCloudInitPassword($password) : null,
                 'ssh_public_key' => $sshPublicKey,
                 'cpu_cores' => $resources['cpu_cores'],
                 'ram_gb' => $resources['ram_gb'],
@@ -147,6 +149,7 @@ class CloudVmProvisioningService
             ProvisionCloudVirtualMachine::dispatch($vm->id, [
                 'start_after_create' => (bool) ($data['start_after_create'] ?? true),
                 'onboot' => (bool) ($data['onboot'] ?? false),
+                'bootstrap_password' => $image->os_family === 'windows' ? $password : null,
             ])->onQueue(ProvisionCloudVirtualMachine::QUEUE);
         }
 
