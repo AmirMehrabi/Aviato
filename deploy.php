@@ -78,7 +78,8 @@ before('deploy:symlink', 'deploy:remember_current');
 
 task('deploy:healthcheck', function () {
     try {
-        run("curl --fail --silent --show-error --max-time 15 --header 'Host: aviato.ir' http://127.0.0.1/up > /dev/null");
+        // Check the local HTTPS vhost with the correct TLS hostname.
+        run("curl --fail --silent --show-error --noproxy '*' --max-time 15 --resolve aviato.ir:443:127.0.0.1 https://aviato.ir/up > /dev/null");
         run('rm -f {{deploy_path}}/.dep/previous_current');
     } catch (\Throwable $exception) {
         run('if [ -s {{deploy_path}}/.dep/previous_current ]; then ln -sfn "$(cat {{deploy_path}}/.dep/previous_current)" {{current_path}}; fi');
