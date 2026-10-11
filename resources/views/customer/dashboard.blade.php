@@ -199,11 +199,17 @@
             @endif
         </section>
     @else
+        @php
+            $visibleVmRows = $vmRows->take(5);
+            $totalVmCount = $vmRows->count();
+        @endphp
+
         <section class="mt-4" aria-labelledby="my-machines-heading">
             <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h2 id="my-machines-heading" class="text-lg font-black text-slate-950">ماشین‌های من</h2>
                     <p class="mt-1 text-xs font-bold text-slate-500">وضعیت و راه‌های دسترسی به ماشین‌های فضای کاری فعال</p>
+                    <p class="mt-1 text-xs font-bold text-slate-500">نمایش {{ $visibleVmRows->count() }} از {{ $totalVmCount }} ماشین</p>
                 </div>
                 <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-black text-slate-600 transition-colors hover:bg-white hover:text-[#0069FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">
                     مشاهده همه
@@ -214,7 +220,7 @@
             </div>
 
             <div class="space-y-2.5">
-                @foreach ($vmRows->take(5) as $vm)
+                @foreach ($visibleVmRows as $vm)
                     <article class="rounded-2xl border bg-white p-4 shadow-sm shadow-slate-200/40 transition-[border-color,box-shadow] hover:border-[#B8D6FF] hover:shadow-md hover:shadow-[#0069FF]/[0.08] {{ $vm['needsAttention'] ? 'border-red-200' : 'border-slate-200' }}">
                         <div class="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(15rem,.75fr)_auto] xl:items-center">
                             <div class="flex min-w-0 items-start gap-3">
@@ -295,6 +301,18 @@
                     </article>
                 @endforeach
             </div>
+
+            @if ($totalVmCount > $visibleVmRows->count())
+                <a
+                    href="{{ route('customer.servers.index', [], false) }}"
+                    class="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-black text-[#0069FF] transition-colors hover:bg-[#DCEBFF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
+                >
+                    مشاهده همه {{ $totalVmCount }} ماشین
+                    <svg class="size-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            @endif
         </section>
     @endif
 
