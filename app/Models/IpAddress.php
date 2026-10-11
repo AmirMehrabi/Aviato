@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'virtual_machine_id',
     'address',
     'status',
+    'reservation_reason',
     'reserved_at',
     'assigned_at',
     'released_at',

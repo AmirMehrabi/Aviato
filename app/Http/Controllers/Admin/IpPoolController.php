@@ -102,10 +102,11 @@ class IpPoolController extends Controller
         $data = $request->validate([
             'address_ids' => ['required', 'array', 'min:1'],
             'address_ids.*' => ['required', 'integer'],
+            'reservation_reason' => ['nullable', 'string', 'max:255'],
         ]);
 
         try {
-            $reserved = $this->ipPools->reserveAddresses($ipPool, $data['address_ids']);
+            $reserved = $this->ipPools->reserveAddresses($ipPool, $data['address_ids'], $data['reservation_reason'] ?? null);
         } catch (RuntimeException $exception) {
             return back()->withInput()->withErrors([
                 'reservation' => $exception->getMessage(),
@@ -117,14 +118,15 @@ class IpPoolController extends Controller
             ->with('status', $this->reservationMessage($reserved->pluck('address')->all()));
     }
 
-    public function reserveAddress(IpPool $ipPool, IpAddress $ipAddress): RedirectResponse
+    public function reserveAddress(Request $request, IpPool $ipPool, IpAddress $ipAddress): RedirectResponse
     {
         if ((int) $ipAddress->ip_pool_id !== (int) $ipPool->id) {
             abort(404);
         }
 
         try {
-            $reserved = $this->ipPools->reserveAddresses($ipPool, [$ipAddress->id]);
+            $data = $request->validate(['reservation_reason' => ['nullable', 'string', 'max:255']]);
+            $reserved = $this->ipPools->reserveAddresses($ipPool, [$ipAddress->id], $data['reservation_reason'] ?? null);
         } catch (RuntimeException $exception) {
             return back()->withErrors([
                 'reservation' => $exception->getMessage(),
@@ -134,6 +136,23 @@ class IpPoolController extends Controller
         return redirect()
             ->route('admin.ip-pools.edit', $ipPool)
             ->with('status', $this->reservationMessage($reserved->pluck('address')->all()));
+    }
+
+    public function updateReservationReason(Request $request, IpPool $ipPool, IpAddress $ipAddress): RedirectResponse
+    {
+        if ((int) $ipAddress->ip_pool_id !== (int) $ipPool->id) {
+            abort(404);
+        }
+
+        $data = $request->validate(['reservation_reason' => ['nullable', 'string', 'max:255']]);
+
+        if ($ipAddress->status !== IpAddress::STATUS_RESERVED) {
+            return back()->withErrors(['reservation_reason' => 'Only reserved IP addresses can have their reason edited.']);
+        }
+
+        $ipAddress->forceFill(['reservation_reason' => $data['reservation_reason'] ?? null])->save();
+
+        return redirect()->route('admin.ip-pools.show', $ipPool)->with('status', 'Reservation reason updated for '.$ipAddress->address.'.');
     }
 
     public function releaseAddress(IpPool $ipPool, IpAddress $ipAddress): RedirectResponse

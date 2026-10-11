@@ -127,7 +127,7 @@ class IpPoolService
      * @param  array<int, int|string>  $addressIds
      * @return Collection<int, IpAddress>
      */
-    public function reserveAddresses(IpPool $pool, array $addressIds): Collection
+    public function reserveAddresses(IpPool $pool, array $addressIds, ?string $reason = null): Collection
     {
         $addressIds = array_values(array_unique(array_map(
             static fn (mixed $addressId): int => (int) $addressId,
@@ -138,7 +138,7 @@ class IpPoolService
             throw new RuntimeException('Select at least one IP address to reserve.');
         }
 
-        return DB::transaction(function () use ($pool, $addressIds): Collection {
+        return DB::transaction(function () use ($pool, $addressIds, $reason): Collection {
             $addresses = $pool->addresses()
                 ->whereIn('id', $addressIds)
                 ->lockForUpdate()
@@ -165,6 +165,7 @@ class IpPoolService
                 $address->forceFill([
                     'virtual_machine_id' => null,
                     'status' => IpAddress::STATUS_RESERVED,
+                    'reservation_reason' => $reason,
                     'reserved_at' => $now,
                     'assigned_at' => null,
                     'released_at' => null,
@@ -186,6 +187,7 @@ class IpPoolService
             'status' => IpAddress::STATUS_ASSIGNED,
             'assigned_at' => now(),
             'released_at' => null,
+            'reservation_reason' => null,
         ])->save();
     }
 
@@ -253,6 +255,7 @@ class IpPoolService
             'reserved_at' => null,
             'assigned_at' => null,
             'released_at' => now(),
+            'reservation_reason' => null,
         ])->save();
     }
 

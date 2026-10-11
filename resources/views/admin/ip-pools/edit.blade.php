@@ -15,8 +15,8 @@
             <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
         @endif
 
-        @if ($errors->has('reservation'))
-            <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first('reservation') }}</div>
+        @if ($errors->any())
+            <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first() }}</div>
         @endif
 
         <div class="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -125,11 +125,12 @@
                 </div>
 
 @adminRoute('admin.ip-pools.addresses.reserve')
-<form method="POST" action="{{ route('admin.ip-pools.addresses.reserve', $pool) }}" id="bulk-reserve-form" class="flex items-center gap-3">
+<form method="POST" action="{{ route('admin.ip-pools.addresses.reserve', $pool) }}" id="bulk-reserve-form" class="flex flex-wrap items-center gap-3">
                     @csrf
                     <template x-for="id in selectedAddresses" :key="`bulk-address-${id}`">
                         <input type="hidden" name="address_ids[]" :value="id">
                     </template>
+                    <input name="reservation_reason" value="{{ old('reservation_reason') }}" maxlength="255" placeholder="دلیل رزرو (اختیاری، برای همه موارد انتخاب‌شده)" class="min-w-64 flex-1 rounded-lg border border-slate-200 px-3 py-3 text-sm">
                     <button
                         type="submit"
                         class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:bg-slate-300"
@@ -227,8 +228,9 @@
                                     @if ($selectable)
 
 @adminRoute('admin.ip-pools.addresses.reserve-one')
-<form method="POST" action="{{ route('admin.ip-pools.addresses.reserve-one', [$pool, $address]) }}">
+<form method="POST" action="{{ route('admin.ip-pools.addresses.reserve-one', [$pool, $address]) }}" class="flex min-w-64 flex-col gap-2">
                                             @csrf
+                                            <input name="reservation_reason" maxlength="255" placeholder="دلیل رزرو (اختیاری)" class="rounded-lg border border-slate-200 px-3 py-2 text-xs">
                                             <button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-black text-white transition hover:bg-[#0050D0]">رزرو</button>
                                         </form>
 @endadminRoute

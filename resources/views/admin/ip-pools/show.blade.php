@@ -15,6 +15,9 @@
         @if (session('status'))
             <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
         @endif
+        @if ($errors->any())
+            <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first() }}</div>
+        @endif
 
         <section class="overflow-hidden rounded-lg border border-[#B8D6FF] bg-[#031B4E] p-5 text-white shadow-sm lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -91,6 +94,7 @@
                             <th class="px-5 py-4">ماشین</th>
                             <th class="px-5 py-4">مشتری</th>
                             <th class="px-5 py-4">پلن</th>
+                            <th class="px-5 py-4">دلیل رزرو</th>
                             <th class="px-5 py-4">زمان رزرو</th>
                             <th class="px-5 py-4">زمان تخصیص</th>
                         </tr>
@@ -135,12 +139,26 @@
                                     @endif
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $vm?->bundle?->name ?: ($vm ? $vm->cpu_cores.' CPU / '.$vm->ram_gb.'GB' : '—') }}</td>
+                                <td class="min-w-72 px-5 py-4">
+                                    @if ($address->status === 'reserved')
+@adminRoute('admin.ip-pools.addresses.reason')
+<form method="POST" action="{{ route('admin.ip-pools.addresses.reason', [$pool, $address]) }}" class="flex items-center gap-2">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input name="reservation_reason" maxlength="255" value="{{ $address->reservation_reason }}" placeholder="دلیل رزرو (اختیاری)" class="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs">
+                                        <button class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-200">ذخیره</button>
+                                    </form>
+@endadminRoute
+                                    @else
+                                        <span class="text-slate-400">{{ $address->reservation_reason ?: '—' }}</span>
+                                    @endif
+                                </td>
                                 <td class="whitespace-nowrap px-5 py-4 text-xs font-bold text-slate-500">{{ $address->reserved_at?->format('Y/m/d H:i') ?: '—' }}</td>
                                 <td class="whitespace-nowrap px-5 py-4 text-xs font-bold text-slate-500">{{ $address->assigned_at?->format('Y/m/d H:i') ?: '—' }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-5 py-8 text-center text-sm font-bold text-slate-500">برای این Pool هنوز IP ساخته نشده است.</td>
+                                <td colspan="8" class="px-5 py-8 text-center text-sm font-bold text-slate-500">برای این Pool هنوز IP ساخته نشده است.</td>
                             </tr>
                         @endforelse
                     </tbody>
