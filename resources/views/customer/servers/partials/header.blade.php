@@ -34,7 +34,7 @@
         <div class="mx-auto flex max-w-7xl flex-col gap-6 pb-8 lg:flex-row lg:items-end lg:justify-between">
             <div class="min-w-0 space-y-4">
                 <div class="flex min-w-0 items-center gap-3">
-                    <h1 class="min-w-0 break-all text-3xl font-black tracking-tight text-slate-950" dir="ltr">{{ $server->display_name }}</h1>
+                    @include('customer.servers.partials.display-name')
                     @if ($consoleReady)
                         <a href="{{ route('customer.servers.console.show', $server, false) }}" title="باز کردن کنسول" aria-label="باز کردن کنسول سرور {{ $server->display_name }}" class="inline-grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-[#EBF3FF] hover:text-[#0069FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF]">
                             <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg>

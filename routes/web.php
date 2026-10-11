@@ -454,6 +454,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::post('servers/{virtualMachine}/start', [ServerController::class, 'start'])->name('customer.servers.start');
             Route::post('servers/{virtualMachine}/stop', [ServerController::class, 'stop'])->name('customer.servers.stop');
             Route::post('servers/{virtualMachine}/restart', [ServerController::class, 'restart'])->name('customer.servers.restart');
+            Route::patch('servers/{virtualMachine}/display-name', [ServerController::class, 'updateDisplayName'])->name('customer.servers.display-name.update');
             Route::get('servers/{virtualMachine}', [ServerController::class, 'show'])->middleware('cache.headers:no_store;private')->name('customer.servers.show');
             Route::get('servers/{virtualMachine}/{tab}', [ServerController::class, 'tab'])
                 ->whereIn('tab', ['resources', 'billing', 'upgrade', 'rebuild', 'delete', 'activity'])

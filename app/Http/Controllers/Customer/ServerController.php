@@ -84,6 +84,7 @@ class ServerController extends Controller
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('display_name', 'like', "%{$search}%")
                         ->orWhere('hostname', 'like', "%{$search}%")
                         ->orWhere('ip_address', 'like', "%{$search}%");
                 });
@@ -500,6 +501,36 @@ class ServerController extends Controller
     public function show(Request $request, VirtualMachine $virtualMachine): View
     {
         return $this->detail($request, $virtualMachine, 'overview');
+    }
+
+    public function updateDisplayName(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+
+        if (is_string($request->input('display_name'))) {
+            $request->merge(['display_name' => trim($request->input('display_name'))]);
+        }
+
+        $data = $request->validateWithBag('renameVm', [
+            'display_name' => ['required', 'string', 'max:128'],
+        ], [
+            'display_name.required' => 'نام نمایشی را وارد کنید.',
+            'display_name.string' => 'نام نمایشی باید متن باشد.',
+            'display_name.max' => 'نام نمایشی نباید بیشتر از ۱۲۸ کاراکتر باشد.',
+        ]);
+
+        $previousName = $server->display_name;
+        $server->update(['display_name' => $data['display_name']]);
+
+        if ($previousName !== $server->display_name) {
+            $this->activities->record($server, 'rename', 'success', 'نام نمایشی ماشین تغییر کرد', null, $request->user('customer'), [
+                'previous_name' => $previousName,
+                'display_name' => $server->display_name,
+            ]);
+        }
+
+        return redirect()->route('customer.servers.show', $server)
+            ->with('status', 'نام نمایشی به‌روزرسانی شد');
     }
 
     public function tab(Request $request, VirtualMachine $virtualMachine, string $tab): View
