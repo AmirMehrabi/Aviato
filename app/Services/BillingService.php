@@ -38,7 +38,7 @@ class BillingService
         }
 
         $from = $vm->last_billed_at ?? $vm->created_at ?? now();
-        $hours = max(0, $from->floatDiffInHours(now()));
+        $hours = max(0, $from->diffInSeconds($vm->usageBillingUntil(now())) / 3600);
         $hourly = $vm->isRunning() ? $this->hourlyWhenRunning($vm) : $this->persistentHourly($vm);
 
         return (int) ($vm->unbilled_amount ?? 0) + (int) round($hours * $hourly);
@@ -65,17 +65,26 @@ class BillingService
 
     public function persistentHourly(VirtualMachine $vm): float
     {
-        if ($vm->isHetzner()) {
-            return $this->applyTaxIfApplicable($this->hetznerHourly($vm), $vm);
+        $override = $vm->vm_bundle_id && $vm->infrastructure_location_id
+            ? VmBundleLocationMapping::query()->where('vm_bundle_id', $vm->vm_bundle_id)
+                ->where('infrastructure_location_id', $vm->infrastructure_location_id)
+                ->where('is_active', true)->value('stopped_monthly_price')
+            : null;
+        $monthly = $override ?? $vm->bundle?->stopped_monthly_price;
+        if ($monthly !== null) {
+            return $this->applyTaxIfApplicable((float) $monthly / ResourceRate::hoursPerMonth(), $vm);
         }
 
-        if ($vm->bundle) {
-            return $this->applyTaxIfApplicable((float) $vm->bundle->hourly_price, $vm);
+        if ($vm->isHetzner()) {
+            return $this->applyTaxIfApplicable($this->hetznerHourly($vm), $vm);
         }
 
         $rates = $this->rates();
         $base = ($vm->disk_gb * $this->rate($rates, ResourceRate::DISK))
             + ($vm->ip_count * $this->rate($rates, ResourceRate::IP));
+        if ($vm->bundle) {
+            $base = min($base, (float) $vm->bundle->hourly_price);
+        }
 
         return $this->applyTaxIfApplicable($base, $vm);
     }

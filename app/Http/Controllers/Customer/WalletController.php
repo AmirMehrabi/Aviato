@@ -10,6 +10,7 @@ use App\Models\WalletTransaction;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
 use App\Services\UsageBalanceService;
+use App\Services\VmWalletRetentionService;
 use App\Services\WalletService;
 use App\Services\WorkspaceWalletAlertService;
 use Carbon\Carbon;
@@ -53,6 +54,8 @@ class WalletController extends Controller
         } elseif ($selectedType !== 'all' || $request->has('page')) {
             $selectedTab = 'transactions';
         }
+        $retentionNotice = app(VmWalletRetentionService::class)->customerNotice($activeProject);
+        $restoreAmountToman = $request->boolean('restore') ? ($retentionNotice['top_up_toman'] ?? null) : null;
         $paymentNotice = $this->paymentNotice($request, $activeProject->owner->id);
         $transactions = $wallet->transactions()
             ->with('reference')
@@ -101,6 +104,7 @@ class WalletController extends Controller
             'wallet' => $wallet,
             'wallets' => $this->wallets,
             'transactions' => $transactions,
+            'restoreAmountToman' => $restoreAmountToman,
             'selectedType' => $selectedType,
             'selectedTab' => $selectedTab,
             'effectiveBalance' => $effectiveBalance,

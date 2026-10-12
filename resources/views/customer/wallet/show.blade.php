@@ -7,7 +7,7 @@
     $activeNav = 'wallet';
     $canTopUp = (bool) $canTopUp;
     $initialGateway = (string) old('gateway', $defaultPaymentGateway);
-    $initialAmount = (string) old('amount_toman', '');
+    $initialAmount = (string) old('amount_toman', $restoreAmountToman ?? '');
     $tabItems = [
         ['key' => 'overview', 'label' => 'نمای کلی'],
         ['key' => 'top-up', 'label' => 'افزایش موجودی'],

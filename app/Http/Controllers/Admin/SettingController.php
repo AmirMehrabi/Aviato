@@ -37,6 +37,7 @@ class SettingController extends Controller
         $data = $request->validate($this->sectionRules($section));
 
         if ($section === 'protection') {
+            $data['wallet_retention_days'] ??= AppSetting::customerWalletRetentionDays();
             $data['wallet_shutdown_percentage'] ??= AppSetting::customerWalletShutdownPercentage();
             $data['wallet_quiet_start'] ??= AppSetting::customerWalletQuietStart();
             $data['wallet_quiet_end'] ??= AppSetting::customerWalletQuietEnd();
@@ -175,6 +176,7 @@ class SettingController extends Controller
             'verifiedCustomerVmLimit' => AppSetting::verifiedCustomerVmLimit(),
             'deletedVmCooldownDays' => AppSetting::deletedVmCooldownDays(),
             'vmRebuildFeeMultiplierPercentage' => AppSetting::vmRebuildFeeMultiplierPercentage(),
+            'walletRetentionDays' => AppSetting::customerWalletRetentionDays(),
             'walletShutdownPercentage' => AppSetting::customerWalletShutdownPercentage(),
             'hetznerUsdToIrrRate' => AppSetting::hetznerUsdToIrrRate(),
             'hetznerPriceMarkupPercentage' => AppSetting::hetznerPriceMarkupPercentage(),
@@ -306,6 +308,7 @@ class SettingController extends Controller
             'protection' => [
                 'wallet_alert_percentages' => ['required', 'string', 'max:50'], 'wallet_alert_recipient_policy' => ['required', Rule::in(['owner', 'owner_and_billing'])], 'customer_wallet_negative_sms_enabled' => ['nullable', 'boolean'],
                 'wallet_quiet_start' => ['nullable', 'date_format:H:i'], 'wallet_quiet_end' => ['nullable', 'date_format:H:i'],
+                'wallet_retention_days' => ['nullable', 'integer', 'min:1', 'max:365'],
                 'wallet_shutdown_percentage' => ['nullable', 'integer', 'min:1', 'max:100'],
                 'customer_wallet_negative_sms_template' => ['nullable', 'string', 'max:100'],
                 'unverified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'], 'verified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'],
@@ -376,7 +379,7 @@ class SettingController extends Controller
             'sms' => [['sms_gateway', AppSetting::SMS_GATEWAY, 'string', 'sms'], ['sms0098_username', AppSetting::SMS0098_USERNAME, 'string', 'sms0098'], ['sms0098_panel_no', AppSetting::SMS0098_PANEL_NO, 'string', 'sms0098'], ['kavenegar_template', AppSetting::KAVENEGAR_TEMPLATE, 'string', 'kavenegar']],
             'email' => [['smtp_host', AppSetting::SMTP_HOST, 'string', 'smtp'], ['smtp_port', AppSetting::SMTP_PORT, 'integer', 'smtp'], ['smtp_username', AppSetting::SMTP_USERNAME, 'string', 'smtp'], ['smtp_encryption', AppSetting::SMTP_ENCRYPTION, 'string', 'smtp'], ['smtp_from_address', AppSetting::SMTP_FROM_ADDRESS, 'string', 'smtp'], ['smtp_from_name', AppSetting::SMTP_FROM_NAME, 'string', 'smtp']],
             'tickets' => [['ticket_email_notifications_enabled', AppSetting::TICKET_EMAIL_NOTIFICATIONS_ENABLED, 'boolean', 'ticketing'], ['ticket_sms_notifications_enabled', AppSetting::TICKET_SMS_NOTIFICATIONS_ENABLED, 'boolean', 'ticketing'], ['ticket_kavenegar_customer_created_template', AppSetting::TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_admin_new_template', AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_customer_reply_template', AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_admin_reply_template', AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_assignment_template', AppSetting::TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE, 'string', 'ticketing']],
-            'protection' => [['wallet_alert_percentages', AppSetting::CUSTOMER_WALLET_ALERT_PERCENTAGES, 'array', 'billing'], ['wallet_quiet_start', AppSetting::CUSTOMER_WALLET_QUIET_START, 'string', 'billing'], ['wallet_quiet_end', AppSetting::CUSTOMER_WALLET_QUIET_END, 'string', 'billing'], ['wallet_shutdown_percentage', AppSetting::CUSTOMER_WALLET_SHUTDOWN_PERCENTAGE, 'integer', 'billing'], ['wallet_alert_recipient_policy', AppSetting::CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY, 'string', 'billing'], ['customer_wallet_negative_sms_enabled', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, 'boolean', 'billing'], ['customer_wallet_negative_sms_template', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'string', 'billing'], ['unverified_customer_vm_limit', AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 'integer', 'customer'], ['verified_customer_vm_limit', AppSetting::CUSTOMER_VERIFIED_VM_LIMIT, 'integer', 'customer'], ['deleted_vm_cooldown_days', AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 'integer', 'customer'], ['vm_rebuild_fee_multiplier_percentage', AppSetting::VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE, 'float', 'billing']],
+            'protection' => [['wallet_retention_days', AppSetting::CUSTOMER_WALLET_RETENTION_DAYS, 'integer', 'billing'], ['wallet_alert_percentages', AppSetting::CUSTOMER_WALLET_ALERT_PERCENTAGES, 'array', 'billing'], ['wallet_quiet_start', AppSetting::CUSTOMER_WALLET_QUIET_START, 'string', 'billing'], ['wallet_quiet_end', AppSetting::CUSTOMER_WALLET_QUIET_END, 'string', 'billing'], ['wallet_shutdown_percentage', AppSetting::CUSTOMER_WALLET_SHUTDOWN_PERCENTAGE, 'integer', 'billing'], ['wallet_alert_recipient_policy', AppSetting::CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY, 'string', 'billing'], ['customer_wallet_negative_sms_enabled', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, 'boolean', 'billing'], ['customer_wallet_negative_sms_template', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'string', 'billing'], ['unverified_customer_vm_limit', AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 'integer', 'customer'], ['verified_customer_vm_limit', AppSetting::CUSTOMER_VERIFIED_VM_LIMIT, 'integer', 'customer'], ['deleted_vm_cooldown_days', AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 'integer', 'customer'], ['vm_rebuild_fee_multiplier_percentage', AppSetting::VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE, 'float', 'billing']],
         ];
 
         foreach ($definitions[$section] ?? [] as [$field, $key, $type, $group]) {

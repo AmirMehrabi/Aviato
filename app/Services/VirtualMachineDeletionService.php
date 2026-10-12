@@ -43,6 +43,16 @@ class VirtualMachineDeletionService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if ($actor === VmWalletRetentionService::DELETE_ACTOR) {
+                $owner = $locked->project?->owner ?? $locked->customer;
+                if (! $owner || ! $owner->auto_suspend_vms || ! $locked->wallet_retention_expires_at?->lte(now())
+                    || app(UsageBalanceService::class)->effectiveBalance($owner) > 0) {
+                    $status = 'retention_cancelled';
+
+                    return $locked;
+                }
+            }
+
             if ($locked->isDeleted()) {
                 $status = 'already_deleted';
                 Log::info('Virtual machine delete request skipped because VM is already deleted', [
@@ -69,6 +79,15 @@ class VirtualMachineDeletionService
                 $this->usageBilling->accrueVm($locked);
             }
 
+            foreach ($locked->disks()->where('status', 'ready')->get() as $disk) {
+                $this->usageBilling->accrueExtraDisk($disk);
+            }
+            if ($actor === VmWalletRetentionService::DELETE_ACTOR) {
+                foreach ($locked->backups()->where('status', 'ready')->get() as $backup) {
+                    $this->usageBilling->accrueBackup($backup);
+                }
+            }
+
             $locked->forceFill([
                 'status' => VirtualMachine::STATUS_DELETING,
                 'delete_requested_at' => now(),
@@ -78,6 +97,9 @@ class VirtualMachineDeletionService
                 'delete_task_id' => null,
                 'desired_state' => array_merge($locked->desired_state ?? [], ['status' => VirtualMachine::STATUS_DELETING]),
                 'remote_state' => array_merge($locked->remote_state ?? [], [
+                    'wallet_delete_previous_status' => $locked->isDeleting()
+                        ? data_get($locked->remote_state, 'wallet_delete_previous_status', VirtualMachine::STATUS_STOPPED)
+                        : $locked->status,
                     'delete_requested' => [
                         'actor' => $actor,
                         'requested_at' => now()->toISOString(),
@@ -103,7 +125,7 @@ class VirtualMachineDeletionService
             return ['status' => $status, 'queued' => false, 'finalized' => $vm->isDeleted(), 'vm' => $vm];
         }
 
-        if ($vm->isProxmox() && (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid)) {
+        if ($actor !== VmWalletRetentionService::DELETE_ACTOR && $vm->isProxmox() && (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid)) {
             Log::info('Virtual machine delete finalized locally because Proxmox connection data is incomplete', [
                 'virtual_machine_id' => $vm->id,
                 'actor' => $actor,
@@ -197,6 +219,9 @@ class VirtualMachineDeletionService
                 ]),
             ])->save();
             app(VmActivityRecorder::class)->record($locked, 'delete', 'succeeded', 'سرور حذف شد');
+            if (data_get($locked->remote_state, 'delete_requested.actor') === VmWalletRetentionService::DELETE_ACTOR) {
+                app(VmWalletRetentionService::class)->notify($locked, 'deleted');
+            }
 
             Log::info('Virtual machine local delete finalization completed', [
                 'virtual_machine_id' => $locked->id,

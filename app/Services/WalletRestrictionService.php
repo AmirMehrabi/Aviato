@@ -17,6 +17,8 @@ class WalletRestrictionService
         private readonly ProxmoxService $proxmox,
         private readonly HetznerCloudService $hetzner,
         private readonly UsageBalanceService $balances,
+        private readonly VmWalletRetentionService $retention,
+        private readonly UsageBillingService $usage,
     ) {}
 
     public function reconcile(Customer $owner): void
@@ -39,7 +41,13 @@ class WalletRestrictionService
                         ? 'available'
                         : ($balance <= $shutdownAt ? 'stopped' : 'frozen');
                     try {
+                        if ($this->retention->reconcile($owner, $vm)) {
+                            continue;
+                        }
                         $this->reconcileVm($owner, $vm, $target);
+                        if (data_get($vm->wallet_restriction, 'wallet_stopped') && $vm->wallet_retention_expires_at) {
+                            $this->retention->notify($vm, 'stopped');
+                        }
                     } catch (Throwable $exception) {
                         $state = $vm->fresh()?->wallet_restriction ?? [];
                         $vm->forceFill(['wallet_restriction' => array_merge($state, [
@@ -85,6 +93,8 @@ class WalletRestrictionService
             $this->networks->restore($vm, $state);
             if (! empty($state['wallet_stopped']) && ! empty($state['resume_on_funding'])) {
                 $this->powerOn($vm);
+                $this->usage->accrueVm($vm);
+                $vm->refresh();
                 $vm->forceFill(['status' => VirtualMachine::STATUS_RUNNING])->save();
             }
             $vm->forceFill([
@@ -125,10 +135,13 @@ class WalletRestrictionService
 
         if ($target === 'stopped' && $vm->isRunning()) {
             $this->powerOff($vm);
+            $this->usage->accrueVm($vm);
+            $vm->refresh();
             $state['wallet_stopped'] = true;
             $state['stopped_at'] = now()->toISOString();
             $vm->forceFill([
                 'status' => VirtualMachine::STATUS_STOPPED,
+                'last_stopped_at' => now(),
                 'wallet_restriction' => $state,
             ])->save();
         }

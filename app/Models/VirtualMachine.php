@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -56,6 +57,9 @@ use Illuminate\Support\Str;
     'desired_state',
     'remote_state',
     'wallet_restriction',
+    'wallet_depleted_at',
+    'wallet_retention_expires_at',
+    'wallet_retention_notices',
     'provisioning_job_id',
     'provisioning_task_id',
     'last_seen_at',
@@ -229,6 +233,41 @@ class VirtualMachine extends Model
             ]);
     }
 
+    public function usageBillingUntil(CarbonInterface $until): CarbonInterface
+    {
+        // Keep the advertised cutoff even if deletion needs retries.
+        return $this->wallet_retention_expires_at && $this->wallet_retention_expires_at->lt($until)
+            ? $this->wallet_retention_expires_at->copy()
+            : $until;
+    }
+
+    public function backupBillingUntil(CarbonInterface $until): CarbonInterface
+    {
+        // Manual deletion retains separately billed backups under the existing policy.
+        if (($this->isDeleting() || $this->isDeleted())
+            && data_get($this->remote_state, 'delete_requested.actor') !== 'wallet_retention_expired') {
+            return $until;
+        }
+
+        return $this->usageBillingUntil($until);
+    }
+
+    public function customerStatusLabel(): string
+    {
+        if ($this->status === self::STATUS_STOPPED && data_get($this->wallet_restriction, 'wallet_stopped')) {
+            return 'خاموش ـ موجودی ناکافی';
+        }
+
+        return match ($this->status) {
+            self::STATUS_RUNNING => 'روشن',
+            self::STATUS_STOPPED => 'خاموش',
+            self::STATUS_SUSPENDED => 'تعلیق‌شده',
+            self::STATUS_DELETING => 'در حال حذف',
+            self::STATUS_DELETED => 'حذف‌شده',
+            default => $this->status,
+        };
+    }
+
     public function isRunning(): bool
     {
         return $this->status === self::STATUS_RUNNING;
@@ -372,6 +411,9 @@ class VirtualMachine extends Model
             'unbilled_amount' => 'integer',
             'network_accounting_enabled_override' => 'boolean',
             'wallet_restriction' => 'array',
+            'wallet_depleted_at' => 'datetime',
+            'wallet_retention_expires_at' => 'datetime',
+            'wallet_retention_notices' => 'array',
             'network_included_bytes_monthly_override' => 'integer',
             'network_overage_price_override' => 'integer',
             'network_overage_price_unit_bytes_override' => 'integer',

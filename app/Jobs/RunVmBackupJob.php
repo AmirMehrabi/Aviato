@@ -26,6 +26,12 @@ class RunVmBackupJob implements ShouldQueue
             ->with(['virtualMachine.proxmoxServer', 'virtualMachine.backupPolicy'])
             ->findOrFail($this->backupId);
         $vm = $backup->virtualMachine;
+        if ($backup->status === VmBackup::STATUS_DELETED || $vm->isDeleting() || $vm->isDeleted()
+            || $vm->wallet_retention_expires_at?->lte(now())) {
+            $backup->forceFill(['status' => VmBackup::STATUS_DELETED, 'deleted_at' => now()])->save();
+
+            return;
+        }
         $server = $vm->proxmoxServer;
         $policy = $vm->backupPolicy;
 

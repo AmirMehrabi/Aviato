@@ -97,7 +97,7 @@ class UsageBalanceService
                 }
 
                 $from = $vm->last_billed_at ?? $vm->created_at ?? $until;
-                $seconds = max(0, $from->diffInSeconds($until));
+                $seconds = max(0, $from->diffInSeconds($vm->usageBillingUntil($until)));
                 $hourly = $vm->isRunning()
                     ? $this->billing->hourlyWhenRunning($vm)
                     : $this->billing->persistentHourly($vm);
@@ -115,7 +115,7 @@ class UsageBalanceService
             ->get()
             ->sum(function (VmBackup $backup) use ($until): int {
                 $from = $backup->last_billed_at ?? $backup->finished_at ?? $backup->created_at ?? $until;
-                $seconds = max(0, $from->diffInSeconds($until));
+                $seconds = max(0, $from->diffInSeconds($backup->virtualMachine?->backupBillingUntil($until) ?? $until));
 
                 return max(0, (int) round($seconds * $this->billing->backupHourly($backup) / 3600));
             });
@@ -129,7 +129,12 @@ class UsageBalanceService
             ->get()
             ->sum(function (VmDisk $disk) use ($until): int {
                 $from = $disk->last_billed_at ?? $disk->created_at ?? $until;
-                $seconds = max(0, $from->diffInSeconds($until));
+                $end = $disk->virtualMachine?->usageBillingUntil($until) ?? $until;
+                $cutoff = $disk->virtualMachine?->delete_requested_at ?? $disk->virtualMachine?->deleted_at;
+                if ($cutoff && $cutoff->lt($end)) {
+                    $end = $cutoff;
+                }
+                $seconds = max(0, $from->diffInSeconds($end));
 
                 return max(0, (int) round($seconds * $this->billing->extraDiskHourly($disk) / 3600));
             });

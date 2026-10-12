@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'infrastructure_location_id',
     'hetzner_server_type_id',
     'is_active',
+    'stopped_monthly_price',
     'monthly_price_usd',
     'monthly_price_irr',
     'usd_to_irr_rate',
@@ -37,6 +38,7 @@ class VmBundleLocationMapping extends Model
     protected function casts(): array
     {
         return [
+            'stopped_monthly_price' => 'integer',
             'is_active' => 'boolean',
             'monthly_price_usd' => 'decimal:4',
             'monthly_price_irr' => 'integer',

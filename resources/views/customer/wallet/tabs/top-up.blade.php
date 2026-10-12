@@ -15,6 +15,9 @@
             <div class="min-w-0 p-5 sm:p-7 lg:p-9">
                 <h2 class="text-xl font-black text-slate-950">افزایش موجودی</h2>
                 <p class="mt-2 text-sm leading-7 text-slate-500">اعتبار هدیه را فعال کنید یا مبلغ مورد نیاز را انتخاب و پرداخت کنید.</p>
+                @if (! empty($restoreAmountToman))
+                    <p class="mt-3 rounded-xl bg-blue-50 p-4 text-sm leading-7 text-blue-950">مبلغ پیشنهادی برای پوشش بدهی و هزینه مصرف اخیر، به‌همراه اعتبار مصرف سرورها انتخاب شده است. حداقل مبلغ پرداخت ۲۵۰٬۰۰۰ تومان است. پس از تأیید پرداخت و مثبت شدن موجودی قابل استفاده، محدودیت سرورها برداشته می‌شود.</p>
+                @endif
                 @if (! $canTopUp)
                     <div x-show="!isInstant" class="mt-7 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold leading-7 text-amber-900">
                         فقط مالک، مدیر یا نقش مالی فضای کاری می‌تواند موجودی این کیف پول را افزایش دهد.

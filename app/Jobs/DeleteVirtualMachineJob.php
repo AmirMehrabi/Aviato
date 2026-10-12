@@ -3,10 +3,13 @@
 namespace App\Jobs;
 
 use App\Models\VirtualMachine;
+use App\Models\VmBackup;
 use App\Services\HetznerCloudService;
 use App\Services\ProxmoxService;
+use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmActivityRecorder;
+use App\Services\VmWalletRetentionService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
@@ -72,6 +75,30 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             ]);
 
             return;
+        }
+
+        if (! app(VmWalletRetentionService::class)->allowDeletion($vm)) {
+            return;
+        }
+
+        if (data_get($vm->remote_state, 'delete_requested.actor') === VmWalletRetentionService::DELETE_ACTOR) {
+            $vm->forceFill([
+                'delete_started_at' => $vm->delete_started_at ?? now(),
+                'remote_state' => array_merge($vm->remote_state ?? [], [
+                    'wallet_delete_started_at' => data_get($vm->remote_state, 'wallet_delete_started_at', now()->toISOString()),
+                ]),
+            ])->save();
+            try {
+                $this->deleteExpiredBackups($vm, $proxmox);
+            } catch (Throwable $exception) {
+                $vm->forceFill(['delete_failed_at' => now(), 'delete_error' => $exception->getMessage()])->save();
+                throw $exception;
+            }
+            if ($vm->isProxmox() && (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid)) {
+                $deletions->finalizeLocalDelete($vm, 'wallet_expired_missing_connection');
+
+                return;
+            }
         }
 
         if ($vm->isHetzner()) {
@@ -278,6 +305,35 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             if ($hasAttemptsRemaining) {
                 throw $exception;
             }
+        }
+    }
+
+    private function deleteExpiredBackups(VirtualMachine $vm, ProxmoxService $proxmox): void
+    {
+        $vm->backupPolicy()->update(['is_enabled' => false, 'next_run_at' => null]);
+        $vm->backups()->where('status', VmBackup::STATUS_QUEUED)->update([
+            'status' => VmBackup::STATUS_DELETED, 'deleted_at' => now(),
+        ]);
+        if ($vm->backups()->where('status', VmBackup::STATUS_RUNNING)->exists()) {
+            throw new RuntimeException('An active backup must finish before expired VM deletion.');
+        }
+        foreach ($vm->backups()->where('status', '!=', VmBackup::STATUS_DELETED)
+            ->where(fn ($query) => $query->where('status', VmBackup::STATUS_READY)->orWhereNotNull('volid'))
+            ->get() as $backup) {
+            app(UsageBillingService::class)->accrueBackup($backup);
+            if ($backup->volid) {
+                if (! $vm->proxmoxServer || ! $backup->node || ! $backup->storage) {
+                    throw new RuntimeException('Backup storage connection is missing; expired backup deletion will be retried.');
+                }
+                try {
+                    $proxmox->deleteBackupFile($vm->proxmoxServer, $backup->node, $backup->storage, $backup->volid);
+                } catch (Throwable $exception) {
+                    if (! $this->isRemoteMissingException($exception)) {
+                        throw $exception;
+                    }
+                }
+            }
+            $backup->forceFill(['status' => VmBackup::STATUS_DELETED, 'deleted_at' => now()])->save();
         }
     }
 

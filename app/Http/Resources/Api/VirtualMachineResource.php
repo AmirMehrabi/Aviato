@@ -55,6 +55,8 @@ class VirtualMachineResource extends JsonResource
             'vmid' => $vm->isProxmox() ? $vm->vmid : null,
             'node' => $vm->isProxmox() ? $vm->node : null,
             'failure' => $failure,
+            'wallet_retention_expires_at' => $vm->wallet_retention_expires_at?->toIso8601String(),
+            'stopped_for_insufficient_funds' => $vm->status === VirtualMachine::STATUS_STOPPED && (bool) data_get($vm->wallet_restriction, 'wallet_stopped'),
             'created_at' => $vm->created_at?->toIso8601String(),
             'updated_at' => $vm->updated_at?->toIso8601String(),
         ];

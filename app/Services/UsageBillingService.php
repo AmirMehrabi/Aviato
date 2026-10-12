@@ -27,7 +27,7 @@ class UsageBillingService
      */
     public function estimateVmUsage(VirtualMachine $vm, ?CarbonInterface $until = null): array
     {
-        $until ??= now();
+        $until = $vm->usageBillingUntil($until ?? now());
         $from = $vm->last_billed_at ?? $vm->created_at ?? $until;
 
         if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
@@ -129,6 +129,7 @@ class UsageBillingService
                 ->firstOrFail();
             $until ??= now();
             $vm = $locked->virtualMachine;
+            $until = $vm?->backupBillingUntil($until) ?? $until;
             $billingCustomer = $vm?->project?->owner ?? $vm?->customer;
             $from = $locked->last_billed_at ?? $locked->finished_at ?? $locked->created_at ?? $until;
 
@@ -175,8 +176,13 @@ class UsageBillingService
                 ->firstOrFail();
             $until ??= now();
             $vm = $locked->virtualMachine;
+            $until = $vm?->usageBillingUntil($until) ?? $until;
             $billingCustomer = $vm?->project?->owner ?? $vm?->customer;
             $from = $locked->last_billed_at ?? $locked->created_at ?? $until;
+            $cutoff = $vm?->delete_requested_at ?? $vm?->deleted_at;
+            if ($cutoff && $cutoff->lt($until)) {
+                $until = $cutoff;
+            }
 
             if (! $billingCustomer || ! $vm || $locked->status !== VmDisk::STATUS_READY) {
                 return null;
@@ -273,11 +279,11 @@ class UsageBillingService
             ->get()
             ->each(function (UsageAccrual $scope) use ($serviceDate, $settlements): void {
                 $settlement = DB::transaction(function () use ($scope, $serviceDate): UsageSettlement {
-                    $settlement = UsageSettlement::query()->firstOrCreate([
+                    $settlement = UsageSettlement::query()->whereDate('service_date', $serviceDate)->firstOrCreate([
                         'customer_id' => $scope->customer_id,
                         'scope_key' => $scope->scope_key,
-                        'service_date' => $serviceDate,
                     ], [
+                        'service_date' => $serviceDate,
                         'project_id' => $scope->project_id,
                     ]);
                     $settlement = UsageSettlement::query()->whereKey($settlement->id)->lockForUpdate()->firstOrFail();
@@ -398,14 +404,14 @@ class UsageBillingService
             $segmentEnd = min($cursor->endOfDay()->addSecond(), $end);
             $seconds = max(0, $cursor->diffInSeconds($segmentEnd));
             $serviceDate = $cursor->toDateString();
-            $accrual = UsageAccrual::query()->firstOrCreate([
+            $accrual = UsageAccrual::query()->whereDate('service_date', $serviceDate)->firstOrCreate([
                 'customer_id' => $customer->id,
                 'scope_key' => $scopeKey,
                 'category' => $category,
                 'resource_type' => $resourceType,
                 'resource_id' => $resourceId,
-                'service_date' => $serviceDate,
             ], [
+                'service_date' => $serviceDate,
                 'project_id' => $projectId,
                 'virtual_machine_id' => $virtualMachineId,
                 'resource_name' => $resourceName,

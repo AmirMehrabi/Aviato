@@ -55,6 +55,8 @@ class AppSetting extends Model
 
     public const CUSTOMER_WALLET_QUIET_END = 'customer.wallet.quiet_end';
 
+    public const CUSTOMER_WALLET_RETENTION_DAYS = 'customer.wallet.retention_days';
+
     public const CUSTOMER_WALLET_SHUTDOWN_PERCENTAGE = 'customer.wallet.shutdown_percentage';
 
     public const CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY = 'customer.wallet.alert_recipient_policy';
@@ -507,6 +509,11 @@ class AppSetting extends Model
     public static function customerWalletQuietEnd(): string
     {
         return (string) static::getValue(self::CUSTOMER_WALLET_QUIET_END, '08:00');
+    }
+
+    public static function customerWalletRetentionDays(): int
+    {
+        return min(365, max(1, (int) static::getValue(self::CUSTOMER_WALLET_RETENTION_DAYS, 7)));
     }
 
     public static function customerWalletShutdownPercentage(): int

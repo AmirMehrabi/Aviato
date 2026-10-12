@@ -184,6 +184,10 @@ class VmBackupService
 
     private function assertBackupable(VirtualMachine $vm): void
     {
+        if ($vm->isActionLocked() || $vm->isDeleted() || $vm->wallet_retention_expires_at?->lte(now())) {
+            throw new RuntimeException('این سرور در حال حذف است و امکان ساخت بکاپ ندارد.');
+        }
+
         if (! $vm->proxmox_server_id || ! $vm->vmid || ! $vm->node) {
             throw new RuntimeException('این ماشین مجازی هنوز برای بکاپ آماده نیست.');
         }

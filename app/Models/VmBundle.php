@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'slug', 'description', 'cpu_cores', 'ram_gb', 'disk_gb', 'ip_count', 'monthly_price', 'hourly_price', 'is_active', 'show_on_marketing', 'sort_order', 'network_accounting_enabled', 'network_included_bytes_monthly', 'network_overage_price', 'network_overage_price_unit_bytes', 'network_usage_direction', 'network_billing_timezone'])]
+#[Fillable(['name', 'slug', 'description', 'cpu_cores', 'ram_gb', 'disk_gb', 'ip_count', 'monthly_price', 'stopped_monthly_price', 'hourly_price', 'is_active', 'show_on_marketing', 'sort_order', 'network_accounting_enabled', 'network_included_bytes_monthly', 'network_overage_price', 'network_overage_price_unit_bytes', 'network_usage_direction', 'network_billing_timezone'])]
 class VmBundle extends Model
 {
     protected static function booted(): void
@@ -52,6 +52,7 @@ class VmBundle extends Model
             'ip_count' => 'integer',
             'monthly_price' => 'integer',
             'hourly_price' => 'decimal:6',
+            'stopped_monthly_price' => 'integer',
             'is_active' => 'boolean',
             'show_on_marketing' => 'boolean',
             'sort_order' => 'integer',

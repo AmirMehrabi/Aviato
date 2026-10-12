@@ -7,6 +7,7 @@
     <x-form.input name="disk_gb" type="number" label="Disk (GB)" :value="$bundle->disk_gb" />
     <x-form.input name="ip_count" type="number" label="تعداد IP" :value="$bundle->ip_count ?? 1" />
     <x-form.input name="monthly_price" type="number" label="قیمت ماهانه باندل وقتی روشن است" :value="$bundle->monthly_price" />
+    <x-form.input name="stopped_monthly_price" type="number" label="قیمت ماهانه نگهداری سرور خاموش (ریال)" :value="$bundle->stopped_monthly_price" min="0" help="صفر یعنی نگهداری رایگان. اگر خالی باشد، برای پروکس‌موکس هزینه دیسک و IP تا سقف قیمت پلن و برای هتزنر قیمت کامل محاسبه می‌شود. دیسک اضافه و بکاپ جداگانه محاسبه می‌شوند." />
     <x-form.input name="sort_order" type="number" label="ترتیب نمایش" :value="$bundle->sort_order ?? 0" />
     <div class="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <h2 class="font-black text-slate-900">حسابداری شبکه</h2>

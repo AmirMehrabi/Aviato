@@ -643,6 +643,7 @@
                     <div class="mb-6 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ $errors->first() }}</div>
                 @endif
 
+                @include('customer.partials.wallet-retention')
                 @yield('content')
             </div>
 

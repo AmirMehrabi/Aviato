@@ -82,6 +82,7 @@
                 'hetzner_server_type' => $mapping->hetznerServerType?->name,
                 'monthly_price_usd' => $mapping->monthly_price_usd,
                 'monthly_price_irr' => $mapping->monthly_price_irr,
+                'stopped_monthly_price' => $mapping->stopped_monthly_price ?? $mapping->bundle?->stopped_monthly_price ?? $mapping->monthly_price_irr,
                 'usd_to_irr_rate' => $mapping->usd_to_irr_rate,
             ])->values()),
             bundles: @js($bundles->map(fn ($bundle) => [
@@ -92,6 +93,7 @@
                 'disk_gb' => $bundle->disk_gb,
                 'price' => $wallets->format($bundle->monthly_price),
                 'monthly_price' => $bundle->monthly_price,
+                'stopped_monthly_price' => (int) round(app(\App\Services\BillingService::class)->persistentHourly(new \App\Models\VirtualMachine(['vm_bundle_id' => $bundle->id, 'cpu_cores' => $bundle->cpu_cores, 'ram_gb' => $bundle->ram_gb, 'disk_gb' => $bundle->disk_gb, 'ip_count' => $bundle->ip_count, 'tax_exempt' => true])) * \App\Models\ResourceRate::hoursPerMonth()),
                 'minimum_create_balance' => max((int) ceil($bundle->monthly_price / 2), \App\Models\AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price)),
                 'minimum_create_balance_label' => $wallets->format(max((int) ceil($bundle->monthly_price / 2), \App\Models\AppSetting::vmCreationChargeAmount((int) $bundle->monthly_price))),
                 'description' => $bundle->description ?: '',
@@ -397,6 +399,10 @@
                         </label>
                     </div>
 
+                    <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-xs leading-7 text-slate-600">
+                        <p>نگهداری سرور خاموش: <strong x-text="formatDisplayAmount(Number(selectedBundle?.stopped_monthly_price || 0) * (showsTax ? 1 + taxRatePercentage / 100 : 1)) + ' تومان در ماه'"></strong>. دیسک اضافه و بکاپ جداگانه محاسبه می‌شوند.</p>
+                        <p>پس از تمام شدن موجودی قابل استفاده، برای شارژ کیف پول <strong>{{ \App\Support\PersianDigits::convert((string) \App\Models\AppSetting::customerWalletRetentionDays()) }} روز</strong> فرصت دارید. پس از این مهلت، سرور، دیسک‌ها و بکاپ‌های آن دائماً حذف می‌شوند.</p>
+                    </div>
                     <div class="mt-4 space-y-3 text-sm">
                         <div x-show="walletNeedsTopUp" x-cloak class="rounded-xl border border-red-100 bg-red-50 p-4">
                             <p class="text-xs font-black text-red-700">کیف پول کافی نیست</p>
@@ -599,15 +605,19 @@
                 this.syncBundleSelection();
             },
             bundleWithLocationPrice(bundle) {
-                if (!this.selectedLocation || this.selectedLocation.kind !== 'hetzner') return bundle;
+                if (!this.selectedLocation) return bundle;
 
                 const mapping = this.locationMappings.find((item) => String(item.location_id) === String(this.selectedLocation.id) && String(item.bundle_id) === String(bundle.id));
-                if (!mapping || !mapping.monthly_price_irr) return bundle;
+                if (!mapping) return bundle;
+                if (this.selectedLocation.kind !== 'hetzner' || !mapping.monthly_price_irr) {
+                    return { ...bundle, stopped_monthly_price: Number(mapping.stopped_monthly_price ?? bundle.stopped_monthly_price) };
+                }
 
                 return {
                     ...bundle,
                     price: new Intl.NumberFormat('fa-IR').format(Number(mapping.monthly_price_irr)) + ' IRR',
                     monthly_price: Number(mapping.monthly_price_irr),
+                    stopped_monthly_price: Number(mapping.stopped_monthly_price ?? mapping.monthly_price_irr),
                     minimum_create_balance: Math.max(Math.ceil(Number(mapping.monthly_price_irr) / 2), Number(bundle.minimum_create_balance || 0)),
                     minimum_create_balance_label: new Intl.NumberFormat('fa-IR').format(Math.max(Math.ceil(Number(mapping.monthly_price_irr) / 2), Number(bundle.minimum_create_balance || 0))) + ' IRR',
                 };

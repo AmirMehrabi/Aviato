@@ -51,6 +51,8 @@ class InfrastructureLocationController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'bundle_ids' => ['nullable', 'array'],
             'bundle_ids.*' => ['integer', 'exists:vm_bundles,id'],
+            'stopped_monthly_prices' => ['nullable', 'array'],
+            'stopped_monthly_prices.*' => ['nullable', 'integer', 'min:0'],
             'server_type_ids' => ['nullable', 'array'],
             'server_type_ids.*' => ['nullable', 'integer', Rule::exists('hetzner_server_types', 'id')],
         ]);
@@ -85,6 +87,7 @@ class InfrastructureLocationController extends Controller
                     'hetzner_server_type_id' => $serverTypeId ?: null,
                     'is_active' => true,
                     'monthly_price_usd' => $usd,
+                    'stopped_monthly_price' => $data['stopped_monthly_prices'][$bundleId] ?? null,
                     'monthly_price_irr' => $usd ? AppSetting::convertHetznerUsdToIrr($usd) : null,
                     'usd_to_irr_rate' => $usd ? AppSetting::hetznerUsdToIrrRate() : null,
                     'price_synced_at' => $usd ? now() : null,

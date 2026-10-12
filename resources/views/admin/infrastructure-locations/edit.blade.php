@@ -49,6 +49,7 @@
                             </select>
                         @endif
                     </label>
+                    <x-form.input :name="'stopped_monthly_prices['.$bundle->id.']'" type="number" :label="'قیمت ماهانه سرور خاموش در این موقعیت ـ '.$bundle->name.' (ریال)'" :value="$mapping?->stopped_monthly_price" min="0" help="اختیاری؛ بر قیمت خاموش پلن اولویت دارد. هتزنر برای سرور خاموش همچنان از شما هزینه می‌گیرد." />
                 @endforeach
             </div>
         </section>

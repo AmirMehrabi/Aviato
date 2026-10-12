@@ -132,7 +132,7 @@ class ServerController extends Controller
                         + $server->disks->where('status', 'ready')->sum(fn ($disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth())),
                 'billing_hint' => $server->isRunning() ? 'CPU/RAM فعال' : 'دیسک و IP پایدار',
                 'status' => $server->status,
-                'status_label' => $this->statusLabel($server->status),
+                'status_label' => $server->customerStatusLabel(),
                 'status_class' => $this->statusClass($server->status),
                 'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
@@ -218,7 +218,7 @@ class ServerController extends Controller
             'servers' => $servers->map(fn (VirtualMachine $server): array => [
                 'id' => $server->uuid,
                 'status' => $server->status,
-                'status_label' => $this->statusLabel($server->status),
+                'status_label' => $server->customerStatusLabel(),
                 'status_class' => $this->statusClass($server->status),
                 'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
@@ -627,7 +627,7 @@ class ServerController extends Controller
             'sshCommand' => $sshCommand,
             'loginPassword' => $loginPassword,
             'credentialDecryptionFailed' => $credentialDecryptionFailed,
-            'statusLabel' => $this->statusLabel($server->status),
+            'statusLabel' => $server->customerStatusLabel(),
             'statusClass' => $this->statusClass($server->status),
             'provisioningLabel' => $this->provisioningLabelForVm($server),
             'provisioningClass' => $this->provisioningClass($server->provisioning_status),
@@ -842,7 +842,7 @@ class ServerController extends Controller
             return back()->with('error', 'اطلاعات زیرساخت برای روشن کردن سرور کامل نیست.');
         }
 
-        $accrued = $this->billing->currentAccrued($server);
+        // Usage is accrued at the confirmed power-state transition below.
         $this->activities->record($server, 'power', 'requested', 'درخواست روشن کردن سرور ثبت شد', null, $customer);
 
         try {
@@ -876,11 +876,13 @@ class ServerController extends Controller
             return back()->with('error', 'روشن کردن سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
 
+        $this->usageBilling->accrueVm($server);
+        $server->refresh();
         $server->forceFill([
             'status' => VirtualMachine::STATUS_RUNNING,
             'last_started_at' => now(),
             'last_billed_at' => now(),
-            'unbilled_amount' => $accrued,
+            'unbilled_amount' => 0,
             'desired_state' => array_merge($server->desired_state ?? [], [
                 'status' => VirtualMachine::STATUS_RUNNING,
                 'power_generation' => (int) data_get($server->desired_state, 'power_generation', 0) + 1,
@@ -925,7 +927,7 @@ class ServerController extends Controller
             return back()->with('error', 'اطلاعات زیرساخت برای خاموش کردن سرور کامل نیست.');
         }
 
-        $accrued = $this->billing->currentAccrued($server);
+        // Usage is accrued at the confirmed power-state transition below.
         $this->activities->record($server, 'power', 'requested', 'درخواست خاموش کردن سرور ثبت شد', null, $customer);
 
         try {
@@ -959,11 +961,13 @@ class ServerController extends Controller
             return back()->with('error', 'خاموش کردن سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
         }
 
+        $this->usageBilling->accrueVm($server);
+        $server->refresh();
         $server->forceFill([
             'status' => VirtualMachine::STATUS_STOPPED,
             'last_stopped_at' => now(),
             'last_billed_at' => now(),
-            'unbilled_amount' => $accrued,
+            'unbilled_amount' => 0,
             'desired_state' => array_merge($server->desired_state ?? [], [
                 'status' => VirtualMachine::STATUS_STOPPED,
                 'power_generation' => $currentGeneration + 1,

@@ -66,6 +66,7 @@ class VmBundleController extends Controller
             'disk_gb' => ['required', 'integer', 'min:1', 'max:1048576'],
             'ip_count' => ['required', 'integer', 'min:0', 'max:128'],
             'monthly_price' => ['required', 'integer', 'min:0'],
+            'stopped_monthly_price' => ['nullable', 'integer', 'min:0', 'lte:monthly_price'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'is_active' => ['nullable', 'boolean'],
             'show_on_marketing' => ['nullable', 'boolean'],

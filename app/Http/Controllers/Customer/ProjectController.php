@@ -190,6 +190,10 @@ class ProjectController extends Controller
             ->where('data->project_id', $project->id)
             ->update(['read_at' => now()]);
 
+        if ($request->boolean('wallet_topup') && $this->projects->canViewBilling($project, $customer)) {
+            return redirect()->route('customer.wallet.show', ['topup' => 1, 'restore' => 1]);
+        }
+
         return redirect()->route('dashboard')
             ->with('status', "اکنون در فضای کاری «{$project->name}» هستید؛ ماشین‌ها، هزینه‌ها و دسترسی‌های پنل به این فضا مربوط است.");
     }

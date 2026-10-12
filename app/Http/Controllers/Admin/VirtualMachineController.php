@@ -20,6 +20,7 @@ use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBalanceService;
+use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VirtualMachineIpReassignmentService;
 use App\Services\VmTransferService;
@@ -471,7 +472,7 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'این VM تا شارژ شدن کیف پول فضای کاری مربوطه قابل روشن کردن نیست.');
         }
 
-        $accrued = $this->billing->currentAccrued($virtualMachine);
+        // Accrue usage after the provider confirms the power change.
 
         if (! $virtualMachine->isRunning()) {
             if ($virtualMachine->isProxmox() && (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid)) {
@@ -529,12 +530,14 @@ class VirtualMachineController extends Controller
             }
         }
 
+        app(UsageBillingService::class)->accrueVm($virtualMachine);
+        $virtualMachine->refresh();
         $virtualMachine->forceFill([
             'status' => VirtualMachine::STATUS_RUNNING,
             'provisioning_status' => VirtualMachine::PROVISION_READY,
             'last_started_at' => now(),
             'last_billed_at' => now(),
-            'unbilled_amount' => $accrued,
+            'unbilled_amount' => 0,
             'desired_state' => array_merge($virtualMachine->desired_state ?? [], [
                 'status' => VirtualMachine::STATUS_RUNNING,
                 'power_generation' => (int) data_get($virtualMachine->desired_state, 'power_generation', 0) + 1,
@@ -581,7 +584,7 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'اطلاعات Hetzner برای خاموش کردن کامل نیست.');
         }
 
-        $accrued = $this->billing->currentAccrued($virtualMachine);
+        // Accrue usage after the provider confirms the power change.
 
         try {
             if ($virtualMachine->isHetzner()) {
@@ -620,11 +623,13 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'خاموش کردن VM ناموفق بود: '.$exception->getMessage());
         }
 
+        app(UsageBillingService::class)->accrueVm($virtualMachine);
+        $virtualMachine->refresh();
         $virtualMachine->forceFill([
             'status' => VirtualMachine::STATUS_STOPPED,
             'last_stopped_at' => now(),
             'last_billed_at' => now(),
-            'unbilled_amount' => $accrued,
+            'unbilled_amount' => 0,
             'desired_state' => array_merge($virtualMachine->desired_state ?? [], [
                 'status' => VirtualMachine::STATUS_STOPPED,
                 'power_generation' => $currentGeneration + 1,
