@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AdminDashboardWarningPreference;
 use App\Models\Payment;
 use App\Models\ProxmoxServer;
 use App\Models\Ticket;
@@ -11,35 +12,54 @@ use App\Models\VmBackup;
 use App\Models\VmUpgradeOrder;
 use App\Models\Wallet;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 class AdminDashboardActions
 {
     public const VISIBLE_LIMIT = 8;
 
+    public const WARNING_TYPES = [
+        'payment-reconciliation' => 'پرداخت بدون اعتبار کیف پول',
+        'payment-pending' => 'پرداخت در انتظار طولانی',
+        'vm-provisioning' => 'آماده‌سازی ناموفق',
+        'vm-delete' => 'حذف متوقف‌شده',
+        'server-offline' => 'سرور آفلاین',
+        'upgrade' => 'ارتقای ناموفق',
+        'backup' => 'بکاپ ناموفق',
+        'server-sync' => 'همگام‌سازی ناموفق',
+        'ticket' => 'تیکت در انتظار پاسخ',
+        'wallet' => 'کیف پول نیازمند بررسی',
+    ];
+
     public function __construct(private readonly AdminDashboardFinance $finance) {}
 
-    public function snapshot(Collection $dismissedKeys, int $page = 1, ?string $category = null, ?User $user = null): array
+    public function snapshot(Collection $dismissedKeys, int $page = 1, ?string $category = null, ?User $user = null, bool $hiddenOnly = false, ?string $warningType = null): array
     {
         $queries = $this->issueQueries($user);
         $counts = collect($queries)->map(fn (Builder $query): int => (clone $query)->count());
         $categoryTypes = match ($category) {
-            'servers' => ['server-offline'],
-            'machines' => ['vm-provisioning', 'vm-delete'],
+            'servers' => ['server-offline', 'server-sync'],
+            'machines' => ['vm-provisioning', 'vm-delete', 'upgrade', 'backup'],
             'tickets' => ['ticket'],
-            'payments' => ['payment-reconciliation', 'payment-pending'],
+            'payments' => ['payment-reconciliation', 'payment-pending', 'wallet'],
             default => array_keys($queries),
         };
+        if ($warningType && isset($queries[$warningType])) {
+            $categoryTypes = [$warningType];
+        }
         $queueQueries = array_intersect_key($queries, array_flip($categoryTypes));
         $queueTotal = collect($categoryTypes)->sum(fn (string $type): int => ($counts[$type] ?? 0));
         $dismissed = $dismissedKeys->flip();
         $hiddenCount = 0;
+        $hiddenByType = [];
 
         if ($dismissed->isNotEmpty()) {
             foreach ($queueQueries as $type => $query) {
-                foreach ((clone $query)->select(['id', 'updated_at'])->cursor() as $record) {
-                    if ($dismissed->has($this->warningKey($type, $record->id, $record->updated_at?->getTimestamp()))) {
+                foreach ((clone $query)->cursor() as $record) {
+                    if ($dismissed->has($this->warningKey($type, $record))) {
                         $hiddenCount++;
+                        $hiddenByType[$type] = ($hiddenByType[$type] ?? 0) + 1;
                     }
                 }
             }
@@ -55,7 +75,7 @@ class AdminDashboardActions
         }
 
         $visible = $items
-            ->reject(fn (array $item): bool => $dismissed->has($item['key']))
+            ->filter(fn (array $item): bool => $hiddenOnly === $dismissed->has($item['key']))
             ->sort(function (array $a, array $b): int {
                 return ($b['rank'] <=> $a['rank'])
                     ?: ($a['occurred_at']->getTimestamp() <=> $b['occurred_at']->getTimestamp())
@@ -64,35 +84,39 @@ class AdminDashboardActions
             ->values();
 
         return [
+            'groups' => $visible->groupBy('type')->map(fn ($items, $type) => $items->first() + ['group_count' => max(0, ($counts[$type] ?? 0) - ($hiddenByType[$type] ?? 0))])->values()->take(4),
             'items' => $visible->slice(($page - 1) * self::VISIBLE_LIMIT, self::VISIBLE_LIMIT)->values(),
             'total_count' => $queueTotal,
             'hidden_count' => $hiddenCount,
-            'remaining_count' => max(0, $queueTotal - $hiddenCount - $page * self::VISIBLE_LIMIT),
+            'remaining_count' => max(0, ($hiddenOnly ? $hiddenCount : $queueTotal - $hiddenCount) - $page * self::VISIBLE_LIMIT),
             'page' => $page,
             'category' => $category,
-            'filter_label' => match ($category) {
-                'servers' => 'سرورهای آفلاین',
+            'hidden_only' => $hiddenOnly,
+            'warning_type' => $warningType,
+            'type_counts' => $counts,
+            'filter_label' => $warningType ? (self::WARNING_TYPES[$warningType] ?? null) : match ($category) {
+                'servers' => 'سرورهای نیازمند بررسی',
                 'machines' => 'ماشین‌های نیازمند بررسی',
                 'tickets' => 'تیکت‌های در انتظار پاسخ',
-                'payments' => 'پرداخت‌های نیازمند بررسی',
+                'payments' => 'موارد مالی نیازمند بررسی',
                 default => null,
             },
             'health' => array_values(array_filter([
                 [
-                    'label' => 'سرور آفلاین',
-                    'count' => ($counts['server-offline'] ?? 0),
+                    'label' => 'سرور نیازمند بررسی',
+                    'count' => ($counts['server-offline'] ?? 0) + ($counts['server-sync'] ?? 0),
                     'category' => 'servers',
                     'url' => route('admin.dashboard', ['category' => 'servers']),
                 ],
                 [
                     'label' => 'ماشین نیازمند بررسی',
-                    'count' => ($counts['vm-provisioning'] ?? 0) + ($counts['vm-delete'] ?? 0),
+                    'count' => ($counts['vm-provisioning'] ?? 0) + ($counts['vm-delete'] ?? 0) + ($counts['upgrade'] ?? 0) + ($counts['backup'] ?? 0),
                     'category' => 'machines',
                     'url' => route('admin.dashboard', ['category' => 'machines']),
                 ],
                 [
-                    'label' => 'پرداخت نیازمند بررسی',
-                    'count' => ($counts['payment-reconciliation'] ?? 0) + ($counts['payment-pending'] ?? 0),
+                    'label' => 'مالی نیازمند بررسی',
+                    'count' => ($counts['payment-reconciliation'] ?? 0) + ($counts['payment-pending'] ?? 0) + ($counts['wallet'] ?? 0),
                     'category' => 'payments',
                     'url' => route('admin.dashboard', ['category' => 'payments']),
                 ],
@@ -103,9 +127,9 @@ class AdminDashboardActions
                     'url' => route('admin.dashboard', ['category' => 'tickets']),
                 ],
             ], fn (array $card): bool => match ($card['category']) {
-                'servers' => isset($queries['server-offline']),
-                'machines' => isset($queries['vm-provisioning']),
-                'payments' => isset($queries['payment-pending']),
+                'servers' => isset($queries['server-offline']) || isset($queries['server-sync']),
+                'machines' => count(array_intersect_key($queries, array_flip(['vm-provisioning', 'vm-delete', 'upgrade', 'backup']))) > 0,
+                'payments' => isset($queries['payment-pending']) || isset($queries['payment-reconciliation']) || isset($queries['wallet']),
                 'tickets' => isset($queries['ticket']),
             })),
         ];
@@ -114,8 +138,8 @@ class AdminDashboardActions
     public function hasActiveKey(string $key, ?User $user = null): bool
     {
         foreach ($this->issueQueries($user) as $type => $query) {
-            foreach ((clone $query)->select(['id', 'updated_at'])->cursor() as $record) {
-                if (hash_equals($key, $this->warningKey($type, $record->id, $record->updated_at?->getTimestamp()))) {
+            foreach ((clone $query)->cursor() as $record) {
+                if (hash_equals($key, $this->warningKey($type, $record))) {
                     return true;
                 }
             }
@@ -124,7 +148,12 @@ class AdminDashboardActions
         return false;
     }
 
-    private function issueQueries(?User $user = null): array
+    public function availableTypes(User $user): array
+    {
+        return array_intersect_key(self::WARNING_TYPES, $this->issueQueries($user, true));
+    }
+
+    private function issueQueries(?User $user = null, bool $includeMuted = false): array
     {
         $staleDeletion = VirtualMachine::query()
             ->notDeleted()
@@ -171,6 +200,11 @@ class AdminDashboardActions
                 'server-offline', 'server-sync' => $user->allows('infrastructure.read'),
                 default => $user->allows('virtual-machines.read'),
             }, ARRAY_FILTER_USE_BOTH);
+        }
+
+        if ($user && ! $includeMuted) {
+            $muted = AdminDashboardWarningPreference::query()->where('user_id', $user->id)->pluck('warning_type')->all();
+            $queries = array_diff_key($queries, array_flip($muted));
         }
 
         return $queries;
@@ -311,7 +345,8 @@ class AdminDashboardActions
         };
 
         return [
-            'key' => $this->warningKey($type, $record->id, $record->updated_at?->getTimestamp()),
+            'key' => $this->warningKey($type, $record),
+            'type' => $type,
             'rank' => $details['rank'],
             'severity' => $details['rank'] >= 85 ? 'critical' : 'attention',
             'category' => $details['category'],
@@ -324,12 +359,28 @@ class AdminDashboardActions
         ];
     }
 
-    private function warningKey(string $type, int $id, ?int $updatedAt): string
+    private function warningKey(string $type, Model $record): string
     {
-        if (in_array($type, ['server-offline', 'server-sync'], true)) {
-            $type = 'proxmox-sync';
+        // Fingerprint the issue, rather than unrelated edits to the record.
+        $fields = match ($type) {
+            'vm-provisioning' => ['provisioning_status', 'provisioning_job_id', 'provisioning_task_id'],
+            'vm-delete' => ['delete_requested_at', 'delete_started_at', 'delete_failed_at', 'delete_error', 'delete_task_id'],
+            'server-offline' => ['connection_status', 'last_seen_at'],
+            'server-sync' => ['sync_status', 'sync_pending_since', 'synced_at', 'sync_error'],
+            'ticket' => ['status', 'priority', 'last_customer_reply_at'],
+            'wallet' => ['balance', 'is_locked', 'lock_reason'],
+            'backup' => ['status', 'finished_at', 'error'],
+            'upgrade' => ['status', 'last_attempt_at', 'failure_reason', 'proxmox_task_id'],
+            default => ['status', 'paid_at', 'amount', 'currency'],
+        };
+
+        $details = $record->only($fields);
+        if ($type === 'vm-provisioning') {
+            $details['error'] = data_get($record->remote_state, 'provisioning_error');
+            $details['rebuild_error'] = data_get($record->remote_state, 'rebuild_error');
+            $details['retry_queued_at'] = data_get($record->remote_state, 'retry_queued_at');
         }
 
-        return hash('sha256', implode('|', [$type, $id, $updatedAt ?? 0]));
+        return hash('sha256', json_encode([$type, $record->id, $details]));
     }
 }

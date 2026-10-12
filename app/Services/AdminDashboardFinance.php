@@ -17,10 +17,10 @@ class AdminDashboardFinance
 
     public function __construct(private readonly WalletService $wallets) {}
 
-    public function snapshot(int $days): array
+    public function snapshot(int $days, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
-        $now = now();
-        $from = $now->copy()->subDays($days - 1)->startOfDay();
+        $now = $to?->copy() ?? now();
+        $from ??= $now->copy()->subDays($days - 1)->startOfDay();
         $attempts = Payment::query()->whereBetween('created_at', [$from, $now]);
         $statusCounts = (clone $attempts)
             ->selectRaw('status, COUNT(*) as total')
@@ -82,7 +82,7 @@ class AdminDashboardFinance
             });
 
         $negativeWallets = Wallet::query()->where('balance', '<', 0);
-        $trendDays = max(7, $days);
+        $trendDays = $days;
         $trendFrom = $now->copy()->subDays($trendDays - 1)->startOfDay();
         $trendRows = $this->collectionQuery($trendFrom, $now)
             ->selectRaw('DATE(paid_at) as day, currency, SUM(amount) as total')

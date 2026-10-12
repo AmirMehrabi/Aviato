@@ -53,6 +53,7 @@
 </div></div>
         </aside>
     </section>
+    @include('admin.billing._gateway-health')
     <section class="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div class="flex items-center justify-between border-b p-5"><h2 class="font-black">آخرین رویدادهای مالی</h2>
 @adminRoute('admin.billing.transactions.index')
 <a href="{{ route('admin.billing.transactions.index') }}" class="text-sm font-black text-[#0069FF]">مشاهده همه</a>

@@ -67,7 +67,7 @@ class AdminBillingCenterTest extends TestCase
             ->assertOk()->assertSee('Billing Customer');
     }
 
-    public function test_admin_dashboard_shows_gateway_reporting_and_recent_payment(): void
+    public function test_admin_dashboard_shows_compact_finance_and_moves_gateway_details_to_billing(): void
     {
         Payment::create([
             'customer_id' => $this->customer->id,
@@ -94,10 +94,12 @@ class AdminBillingCenterTest extends TestCase
 
         $this->get('https://admin.localhost/dashboard')
             ->assertOk()
-            ->assertSee('صف اقدام‌ها')
+            ->assertSee('نیازمند توجه')
             ->assertSee('وصول موفق')
-            ->assertSee('REF-DASHBOARD')
-            ->assertSee('آخرین پرداخت‌های درگاه');
+            ->assertSee('نمای مالی')
+            ->assertDontSee('آخرین پرداخت‌های درگاه');
+
+        $this->get('https://admin.localhost/billing')->assertOk()->assertSee('سلامت درگاه‌ها');
     }
 
     public function test_billing_overview_uses_paid_date_and_keeps_gateway_currencies_separate(): void
@@ -147,7 +149,7 @@ class AdminBillingCenterTest extends TestCase
 
         $response = $this->get('https://admin.localhost/dashboard')
             ->assertOk()
-            ->assertSee('صف اقدام‌ها')
+            ->assertSee('نیازمند توجه')
             ->assertSee('failed-dashboard-vm')
             ->assertSee('بررسی ماشین')
             ->assertSee(route('admin.virtual-machines.show', $vm));
@@ -165,8 +167,8 @@ class AdminBillingCenterTest extends TestCase
         ]);
         $this->get('https://admin.localhost/dashboard')
             ->assertOk()
-            ->assertDontSee('failed-dashboard-vm')
-            ->assertSee('نمایش 1 مورد پنهان‌شده');
+            ->assertViewHas('dashboard', fn ($dashboard) => $dashboard['items']->isEmpty())
+            ->assertSee('کنارگذاشته‌شده‌ها (1)');
 
         $this->delete('https://admin.localhost/dashboard/warnings/dismissals')
             ->assertRedirect()

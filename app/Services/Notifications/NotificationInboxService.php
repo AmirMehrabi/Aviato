@@ -80,6 +80,18 @@ class NotificationInboxService
         return ['unread_count' => 0, 'ticket_unread_count' => 0, 'marked_count' => $count];
     }
 
+    public function dismiss(Model $notifiable, string $notificationId): void
+    {
+        $this->visibleQuery($notifiable)->whereKey($notificationId)->firstOrFail()->delete();
+
+    }
+
+    public function clearRead(Model $notifiable): void
+    {
+        $this->visibleQuery($notifiable)->whereNotNull('read_at')->delete();
+
+    }
+
     public function ticketUnreadCount(Model $notifiable): int
     {
         return $this->visibleQuery($notifiable)->whereNull('read_at')->where('type', TicketDatabaseNotification::class)->count();

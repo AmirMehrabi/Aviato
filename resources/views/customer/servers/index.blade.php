@@ -240,9 +240,11 @@
                     @endforeach
                 </div>
 
-                <div class="border-t border-slate-100 px-5 py-4">
-                    {{ $servers->links() }}
-                </div>
+                @if ($servers->hasPages())
+                    <div class="mt-4 border-t-2 border-[#B8D6FF] bg-[#EBF3FF] px-5 py-5">
+                        {{ $servers->links('customer.servers.partials.pagination') }}
+                    </div>
+                @endif
             @endif
         </section>
     </div>

@@ -209,14 +209,7 @@
                 <div>
                     <h2 id="my-machines-heading" class="text-lg font-black text-slate-950">ماشین‌های من</h2>
                     <p class="mt-1 text-xs font-bold text-slate-500">وضعیت و راه‌های دسترسی به ماشین‌های فضای کاری فعال</p>
-                    <p class="mt-1 text-xs font-bold text-slate-500">نمایش {{ $visibleVmRows->count() }} از {{ $totalVmCount }} ماشین</p>
                 </div>
-                <a href="{{ route('customer.servers.index', [], false) }}" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-black text-slate-600 transition-colors hover:bg-white hover:text-[#0069FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">
-                    مشاهده همه
-                    <svg class="size-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </a>
             </div>
 
             <div class="space-y-2.5">
@@ -302,17 +295,20 @@
                 @endforeach
             </div>
 
-            @if ($totalVmCount > $visibleVmRows->count())
-                <a
-                    href="{{ route('customer.servers.index', [], false) }}"
-                    class="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-black text-[#0069FF] transition-colors hover:bg-[#DCEBFF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
-                >
-                    مشاهده همه {{ $totalVmCount }} ماشین
-                    <svg class="size-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </a>
-            @endif
+            <div class="mt-4 flex flex-col gap-4 rounded-2xl border-2 border-[#B8D6FF] bg-[#EBF3FF] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <p class="text-sm font-black text-slate-950">نمایش {{ $visibleVmRows->count() }} از {{ $totalVmCount }} ماشین</p>
+                @if ($totalVmCount > $visibleVmRows->count())
+                    <a
+                        href="{{ route('customer.servers.index', [], false) }}"
+                        class="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-[#0069FF] px-6 py-3 text-base font-black text-white shadow-lg shadow-[#0069FF]/20 transition-colors hover:bg-[#0050D0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
+                    >
+                        مشاهده همه {{ $totalVmCount }} ماشین
+                        <svg class="size-5 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
+                @endif
+            </div>
         </section>
     @endif
 

@@ -1,0 +1,10 @@
+<section class="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-200 px-5 py-4"><h2 class="font-bold text-slate-950">سلامت درگاه‌ها</h2><p class="mt-1 text-xs text-slate-500">تلاش‌ها براساس زمان ایجاد؛ وصول براساس زمان پرداخت. نرخ برای کمتر از ۱۰ تلاش نهایی نمایش داده نمی‌شود. موارد در انتظار طولانی از همه بازه‌ها هستند.</p></div>
+    <div class="overflow-x-auto"><table class="min-w-full whitespace-nowrap text-right text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-4 py-3">درگاه</th><th class="px-4 py-3">تلاش</th><th class="px-4 py-3">موفق</th><th class="px-4 py-3">ناموفق/لغو</th><th class="px-4 py-3">نرخ موفقیت</th><th class="px-4 py-3">وصول</th><th class="px-4 py-3">در انتظار طولانی</th></tr></thead><tbody class="divide-y divide-slate-100">
+        @forelse ($gatewayHealth['providers'] as $provider)
+            <tr><td class="px-4 py-3"><a href="{{ route('admin.billing.payments.index', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'provider' => $provider['key']]) }}" class="font-semibold text-[#0059DB] hover:underline">{{ $provider['name'] }}</a></td><td class="px-4 py-3">{{ number_format($provider['attempts']) }}</td><td class="px-4 py-3">{{ number_format($provider['successful']) }}</td><td class="px-4 py-3">{{ number_format($provider['failed']) }}</td><td class="px-4 py-3">{{ $provider['rate'] === null ? 'داده ناکافی' : $provider['rate'].'٪' }}</td><td class="px-4 py-3">@forelse ($provider['collected'] as $money)<div>{{ $money['formatted'] }} <span dir="ltr">{{ $money['currency'] }}</span></div>@empty — @endforelse</td><td class="px-4 py-3 {{ $provider['aged_pending'] ? 'text-amber-700' : 'text-slate-500' }}">{{ number_format($provider['aged_pending']) }}</td></tr>
+        @empty
+            <tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">در این بازه پرداخت درگاهی ثبت نشده است.</td></tr>
+        @endforelse
+    </tbody></table></div>
+</section>

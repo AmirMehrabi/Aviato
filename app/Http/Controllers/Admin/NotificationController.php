@@ -23,6 +23,24 @@ class NotificationController extends Controller
         ));
     }
 
+    public function dismiss(Request $request, string $notification): JsonResponse
+    {
+        $admin = $request->user('admin');
+        abort_unless($admin, 403);
+        $this->notifications->dismiss($admin, $notification);
+
+        return $this->index($request);
+    }
+
+    public function clearRead(Request $request): JsonResponse
+    {
+        $admin = $request->user('admin');
+        abort_unless($admin, 403);
+        $this->notifications->clearRead($admin);
+
+        return $this->index($request);
+    }
+
     public function markAllRead(Request $request): JsonResponse
     {
         $admin = $request->user('admin');

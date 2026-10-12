@@ -68,6 +68,28 @@ class AdminNotificationActionsTest extends TestCase
         $this->assertNull($this->notificationReadAt($otherNotificationId));
     }
 
+    public function test_admin_can_delete_a_notification_without_affecting_other_admins(): void
+    {
+        $admin = User::factory()->create();
+        $own = $this->createNotification($admin->id, 'Dismiss me');
+        $other = $this->createNotification(User::factory()->create()->id, 'Private notification');
+        $this->actingAs($admin, 'admin')->deleteJson(route('admin.notifications.dismiss', $other))->assertNotFound();
+        $this->deleteJson(route('admin.notifications.dismiss', $own))->assertOk()->assertJsonPath('unread_count', 0)->assertJsonCount(0, 'items');
+        $this->assertDatabaseMissing('notifications', ['id' => $own]);
+        $this->assertDatabaseHas('notifications', ['id' => $other]);
+    }
+
+    public function test_clear_read_removes_only_current_admin_read_notifications(): void
+    {
+        $admin = User::factory()->create();
+        $read = $this->createNotification($admin->id, 'Read', true);
+        $unread = $this->createNotification($admin->id, 'Unread');
+        $otherRead = $this->createNotification(User::factory()->create()->id, 'Other read', true);
+        $this->actingAs($admin, 'admin')->deleteJson(route('admin.notifications.clear-read'))->assertOk()->assertJsonPath('unread_count', 1)->assertJsonPath('items.0.id', $unread);
+        $this->assertDatabaseMissing('notifications', ['id' => $read]);
+        $this->assertDatabaseHas('notifications', ['id' => $otherRead]);
+    }
+
     private function createNotification(int $adminId, string $title, bool $read = false): string
     {
         $id = (string) Str::uuid();

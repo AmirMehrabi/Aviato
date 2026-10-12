@@ -131,6 +131,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.dashboard.warnings.dismiss');
         Route::delete('dashboard/warnings/dismissals', [AdminDashboardController::class, 'restoreWarnings'])
             ->name('admin.dashboard.warnings.restore');
+        Route::patch('dashboard/warnings/preferences', [AdminDashboardController::class, 'updateWarningPreference'])
+            ->name('admin.dashboard.warnings.preferences');
+        Route::delete('notifications/read', [NotificationController::class, 'clearRead'])->name('admin.notifications.clear-read');
+        Route::delete('notifications/{notification}', [NotificationController::class, 'dismiss'])->name('admin.notifications.dismiss');
         Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])
             ->name('admin.notifications.mark-all-read');
         Route::get('notifications', [NotificationController::class, 'index'])

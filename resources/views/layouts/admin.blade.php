@@ -360,6 +360,8 @@
                             :feed-url="route('admin.notifications.index')"
                             :mark-read-url-template="route('admin.notifications.read', ['notification' => '__NOTIFICATION__'])"
                             :mark-all-read-url="route('admin.notifications.mark-all-read')"
+                            :dismiss-url-template="route('admin.notifications.dismiss', ['notification' => '__NOTIFICATION__'])"
+                            :clear-read-url="route('admin.notifications.clear-read')"
                             :unread-count="$adminUnreadNotificationsCount"
                             variant="round"
                         />

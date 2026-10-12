@@ -25,6 +25,7 @@ use App\Services\VirtualMachineIpReassignmentService;
 use App\Services\VmTransferService;
 use App\Services\WalletService;
 use App\Support\AdminTableSort;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -51,6 +52,8 @@ class VirtualMachineController extends Controller
     public function index(Request $request): View
     {
         $filters = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'status' => ['nullable', Rule::in([
@@ -78,6 +81,10 @@ class VirtualMachineController extends Controller
                         ->orWhere('ip_address', 'like', "%{$search}%");
                 });
             });
+
+        $query
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->where('created_at', '>=', Carbon::parse($date)->startOfDay()))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->where('created_at', '<', Carbon::parse($date)->addDay()->startOfDay()));
 
         $sort = AdminTableSort::apply($query, $request, 'virtual-machines');
         $vms = $query->paginate(12)

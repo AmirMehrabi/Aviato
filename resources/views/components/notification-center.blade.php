@@ -2,6 +2,8 @@
     'feedUrl',
     'markReadUrlTemplate',
     'markAllReadUrl',
+    'dismissUrlTemplate' => '',
+    'clearReadUrl' => '',
     'unreadCount' => 0,
     'variant' => 'square',
 ])
@@ -12,6 +14,8 @@
         feedUrl: @js($feedUrl),
         markReadUrlTemplate: @js($markReadUrlTemplate),
         markAllReadUrl: @js($markAllReadUrl),
+        dismissUrlTemplate: @js($dismissUrlTemplate),
+        clearReadUrl: @js($clearReadUrl),
         unreadCount: {{ (int) $unreadCount }},
         csrf: @js(csrf_token()),
     })"
@@ -67,6 +71,11 @@
             ></button>
         </div>
 
+        @if ($clearReadUrl)
+            <div class="border-b border-slate-100 px-4 py-2">
+                <button type="button" @click="removeNotifications(clearReadUrl)" :disabled="removing || loading || markingAll || Object.keys(markingIds).length > 0" class="min-h-10 rounded-lg px-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">حذف اعلان‌های خوانده‌شده</button>
+            </div>
+        @endif
         <div class="max-h-[min(28rem,70vh)] overflow-y-auto p-2">
             <template x-if="loading && items.length === 0">
                 <div class="space-y-2 p-2" aria-hidden="true">
@@ -109,6 +118,9 @@
                                         @click="markRead(notification.id)"
                                         class="min-h-9 rounded-lg px-2.5 text-[11px] font-black text-slate-600 transition-colors duration-150 hover:bg-white hover:text-[#0069FF] disabled:cursor-wait disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
                                     >خواندن</button>
+                                    @if ($dismissUrlTemplate)
+                                        <button type="button" @click="removeNotifications(dismissUrlTemplate.replace('__NOTIFICATION__', encodeURIComponent(notification.id)))" :disabled="removing || loading || markingAll || Object.keys(markingIds).length > 0" class="min-h-9 rounded-lg px-2.5 text-[11px] font-semibold text-slate-500 hover:bg-white disabled:opacity-50" :aria-label="'حذف اعلان ' + notification.title">حذف</button>
+                                    @endif
                                     <a :href="notification.url" class="inline-flex min-h-9 items-center rounded-lg px-2.5 text-[11px] font-black text-[#0069FF] transition-colors duration-150 hover:bg-[#EBF3FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]" x-text="notification.action_label || 'مشاهده'"></a>
                                 </div>
                             </div>

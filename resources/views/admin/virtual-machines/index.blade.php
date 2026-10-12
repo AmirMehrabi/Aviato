@@ -96,6 +96,7 @@ document.addEventListener('alpine:init', () => {
 
 @adminRoute('admin.virtual-machines.index')
 <form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.virtual-machines.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+        @include('admin.partials.dashboard-date-filter')
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div class="relative flex-1">
                 <svg class="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke-linecap="round"/></svg>

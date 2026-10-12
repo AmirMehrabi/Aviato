@@ -218,6 +218,9 @@ window.notificationCenter = function notificationCenter(config) {
         feedUrl: config.feedUrl || '',
         markReadUrlTemplate: config.markReadUrlTemplate || '',
         markAllReadUrl: config.markAllReadUrl || '',
+        dismissUrlTemplate: config.dismissUrlTemplate || '',
+        clearReadUrl: config.clearReadUrl || '',
+        removing: false,
         loading: false,
         markingAll: false,
         markingIds: {},
@@ -304,8 +307,35 @@ window.notificationCenter = function notificationCenter(config) {
             this.setUnreadCount(this.unreadCount);
         },
 
+        async removeNotifications(url) {
+            if (!url || this.removing || this.loading || this.markingAll || Object.keys(this.markingIds).length > 0) return;
+            this.removing = true;
+            this.error = '';
+            try {
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': this.csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data?.message || 'Unable to remove notifications.');
+                this.items = data.items || [];
+                this.setUnreadCount(data.unread_count || 0);
+                this.setTicketUnreadCount(data.ticket_unread_count || 0);
+                this.announcement = 'اعلان حذف شد.';
+            } catch (error) {
+                this.error = 'حذف اعلان انجام نشد. دوباره تلاش کنید.';
+            } finally {
+                this.removing = false;
+            }
+        },
+
         async markAllRead() {
-            if (this.markingAll || this.unreadCount === 0) {
+            if (this.removing || this.markingAll || this.unreadCount === 0) {
                 return;
             }
 
@@ -342,6 +372,7 @@ window.notificationCenter = function notificationCenter(config) {
         },
 
         async markRead(notificationId, navigateTo = null) {
+            if (this.removing) return;
             if (this.markingIds[notificationId]) {
                 if (navigateTo) {
                     window.location.assign(navigateTo);

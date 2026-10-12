@@ -11,6 +11,7 @@ use App\Models\UsageAccrual;
 use App\Models\UsageSettlement;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\AdminDashboardFinance;
 use App\Services\HesabroAccountingService;
 use App\Services\WalletService;
 use App\Support\AdminTableSort;
@@ -63,6 +64,7 @@ class BillingController extends Controller
         return view('admin.billing.overview', compact(
             'from', 'to', 'cashByCurrency', 'trendCurrency', 'consumption', 'successfulPayments', 'negativeWallets', 'trend', 'recent'
         ) + [
+            'gatewayHealth' => app(AdminDashboardFinance::class)->snapshot((int) $from->diffInDays($to) + 1, $from, $to),
             'pendingPayments' => Payment::query()->where('status', Payment::STATUS_PENDING)->count(),
             'failedPayments' => Payment::query()->where('status', Payment::STATUS_FAILED)->where('created_at', '>=', now()->subDays(7))->count(),
             'walletBalance' => (int) Wallet::query()->sum('balance'),

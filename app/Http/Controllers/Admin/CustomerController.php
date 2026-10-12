@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Services\BillingService;
 use App\Services\WalletService;
 use App\Support\AdminTableSort;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,8 @@ class CustomerController extends Controller
     public function index(Request $request): View
     {
         $filters = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:active,suspended'],
             'verification' => ['nullable', 'in:verified,unverified'],
@@ -45,6 +48,10 @@ class CustomerController extends Controller
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when(($filters['verification'] ?? null) === 'verified', fn ($query) => $query->whereNotNull('email_verified_at'))
             ->when(($filters['verification'] ?? null) === 'unverified', fn ($query) => $query->whereNull('email_verified_at'));
+
+        $query
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->where('created_at', '>=', Carbon::parse($date)->startOfDay()))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->where('created_at', '<', Carbon::parse($date)->addDay()->startOfDay()));
 
         $sort = AdminTableSort::apply($query, $request, 'customers');
         $customers = $query->paginate(12)

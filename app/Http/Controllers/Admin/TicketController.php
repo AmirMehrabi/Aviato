@@ -11,10 +11,12 @@ use App\Models\User;
 use App\Services\Notifications\NotificationInboxService;
 use App\Services\Tickets\TicketService;
 use App\Support\AdminTableSort;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class TicketController extends Controller
@@ -27,6 +29,9 @@ class TicketController extends Controller
     public function index(Request $request): View
     {
         $filters = $request->validate([
+            'date_basis' => ['nullable', Rule::in(['created', 'activity'])],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
             'status' => ['nullable', Rule::in(array_keys(Ticket::statuses()))],
             'priority' => ['nullable', Rule::in(array_keys(Ticket::priorities()))],
             'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
@@ -60,6 +65,10 @@ class TicketController extends Controller
                         ->orWhereHas('customer', fn ($query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
                 });
             });
+
+        $query
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->where((($filters['date_basis'] ?? 'created') === 'activity' ? DB::raw('COALESCE(last_activity_at, created_at)') : 'created_at'), '>=', Carbon::parse($date)->startOfDay()))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->where((($filters['date_basis'] ?? 'created') === 'activity' ? DB::raw('COALESCE(last_activity_at, created_at)') : 'created_at'), '<', Carbon::parse($date)->addDay()->startOfDay()));
 
         $sort = AdminTableSort::apply($query, $request, 'tickets');
         $tickets = $query->paginate(15)
