@@ -26,5 +26,5 @@ if [[ "$local_revision" != "$remote_revision" ]]; then
     exit 1
 fi
 
-echo "Deploying ${local_revision} to production (172.19.19.6)."
+echo "Deploying ${local_revision} to production (${AVIATO_DEPLOY_HOST:-172.19.19.6}:${AVIATO_DEPLOY_PORT:-22})."
 vendor/bin/dep deploy production --revision="$local_revision" -vvv

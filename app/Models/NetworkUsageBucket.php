@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\UtcDateTime;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,9 +29,9 @@ class NetworkUsageBucket extends Model
     protected function casts(): array
     {
         return [
-            'revision' => 'integer', 'interval_start' => 'datetime', 'interval_end' => 'datetime',
-            'ingress_bytes' => 'integer', 'egress_bytes' => 'integer', 'finalized_at' => 'datetime',
-            'source_updated_at' => 'datetime', 'payload' => 'array', 'rated_at' => 'datetime',
+            'revision' => 'integer', 'interval_start' => UtcDateTime::class, 'interval_end' => UtcDateTime::class,
+            'ingress_bytes' => 'integer', 'egress_bytes' => 'integer', 'finalized_at' => UtcDateTime::class,
+            'source_updated_at' => UtcDateTime::class, 'payload' => 'array', 'rated_at' => 'datetime',
         ];
     }
 }

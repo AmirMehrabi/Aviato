@@ -7,6 +7,7 @@ use App\Models\NetworkUsageRating;
 use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
+use App\Models\VmNetworkBillingPeriod;
 use App\Services\NetworkUsageIngestionService;
 use App\Services\NetworkUsageRatingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -73,6 +74,39 @@ class NetworkUsageBillingTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $ingestion->ingest('test-ipdr', $payload);
+    }
+
+    public function test_utc_bucket_at_tehran_month_boundary_is_rated_in_the_new_month(): void
+    {
+        config(['app.timezone' => 'Asia/Tehran']);
+        $vm = $this->networkVm();
+        $payload = array_replace($this->payload($vm, 1073741824), [
+            'interval_start' => '2026-09-30T20:30:00Z',
+            'interval_end' => '2026-09-30T21:00:00Z',
+        ]);
+        $bucket = app(NetworkUsageIngestionService::class)->ingest('test-ipdr', $payload)->fresh();
+        $this->assertSame('UTC', $bucket->interval_start->timezoneName);
+        $this->assertSame('2026-10-01 00:00:00', $bucket->interval_start->copy()->setTimezone('Asia/Tehran')->format('Y-m-d H:i:s'));
+        $rating = app(NetworkUsageRatingService::class);
+        $this->assertTrue($rating->rate($bucket));
+        $period = VmNetworkBillingPeriod::first()->fresh();
+        $this->assertSame('2026-09-30 20:30:00', $period->period_start->format('Y-m-d H:i:s'));
+        $this->assertSame('UTC', $period->period_start->timezoneName);
+        $this->assertSame('rated', $bucket->fresh()->processing_status);
+        $this->assertFalse($rating->rate($bucket->fresh()));
+    }
+
+    public function test_bucket_ending_at_tehran_month_boundary_stays_in_previous_month(): void
+    {
+        config(['app.timezone' => 'Asia/Tehran']);
+        $vm = $this->networkVm();
+        $payload = array_replace($this->payload($vm, 1073741824), [
+            'interval_start' => '2026-09-30T20:00:00Z',
+            'interval_end' => '2026-09-30T20:30:00Z',
+        ]);
+        $bucket = app(NetworkUsageIngestionService::class)->ingest('test-ipdr', $payload)->fresh();
+        $this->assertTrue(app(NetworkUsageRatingService::class)->rate($bucket));
+        $this->assertDatabaseHas('vm_network_billing_periods', ['period_start' => '2026-08-31 20:30:00', 'period_end' => '2026-09-30 20:30:00']);
     }
 
     private function networkVm(string $slug = 'metered'): VirtualMachine

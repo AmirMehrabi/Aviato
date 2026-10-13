@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\UtcDateTime;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,6 @@ class NetworkMeterAssignment extends Model
 
     protected function casts(): array
     {
-        return ['first_observed_at' => 'datetime', 'last_observed_at' => 'datetime'];
+        return ['first_observed_at' => UtcDateTime::class, 'last_observed_at' => UtcDateTime::class];
     }
 }

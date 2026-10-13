@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\UtcDateTime;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,7 +23,7 @@ class VmNetworkBillingPeriod extends Model
     protected function casts(): array
     {
         return [
-            'period_start' => 'datetime', 'period_end' => 'datetime', 'policy_snapshot' => 'array',
+            'period_start' => UtcDateTime::class, 'period_end' => UtcDateTime::class, 'policy_snapshot' => 'array',
             'included_bytes' => 'integer', 'price_per_unit' => 'integer', 'price_unit_bytes' => 'integer',
             'ingress_bytes' => 'integer', 'egress_bytes' => 'integer', 'rated_bytes' => 'integer',
             'billable_bytes' => 'integer', 'accrued_amount' => 'integer',
