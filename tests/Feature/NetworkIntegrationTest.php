@@ -10,7 +10,10 @@ use App\Models\UsageAccrual;
 use App\Models\User;
 use App\Models\VirtualMachine;
 use App\Models\VmBundle;
+use App\Services\IpdrClient;
 use App\Services\NetworkUsageIngestionService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -164,6 +167,21 @@ class NetworkIntegrationTest extends TestCase
         $this->assertSame('next-page', $next->payload['cursor']);
         $this->assertSame('completed', $run->fresh()->status);
         Queue::assertPushed(RunNetworkIntegration::class, fn ($job) => $job->runId === $next->id);
+    }
+
+    public function test_busy_ingestion_waits_in_queue_instead_of_failing_a_durable_receipt(): void
+    {
+        $run = NetworkIntegrationRun::create(['kind' => 'delivery', 'payload' => ['items' => [$this->payload()]]]);
+        $service = \Mockery::mock(NetworkUsageIngestionService::class);
+        $service->shouldReceive('receive')->once()->andThrow(new LockTimeoutException);
+        $queued = \Mockery::mock(Job::class);
+        $queued->shouldReceive('release')->once()->with(15);
+        $job = new RunNetworkIntegration($run->id);
+        $job->setJob($queued);
+        $job->handle($service, app(IpdrClient::class));
+        $this->assertSame('queued', $run->fresh()->status);
+        $this->assertNull($run->fresh()->error);
+        $this->assertTrue($job->retryUntil()->isFuture());
     }
 
     private function payload(): array

@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Models\NetworkIntegrationRun;
 use App\Services\IpdrClient;
 use App\Services\NetworkUsageIngestionService;
+use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -16,15 +18,25 @@ class RunNetworkIntegration implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
-    public int $uniqueFor = 600;
+    public int $uniqueFor = 3600;
+
+    public ?int $retryDeadline = null;
 
     public int $timeout = 300;
 
-    public function __construct(public int $runId) {}
+    public function __construct(public int $runId)
+    {
+        $this->retryDeadline = now()->addHour()->timestamp;
+    }
 
     public function uniqueId(): string
     {
         return (string) $this->runId;
+    }
+
+    public function retryUntil(): CarbonImmutable
+    {
+        return CarbonImmutable::createFromTimestamp($this->retryDeadline ?? now()->addHour()->timestamp);
     }
 
     public function backoff(): array
@@ -63,6 +75,9 @@ class RunNetworkIntegration implements ShouldBeUnique, ShouldQueue
                     }
                 }
                 $run->update(['status' => 'completed', 'finished_at' => now()]);
+            } catch (LockTimeoutException $e) {
+                $run->update(['status' => 'queued', 'started_at' => null, 'error' => null]);
+                $this->release(15);
             } catch (\Throwable $e) {
                 $run->update(['status' => 'failed', 'error' => $e->getMessage(), 'finished_at' => now()]);
                 throw $e;
