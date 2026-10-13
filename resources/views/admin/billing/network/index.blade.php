@@ -36,7 +36,7 @@
 </tr>@empty<tr><td colspan="5" class="px-5 py-12 text-center text-slate-500">ماشین فعالی موجود نیست.</td></tr>@endforelse</tbody></table></div><div class="border-t border-slate-100 px-5 py-4">{{ $machines->links() }}</div></section>
         <aside class="rounded-2xl border border-slate-200 bg-white p-5"><h2 class="font-black text-slate-950">سلامت دریافت داده</h2><div class="mt-5 space-y-4 text-sm"><div class="flex justify-between"><span class="text-slate-500">آخرین موفقیت</span><b dir="ltr">{{ $checkpoint?->last_succeeded_at?->diffForHumans() ?? 'هرگز' }}</b></div><div class="flex justify-between"><span class="text-slate-500">جدیدترین باکت</span><b dir="ltr">{{ $stats['latest'] ? date('Y-m-d H:i', strtotime($stats['latest'])) : 'بدون داده' }}</b></div><div class="flex justify-between"><span class="text-slate-500">آخرین خطا</span><b class="max-w-48 truncate text-red-600">{{ $checkpoint?->last_error ?: 'ندارد' }}</b></div></div>
 @adminRoute('admin.billing.network.ipdr')
-<a href="{{ route('admin.billing.network.ipdr') }}" class="mt-6 flex justify-center rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white">مدیریت اتصال</a>
+<a href="{{ route('admin.billing.network.ipdr') }}" class="mt-6 flex justify-center rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white">وضعیت همگام‌سازی</a>
 @endadminRoute
 </aside>
     </div>

@@ -1,7 +1,7 @@
 <div class="mb-6 flex flex-wrap gap-2">
     @foreach([
         ['route' => 'admin.billing.network.index', 'label' => 'نمای کلی'],
-        ['route' => 'admin.billing.network.ipdr', 'label' => 'اتصال IPDR'],
+        ['route' => 'admin.billing.network.ipdr', 'label' => 'همگام‌سازی شبکه'],
         ['route' => 'admin.billing.network.exceptions', 'label' => 'استثناها'],
         ['route' => 'admin.billing.network.reconciliation', 'label' => 'تطبیق'],
     ] as $item)

@@ -1,15 +1,20 @@
 <?php
 
 use App\Http\Controllers\Admin\ProxmoxServerController;
+use App\Http\Controllers\Api\IpdrDeliveryController;
 use App\Http\Controllers\Api\MeteringInventoryController;
 use App\Http\Controllers\Api\VirtualMachineController;
 use App\Http\Controllers\Api\WalletController;
+use App\Http\Middleware\IpdrIntegrationAuth;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('internal/v1/metering/inventory')->middleware(['metering.inventory.auth', 'throttle:120,1'])->group(function (): void {
     Route::get('/', [MeteringInventoryController::class, 'changes']);
     Route::get('/snapshot', [MeteringInventoryController::class, 'snapshot']);
 });
+
+Route::post('internal/v1/metering/usage', IpdrDeliveryController::class)
+    ->middleware([IpdrIntegrationAuth::class, 'throttle:120,1']);
 
 Route::prefix('v1')->middleware(['api.audit', 'auth:sanctum', 'throttle:60,1'])->group(function (): void {
     Route::prefix('projects/{project}/wallet')->middleware('abilities:wallet:read')->group(function (): void {

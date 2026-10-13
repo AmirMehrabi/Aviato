@@ -36,6 +36,11 @@ class IpdrClient
         ]))->throw()->json();
     }
 
+    public function health(): array
+    {
+        return $this->request()->get('/api/v1/integration/status')->throw()->json();
+    }
+
     private function request(): PendingRequest
     {
         $url = rtrim((string) config('services.ipdr.url'), '/');

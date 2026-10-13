@@ -3,13 +3,18 @@
 namespace App\Services;
 
 use App\Models\NetworkIngestionCheckpoint;
+use App\Models\NetworkIntegrationRun;
 use App\Models\NetworkMeterAssignment;
 use App\Models\NetworkUsageBucket;
 use App\Models\VirtualMachine;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class NetworkUsageIngestionService
@@ -17,20 +22,50 @@ class NetworkUsageIngestionService
     public function __construct(private readonly IpdrClient $client, private readonly NetworkUsageRatingService $rating) {}
 
     /** @return array{pages:int,received:int,changed:int,rated:int} */
-    public function sync(?string $from = null, ?string $to = null, int $maxPages = 100): array
+    public function sync(?string $from = null, ?string $to = null, int $maxPages = 100, ?string $backfillCursor = null): array
+    {
+        return Cache::lock('network-usage:'.config('services.ipdr.source', 'ipdr'), 600)->block(3,
+            fn () => $this->syncUnlocked($from, $to, $maxPages, $backfillCursor));
+    }
+
+    private function syncUnlocked(?string $from, ?string $to, int $maxPages, ?string $backfillCursor): array
     {
         $source = (string) config('services.ipdr.source', 'ipdr');
         $checkpoint = NetworkIngestionCheckpoint::query()->firstOrCreate(['source' => $source]);
-        $cursor = $from || $to ? null : $checkpoint->cursor;
+        $cursor = $from || $to ? $backfillCursor : $checkpoint->cursor;
         $stats = ['pages' => 0, 'received' => 0, 'changed' => 0, 'rated' => 0];
         $checkpoint->forceFill(['last_attempted_at' => now(), 'last_error' => null])->save();
 
         try {
             do {
-                $page = $this->client->buckets($cursor, 500, $from, $to);
+                try {
+                    $page = $this->client->buckets($cursor, 500, $cursor ? null : $from, $cursor ? null : $to);
+                } catch (RequestException $e) {
+                    if ($from || $to || $e->response->json('error.code') !== 'INVALID_CURSOR') {
+                        throw $e;
+                    }
+                    $cursor = null;
+                    $stats['recovered_cursor'] = true;
+                    $page = $this->client->buckets(null, 500);
+                }
                 foreach ($page['items'] as $payload) {
                     $stats['received']++;
-                    $bucket = $this->ingest($source, $payload);
+                    try {
+                        $bucket = $this->ingest($source, $payload);
+                    } catch (ValidationException|RuntimeException $e) {
+                        if ($e instanceof QueryException) {
+                            throw $e;
+                        }
+                        $items = [$payload];
+                        $batchId = hash('sha256', json_encode($items, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+                        NetworkIntegrationRun::firstOrCreate(['batch_id' => $batchId], [
+                            'kind' => 'delivery', 'status' => 'completed', 'payload' => ['items' => $items], 'rejected_count' => 1,
+                            'stats' => ['received' => 1, 'changed' => 0, 'rated' => 0],
+                            'errors' => [['index' => 0, 'bucket_id' => is_string($payload['bucket_id'] ?? null) ? mb_substr($payload['bucket_id'], 0, 128) : null, 'message' => $e->getMessage()]], 'finished_at' => now(),
+                        ]);
+
+                        continue;
+                    }
                     if ($bucket) {
                         $stats['changed']++;
                         if ($this->rating->rate($bucket)) {
@@ -49,7 +84,35 @@ class NetworkUsageIngestionService
             throw $e;
         }
 
-        return $stats;
+        return $stats + ['has_more' => (bool) ($page['has_more'] ?? false), 'next_cursor' => $cursor];
+    }
+
+    public function receive(array $items): array
+    {
+        return Cache::lock('network-usage:'.config('services.ipdr.source', 'ipdr'), 600)->block(3, function () use ($items): array {
+            $stats = ['received' => count($items), 'changed' => 0, 'rated' => 0];
+            $errors = [];
+            foreach ($items as $index => $payload) {
+                try {
+                    $bucket = $this->ingest(config('services.ipdr.source', 'ipdr'), $payload);
+                    if ($bucket) {
+                        $stats['changed']++;
+                    }
+                } catch (ValidationException|RuntimeException $e) {
+                    if ($e instanceof QueryException) {
+                        throw $e;
+                    }
+                    $errors[] = ['index' => $index, 'bucket_id' => is_string($payload['bucket_id'] ?? null) ? mb_substr($payload['bucket_id'], 0, 128) : null, 'message' => $e->getMessage()];
+
+                    continue;
+                }
+                // Rating runs independently through the existing retry scheduler.
+            }
+            $checkpoint = NetworkIngestionCheckpoint::firstOrCreate(['source' => config('services.ipdr.source', 'ipdr')]);
+            $checkpoint->update(['last_attempted_at' => now(), 'last_succeeded_at' => now(), 'last_error' => null]);
+
+            return compact('stats', 'errors');
+        });
     }
 
     public function ingest(string $source, array $payload): ?NetworkUsageBucket
@@ -76,7 +139,9 @@ class NetworkUsageIngestionService
             throw new RuntimeException('IPDR bucket interval cannot exceed 24 hours.');
         }
 
-        $canonical = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $canonicalPayload = $payload;
+        ksort($canonicalPayload);
+        $canonical = json_encode($canonicalPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         $hash = hash('sha256', $canonical);
 
         return DB::transaction(function () use ($source, $data, $payload, $hash, $start, $end): ?NetworkUsageBucket {
@@ -105,7 +170,7 @@ class NetworkUsageIngestionService
                 return null;
             }
             if ($bucket && (int) $data['revision'] === $bucket->revision) {
-                if (! hash_equals($bucket->payload_hash, $hash)) {
+                if (! hash_equals($bucket->payload_hash, $hash) && $bucket->payload != $payload) {
                     throw new RuntimeException('IPDR sent conflicting content for the same bucket revision.');
                 }
 
@@ -132,6 +197,12 @@ class NetworkUsageIngestionService
 
     /** @return array{examined:int,rated:int} */
     public function retryUnrated(int $limit = 500): array
+    {
+        return Cache::lock('network-usage:'.config('services.ipdr.source', 'ipdr'), 600)->block(3,
+            fn () => $this->retryUnlocked($limit));
+    }
+
+    private function retryUnlocked(int $limit): array
     {
         $stats = ['examined' => 0, 'rated' => 0];
         NetworkUsageBucket::query()->whereIn('processing_status', ['pending', 'quarantined'])->orderBy('id')->limit($limit)->get()->each(function (NetworkUsageBucket $bucket) use (&$stats): void {

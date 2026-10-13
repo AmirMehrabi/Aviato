@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\NotifyIpdrInventory;
 use App\Models\MeteringInventoryAssignment;
 use App\Models\MeteringInventoryChange;
 use App\Models\VirtualMachine;
@@ -109,5 +110,8 @@ class MeteringInventoryService
             'action' => $action,
             'payload' => $payload ?? $this->payload($assignment),
         ]);
+        if (config('services.ipdr.integration_token') && config('services.ipdr.url')) {
+            NotifyIpdrInventory::dispatch()->afterCommit();
+        }
     }
 }

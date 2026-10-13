@@ -4,9 +4,11 @@ use App\Jobs\ApplyVmUpgradeJob;
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Jobs\ReconcilePendingVirtualMachine;
 use App\Jobs\ReconcileWalletRestrictions;
+use App\Jobs\RunNetworkIntegration;
 use App\Models\ApiRequestLog;
 use App\Models\Customer;
 use App\Models\HetznerAccount;
+use App\Models\NetworkIntegrationRun;
 use App\Models\VirtualMachine;
 use App\Models\VmUpgradeOrder;
 use App\Services\HetznerCatalogSyncService;
@@ -23,6 +25,7 @@ use App\Services\VmBackupService;
 use App\Services\WorkspaceWalletAlertDispatcher;
 use App\Services\WorkspaceWalletAlertService;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 use Symfony\Component\Console\Command\Command;
 
@@ -434,8 +437,19 @@ Schedule::command('billing:charge-usage')->hourly();
 Schedule::command('billing:check-wallet-alerts')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('billing:send-wallet-alerts')->everyMinute()->withoutOverlapping();
 Schedule::command('billing:reconcile-wallet-restrictions')->everyMinute()->withoutOverlapping();
-Schedule::command('network-usage:sync')->everyTenMinutes()->withoutOverlapping();
-Schedule::command('network-usage:retry')->hourly()->withoutOverlapping();
+Schedule::call(function (): void {
+    NetworkIntegrationRun::where('status', 'running')->where('started_at', '<', now()->subMinutes(10))->update(['status' => 'failed', 'error' => 'Processing stopped before completion. Retry this run.', 'finished_at' => now()]);
+    Cache::lock('network-integration:enqueue', 10)->get(function (): void {
+        $active = NetworkIntegrationRun::whereIn('status', ['queued', 'running'])->where('created_at', '>', now()->subMinutes(15))->exists();
+        if (! $active && filled(config('services.ipdr.url')) && filled(config('services.ipdr.token'))) {
+            $run = NetworkIntegrationRun::create(['kind' => 'sync']);
+            RunNetworkIntegration::dispatch($run->id);
+        }
+    });
+    NetworkIntegrationRun::where('status', 'queued')->where('created_at', '<', now()->subMinutes(2))->limit(10)->get()->each(
+        fn ($run) => RunNetworkIntegration::dispatch($run->id));
+})->name('network-integration:sync')->everyMinute()->withoutOverlapping();
+Schedule::command('network-usage:retry')->everyMinute()->withoutOverlapping();
 Schedule::command('metering-inventory:refresh')->everyMinute()->withoutOverlapping();
 Schedule::command('api:prune-logs')->dailyAt('00:30');
 Schedule::command('billing:settle-usage')->dailyAt('00:05');

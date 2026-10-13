@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\RunNetworkIntegration;
 use App\Models\NetworkIngestionCheckpoint;
+use App\Models\NetworkIntegrationRun;
 use App\Models\NetworkUsageBucket;
 use App\Models\NetworkUsageRating;
 use App\Models\VirtualMachine;
 use App\Models\VmNetworkBillingPeriod;
 use App\Services\IpdrClient;
+use App\Services\NetworkIntegrationStatus;
 use App\Services\NetworkUsageRatingService;
 use App\Services\NetworkUsageReconciliationService;
 use App\Services\NetworkUsageReportService;
@@ -17,7 +20,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Throwable;
 
@@ -54,6 +57,7 @@ class NetworkBillingController extends Controller
     {
         return view('admin.billing.network.ipdr', [
             'checkpoint' => NetworkIngestionCheckpoint::query()->where('source', config('services.ipdr.source', 'ipdr'))->first(),
+            ...app(NetworkIntegrationStatus::class)->overview(),
             'configured' => filled(config('services.ipdr.url')) && filled(config('services.ipdr.token')),
             'baseUrl' => config('services.ipdr.url'), 'source' => config('services.ipdr.source', 'ipdr'),
         ]);
@@ -61,11 +65,36 @@ class NetworkBillingController extends Controller
 
     public function sync(Request $request): RedirectResponse
     {
-        $data = $request->validate(['from' => ['nullable', 'date'], 'to' => ['nullable', 'date', 'after:from']]);
-        $parameters = array_filter(['--from' => $data['from'] ?? null, '--to' => $data['to'] ?? null]);
-        Artisan::queue('network-usage:sync', $parameters);
+        if (! filled(config('services.ipdr.url')) || ! filled(config('services.ipdr.token'))) {
+            return back()->with('error', 'ابتدا آدرس و توکن اتصال IPDR را تنظیم کنید.');
+        }
+        if ($request->filled('retry_run')) {
+            $data = $request->validate(['retry_run' => ['required', 'integer']]);
+            $run = NetworkIntegrationRun::findOrFail($data['retry_run']);
+            if ($run->status === 'failed' || ($run->status === 'completed' && $run->errors)) {
+                $run->update(['status' => 'queued', 'error' => null, 'errors' => null, 'finished_at' => null]);
+                RunNetworkIntegration::dispatch($run->id);
+            }
 
-        return back()->with('status', 'همگام‌سازی IPDR در صف قرار گرفت.');
+            return back()->with('status', 'درخواست پردازش دوباره ثبت شد.');
+        }
+        $data = $request->validate(['from' => ['nullable', 'required_with:to', 'date'], 'to' => ['nullable', 'required_with:from', 'date', 'after:from']]);
+
+        return Cache::lock('network-integration:enqueue', 10)->block(3, function () use ($data) {
+            if (NetworkIntegrationRun::whereIn('status', ['queued', 'running'])->where('created_at', '>', now()->subMinutes(15))->exists()) {
+                return back()->with('status', 'همگام‌سازی قبلی هنوز در حال انجام است؛ وضعیت این صفحه به‌روز می‌شود.');
+            }
+            $payload = [];
+            foreach (['from', 'to'] as $field) {
+                if (! empty($data[$field])) {
+                    $payload[$field] = CarbonImmutable::parse($data[$field], 'Asia/Tehran')->utc()->toIso8601String();
+                }
+            }
+            $run = NetworkIntegrationRun::create(['kind' => $payload ? 'backfill' : 'sync', 'payload' => $payload]);
+            RunNetworkIntegration::dispatch($run->id);
+
+            return back()->with('status', 'همگام‌سازی در صف قرار گرفت. نتیجه و تعداد داده‌های دریافتی در همین صفحه نمایش داده می‌شود.');
+        });
     }
 
     public function testConnection(IpdrClient $ipdr): RedirectResponse
@@ -73,6 +102,12 @@ class NetworkBillingController extends Controller
         try {
             $to = CarbonImmutable::now('UTC');
             $ipdr->summaries($to->subHour()->toIso8601String(), $to->toIso8601String());
+
+            try {
+                NetworkIntegrationRun::create(['kind' => 'check', 'status' => 'completed', 'health' => $ipdr->health(), 'finished_at' => now()]);
+            } catch (Throwable $e) {
+                report($e);
+            }
 
             return back()->with('status', 'اتصال و احراز هویت IPDR با موفقیت آزمایش شد.');
         } catch (Throwable $exception) {
