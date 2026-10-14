@@ -14,11 +14,12 @@ function setup() {
     const status = { textContent: '' };
     const retry = { hidden: true, addEventListener: (_, handler) => { retry.click = handler; } };
     const requests = [];
-    globalThis.document = { querySelectorAll: () => [{
+    const picker = {
         dataset: { url: '/tickets/virtual-machines' },
         closest: () => ({ querySelector: () => customer }),
         querySelector: (selector) => ({ select, '[data-vm-status]': status, '[data-vm-retry]': retry })[selector],
-    }] };
+    };
+    globalThis.document = { querySelectorAll: () => [picker] };
     globalThis.window = { location: { origin: 'https://admin.localhost' } };
     globalThis.Option = class { constructor(text, value) { this.text = text; this.value = value; } };
     globalThis.fetch = (url, options) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject }));
@@ -73,4 +74,21 @@ test('clearing the customer cancels pending results without showing an error', a
     assert.equal(retry.hidden, true);
     assert.equal(select.disabled, true);
     assert.deepEqual(select.options.map((option) => option.value), ['']);
+});
+
+test('SafeLine access failures offer recovery without discarding the form', async () => {
+    const { customer, select, retry, status, requests } = setup();
+    const pending = customer.change();
+    requests[0].resolve({ ok: false, status: 467 });
+    await pending;
+    assert.equal(retry.hidden, false);
+    assert.equal(select.disabled, true);
+    assert.match(status.textContent, /تأیید دسترسی/);
+});
+
+test('repeated initialization does not attach another change handler', () => {
+    const { customer } = setup();
+    const originalHandler = customer.change;
+    initTicketVmPickers();
+    assert.equal(customer.change, originalHandler);
 });

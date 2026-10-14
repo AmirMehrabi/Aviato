@@ -360,6 +360,19 @@ class TicketingTest extends TestCase
             ->assertDontSee($foreignVm->display_name);
     }
 
+    public function test_admin_create_includes_vm_picker_without_requiring_a_rebuilt_bundle(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin, 'admin')->get('https://admin.localhost/tickets/create')
+            ->assertOk()
+            ->assertSee('data-ticket-machine-picker', false)
+            ->assertSee('export function initTicketVmPickers()', false)
+            ->assertSee("customer.addEventListener('change', loadMachines)", false)
+            ->assertSee("document.readyState === 'loading'", false)
+            ->assertSee('rel="manifest" crossorigin="use-credentials"', false);
+    }
+
     public function test_customer_create_only_lists_own_available_virtual_machines(): void
     {
         $customer = Customer::factory()->create();

@@ -1,5 +1,4 @@
 import Alpine from 'alpinejs';
-import { initTicketVmPickers } from './ticket-vm-picker';
 import { walletTopUp } from './wallet-top-up';
 
 window.walletTopUp = walletTopUp;
@@ -43,7 +42,6 @@ window.Chart = Chart;
 window.Alpine = Alpine;
 
 window.addEventListener('DOMContentLoaded', () => {
-    initTicketVmPickers();
     document.querySelectorAll('textarea[data-ticket-editor]').forEach((textarea) => {
         if (textarea.dataset.editorReady) return;
 

@@ -1,5 +1,8 @@
 export function initTicketVmPickers() {
-    document.querySelectorAll('[data-ticket-vm-picker][data-url]').forEach((picker) => {
+    document.querySelectorAll('[data-ticket-machine-picker][data-url]').forEach((picker) => {
+        if (picker.dataset.vmPickerReady) return;
+        picker.dataset.vmPickerReady = 'true';
+
         const customer = picker.closest('form').querySelector('[data-ticket-customer]');
         const select = picker.querySelector('select');
         const status = picker.querySelector('[data-vm-status]');
@@ -35,6 +38,7 @@ export function initTicketVmPickers() {
                     headers: { Accept: 'application/json' },
                     cache: 'no-store',
                 });
+                if (response.status === 467) throw new Error('Access verification required');
                 if (!response.ok) throw new Error('Unable to load virtual machines');
                 const data = await response.json();
                 if (!Array.isArray(data.virtual_machines)) throw new Error('Invalid response');
@@ -51,7 +55,9 @@ export function initTicketVmPickers() {
                     : (hadSelection ? 'انتخاب قبلی پاک شد. در صورت نیاز، ماشین مجازی مشتری جدید را انتخاب کنید.' : 'ماشین‌های مجازی مشتری آماده انتخاب هستند. انتخاب اختیاری است.');
             } catch (error) {
                 if (activeRequest !== request) return;
-                status.textContent = 'دریافت ماشین‌های مجازی انجام نشد. دوباره تلاش کنید یا تیکت را بدون ماشین مجازی ثبت کنید.';
+                status.textContent = error.message === 'Access verification required'
+                    ? 'برای دریافت ماشین‌های مجازی، تأیید دسترسی سایت لازم است. پس از تأیید دسترسی در یک زبانه دیگر، دوباره تلاش کنید؛ متن تیکت در این صفحه حفظ می‌شود.'
+                    : 'دریافت ماشین‌های مجازی انجام نشد. دوباره تلاش کنید یا تیکت را بدون ماشین مجازی ثبت کنید.';
                 retry.hidden = false;
             } finally {
                 clearTimeout(timeout);
