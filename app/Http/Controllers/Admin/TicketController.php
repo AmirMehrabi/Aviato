@@ -96,15 +96,31 @@ class TicketController extends Controller
 
     public function create(Request $request): View
     {
-        $customerId = (int) $request->query('customer_id', 0);
+        $customerId = (int) $request->old('customer_id', $request->query('customer_id', 0));
+        $selectedCustomer = $customerId ? Customer::query()->find($customerId) : null;
 
         return view('admin.tickets.create', [
             'customers' => Customer::query()->orderBy('name')->get(),
-            'selectedCustomer' => $customerId ? Customer::query()->find($customerId) : null,
+            'selectedCustomer' => $selectedCustomer,
+            'virtualMachines' => $selectedCustomer?->virtualMachines()->notDeleted()->orderBy('name')->get() ?? collect(),
             'categories' => TicketCategory::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'priorities' => Ticket::priorities(),
             'agents' => User::query()->supportAgents()->orderBy('name')->get(),
         ]);
+    }
+
+    public function virtualMachines(Request $request): JsonResponse
+    {
+        $data = $request->validate(['customer_id' => ['required', 'integer', 'exists:customers,id']]);
+        $customer = Customer::query()->findOrFail($data['customer_id']);
+
+        return response()->json([
+            'virtual_machines' => $customer->virtualMachines()->notDeleted()->orderBy('name')->get()
+                ->map(fn ($vm) => [
+                    'id' => $vm->id,
+                    'label' => $vm->display_name.($vm->ip_address ? ' — '.$vm->ip_address : ''),
+                ]),
+        ])->header('Cache-Control', 'no-store');
     }
 
     public function store(Request $request): RedirectResponse

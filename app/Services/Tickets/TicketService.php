@@ -156,7 +156,7 @@ class TicketService
             return null;
         }
 
-        return $customer->virtualMachines()->whereKey($virtualMachineId)->firstOrFail();
+        return $customer->virtualMachines()->notDeleted()->whereKey($virtualMachineId)->firstOrFail();
     }
 
     private function nextNumber(): string

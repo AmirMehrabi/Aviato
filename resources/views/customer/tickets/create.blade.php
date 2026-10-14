@@ -55,14 +55,7 @@
 
     <aside class="space-y-4">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-            <h2 class="font-black text-slate-950">سرویس مرتبط</h2>
-            <p class="mt-2 text-xs leading-6 text-slate-500">انتخاب سرویس اختیاری است، اما به تیم پشتیبانی کمک می‌کند سریع‌تر بررسی کند.</p>
-            <select name="virtual_machine_id" class="mt-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">
-                <option value="">بدون سرویس</option>
-                @foreach($virtualMachines as $vm)
-                    <option value="{{ $vm->id }}" @selected(old('virtual_machine_id') == $vm->id) dir="ltr">{{ $vm->display_name }} - {{ $vm->ip_address ?: 'no-ip' }}</option>
-                @endforeach
-            </select>
+            @include('tickets.partials.virtual-machine-select', ['dynamic' => false, 'hasCustomer' => true])
         </section>
         <button class="w-full rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ثبت تیکت</button>
         <a href="{{ route('customer.tickets.index', [], false) }}" class="block rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-black text-slate-700">بازگشت</a>

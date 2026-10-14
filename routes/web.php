@@ -186,6 +186,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->only(['index', 'edit', 'update'])
             ->names('admin.infrastructure-locations');
 
+        Route::get('tickets/virtual-machines', [AdminTicketController::class, 'virtualMachines'])->name('admin.tickets.virtual-machines');
         Route::post('tickets/{ticket}/reply', [AdminTicketController::class, 'reply'])->name('admin.tickets.reply');
         Route::post('tickets/{ticket}/seen', [AdminTicketController::class, 'seen'])->name('admin.tickets.seen');
         Route::patch('tickets/{ticket}/assignment', [AdminTicketController::class, 'assignment'])->name('admin.tickets.assignment');

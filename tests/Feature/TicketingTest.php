@@ -309,6 +309,94 @@ class TicketingTest extends TestCase
         $this->assertSame(0, $ticket->events()->count());
     }
 
+    public function test_admin_vm_lookup_only_returns_selected_customers_available_machines(): void
+    {
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $vm = $this->vmFor($customer);
+        $vm->update(['display_name' => 'Production server', 'ip_address' => '192.0.2.10']);
+        $deleted = $this->vmFor($customer);
+        $deleted->update(['status' => VirtualMachine::STATUS_DELETED]);
+        $this->vmFor(Customer::factory()->create());
+
+        $this->actingAs($admin, 'admin')
+            ->getJson('https://admin.localhost/tickets/virtual-machines?customer_id='.$customer->id)
+            ->assertOk()
+            ->assertExactJson(['virtual_machines' => [
+                ['id' => $vm->id, 'label' => 'Production server — 192.0.2.10'],
+            ]]);
+
+        $emptyCustomer = Customer::factory()->create();
+        $this->getJson('https://admin.localhost/tickets/virtual-machines?customer_id='.$emptyCustomer->id)
+            ->assertOk()->assertExactJson(['virtual_machines' => []]);
+        $this->getJson('https://admin.localhost/tickets/virtual-machines')
+            ->assertRedirect()->assertSessionHasErrors('customer_id');
+    }
+
+    public function test_vm_lookup_requires_admin_authentication(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->actingAs($customer, 'customer')
+            ->getJson('https://admin.localhost/tickets/virtual-machines?customer_id='.$customer->id)
+            ->assertRedirect('https://admin.localhost/login');
+    }
+
+    public function test_admin_create_restores_customer_and_vm_after_validation_error(): void
+    {
+        $admin = User::factory()->create();
+        $first = Customer::factory()->create();
+        $customer = Customer::factory()->create();
+        $vm = $this->vmFor($customer);
+        $foreignVm = $this->vmFor($first);
+
+        $this->actingAs($admin, 'admin')->withSession(['_old_input' => [
+            'customer_id' => $customer->id,
+            'virtual_machine_id' => $vm->id,
+        ]])->get('https://admin.localhost/tickets/create?customer_id='.$first->id)
+            ->assertOk()
+            ->assertViewHas('selectedCustomer', fn ($selected) => $selected->id === $customer->id)
+            ->assertViewHas('virtualMachines', fn ($machines) => $machines->modelKeys() === [$vm->id])
+            ->assertSee('value="'.$vm->id.'" selected', false)
+            ->assertDontSee($foreignVm->display_name);
+    }
+
+    public function test_customer_create_only_lists_own_available_virtual_machines(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vmFor($customer);
+        $deleted = $this->vmFor($customer);
+        $deleted->update(['deleted_at' => now()]);
+        $this->vmFor(Customer::factory()->create());
+
+        $this->actingAs($customer, 'customer')->get('https://cp.localhost/tickets/create')
+            ->assertOk()
+            ->assertViewHas('virtualMachines', fn ($machines) => $machines->modelKeys() === [$vm->id])
+            ->assertSee('بدون ماشین مجازی');
+    }
+
+    public function test_admin_can_link_selected_customers_vm_but_cannot_link_foreign_vm(): void
+    {
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $vm = $this->vmFor($customer);
+        $payload = [
+            'customer_id' => $customer->id,
+            'ticket_category_id' => TicketCategory::query()->firstOrFail()->id,
+            'virtual_machine_id' => $vm->id,
+            'subject' => 'Related server',
+            'priority' => Ticket::PRIORITY_NORMAL,
+            'body' => 'Please investigate this server.',
+        ];
+
+        $this->actingAs($admin, 'admin')->post('https://admin.localhost/tickets', $payload)->assertRedirect();
+        $this->assertDatabaseHas('tickets', ['customer_id' => $customer->id, 'virtual_machine_id' => $vm->id]);
+        $payload['virtual_machine_id'] = $this->vmFor(Customer::factory()->create())->id;
+        $this->post('https://admin.localhost/tickets', $payload)->assertNotFound();
+        $vm->update(['status' => VirtualMachine::STATUS_DELETED]);
+        $payload['virtual_machine_id'] = $vm->id;
+        $this->post('https://admin.localhost/tickets', $payload)->assertNotFound();
+    }
+
     private function vmFor(Customer $customer): VirtualMachine
     {
         return VirtualMachine::query()->create([
