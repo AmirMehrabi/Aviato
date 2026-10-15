@@ -10,3 +10,4 @@ deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl update
 deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl restart aviato-horizon\:*
 deploy ALL=(root) NOPASSWD: /usr/bin/supervisorctl restart aviato-scheduler\:*
 deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.5-fpm
+deploy ALL=(aviato) NOPASSWD: /usr/bin/php /var/www/html/aviato/current/artisan horizon:terminate

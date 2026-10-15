@@ -114,7 +114,7 @@ task('supervisor:deploy', function () {
         'aviato-queue-upgrades.conf',
     ];
 
-    run('cd {{release_path}} && php artisan horizon:terminate');
+    run('sudo -n -u aviato /usr/bin/php /var/www/html/aviato/current/artisan horizon:terminate');
 
     foreach ($legacyPrograms as $program) {
         run('sudo -n rm -f '.$supervisorDir.'/'.$program);
@@ -136,6 +136,9 @@ task('supervisor:deploy', function () {
 });
 
 after('deploy:success', 'supervisor:deploy');
+
+// Horizon is terminated above as its owning user; deploy cannot signal aviato's PIDs.
+task('artisan:reload', artisan('reload --except=queue', ['min' => '12.41']));
 
 task('php-fpm:reload', function () {
     run('sudo -n /usr/bin/systemctl reload php8.5-fpm');

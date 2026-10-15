@@ -50,6 +50,8 @@ prioritized from measured query counts and slow queries.
 - Nginx: compression for text assets and immutable caching under `/build/assets/`.
 - Existing application cache, session and queue connections remain unchanged.
   `PORTAL_CACHE_STORE=portal` selects Redis for the expensive presentation data.
+- Graceful Horizon termination runs as `aviato`, its owning user, using the narrow
+  sudoers rule in `ops/sudoers/aviato-deploy`; `deploy` cannot signal those PIDs.
 - Baseline production finance summary: 13 SQL queries per call, approximately
   20–24 ms after the initial invocation (CLI service benchmark, not HTTP latency).
 
