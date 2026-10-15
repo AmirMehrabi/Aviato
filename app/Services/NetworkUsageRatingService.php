@@ -26,7 +26,7 @@ class NetworkUsageRatingService
                 return false;
             }
 
-            $vm = VirtualMachine::query()->with(['bundle', 'customer', 'project.owner'])->findOrFail($bucket->virtual_machine_id);
+            $vm = VirtualMachine::query()->with(['bundle', 'customer', 'project.owner'])->lockForUpdate()->findOrFail($bucket->virtual_machine_id);
             $policy = $this->policies->effective($vm);
             if (! $policy['enabled']) {
                 $bucket->forceFill(['processing_status' => 'ignored', 'processing_error' => 'Network accounting is disabled.', 'rated_at' => now()])->save();
@@ -40,6 +40,11 @@ class NetworkUsageRatingService
                 $bucket->forceFill(['processing_status' => 'quarantined', 'processing_error' => 'Bucket crosses a billing month boundary.'])->save();
 
                 return false;
+            }
+
+            $adjustments = app(NetworkBillingPolicyAdjustmentService::class);
+            if ($adjustments->needsRefresh($period, $policy)) {
+                $period = $adjustments->synchronize($period);
             }
 
             $totals = NetworkUsageBucket::query()

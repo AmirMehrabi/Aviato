@@ -124,7 +124,7 @@
 @if($vm->exists)
 <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
     <h2 class="font-black text-slate-900">بازنویسی حسابداری شبکه</h2>
-    <p class="mt-1 text-xs text-slate-500">مقدار خالی یعنی ارث‌بری از باندل. تغییرات روی دوره‌ای که قبلاً snapshot شده اثر بازگشتی ندارد.</p>
+    <p class="mt-1 text-xs text-slate-500">مقدار خالی یعنی ارث‌بری از باندل. تعرفه، سهمیه و جهت مصرف روی دوره جاری با ثبت اصلاح مالی اعمال می‌شوند؛ دوره‌های گذشته تغییر نمی‌کنند. منطقه زمانی جدید از دوره بعد اعمال می‌شود.</p>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
         <label><span class="text-sm font-black text-slate-700">وضعیت</span><select name="network_accounting_enabled_override" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3"><option value="">ارث‌بری از باندل</option><option value="1" @selected(old('network_accounting_enabled_override', $vm->network_accounting_enabled_override) === true)>فعال</option><option value="0" @selected(old('network_accounting_enabled_override', $vm->network_accounting_enabled_override) === false)>غیرفعال</option></select></label>
         <x-form.input name="network_included_bytes_monthly_override" type="number" label="حجم رایگان (byte)" :value="$vm->network_included_bytes_monthly_override" dir-ltr />

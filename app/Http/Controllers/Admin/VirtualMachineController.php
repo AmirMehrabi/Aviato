@@ -18,6 +18,7 @@ use App\Services\BillingService;
 use App\Services\CloudVmProvisioningService;
 use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
+use App\Services\NetworkBillingPolicyAdjustmentService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBalanceService;
 use App\Services\UsageBillingService;
@@ -31,6 +32,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -347,14 +349,18 @@ class VirtualMachineController extends Controller
 
         $previousIpAddressId = $virtualMachine->ip_address_id;
 
-        $virtualMachine->fill($data);
-        if ($virtualMachine->project_id) {
-            $virtualMachine->loadMissing('project');
-            $virtualMachine->customer_id = $virtualMachine->project?->owner_customer_id ?? $virtualMachine->customer_id;
-        }
-        $this->applyBundleHardware($virtualMachine);
-        $virtualMachine->desired_state = $virtualMachine->desiredStateSnapshot();
-        $virtualMachine->save();
+        DB::transaction(function () use ($virtualMachine, $data, $request): void {
+            VirtualMachine::query()->whereKey($virtualMachine->id)->lockForUpdate()->firstOrFail();
+            $virtualMachine->fill($data);
+            if ($virtualMachine->project_id) {
+                $virtualMachine->loadMissing('project');
+                $virtualMachine->customer_id = $virtualMachine->project?->owner_customer_id ?? $virtualMachine->customer_id;
+            }
+            $this->applyBundleHardware($virtualMachine);
+            $virtualMachine->desired_state = $virtualMachine->desiredStateSnapshot();
+            $virtualMachine->save();
+            app(NetworkBillingPolicyAdjustmentService::class)->refresh($virtualMachine, $request->user('admin'));
+        });
 
         if ($selectedIpAddressId && (int) $selectedIpAddressId !== (int) $previousIpAddressId) {
             try {
@@ -378,12 +384,6 @@ class VirtualMachineController extends Controller
         $data = $request->validate([
             'ip_address_id' => ['required', 'integer', 'exists:ip_addresses,id'],
             'sync_to_proxmox' => ['sometimes', 'boolean'],
-            'network_accounting_enabled_override' => ['nullable', 'boolean'],
-            'network_included_bytes_monthly_override' => ['nullable', 'integer', 'min:0'],
-            'network_overage_price_override' => ['nullable', 'integer', 'min:0'],
-            'network_overage_price_unit_bytes_override' => ['nullable', 'integer', 'min:1'],
-            'network_usage_direction_override' => ['nullable', Rule::in(['ingress', 'egress', 'both'])],
-            'network_billing_timezone_override' => ['nullable', 'timezone'],
         ]);
 
         $syncToProxmox = (bool) ($data['sync_to_proxmox'] ?? true);
@@ -794,7 +794,29 @@ class VirtualMachineController extends Controller
 
     private function validated(Request $request, ?VirtualMachine $vm = null): array
     {
-        return $request->validate([
+        $networkRules = [
+            'network_accounting_enabled_override' => ['nullable', 'boolean'],
+            'network_included_bytes_monthly_override' => ['nullable', 'integer', 'min:0'],
+            'network_overage_price_override' => ['nullable', 'integer', 'min:0'],
+            'network_overage_price_unit_bytes_override' => ['nullable', 'integer', 'min:1'],
+            'network_usage_direction_override' => ['nullable', Rule::in(['ingress', 'egress', 'both'])],
+            'network_billing_timezone_override' => ['nullable', 'timezone'],
+        ];
+        if (! $request->user('admin')->allows('pricing.manage')) {
+            foreach (array_keys($networkRules) as $field) {
+                if ($request->has($field)) {
+                    $value = $request->input($field);
+                    $existing = $vm?->getAttribute($field);
+                    if ($field === 'network_accounting_enabled_override' && $value !== null) {
+                        $value = (bool) $value;
+                    }
+                    // Allow unchanged values submitted by the edit form, including inheritance.
+                    abort_if($value === null ? $existing !== null : ($existing === null || (string) $value !== (string) $existing), 403);
+                }
+            }
+        }
+
+        return $request->validate($networkRules + [
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
             'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'proxmox_server_id' => ['required', 'integer', 'exists:proxmox_servers,id'],
