@@ -7,6 +7,7 @@ use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
 use App\Models\VmDisk;
 use App\Services\BillingService;
+use App\Services\PortalCache;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -33,9 +34,6 @@ class DashboardController extends Controller
         $virtualMachines = $canViewVms
             ? $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks', 'proxmoxServer'])->latest()->get()
             : collect();
-        $billingMachines = $canViewBilling
-            ? VirtualMachine::query()->where('project_id', $activeProject->id)->notDeleted()->with(['bundle', 'disks'])->get()
-            : collect();
         $monthlyCostFor = function (VirtualMachine $vm): int {
             if ($vm->isActionLocked()) {
                 return 0;
@@ -51,7 +49,13 @@ class DashboardController extends Controller
             'pending' => $virtualMachines->where('provisioning_status', VirtualMachine::PROVISION_PENDING)->count(),
             'failed' => $virtualMachines->where('provisioning_status', VirtualMachine::PROVISION_FAILED)->count(),
             'deleting' => $virtualMachines->where('status', VirtualMachine::STATUS_DELETING)->count(),
-            'monthly_spend' => $canViewBilling ? $billingMachines->sum($monthlyCostFor) : 0,
+            'monthly_spend' => $canViewBilling ? app(PortalCache::class)->remember(
+                'customer',
+                'project-monthly:'.$activeProject->id,
+                config('performance.customer_ttl'),
+                fn (): int => (int) VirtualMachine::query()->where('project_id', $activeProject->id)->notDeleted()
+                    ->with(['bundle', 'disks.virtualMachine'])->get()->sum($monthlyCostFor),
+            ) : 0,
         ];
         $invoiceQuery = $canViewBilling
             ? $activeProject->owner->invoices()

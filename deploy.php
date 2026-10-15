@@ -38,8 +38,8 @@ after('deploy:shared', 'deploy:prepare_storage');
 // Used by GitHub Actions or your local computer.
 // This connects to the production server by SSH.
 host('production')
-    ->set('hostname', getenv('AVIATO_DEPLOY_HOST') ?: '172.19.19.6')
-    ->set('port', (int) (getenv('AVIATO_DEPLOY_PORT') ?: 22))
+    ->set('hostname', getenv('AVIATO_DEPLOY_HOST') ?: '5.202.19.100')
+    ->set('port', (int) (getenv('AVIATO_DEPLOY_PORT') ?: 2220))
     ->set('remote_user', 'deploy')
     ->set('deploy_path', '/var/www/html/aviato')
     ->set('branch', 'master');
@@ -66,6 +66,7 @@ task('deploy:verify_release', function () {
     run("grep -Eq '^CACHE_STORE=.+$' {{deploy_path}}/shared/.env || { echo 'Deployment blocked: CACHE_STORE is missing or empty in shared/.env.' >&2; exit 1; }");
     run('cd {{release_path}} && php artisan about --only=environment');
     run('cd {{release_path}} && php artisan migrate:status --no-interaction');
+    run('cd {{release_path}} && php artisan performance:check-cache');
     run('test -f {{release_path}}/public/build/manifest.json');
 });
 
@@ -79,8 +80,12 @@ before('deploy:symlink', 'deploy:remember_current');
 
 task('deploy:healthcheck', function () {
     try {
+        run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
         // Check the local HTTPS vhost with the correct TLS hostname.
         run("curl --fail --silent --show-error --noproxy '*' --max-time 15 --resolve aviato.ir:443:127.0.0.1 https://aviato.ir/up > /dev/null");
+        foreach (['admin.aviato.ir', 'my.aviato.ir'] as $portal) {
+            run("curl --fail --silent --show-error --noproxy '*' --max-time 15 --resolve {$portal}:443:127.0.0.1 https://{$portal}/up > /dev/null");
+        }
         run('rm -f {{deploy_path}}/.dep/previous_current');
     } catch (\Throwable $exception) {
         run('if [ -s {{deploy_path}}/.dep/previous_current ]; then ln -sfn "$(cat {{deploy_path}}/.dep/previous_current)" {{current_path}}; fi');
@@ -126,7 +131,7 @@ task('supervisor:deploy', function () {
 
     run('sudo -n supervisorctl reread');
     run('sudo -n supervisorctl update');
-    run('sudo -n supervisorctl restart aviato-horizon:*');
+    // horizon:terminate lets active jobs finish; Supervisor starts the replacement.
     run('sudo -n supervisorctl restart aviato-scheduler:*');
 });
 
@@ -147,7 +152,5 @@ task('php-fpm:reload', function () {
 //     run('sudo -n nginx -t');
 //     run('sudo -n systemctl reload nginx');
 // });
-
-after('deploy:success', 'php-fpm:reload');
 
 after('deploy:failed', 'deploy:unlock');

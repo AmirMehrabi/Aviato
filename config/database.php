@@ -166,6 +166,18 @@ return [
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
         ],
 
+        // Disposable portal aggregates use a separate Redis instance, not just a database.
+        'portal' => [
+            'host' => env('REDIS_PORTAL_HOST', '127.0.0.1'),
+            'username' => env('REDIS_PORTAL_USERNAME'),
+            'password' => env('REDIS_PORTAL_PASSWORD'),
+            'port' => env('REDIS_PORTAL_PORT', '6380'),
+            'database' => env('REDIS_PORTAL_DB', '0'),
+            'timeout' => 0.5,
+            'read_timeout' => 0.5,
+            'max_retries' => 0,
+        ],
+
         'cache' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),

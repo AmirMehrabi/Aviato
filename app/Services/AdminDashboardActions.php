@@ -37,7 +37,12 @@ class AdminDashboardActions
     public function snapshot(Collection $dismissedKeys, int $page = 1, ?string $category = null, ?User $user = null, bool $hiddenOnly = false, ?string $warningType = null): array
     {
         $queries = $this->issueQueries($user);
-        $counts = collect($queries)->map(fn (Builder $query): int => (clone $query)->count());
+        $counts = collect(app(PortalCache::class)->remember(
+            'admin',
+            'warning-counts:'.($user?->id ?? 'all').':'.implode(',', array_keys($queries)),
+            config('performance.admin_ttl'),
+            fn (): array => collect($queries)->map(fn (Builder $query): int => (clone $query)->count())->all(),
+        ));
         $categoryTypes = match ($category) {
             'servers' => ['server-offline', 'server-sync'],
             'machines' => ['vm-provisioning', 'vm-delete', 'upgrade', 'backup'],

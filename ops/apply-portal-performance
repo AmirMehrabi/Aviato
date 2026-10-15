@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run as root after copying the reviewed templates to a staging directory.
+staging_path="${1:?Supply the staging directory containing redis/, php/ and the Nginx snippets.}"
+backup_path="/var/backups/aviato-performance/$(date -u +%Y%m%dT%H%M%SZ)"
+nginx_site="$(readlink -f /etc/nginx/sites-enabled/aviato.conf)"
+install -d -m 700 "$backup_path"
+cp -a /etc/php/8.5/fpm/pool.d "$backup_path/php-pools"
+cp -a /etc/php/8.5/fpm/conf.d "$backup_path/php-ini"
+cp -a "$nginx_site" "$backup_path/nginx-site.conf"
+cp -a /var/www/html/aviato/shared/.env "$backup_path/environment"
+for config_path in /etc/redis/portal.conf /etc/systemd/system/redis-portal.service /etc/nginx/conf.d/aviato-performance.conf /etc/nginx/snippets/aviato-build-assets.conf; do
+    if [[ -f "$config_path" ]]; then
+        cp -a --parents "$config_path" "$backup_path"
+    fi
+done
+printf 'Configuration backup: %s\n' "$backup_path"
+
+install -m 640 -o root -g redis "$staging_path/redis/portal.conf" /etc/redis/portal.conf
+install -m 644 "$staging_path/redis/redis-portal.service" /etc/systemd/system/redis-portal.service
+systemctl daemon-reload
+systemctl enable --now redis-portal
+test "$(redis-cli -p 6380 ping)" = PONG
+
+install -m 644 "$staging_path/php/99-aviato-performance.ini" /etc/php/8.5/fpm/conf.d/99-aviato-performance.ini
+install -m 644 "$staging_path/php/zz-aviato-performance.conf" /etc/php/8.5/fpm/pool.d/zz-aviato-performance.conf
+php-fpm8.5 -t
+
+install -m 644 "$staging_path/performance.conf" /etc/nginx/conf.d/aviato-performance.conf
+install -m 644 "$staging_path/build-assets.conf" /etc/nginx/snippets/aviato-build-assets.conf
+python3 - "$nginx_site" <<'PY'
+import pathlib
+import sys
+
+site = pathlib.Path(sys.argv[1])
+text = site.read_text()
+include = '    include /etc/nginx/snippets/aviato-build-assets.conf;\n'
+if include not in text:
+    marker = '    location = /favicon.ico'
+    if text.count(marker) != 1:
+        raise SystemExit('Expected one favicon location in the existing TLS vhost; review manually.')
+    site.write_text(text.replace(marker, include + '\n' + marker))
+PY
+nginx -t
+systemctl reload php8.5-fpm
+systemctl reload nginx
+
+for portal_host in aviato.ir admin.aviato.ir my.aviato.ir; do
+    curl --fail --silent --show-error --noproxy '*' --max-time 15 \
+        --resolve "${portal_host}:443:127.0.0.1" "https://${portal_host}/up" >/dev/null
+done
+printf 'Redis portal cache, PHP-FPM and Nginx checks passed.\n'

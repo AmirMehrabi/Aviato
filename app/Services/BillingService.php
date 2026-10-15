@@ -111,9 +111,14 @@ class BillingService
 
     public function customerSummary(int $customerId): array
     {
+        return app(PortalCache::class)->remember('customer', 'customer-summary:'.$customerId, config('performance.customer_ttl'), fn (): array => $this->buildCustomerSummary($customerId));
+    }
+
+    private function buildCustomerSummary(int $customerId): array
+    {
         $vms = VirtualMachine::query()
             ->notDeleted()
-            ->with(['bundle', 'disks'])
+            ->with(['bundle', 'disks.virtualMachine'])
             ->where('customer_id', $customerId)
             ->get();
 
@@ -132,9 +137,14 @@ class BillingService
 
     public function projectSummary(int $projectId): array
     {
+        return app(PortalCache::class)->remember('customer', 'project-summary:'.$projectId, config('performance.customer_ttl'), fn (): array => $this->buildProjectSummary($projectId));
+    }
+
+    private function buildProjectSummary(int $projectId): array
+    {
         $vms = VirtualMachine::query()
             ->notDeleted()
-            ->with(['bundle', 'disks'])
+            ->with(['bundle', 'disks.virtualMachine'])
             ->where('project_id', $projectId)
             ->get();
 

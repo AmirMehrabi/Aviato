@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\UsageSettlement;
 use App\Models\Wallet;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 use Morilog\Jalali\Jalalian;
 
 class AdminDashboardFinance
@@ -18,6 +19,29 @@ class AdminDashboardFinance
     public function __construct(private readonly WalletService $wallets) {}
 
     public function snapshot(int $days, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
+    {
+        $key = implode(':', ['finance', $days, $from?->toIso8601String() ?? today()->toDateString(), $to?->toIso8601String() ?? 'now']);
+        $payload = app(PortalCache::class)->remember('admin', $key, config('performance.admin_ttl'), function () use ($days, $from, $to): array {
+            $snapshot = $this->buildSnapshot($days, $from, $to);
+            $snapshot['from'] = $snapshot['from']->toIso8601String();
+            $snapshot['to'] = $snapshot['to']->toIso8601String();
+            foreach (['collected', 'providers', 'trend'] as $field) {
+                $snapshot[$field] = $snapshot[$field]->all();
+            }
+
+            return $snapshot;
+        });
+        $payload['from'] = Carbon::parse($payload['from']);
+        $payload['to'] = Carbon::parse($payload['to']);
+        foreach (['collected', 'providers', 'trend'] as $field) {
+            $payload[$field] = collect($payload[$field]);
+        }
+        $payload['recent'] = Payment::query()->with('customer')->latest('id')->limit(8)->get();
+
+        return $payload;
+    }
+
+    private function buildSnapshot(int $days, ?CarbonInterface $from, ?CarbonInterface $to): array
     {
         $now = $to?->copy() ?? now();
         $from ??= $now->copy()->subDays($days - 1)->startOfDay();
@@ -128,7 +152,6 @@ class AdminDashboardFinance
                 ->sum('amount'),
             'negative_wallet_count' => (clone $negativeWallets)->count(),
             'negative_wallet_total' => abs((int) (clone $negativeWallets)->sum('balance')),
-            'recent' => Payment::query()->with('customer')->latest('id')->limit(8)->get(),
         ];
     }
 

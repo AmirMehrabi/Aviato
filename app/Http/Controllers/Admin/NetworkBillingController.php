@@ -15,6 +15,7 @@ use App\Services\NetworkIntegrationStatus;
 use App\Services\NetworkUsageRatingService;
 use App\Services\NetworkUsageReconciliationService;
 use App\Services\NetworkUsageReportService;
+use App\Services\PortalCache;
 use App\Services\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -42,13 +43,13 @@ class NetworkBillingController extends Controller
         return view('admin.billing.network.index', [
             'checkpoint' => $checkpoint, 'machines' => $machines, 'reports' => $this->reports, 'wallets' => $this->wallets,
             'statusFilter' => $status,
-            'stats' => [
+            'stats' => app(PortalCache::class)->remember('network', 'network-stats:'.(int) $request->user('admin')->allows('billing.read'), config('performance.admin_ttl'), fn (): array => [
                 'month_bytes' => (int) VmNetworkBillingPeriod::query()->where('period_end', '>', now())->sum('rated_bytes'),
                 'month_amount' => ! $request->user('admin')->allows('billing.read') ? null : (int) VmNetworkBillingPeriod::query()->where('period_end', '>', now())->sum('accrued_amount'),
                 'rated' => NetworkUsageBucket::query()->where('processing_status', 'rated')->count(),
                 'exceptions' => NetworkUsageBucket::query()->whereIn('processing_status', ['quarantined'])->orWhereIn('completeness', ['partial', 'missing'])->count(),
                 'latest' => NetworkUsageBucket::query()->max('interval_end'),
-            ],
+            ]),
             'recentBuckets' => NetworkUsageBucket::query()->with('virtualMachine')->when($status, fn ($q) => $q->where('processing_status', $status))->latest('interval_end')->limit(12)->get(),
         ]);
     }
