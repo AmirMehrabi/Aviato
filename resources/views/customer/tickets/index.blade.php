@@ -22,12 +22,12 @@
 @endphp
 
 <div class="space-y-6">
-    <section class="overflow-hidden rounded-3xl bg-[#031B4E] p-5 text-white shadow-xl shadow-[#031B4E]/10 sm:p-7">
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 text-slate-950">
         <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div class="max-w-2xl">
-                <p class="text-xs font-black text-[#8FB8FF]">مرکز پشتیبانی</p>
-                <h1 class="mt-2 text-2xl font-black leading-9 sm:text-3xl">درخواست‌ها و پاسخ‌ها، یک‌جا و روشن</h1>
-                <p class="mt-2 text-sm font-bold leading-7 text-[#C7D4EA]">پاسخ‌های جدید را سریع پیدا کنید، وضعیت پیگیری را ببینید و گفتگو را از همان تیکت ادامه دهید.</p>
+
+                <h1 class="mt-2 text-2xl font-black leading-9 sm:text-3xl">تیکت‌های پشتیبانی</h1>
+                <p class="mt-2 text-sm font-bold leading-7 text-slate-500">پاسخ‌های جدید را سریع پیدا کنید، وضعیت پیگیری را ببینید و گفتگو را از همان تیکت ادامه دهید.</p>
             </div>
             <a href="{{ route('customer.tickets.create', [], false) }}" class="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#0069FF]/25 transition-colors duration-150 hover:bg-[#0050D0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.96]">
                 <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
@@ -42,9 +42,9 @@
                 ['label' => 'در حال پیگیری', 'value' => $ticketCounts['open'], 'url' => route('customer.tickets.index', ['status' => \App\Models\Ticket::STATUS_OPEN], false)],
                 ['label' => 'بسته‌شده', 'value' => $ticketCounts['closed'], 'url' => route('customer.tickets.index', ['status' => \App\Models\Ticket::STATUS_CLOSED], false)],
             ] as $stat)
-                <a href="{{ $stat['url'] }}" class="rounded-2xl bg-white/10 p-3.5 ring-1 ring-white/10 transition-colors duration-150 hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                <a href="{{ $stat['url'] }}" class="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200 transition-colors duration-150 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
                     <span class="block text-2xl font-black">{{ number_format($stat['value']) }}</span>
-                    <span class="mt-1 block text-xs font-bold text-[#B8C9E7]">{{ $stat['label'] }}</span>
+                    <span class="mt-1 block text-xs font-bold text-slate-500">{{ $stat['label'] }}</span>
                 </a>
             @endforeach
         </div>

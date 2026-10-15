@@ -11,8 +11,14 @@
 @php($activeNav = 'tickets')
 
 @section('content')
-<form method="POST" action="{{ route('customer.tickets.store', [], false) }}" enctype="multipart/form-data" class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+<form method="POST" action="{{ route('customer.tickets.store', [], false) }}" enctype="multipart/form-data" class="mx-auto max-w-4xl space-y-5">
     @csrf
+    @if($errors->any())
+        <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-7 text-red-800" role="alert">
+            <p class="font-bold">تیکت ثبت نشد. موارد زیر را بررسی کنید:</p>
+            <ul class="list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+        </div>
+    @endif
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
         <div class="grid gap-4 md:grid-cols-2">
             <label class="block">
@@ -33,6 +39,9 @@
             </label>
         </div>
 
+        <div class="mt-4">
+            @include('tickets.partials.virtual-machine-select', ['dynamic' => false, 'hasCustomer' => true])
+        </div>
         <label class="mt-4 block">
             <span class="text-sm font-black text-slate-700">موضوع</span>
             <input name="subject" value="{{ old('subject') }}" required maxlength="255" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">
@@ -43,22 +52,15 @@
             <textarea name="body" rows="12" data-ticket-editor class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">{{ old('body') }}</textarea>
         </label>
 
-        <label class="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-7 text-center transition hover:border-[#B8D6FF] hover:bg-[#F8FBFF]">
-            <span class="grid size-12 place-items-center rounded-xl bg-white text-[#0069FF] shadow-sm">
-                <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.82-2.82l8.48-8.49" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </span>
-            <span class="mt-3 text-sm font-black text-slate-800">افزودن پیوست</span>
-            <span class="mt-1 text-xs font-bold text-slate-500">PDF، تصویر، لاگ، آرشیو و سندهای مرتبط با درخواست پشتیبانی</span>
-            <input type="file" name="attachments[]" multiple data-ticket-attachments accept="image/*,.pdf,.txt,.log,.csv,.json,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx" class="sr-only">
+        <label class="mt-4 block text-xs font-bold text-slate-500">پیوست (اختیاری) · حداکثر ۵ فایل، هر فایل ۲۰ مگابایت
+            <input type="file" name="attachments[]" multiple data-ticket-attachments class="mt-2 block w-full text-xs file:me-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2">
         </label>
     </section>
 
-    <aside class="space-y-4">
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-            @include('tickets.partials.virtual-machine-select', ['dynamic' => false, 'hasCustomer' => true])
-        </section>
-        <button class="w-full rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ثبت تیکت</button>
+    <div class="flex flex-wrap items-center gap-3">
+
+        <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ثبت تیکت</button>
         <a href="{{ route('customer.tickets.index', [], false) }}" class="block rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-black text-slate-700">بازگشت</a>
-    </aside>
+    </div>
 </form>
 @endsection

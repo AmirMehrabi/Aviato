@@ -51,13 +51,12 @@ window.addEventListener('DOMContentLoaded', () => {
         toolbar.className = 'ticket-composer-toolbar flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-2 py-2';
         const container = document.createElement('div');
         container.className = 'ticket-editor bg-white';
-        textarea.classList.add('hidden');
         textarea.after(wrapper);
         wrapper.append(toolbar, container);
 
         const editor = new Editor({
             el: container,
-            height: '320px',
+            height: textarea.closest('#ticket-reply') ? '220px' : '300px',
             initialEditType: 'wysiwyg',
             previewStyle: 'tab',
             initialValue: textarea.value || '',
@@ -65,6 +64,16 @@ window.addEventListener('DOMContentLoaded', () => {
             toolbarItems: [],
             hideModeSwitch: true,
         });
+
+        // The enhanced editor owns validation; a hidden required textarea blocks native submission.
+        textarea.required = false;
+        textarea.classList.add('hidden');
+        const content = container.querySelector('[contenteditable="true"]');
+        content?.setAttribute('aria-label', 'متن پیام');
+        content?.setAttribute('dir', 'auto');
+
+        const syncBody = () => { textarea.value = editor.getMarkdown(); };
+        editor.on('change', syncBody);
 
         const commands = [
             { label: 'ضخیم', title: 'متن ضخیم', command: 'bold', className: 'font-black' },
@@ -89,15 +98,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
         const attachmentInput = textarea.form?.querySelector('[data-ticket-attachments]');
         if (attachmentInput) {
-            const attachButton = document.createElement('button');
-            attachButton.type = 'button';
-            attachButton.title = 'افزودن فایل';
-            attachButton.setAttribute('aria-label', 'افزودن فایل');
-            attachButton.className = 'mr-auto inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#B8D6FF] bg-white px-3 text-xs font-black text-[#0069FF] transition-colors duration-150 hover:bg-[#EBF3FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]';
-            attachButton.textContent = 'افزودن فایل';
-            attachButton.addEventListener('click', () => attachmentInput.click());
-            toolbar.append(attachButton);
-
             const fileSummary = document.createElement('div');
             fileSummary.className = 'ticket-attachment-summary hidden border-t border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600';
             wrapper.append(fileSummary);
@@ -109,9 +109,21 @@ window.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        textarea.form?.addEventListener('submit', () => {
-            textarea.value = editor.getMarkdown();
-        });
+        const validationMessage = document.createElement('p');
+        validationMessage.className = 'hidden mt-2 text-sm text-red-700';
+        validationMessage.setAttribute('role', 'alert');
+        validationMessage.textContent = 'لطفاً متن پیام را وارد کنید (حداقل ۳ حرف).';
+        wrapper.after(validationMessage);
+        textarea.form?.addEventListener('submit', (event) => {
+            syncBody();
+            const invalid = editor.getHTML().replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length < 3;
+            validationMessage.classList.toggle('hidden', !invalid);
+            if (invalid) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                editor.focus();
+            }
+        }, true);
 
         textarea.dataset.editorReady = '1';
     });

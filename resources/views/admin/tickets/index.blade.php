@@ -111,8 +111,7 @@ document.addEventListener('alpine:init', () => {
 
 
 @adminRoute('admin.tickets.index')
-<form x-ref="filters" @submit.prevent method="GET" action="{{ route('admin.tickets.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
-        @include('admin.partials.dashboard-date-filter')
+<form x-ref="filters" @submit.prevent="fetchNow()" method="GET" action="{{ route('admin.tickets.index') }}" class="sticky top-24 z-10 mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div class="relative flex-1">
                 <svg class="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke-linecap="round"/></svg>
@@ -131,6 +130,16 @@ document.addEventListener('alpine:init', () => {
                     <option value="{{ $key }}" @selected(($filters['status'] ?? '') === $key)>{{ $label }}</option>
                 @endforeach
             </select>
+
+
+@adminRoute('admin.tickets.index')
+<a href="{{ route('admin.tickets.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
+@endadminRoute
+
+        </div>
+        <details class="mt-3 border-t border-slate-100 pt-3" @if(!empty($filters['priority']) || !empty($filters['ticket_category_id']) || !empty($filters['assigned_user_id']) || !empty($filters['from']) || !empty($filters['to'])) open @endif>
+            <summary class="cursor-pointer text-xs font-bold text-slate-600">فیلترهای بیشتر · تاریخ، اولویت و مسئول</summary>
+            <div class="mt-3 grid gap-3 sm:grid-cols-3">
             <select name="priority" @change="fetchNow()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
                 <option value="">اولویت</option>
                 @foreach($priorities as $key => $label)
@@ -149,12 +158,9 @@ document.addEventListener('alpine:init', () => {
                     <option value="{{ $id }}" @selected(($filters['assigned_user_id'] ?? '') == $id)>{{ $name }}</option>
                 @endforeach
             </select>
-
-@adminRoute('admin.tickets.index')
-<a href="{{ route('admin.tickets.index') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:bg-slate-50">پاک کردن</a>
-@endadminRoute
-
-        </div>
+            </div>
+            @include('admin.partials.dashboard-date-filter')
+        </details>
     </form>
 @endadminRoute
 

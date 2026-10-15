@@ -27,98 +27,27 @@
 
 @section('content')
 <div class="space-y-5" data-ticket-seen-url="{{ route('customer.tickets.seen', $ticket, false) }}">
-    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-        <div class="border-b border-slate-200 bg-[#031B4E] p-5 text-white">
-            <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-black text-white ring-1 ring-white/15" dir="ltr">{{ $ticket->number }}</span>
-                        <span class="rounded-lg px-3 py-1.5 text-xs font-black ring-1 {{ $statusClasses[$ticket->status] ?? 'bg-slate-100 text-slate-700 ring-slate-200' }}">{{ $statuses[$ticket->status] ?? $ticket->status }}</span>
-                        <span class="rounded-lg px-3 py-1.5 text-xs font-black ring-1 {{ $priorityClasses[$ticket->priority] ?? 'bg-slate-100 text-slate-700 ring-slate-200' }}">{{ \App\Models\Ticket::priorities()[$ticket->priority] ?? $ticket->priority }}</span>
-                    </div>
-                    <h1 class="mt-4 text-2xl font-black leading-9">{{ $ticket->subject }}</h1>
-                    <p class="mt-2 text-sm font-bold leading-7 text-[#C7D4EA]">
-                        {{ $ticket->category?->name ?? 'بدون دسته‌بندی' }} · آخرین فعالیت
-                        <span dir="ltr">{{ \App\Support\Jalali::format($ticket->last_activity_at ?? $ticket->created_at) }}</span>
-                    </p>
-                </div>
-                <div class="grid gap-2 sm:grid-cols-2 lg:w-80">
-                    <div class="rounded-xl border border-white/10 bg-white/10 p-3">
-                        <p class="text-[11px] font-black text-[#9DB4DC]">مسئول رسیدگی</p>
-                        <p class="mt-1 truncate text-sm font-black">{{ $ticket->assignee?->name ?? 'در صف تخصیص' }}</p>
-                    </div>
-                    <div class="rounded-xl border border-white/10 bg-white/10 p-3">
-                        <p class="text-[11px] font-black text-[#9DB4DC]">تیم</p>
-                        <p class="mt-1 truncate text-sm font-black">{{ $ticket->supportTeam?->name ?? 'پشتیبانی' }}</p>
-                    </div>
-                </div>
+    @if(session('status'))
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ session('status') }}</div>
+    @endif
+    <a href="{{ route('customer.tickets.index', [], false) }}" class="inline-flex min-h-10 items-center text-sm font-bold text-slate-600 hover:text-[#0069FF]">→ بازگشت به تیکت‌ها</a>
+    <section class="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5">
+        <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span class="font-bold text-slate-500" dir="ltr">{{ $ticket->number }}</span>
+                <span class="rounded-full px-2.5 py-1 font-bold ring-1 {{ $statusClasses[$ticket->status] ?? 'bg-slate-100 text-slate-700 ring-slate-200' }}">{{ $statuses[$ticket->status] ?? $ticket->status }}</span>
             </div>
-        </div>
-
-        <div class="grid gap-4 p-5 lg:grid-cols-4">
-            <div class="rounded-xl bg-slate-50 p-4">
-                <p class="text-xs font-black text-slate-500">ثبت شده</p>
-                <p class="mt-2 text-sm font-black text-slate-950" dir="ltr">{{ \App\Support\Jalali::format($ticket->created_at) }}</p>
-            </div>
-            <div class="rounded-xl bg-slate-50 p-4">
-                <p class="text-xs font-black text-slate-500">آخرین پاسخ مشتری</p>
-                <p class="mt-2 text-sm font-black text-slate-950" dir="ltr">{{ $ticket->last_customer_reply_at ? \App\Support\Jalali::format($ticket->last_customer_reply_at) : '—' }}</p>
-            </div>
-            <div class="rounded-xl bg-slate-50 p-4">
-                <p class="text-xs font-black text-slate-500">آخرین پاسخ پشتیبانی</p>
-                <p class="mt-2 text-sm font-black text-slate-950" dir="ltr">{{ $ticket->last_admin_reply_at ? \App\Support\Jalali::format($ticket->last_admin_reply_at) : '—' }}</p>
-            </div>
-            <div class="rounded-xl bg-slate-50 p-4">
-                <p class="text-xs font-black text-slate-500">سرویس مرتبط</p>
-                <p class="mt-2 truncate text-sm font-black text-slate-950" dir="ltr">{{ $ticket->virtualMachine?->name ?? 'بدون سرویس' }}</p>
-            </div>
+            <h1 class="mt-3 break-words text-xl font-black leading-8 text-slate-950">{{ $ticket->subject }}</h1>
+            <p class="mt-2 text-xs text-slate-500">{{ $ticket->category?->name ?? 'پشتیبانی' }} · آخرین فعالیت <span dir="ltr">{{ \App\Support\Jalali::format($ticket->last_activity_at ?? $ticket->created_at) }}</span></p>
         </div>
     </section>
 
     <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <main class="space-y-5">
-            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <h2 class="font-black text-slate-950">گفتگوی پشتیبانی</h2>
-                        <p class="mt-1 text-xs font-bold text-slate-500">پیام‌ها به ترتیب زمان نمایش داده می‌شوند.</p>
-                    </div>
-                    <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-500">{{ $publicMessages->count() }} پیام</span>
-                </div>
-
-                <div class="mt-5 space-y-5">
-                    @forelse($publicMessages as $message)
-                        @php
-                            $isCustomer = $message->author_type === \App\Models\Customer::class;
-                            $bubbleClass = $isCustomer ? 'border-[#B8D6FF] bg-[#F8FBFF]' : 'border-emerald-200 bg-emerald-50';
-                            $avatarClass = $isCustomer ? 'bg-[#0069FF]' : 'bg-[#00A67E]';
-                            $roleBadge = $isCustomer ? 'bg-[#EBF3FF] text-[#0069FF] ring-[#B8D6FF]' : 'bg-emerald-100 text-emerald-700 ring-emerald-200';
-                            $isInitial = $loop->first;
-                        @endphp
-                        <article class="rounded-2xl border p-4 {{ $bubbleClass }}">
-                            <div class="flex items-start gap-3">
-                                <span class="grid size-10 shrink-0 place-items-center rounded-xl text-sm font-black text-white {{ $avatarClass }}">{{ mb_substr($message->author?->name ?? 'س', 0, 1) }}</span>
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex flex-wrap items-center justify-between gap-2">
-                                        <div>
-                                            <p class="font-black text-slate-950">{{ $message->author?->name ?? 'سیستم' }}</p>
-                                            <p class="mt-1 text-xs font-bold text-slate-500" dir="ltr">{{ \App\Support\Jalali::format($message->created_at) }}</p>
-                                        </div>
-                                        <span class="rounded-lg px-2.5 py-1 text-xs font-black ring-1 {{ $roleBadge }}">{{ $isInitial ? 'درخواست اولیه' : ($isCustomer ? 'پاسخ شما' : 'پاسخ پشتیبانی') }}</span>
-                                    </div>
-                                    <div class="ticket-markdown mt-4 text-sm font-semibold leading-8 text-slate-700">{!! $message->renderedBody() !!}</div>
-                                    @include('customer.tickets._attachments', ['message' => $message, 'ticket' => $ticket])
-                                </div>
-                            </div>
-                        </article>
-                    @empty
-                        <div class="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500">هنوز پیامی در این گفتگو ثبت نشده است.</div>
-                    @endforelse
-                </div>
-            </section>
+        <main class="min-w-0 space-y-5">
+            @include('tickets.partials.conversation', ['messages' => $publicMessages, 'portal' => 'customer'])
 
             @if($ticket->status !== \App\Models\Ticket::STATUS_CLOSED)
-                <form method="POST" action="{{ route('customer.tickets.reply', $ticket, false) }}" enctype="multipart/form-data" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60" x-data="{ submitting: false }" @submit="submitting = true">
+                <form id="ticket-reply" method="POST" action="{{ route('customer.tickets.reply', $ticket, false) }}" enctype="multipart/form-data" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60" x-data="{ submitting: false }" @submit="submitting = true">
                     @csrf
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -130,25 +59,22 @@
                     @if($errors->any())
                         <div class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold leading-7 text-red-700" role="alert">پاسخ ارسال نشد. متن پاسخ و فایل‌های پیوست را بررسی کنید.</div>
                     @endif
-                    <div class="mt-4">
+                    @if($errors->any())<ul class="mt-2 list-inside list-disc text-sm leading-7 text-red-700">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif
+                <div class="mt-4">
                         <label for="customer-ticket-reply" class="mb-2 block text-sm font-black text-slate-800">متن پاسخ</label>
                         <textarea id="customer-ticket-reply" name="body" rows="8" required data-ticket-editor class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold" aria-describedby="customer-ticket-reply-help">{{ old('body') }}</textarea>
                         <p id="customer-ticket-reply-help" class="mt-2 text-xs font-bold text-slate-500">شرح دقیق و اطلاعات لازم برای بررسی سریع‌تر را بنویسید.</p>
                     </div>
-                    <label class="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-7 text-center transition hover:border-[#B8D6FF] hover:bg-[#F8FBFF]">
-                        <span class="grid size-12 place-items-center rounded-xl bg-white text-[#0069FF] shadow-sm">
-                            <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.82-2.82l8.48-8.49" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </span>
-                        <span class="mt-3 text-sm font-black text-slate-800">افزودن پیوست</span>
-                        <span class="mt-1 text-xs font-bold text-slate-500">PDF، تصویر، فایل متنی، ZIP و سایر فایل‌های لازم برای بررسی پشتیبانی</span>
-                        <input type="file" name="attachments[]" multiple data-ticket-attachments accept="image/*,.pdf,.txt,.log,.csv,.json,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx" class="sr-only">
-                    </label>
+                    <label class="mt-4 block text-xs font-bold text-slate-500">پیوست (اختیاری) · حداکثر ۵ فایل، هر فایل ۲۰ مگابایت
+                    <input type="file" name="attachments[]" multiple data-ticket-attachments accept="image/*,.pdf,.txt,.log,.csv,.json,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx" class="mt-2 block w-full text-xs text-slate-600 file:me-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2">
+                </label>
                     <button :disabled="submitting" class="mt-4 min-h-11 rounded-xl bg-[#0069FF] px-6 py-3 text-sm font-black text-white shadow-sm shadow-[#0069FF]/20 transition-colors duration-150 hover:bg-[#0050D0] disabled:cursor-wait disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] active:scale-[0.96]" x-text="submitting ? 'در حال ارسال…' : 'ارسال پاسخ'">ارسال پاسخ</button>
                 </form>
             @else
-                <section class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center">
+                <section id="ticket-reply" class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center">
                     <p class="font-black text-slate-950">این تیکت بسته شده است.</p>
-                    <p class="mt-2 text-sm font-bold text-slate-500">برای ادامه گفتگو، تیکت را دوباره باز کنید.</p>
+                    <p class="mt-2 text-sm font-bold text-slate-500">برای درخواست جدید، یک تیکت جدید ثبت کنید.</p>
+                    <a href="{{ route('customer.tickets.create', [], false) }}" class="mt-4 inline-flex rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-bold text-white">ثبت تیکت جدید</a>
                 </section>
             @endif
         </main>

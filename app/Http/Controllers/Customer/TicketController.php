@@ -98,7 +98,7 @@ class TicketController extends Controller
     public function show(Request $request, Ticket $ticket): View
     {
         abort_unless((int) $ticket->customer_id === (int) $request->user('customer')->id, 404);
-        $ticket->load(['category', 'supportTeam', 'assignee', 'virtualMachine', 'messages.author', 'messages.attachments', 'events.actor']);
+        $ticket->load(['category', 'supportTeam', 'assignee', 'virtualMachine', 'messages' => fn ($query) => $query->orderBy('created_at')->orderBy('id'), 'messages.author', 'messages.attachments', 'events.actor']);
 
         return view('customer.tickets.show', array_merge($this->layoutData($request), [
             'ticket' => $ticket,
@@ -119,7 +119,7 @@ class TicketController extends Controller
 
         $this->tickets->reply($ticket, $request->user('customer'), $data['body'], $request->file('attachments', []));
 
-        return back()->with('status', 'پاسخ شما ثبت شد.');
+        return redirect()->route('customer.tickets.show', $ticket)->withFragment('latest-message')->with('status', 'پاسخ شما ثبت شد.');
     }
 
     public function seen(Request $request, Ticket $ticket): JsonResponse

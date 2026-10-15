@@ -148,7 +148,7 @@ class TicketController extends Controller
 
     public function show(Ticket $ticket): View
     {
-        $ticket->load(['customer.virtualMachines' => fn ($query) => $query->notDeleted(), 'category', 'supportTeam', 'assignee', 'virtualMachine', 'messages.author', 'messages.attachments', 'events.actor']);
+        $ticket->load(['customer.virtualMachines' => fn ($query) => $query->notDeleted(), 'category', 'supportTeam', 'assignee', 'virtualMachine', 'messages' => fn ($query) => $query->orderBy('created_at')->orderBy('id'), 'messages.author', 'messages.attachments', 'events.actor']);
 
         return view('admin.tickets.show', [
             'ticket' => $ticket,
@@ -174,7 +174,7 @@ class TicketController extends Controller
 
         $this->tickets->reply($ticket, $request->user('admin'), $data['body'], $request->file('attachments', []), $isInternal);
 
-        return back()->with('status', $isInternal ? 'یادداشت داخلی ثبت شد.' : 'پاسخ برای مشتری ارسال شد.');
+        return redirect()->route('admin.tickets.show', $ticket)->withFragment('latest-message')->with('status', $isInternal ? 'یادداشت داخلی ثبت شد.' : 'پاسخ برای مشتری ارسال شد.');
     }
 
     public function seen(Request $request, Ticket $ticket): JsonResponse

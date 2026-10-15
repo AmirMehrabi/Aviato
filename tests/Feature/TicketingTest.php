@@ -410,6 +410,55 @@ class TicketingTest extends TestCase
         $this->post('https://admin.localhost/tickets', $payload)->assertNotFound();
     }
 
+    public function test_multiline_conversation_has_viewer_relative_messages_in_both_portals(): void
+    {
+        $customer = Customer::factory()->create();
+        $admin = User::factory()->create();
+        $service = app(TicketService::class);
+        $ticket = $service->create($customer, [
+            'subject' => 'Multiline conversation',
+            'body' => "Customer line one\nCustomer line two",
+        ], $customer);
+        $service->reply($ticket, $admin, "Support line one\nSupport line two");
+        $service->reply($ticket, $admin, 'Staff-only note', [], true);
+
+        foreach (['customer' => [$customer, 'cp'], 'admin' => [$admin, 'admin']] as $guard => [$viewer, $host]) {
+            $response = $this->actingAs($viewer, $guard)
+                ->get('https://'.$host.'.localhost/tickets/'.$ticket->number)
+                ->assertOk()
+                ->assertSee('Customer line one<br />Customer line two', false)
+                ->assertSee('Support line one<br />Support line two', false);
+            $document = new \DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+            $xpath = new \DOMXPath($document);
+            $own = $xpath->query('//article[@data-message-side="own"]');
+            $other = $xpath->query('//article[@data-message-side="other"]');
+            $this->assertCount(1, $own);
+            $this->assertCount(1, $other);
+            $this->assertStringContainsString($guard === 'customer' ? 'Customer line one' : 'Support line one', $own->item(0)->textContent);
+            if ($guard === 'customer') {
+                $response->assertDontSee('Staff-only note');
+            } else {
+                $this->assertCount(1, $xpath->query('//article[@data-message-side="internal"]'));
+            }
+        }
+    }
+
+    public function test_customer_cannot_view_or_reply_to_another_customers_ticket(): void
+    {
+        $owner = Customer::factory()->create();
+        $other = Customer::factory()->create();
+        $ticket = app(TicketService::class)->create($owner, [
+            'subject' => 'Private conversation', 'body' => 'Private message',
+        ], $owner);
+
+        $this->actingAs($other, 'customer')
+            ->get('https://cp.localhost/tickets/'.$ticket->number)->assertNotFound();
+        $this->post('https://cp.localhost/tickets/'.$ticket->number.'/reply', ['body' => 'Unauthorized reply'])
+            ->assertNotFound();
+        $this->assertSame(1, $ticket->messages()->count());
+    }
+
     private function vmFor(Customer $customer): VirtualMachine
     {
         return VirtualMachine::query()->create([

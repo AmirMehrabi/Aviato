@@ -62,3 +62,105 @@
         transition-duration: 0.01ms !important;
     }
 }
+
+@layer components {
+    .ticket-thread {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f8fafc;
+    }
+
+    .ticket-day {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: #64748b;
+        font-size: 0.7rem;
+    }
+
+    .ticket-day::before,
+    .ticket-day::after {
+        content: '';
+        height: 1px;
+        flex: 1;
+        background: #e2e8f0;
+    }
+
+    .ticket-message {
+        min-width: 0;
+        width: fit-content;
+        max-width: 90%;
+        padding: 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        overflow-wrap: anywhere;
+    }
+
+    .ticket-message-own {
+        align-self: flex-start;
+        background: #ebf3ff;
+        border-color: #bfd7ff;
+        border-start-start-radius: 0.25rem;
+    }
+
+    .ticket-message-other {
+        align-self: flex-end;
+        background: white;
+        border-start-end-radius: 0.25rem;
+    }
+
+    .ticket-message-internal {
+        align-self: stretch;
+        width: auto;
+        max-width: 100%;
+        background: #fffbeb;
+        border: 1px dashed #d97706;
+    }
+
+    .ticket-file {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        background: white;
+        color: #0050d0;
+        font-size: 0.75rem;
+    }
+
+    #ticket-reply,
+    #latest-message {
+        scroll-margin-top: 7rem;
+    }
+
+    .ticket-markdown :where(ul, ol) {
+        padding-inline-start: 1.5rem;
+    }
+
+    .ticket-markdown ul { list-style-type: disc; }
+    .ticket-markdown ol { list-style-type: decimal; }
+    .ticket-markdown a { color: #0050d0; text-decoration: underline; }
+    .ticket-markdown blockquote { border-inline-start: 3px solid #94a3b8; padding-inline-start: 1rem; }
+    .ticket-markdown pre { overflow-x: auto; background: #0f172a; color: #f1f5f9; padding: 1rem; border-radius: 0.5rem; direction: ltr; text-align: left; }
+    .ticket-markdown :not(pre) > code { background: #e2e8f0; padding: 0.125rem 0.25rem; border-radius: 0.25rem; }
+    .ticket-markdown table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+    .ticket-markdown :where(td, th) { border: 1px solid #cbd5e1; padding: 0.5rem; }
+    .ticket-markdown :where(h1, h2, h3, h4) { font-weight: 800; margin-block: 1rem 0.5rem; }
+    .ticket-markdown img { max-width: 100%; height: auto; }
+
+    .ticket-composer .toastui-editor-contents,
+    .ticket-composer .toastui-editor-ww-container .toastui-editor-contents {
+        font-size: 14px;
+        text-align: start;
+    }
+
+    .ticket-composer:focus-within { outline: 2px solid #0069ff; outline-offset: 2px; }
+
+    @media (min-width: 640px) {
+        .ticket-thread { padding: 1.5rem; gap: 1.25rem; }
+        .ticket-message { max-width: 82%; }
+        .ticket-message-internal { max-width: 100%; }
+    }
+}
