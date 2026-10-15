@@ -1,0 +1,20 @@
+@import 'tailwindcss' source(none);
+@import './base.css';
+
+@source '../views/layouts/marketing.blade.php';
+@source '../views/home.blade.php';
+@source '../views/pricing.blade.php';
+@source '../views/contact.blade.php';
+@source '../views/solutions.blade.php';
+@source '../views/solutions-colocation.blade.php';
+@source '../views/changelog.blade.php';
+@source '../views/incidents';
+@source '../js/marketing.js';
+
+@font-face {
+    font-family: 'Ravi';
+    src: url('../fonts/Ravi-VF.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}

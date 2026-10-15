@@ -65,6 +65,7 @@ use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\SitemapController;
 use App\Models\VmBundle;
+use App\Services\MarketingPosts;
 use App\Services\WalletService;
 use App\Support\AdminAccess;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -513,34 +514,7 @@ foreach ($customerAliasDomains as $domain) {
         ->group($customerRoutes);
 }
 
-Route::get('/', function (WalletService $wallets) {
-    $postsPath = resource_path('blog/posts');
-    $files = glob($postsPath.'/*.md');
-    $posts = [];
-
-    foreach ($files as $file) {
-        $content = file_get_contents($file);
-        if (preg_match('/^---\n(.+?)\n---\n(.+)$/s', $content, $matches)) {
-            $meta = [];
-            foreach (explode("\n", $matches[1]) as $line) {
-                if (preg_match('/^(\w+):\s*"?(.+?)"?$/', trim($line), $m)) {
-                    $meta[$m[1]] = $m[2];
-                }
-            }
-            $posts[] = [
-                'title' => $meta['title'] ?? '',
-                'slug' => $meta['slug'] ?? '',
-                'excerpt' => $meta['excerpt'] ?? '',
-                'category' => $meta['category'] ?? '',
-                'date' => $meta['date'] ?? '',
-                'date_display' => $meta['date_display'] ?? '',
-                'reading_time' => $meta['reading_time'] ?? '',
-            ];
-        }
-    }
-
-    usort($posts, fn ($a, $b) => $b['date'] <=> $a['date']);
-
+Route::get('/', function (WalletService $wallets, MarketingPosts $posts) {
     return view('home', [
         'bundles' => VmBundle::query()
             ->where('is_active', true)
@@ -549,7 +523,7 @@ Route::get('/', function (WalletService $wallets) {
             ->orderBy('monthly_price')
             ->get(),
         'wallets' => $wallets,
-        'latestPosts' => array_slice($posts, 0, 3),
+        'latestPosts' => $posts->latest(),
     ]);
 })->name('home');
 

@@ -5,7 +5,14 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.js',
+                'resources/css/marketing.css',
+                'resources/js/marketing.js',
+                'resources/images/landing-cloud-hero.webp',
+                'resources/images/landing-cloud-hero-mobile.webp',
+            ],
             refresh: true,
         }),
         tailwindcss(),

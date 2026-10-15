@@ -17,9 +17,9 @@
     ];
 
     $currentCustomers = [
-        ['name' => 'حسابرو', 'url' => 'https://hesabro.com', 'logo' => 'assets/images/customers/hesabro-logo.png'],
-        ['name' => 'کارخانه نوآوری کرمان', 'url' => 'https://kermanif.ir', 'logo' => 'assets/images/customers/kermanif-logo.png'],
-        ['name' => 'مبیت', 'url' => 'https://mobit.ir', 'logo' => 'assets/images/customers/mobit-logo.svg'],
+        ['name' => 'حسابرو', 'url' => 'https://hesabro.com', 'logo' => 'assets/images/customers/hesabro-logo.png', 'width' => 139, 'height' => 34],
+        ['name' => 'کارخانه نوآوری کرمان', 'url' => 'https://kermanif.ir', 'logo' => 'assets/images/customers/kermanif-logo.png', 'width' => 82, 'height' => 82],
+        ['name' => 'مبیت', 'url' => 'https://mobit.ir', 'logo' => 'assets/images/customers/mobit-logo.svg', 'width' => 918, 'height' => 256],
     ];
 
     $differenceRows = [
@@ -60,10 +60,19 @@
 
 @section('body_class', 'figma-marketing landing-page bg-white')
 
+@push('preloads')
+    <link rel="preload" as="image" type="image/webp" href="{{ Vite::asset('resources/images/landing-cloud-hero-mobile.webp') }}" media="(max-width: 767px)" fetchpriority="high">
+    <link rel="preload" as="image" type="image/webp" href="{{ Vite::asset('resources/images/landing-cloud-hero.webp') }}" media="(min-width: 768px)" fetchpriority="high">
+@endpush
+
 @section('content')
     <section id="top" class="landing-hero relative isolate flex min-h-[496px] items-end overflow-hidden px-4 pb-16 pt-28 md:px-8 md:pb-[106px] md:pt-0 lg:px-10">
         <div aria-hidden="true" class="absolute inset-0 -z-20 bg-[#EDF4FE]"></div>
-        <div aria-hidden="true" class="absolute inset-0 -z-10 bg-cover bg-center" style="background-image: linear-gradient(to bottom, rgba(255,255,255,0) 58%, rgba(255,255,255,.78) 84%, #fff 100%), linear-gradient(90deg, rgba(237,244,254,.18), rgba(237,244,254,.76) 72%), url('{{ asset('assets/images/figma-landing-cloud-hero.png') }}');"></div>
+        <picture aria-hidden="true" class="absolute inset-0 -z-10">
+            <source media="(max-width: 767px)" srcset="{{ Vite::asset('resources/images/landing-cloud-hero-mobile.webp') }}" type="image/webp">
+            <img src="{{ Vite::asset('resources/images/landing-cloud-hero.webp') }}" alt="" width="1916" height="821" fetchpriority="high" class="h-full w-full object-cover object-center">
+        </picture>
+        <div aria-hidden="true" class="absolute inset-0 -z-10" style="background-image: linear-gradient(to bottom, rgba(255,255,255,0) 58%, rgba(255,255,255,.78) 84%, #fff 100%), linear-gradient(90deg, rgba(237,244,254,.18), rgba(237,244,254,.76) 72%);"></div>
 
         <div class="mx-auto w-full max-w-[1320px]">
             <div class="mx-auto max-w-[872px] text-center md:ml-auto md:mr-0 md:text-right">
@@ -102,7 +111,7 @@
                     @foreach ($currentCustomers as $customer)
                         <a href="{{ $customer['url'] }}" target="_blank" rel="noopener noreferrer" class="group flex min-h-[167px] flex-col items-center justify-center rounded-2xl border border-[#E0E0E0] bg-white p-6 text-center transition hover:border-[#B9D6FF] hover:shadow-lg hover:shadow-slate-200/50">
                             <span class="flex h-16 w-full items-center justify-center">
-                                <img src="{{ asset($customer['logo']) }}" alt="{{ $customer['name'] }}" class="max-h-14 max-w-44 object-contain">
+                                <img src="{{ asset($customer['logo']) }}" alt="{{ $customer['name'] }}" width="{{ $customer['width'] }}" height="{{ $customer['height'] }}" decoding="async" class="max-h-14 max-w-44 object-contain">
                             </span>
                             <span class="mt-3 text-xl text-slate-950">{{ $customer['name'] }}</span>
                             <span class="text-base text-slate-500" dir="ltr">{{ parse_url($customer['url'], PHP_URL_HOST) }}</span>
@@ -137,9 +146,9 @@
                                 </span>
                                 <span class="mt-1 block text-sm text-[#5A5A5A] md:text-base">{{ $wallets->format($bundle->monthly_price) }} / ماهانه</span>
                             </span>
-                            <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/cpu.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->cpu_cores }} vCPU</span></span>
-                            <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/ram.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->ram_gb }} GB</span></span>
-                            <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->disk_gb }} GB</span></span>
+                            <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img loading="lazy" decoding="async" src="{{ asset('assets/icons/figma/cpu.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->cpu_cores }} vCPU</span></span>
+                            <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img loading="lazy" decoding="async" src="{{ asset('assets/icons/figma/ram.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->ram_gb }} GB</span></span>
+                            <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img loading="lazy" decoding="async" src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->disk_gb }} GB</span></span>
                         </a>
                     @endforeach
                 </div>
@@ -160,7 +169,7 @@
             <div class="grid gap-2 sm:grid-cols-2">
                 @foreach ($useCases as $case)
                     <article dir="rtl" class="flex min-h-[162px] flex-col items-start justify-center rounded-lg border border-[#C6DEFF] bg-[#FAFCFF] px-6 py-3 text-right {{ $loop->last ? 'border-[#003A8E] bg-white' : '' }}">
-                        <img src="{{ asset('assets/icons/figma/'.$case['icon']) }}" alt="" class="size-[46px]" aria-hidden="true">
+                        <img loading="lazy" decoding="async" src="{{ asset('assets/icons/figma/'.$case['icon']) }}" alt="" class="size-[46px]" aria-hidden="true">
                         <h3 class="mt-1 text-xl font-bold leading-8 text-[#001739]">{{ $case['title'] }}</h3>
                         <p class="mt-1 text-base leading-7 text-[#002355]">{{ $case['body'] }}</p>
                     </article>
@@ -176,7 +185,7 @@
                 @foreach ($differenceRows as $row)
                     <article class="min-h-[70px]">
                         <div class="flex items-center justify-start gap-1 text-[#002F71]">
-                            <img src="{{ asset('assets/icons/figma/tick-circle.svg') }}" alt="" class="size-6" aria-hidden="true">
+                            <img loading="lazy" decoding="async" src="{{ asset('assets/icons/figma/tick-circle.svg') }}" alt="" class="size-6" aria-hidden="true">
                             <h3 class="text-xl font-bold leading-8">{{ $row['title'] }}</h3>
                         </div>
                         <p class="mt-0.5 text-lg leading-8 text-[#002355]">{{ $row['body'] }}</p>
@@ -207,7 +216,7 @@
                 <div class="mt-3 grid gap-2">
                     @foreach ($steps as $step)
                     <div dir="rtl" class="flex items-center gap-2 text-right text-base leading-7 md:text-lg">
-                        <img src="{{ asset('assets/icons/figma/'.$step['icon']) }}" alt="" aria-hidden="true" class="shrink-0">
+                        <img loading="lazy" decoding="async" src="{{ asset('assets/icons/figma/'.$step['icon']) }}" alt="" aria-hidden="true" width="24" height="24" class="shrink-0">
                         <p class="min-w-0 flex-1"><strong class="font-bold">{{ $step['title'] }}:</strong> {{ $step['body'] }}</p>
                     </div>
                     @endforeach
