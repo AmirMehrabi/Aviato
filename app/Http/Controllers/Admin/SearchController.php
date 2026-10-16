@@ -9,6 +9,7 @@ use App\Models\IpPool;
 use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Support\AdminAccess;
+use App\Support\AdminNavigation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,6 +27,29 @@ class SearchController extends Controller
         $limit = 8;
 
         $results = [];
+
+        $pages = collect(AdminNavigation::groups($request->user('admin')))
+            ->flatMap(fn (array $group) => collect($group['items'])->map(fn (array $item) => [
+                ...$item,
+                'section' => $group['label'] ?? 'نمای کلی',
+            ]))
+            ->filter(fn (array $item): bool => mb_stripos($item['label'].' '.$item['keywords'], $query) !== false)
+            ->take($limit)
+            ->map(fn (array $item): array => [
+                'title' => $item['label'],
+                'subtitle' => $item['section'],
+                'url' => route($item['route']),
+                'badge' => null,
+                'badgeClass' => '',
+            ])->values()->all();
+
+        if ($pages !== []) {
+            $results[] = [
+                'label' => 'صفحات مدیریت',
+                'icon' => 'M3 3h7v7H3V3Zm11 0h7v7h-7V3ZM3 14h7v7H3v-7Zm11 0h7v7h-7v-7Z',
+                'items' => $pages,
+            ];
+        }
 
         if (AdminAccess::canVisit($request->user('admin'), 'admin.customers.show')) {
             $customers = Customer::query()
