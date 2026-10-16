@@ -1,5 +1,6 @@
     <section
         id="top-up"
+        @pageshow.window="resetSubmission()"
         x-data="walletTopUp({
             initialAmount: @js($initialAmount),
             initialGateway: @js($initialGateway),
@@ -29,7 +30,7 @@
                             درگاه پرداخت در حال حاضر فعال نیست. برای افزایش موجودی با پشتیبانی تماس بگیرید.
                         </div>
                     @else
-                        <form method="POST" action="{{ route('customer.wallet.topups.store', [], false) }}" class="mt-7" x-show="!isInstant" @submit="submitPayment($event)">
+                        <form method="POST" action="{{ route('customer.wallet.topups.store', [], false) }}" class="mt-7" x-show="!isInstant" @submit="submitPayment($event)" :aria-busy="submitting.toString()">
                             @csrf
                             <input type="hidden" name="amount_toman" :value="amount">
                             <input type="hidden" name="promotion_code" :value="codeChecked && !isInstant ? checkedCode : ''">
@@ -139,8 +140,9 @@
                                 <button
                                     type="submit"
                                     :disabled="!canSubmit"
-                                    class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[#0069FF] px-7 py-3 text-sm font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+                                    class="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#0069FF] px-7 py-3 text-sm font-black text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
                                 >
+                                    <span x-show="submitting" x-cloak class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span>
                                     <span x-text="submitLabel">پرداخت و افزایش موجودی</span>
                                 </button>
                             </div>

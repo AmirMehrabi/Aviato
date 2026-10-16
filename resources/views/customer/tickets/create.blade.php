@@ -11,7 +11,8 @@
 @php($activeNav = 'tickets')
 
 @section('content')
-<form method="POST" action="{{ route('customer.tickets.store', [], false) }}" enctype="multipart/form-data" class="mx-auto max-w-4xl space-y-5">
+<form method="POST" action="{{ route('customer.tickets.store', [], false) }}" enctype="multipart/form-data" class="mx-auto max-w-4xl space-y-5"
+    x-data="customerFormSubmission()" @submit="beginSubmission($event)" @pageshow.window="resetSubmission()" :aria-busy="submitting.toString()">
     @csrf
     @if($errors->any())
         <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-7 text-red-800" role="alert">
@@ -59,7 +60,7 @@
 
     <div class="flex flex-wrap items-center gap-3">
 
-        <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ثبت تیکت</button>
+        <button type="submit" :disabled="submitting" class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60" x-text="submitting ? 'در حال ارسال تیکت…' : 'ثبت تیکت'">ثبت تیکت</button>
         <a href="{{ route('customer.tickets.index', [], false) }}" class="block rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-black text-slate-700">بازگشت</a>
     </div>
 </form>

@@ -1,6 +1,8 @@
 import Alpine from 'alpinejs';
+import { customerFormSubmission } from './form-submission';
 import { walletTopUp } from './wallet-top-up';
 
+window.customerFormSubmission = customerFormSubmission;
 window.walletTopUp = walletTopUp;
 import './auth-validation.js';
 

@@ -1,5 +1,8 @@
+import { customerFormSubmission } from './form-submission.js';
+
 export function walletTopUp(config) {
     return {
+        ...customerFormSubmission(),
         amount: '',
         customAmount: '',
         selectedPreset: null,
@@ -10,7 +13,6 @@ export function walletTopUp(config) {
         checking: false,
         codeError: '',
         requestVersion: 0,
-        submitting: false,
         init() {
             const initialAmount = this.normalizeDigits(config.initialAmount || '');
             if (initialAmount) {
@@ -151,12 +153,10 @@ export function walletTopUp(config) {
             return this.codeChecked ? 'پرداخت و دریافت اعتبار' : 'پرداخت و افزایش موجودی';
         },
         submitPayment(event) {
-            if (!this.canSubmit) { event.preventDefault(); return; }
-            this.submitting = true;
+            this.beginSubmission(event, this.canSubmit);
         },
         submitGift(event) {
-            if (!this.canRedeem) { event.preventDefault(); return; }
-            this.submitting = true;
+            this.beginSubmission(event, this.canRedeem);
         },
     };
 }

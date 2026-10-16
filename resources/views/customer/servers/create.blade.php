@@ -117,7 +117,8 @@
         })"
         class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"
     >
-        <form x-ref="createForm" method="POST" action="{{ route('customer.servers.store') }}" class="space-y-5">
+        <form id="customer-create-server-form" x-ref="createForm" method="POST" action="{{ route('customer.servers.store') }}" class="space-y-5"
+            @submit="submit($event)" @pageshow.window="resetSubmission()" :aria-busy="submitting.toString()">
             @csrf
             @if ($errors->any())<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold leading-6 text-red-800 shadow-sm">{{ $errors->first() }}</div>@endif
 
@@ -416,8 +417,8 @@
                 </div>
 
                 <div class="border-t border-[#D7E8FF] bg-white/80 p-5">
-                    <button type="button" @click="submit()" :disabled="!canSubmit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-black transition" :class="canSubmit ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/25 hover:bg-[#0050D0]' : 'cursor-not-allowed bg-slate-200 text-slate-500 shadow-none'">
-                        <span x-show="submitting" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                    <button type="submit" form="customer-create-server-form" :disabled="!canSubmit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-black transition" :class="canSubmit ? 'bg-[#0069FF] text-white shadow-lg shadow-[#0069FF]/25 hover:bg-[#0050D0]' : 'cursor-not-allowed bg-slate-200 text-slate-500 shadow-none'">
+                        <span x-show="submitting" x-cloak class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span>
                         <span x-text="submitting ? 'در حال ثبت درخواست...' : 'ساخت ماشین مجازی'"></span>
                     </button>
                     @if($canViewBilling)
@@ -433,7 +434,7 @@
     <script>
     function customerVmCreate(config) {
         return {
-            submitting: false,
+            ...customerFormSubmission(),
             walletBalance: Number(config.walletBalance || 0),
             walletBalanceLabel: config.walletBalanceLabel,
             walletUrl: config.walletUrl,
@@ -652,10 +653,8 @@
                 this.form.ram_gb = Math.max(Number(this.form.ram_gb || 0), Number(this.selectedImage.min_ram_gb || 1));
                 this.form.disk_gb = Math.max(Number(this.form.disk_gb || 0), Number(this.selectedImage.min_disk_gb || 10));
             },
-            submit() {
-                if (!this.canSubmit) return;
-                this.submitting = true;
-                this.$refs.createForm.submit();
+            submit(event) {
+                this.beginSubmission(event, this.canSubmit);
             },
             bundleSpecsToken() {
                 const bundle = this.selectedBundle || {};
