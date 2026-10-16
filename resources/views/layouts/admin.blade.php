@@ -18,7 +18,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>[x-cloak]{display:none!important}</style>
 </head>
-<body class="overflow-x-hidden bg-[#F5F7FB] text-slate-950">
+<body class="overflow-x-clip bg-[#F5F7FB] text-slate-950">
     @php
         $adminUser = auth('admin')->user();
         $adminUnreadNotificationsCount = $adminUser?->unreadNotifications()->count() ?? 0;
@@ -31,9 +31,11 @@
     document.addEventListener('alpine:init', () => {
         Alpine.data('adminLayout', (config = {}) => ({
             sidebarOpen: false,
+            sidebarAccountOpen: false,
             sidebarPanel: config.sidebarPanel || 'main',
 
             showSidebarPanel(panel) {
+                this.sidebarAccountOpen = false;
                 this.sidebarPanel = panel;
                 this.$nextTick(() => {
                     this.$refs.adminSidebar.scrollTop = 0;
@@ -42,6 +44,7 @@
             },
 
             showMainSidebar() {
+                this.sidebarAccountOpen = false;
                 const previousPanel = this.sidebarPanel;
                 this.sidebarPanel = 'main';
                 this.$nextTick(() => {
@@ -71,6 +74,7 @@
             },
 
             closePanels() {
+                this.sidebarAccountOpen = false;
                 this.searchOpen = false;
                 this.searchResults = [];
                 this.notificationsOpen = false;
@@ -142,7 +146,7 @@
                 openSearch();
             }
         "
-        class="min-h-screen overflow-x-hidden lg:flex"
+        class="min-h-screen overflow-x-clip lg:flex"
     >
         <div
             x-cloak
@@ -154,7 +158,7 @@
         ></div>
 
         <aside
-            class="pointer-events-none fixed inset-y-0 right-0 z-40 flex w-[min(86vw,288px)] translate-x-full flex-col overflow-hidden border-l border-white/10 px-4 py-4 text-white shadow-2xl shadow-[#0069FF]/30 transition-[transform,background-color] duration-200 motion-reduce:transition-none lg:pointer-events-auto lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:translate-x-0 lg:shadow-none"
+            class="pointer-events-none fixed inset-y-0 right-0 z-40 flex w-[min(86vw,288px)] translate-x-full flex-col overflow-hidden border-l border-white/10 px-4 py-4 text-white shadow-2xl shadow-[#0069FF]/30 transition-[transform,background-color] duration-200 motion-reduce:transition-none lg:pointer-events-auto lg:sticky lg:top-0 lg:h-dvh lg:w-64 lg:shrink-0 lg:translate-x-0 lg:shadow-none"
             :class="{ '!pointer-events-auto !translate-x-0': sidebarOpen }"
             data-initial-panel="{{ $initialSidebarPanel }}"
             style="background-color: {{ $initialSidebarPanel === 'main' ? '#0069FF' : '#073C8C' }}"
@@ -185,7 +189,7 @@
                     ? \App\Models\Ticket::where('status', \App\Models\Ticket::STATUS_OPEN)->count()
                     : 0;
             @endphp
-            <div x-ref="adminSidebar" class="-mx-2 mt-5 min-h-0 flex-1 overflow-y-auto px-2 pb-1">
+            <div x-ref="adminSidebar" class="admin-sidebar-scroll -mx-2 mt-5 min-h-0 flex-1 overflow-y-auto px-2 pb-1">
                 <nav id="admin-nav-main" x-show="sidebarPanel === 'main'" x-cloak aria-label="منوی اصلی" class="space-y-3">
                     @foreach ($mainNavGroups as $group)
                         <div class="space-y-0.5">
@@ -243,19 +247,51 @@
                         </div>
                     </nav>
                 @endforeach
-            </div>
-            <div class="mt-4 shrink-0 space-y-1 border-t border-white/15 pt-3 text-[13px] font-medium">
-                <a href="{{ route('admin.profile.edit') }}" @if (request()->routeIs('admin.profile.*')) aria-current="page" @endif class="flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white {{ request()->routeIs('admin.profile.*') ? 'bg-white/15 text-white' : '' }}">
-                    <x-admin.nav-icon name="user-round" />
-                    <span>حساب کاربری من</span>
-                </a>
-                <form method="POST" action="{{ route('admin.logout') }}">
-                    @csrf
-                    <button type="submit" class="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-right text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-                        <x-admin.nav-icon name="log-out" />
-                        <span>خروج از حساب</span>
+                <div class="relative mt-5 border-t border-white/15 pt-3"
+                    x-on:click.outside="sidebarAccountOpen = false"
+                    x-on:keydown.escape.stop.prevent="sidebarAccountOpen = false; $refs.sidebarAccountTrigger.focus()">
+                    <button type="button"
+                        x-ref="sidebarAccountTrigger"
+                        x-on:click="sidebarAccountOpen = !sidebarAccountOpen"
+                        x-on:keydown.arrow-down.prevent="sidebarAccountOpen = true; $nextTick(() => $refs.sidebarAccountProfile.focus())"
+                        x-on:keydown.arrow-up.prevent="sidebarAccountOpen = true; $nextTick(() => $refs.sidebarAccountLogout.focus())"
+                        :aria-expanded="sidebarAccountOpen.toString()"
+                        aria-controls="sidebar-account-dropdown"
+                        class="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-right transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                        <span class="grid size-9 shrink-0 place-items-center rounded-full bg-white/15 text-sm font-bold text-white" aria-hidden="true">{{ mb_substr(trim($adminUser->name), 0, 1) }}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate text-[13px] font-bold text-white">{{ $adminUser->name }}</span>
+                            <span class="mt-0.5 block text-[11px] text-white/60">حساب کاربری</span>
+                        </span>
+                        <x-admin.nav-icon name="chevron-left" size="sm" class="rotate-90 text-white/60 transition-transform motion-reduce:transition-none" x-bind:class="sidebarAccountOpen ? '!-rotate-90' : ''" />
                     </button>
-                </form>
+                    <div id="sidebar-account-dropdown"
+                        x-show="sidebarAccountOpen" x-cloak
+                        x-transition.opacity.duration.150ms
+                        class="absolute inset-x-0 bottom-full z-20 mb-2 rounded-xl border border-white/15 bg-[#062F70] p-1.5 shadow-xl shadow-slate-950/25"
+                        aria-label="حساب کاربری">
+                        <a href="{{ route('admin.profile.edit') }}"
+                            x-ref="sidebarAccountProfile"
+                            x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                            x-on:keydown.arrow-down.prevent="$refs.sidebarAccountLogout.focus()"
+                            x-on:keydown.arrow-up.prevent="$refs.sidebarAccountLogout.focus()"
+                            @if (request()->routeIs('admin.profile.*')) aria-current="page" @endif
+                            class="flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-white/90 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                            <x-admin.nav-icon name="user-round" size="sm" />
+                            <span>حساب کاربری من</span>
+                        </a>
+                        <form method="POST" action="{{ route('admin.logout') }}" class="mt-1 border-t border-white/10 pt-1">
+                            @csrf
+                            <button type="submit" x-ref="sidebarAccountLogout"
+                                x-on:keydown.arrow-down.prevent="$refs.sidebarAccountProfile.focus()"
+                                x-on:keydown.arrow-up.prevent="$refs.sidebarAccountProfile.focus()"
+                                class="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-right text-[13px] font-medium text-white/90 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                                <x-admin.nav-icon name="log-out" size="sm" />
+                                <span>خروج از حساب</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
         </aside>

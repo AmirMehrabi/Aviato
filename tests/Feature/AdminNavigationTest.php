@@ -56,6 +56,25 @@ class AdminNavigationTest extends TestCase
         $this->assertStringNotContainsString('adminNavGroup', $response->getContent());
     }
 
+    public function test_sidebar_account_dropdown_is_inside_the_scrollable_area_and_preserves_secure_logout(): void
+    {
+        $this->actingAs(User::factory()->create(['name' => 'Navigation Admin']), 'admin');
+
+        $response = $this->get('https://admin.localhost/profile')->assertOk();
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+        $xpath = new \DOMXPath($document);
+        $toggle = $xpath->query('//*[@x-ref="adminSidebar"]//button[@aria-controls="sidebar-account-dropdown"]');
+        $this->assertSame(1, $toggle->length);
+        $this->assertStringContainsString('Navigation Admin', $toggle->item(0)->textContent);
+        $dropdown = $document->getElementById('sidebar-account-dropdown');
+        $this->assertSame(route('admin.profile.edit'), $xpath->query('.//a', $dropdown)->item(0)->getAttribute('href'));
+        $logout = $xpath->query('.//form', $dropdown)->item(0);
+        $this->assertSame('POST', $logout->getAttribute('method'));
+        $this->assertSame(route('admin.logout'), $logout->getAttribute('action'));
+        $this->assertSame(csrf_token(), $xpath->query('.//input[@name="_token"]', $logout)->item(0)->getAttribute('value'));
+    }
+
     public function test_page_search_supports_english_and_persian_navigation_terms(): void
     {
         $this->actingAs(User::factory()->create(), 'admin');
