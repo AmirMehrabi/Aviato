@@ -22,28 +22,33 @@
     @php
         $adminUser = auth('admin')->user();
         $adminUnreadNotificationsCount = $adminUser?->unreadNotifications()->count() ?? 0;
+        $navGroups = \App\Support\AdminNavigation::groups($adminUser);
+        $mainNavGroups = array_filter($navGroups, fn (array $group): bool => ! $group['secondary']);
+        $secondaryNavGroups = array_filter($navGroups, fn (array $group): bool => $group['secondary']);
+        $initialSidebarPanel = collect($secondaryNavGroups)->firstWhere('active', true)['id'] ?? 'main';
     @endphp
     <script>
     document.addEventListener('alpine:init', () => {
-        Alpine.data('adminNavGroup', (id, active, userId) => ({
-            expanded: true,
-            init() {
-                try {
-                    const saved = JSON.parse(localStorage.getItem(`aviato.admin.${userId}.nav.${id}`));
-                    this.expanded = active || (typeof saved === 'boolean' ? saved : true);
-                } catch {
-                    this.expanded = true;
-                }
-            },
-            toggle() {
-                this.expanded = !this.expanded;
-                try {
-                    localStorage.setItem(`aviato.admin.${userId}.nav.${id}`, JSON.stringify(this.expanded));
-                } catch {}
-            },
-        }));
         Alpine.data('adminLayout', (config = {}) => ({
             sidebarOpen: false,
+            sidebarPanel: config.sidebarPanel || 'main',
+
+            showSidebarPanel(panel) {
+                this.sidebarPanel = panel;
+                this.$nextTick(() => {
+                    this.$refs.adminSidebar.scrollTop = 0;
+                    this.$refs[`sidebarBack-${panel}`]?.focus({ preventScroll: true });
+                });
+            },
+
+            showMainSidebar() {
+                const previousPanel = this.sidebarPanel;
+                this.sidebarPanel = 'main';
+                this.$nextTick(() => {
+                    this.$refs.adminSidebar.scrollTop = 0;
+                    this.$refs[`sidebarTrigger-${previousPanel}`]?.focus();
+                });
+            },
             createOpen: false,
             period: 'روزانه',
             searchOpen: false,
@@ -125,7 +130,7 @@
     </script>
 
     <div
-        x-data="adminLayout({ notificationUnreadCount: {{ $adminUnreadNotificationsCount }} })"
+        x-data="adminLayout({ notificationUnreadCount: {{ $adminUnreadNotificationsCount }}, sidebarPanel: @js($initialSidebarPanel) })"
         @notification-unread-changed.window="notificationUnreadCount = $event.detail.count"
         @notification-center-open.window="searchOpen = false; profileOpen = false"
         @keydown.window.ctrl.k.prevent="openSearch()"
@@ -149,11 +154,14 @@
         ></div>
 
         <aside
-            class="pointer-events-none fixed inset-y-0 right-0 z-40 flex w-[min(86vw,288px)] translate-x-full flex-col overflow-y-auto border-l border-white/10 bg-[#0069FF] px-4 py-4 text-white shadow-2xl shadow-[#0069FF]/30 transition-transform duration-200 lg:pointer-events-auto lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:translate-x-0 lg:shadow-none"
+            class="pointer-events-none fixed inset-y-0 right-0 z-40 flex w-[min(86vw,288px)] translate-x-full flex-col overflow-hidden border-l border-white/10 px-4 py-4 text-white shadow-2xl shadow-[#0069FF]/30 transition-[transform,background-color] duration-200 motion-reduce:transition-none lg:pointer-events-auto lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:translate-x-0 lg:shadow-none"
             :class="{ '!pointer-events-auto !translate-x-0': sidebarOpen }"
+            data-initial-panel="{{ $initialSidebarPanel }}"
+            style="background-color: {{ $initialSidebarPanel === 'main' ? '#0069FF' : '#073C8C' }}"
+            :style="{ backgroundColor: sidebarPanel === 'main' ? '#0069FF' : '#073C8C' }"
             aria-label="منوی مدیریت"
         >
-            <div class="flex items-center justify-between">
+            <div class="flex shrink-0 items-center justify-between">
                 <a href="{{ route(\App\Support\AdminAccess::landingRoute(auth('admin')->user())) }}" class="flex items-center gap-2.5">
                     <img src="{{ asset("assets/images/aviato_icon_white.png") }}" class="w-10" alt="Aviato Logo">
 
@@ -168,52 +176,85 @@
                     @click="sidebarOpen = false"
                     aria-label="بستن منو"
                 >
-                    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/>
-                    </svg>
+                    <x-admin.nav-icon name="x" />
                 </button>
             </div>
 
             @php
-                $navGroups = \App\Support\AdminNavigation::groups($adminUser);
                 $awaitingTickets = \App\Support\AdminAccess::canVisit($adminUser, 'admin.tickets.index')
                     ? \App\Models\Ticket::where('status', \App\Models\Ticket::STATUS_OPEN)->count()
                     : 0;
             @endphp
-            <nav class="mt-6 flex-1 space-y-2 text-sm font-semibold" aria-label="بخش‌های مدیریت">
-                @foreach ($navGroups as $group)
-                    <div x-data="adminNavGroup(@js($group['id']), @js($group['active']), @js((string) $adminUser->id))">
-                        @if ($group['label'])
-                            <button type="button" @click="toggle()" :aria-expanded="expanded.toString()" aria-controls="admin-nav-{{ $group['id'] }}" class="flex w-full items-center justify-between rounded-lg px-3 py-3 text-xs font-black text-white/80 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-                                <span>{{ $group['label'] }}</span>
-                                <svg class="size-4 transition-transform" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                        @endif
-                        <div id="admin-nav-{{ $group['id'] }}" @if ($group['label']) x-show="expanded" x-cloak @endif class="space-y-0.5">
+            <div x-ref="adminSidebar" class="-mx-2 mt-5 min-h-0 flex-1 overflow-y-auto px-2 pb-1">
+                <nav id="admin-nav-main" x-show="sidebarPanel === 'main'" x-cloak aria-label="منوی اصلی" class="space-y-3">
+                    @foreach ($mainNavGroups as $group)
+                        <div class="space-y-0.5">
+                            @if ($group['label'])
+                                <span class="block px-3 pb-1 text-[10px] font-bold text-white/55">{{ $group['label'] }}</span>
+                            @endif
                             @foreach ($group['items'] as $item)
-                                @if (!empty($item['contextual']) && ($loop->first || empty($group['items'][$loop->index - 1]['contextual'])))
-                                    <span class="block px-3 pb-1 pt-3 text-[11px] text-white/60">تنظیمات پشتیبانی</span>
-                                @endif
-                                <a href="{{ route($item['route']) }}"
-                                    @click="if (window.innerWidth < 1024) sidebarOpen = false"
-                                    @if ($item['active']) aria-current="page" @endif
-                                    class="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white {{ !empty($item['contextual']) ? 'mr-4 border-r border-white/20 text-xs' : '' }} {{ $item['active'] ? 'bg-[#004DB3] text-white shadow-sm' : 'text-white/80 hover:bg-white/15 hover:text-white' }}">
-                                    <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    <span>{{ $item['label'] }}</span>
-                                    @if ($item['route'] === 'admin.tickets.index' && $awaitingTickets > 0)
-                                        <span class="mr-auto rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-[#004DB3]" aria-label="{{ $awaitingTickets }} تیکت در انتظار پاسخ مدیر" title="در انتظار پاسخ مدیر">{{ $awaitingTickets > 99 ? '99+' : $awaitingTickets }}</span>
-                                    @endif
-                                </a>
+                                <x-admin.nav-link :item="$item" :awaiting-tickets="$awaitingTickets" />
                             @endforeach
                         </div>
-                    </div>
+                    @endforeach
+                    @if ($secondaryNavGroups !== [])
+                        <div class="space-y-0.5 border-t border-white/15 pt-3">
+                            <span class="block px-3 pb-1 text-[10px] font-bold text-white/55">ابزارها و تنظیمات</span>
+                            @foreach ($secondaryNavGroups as $group)
+                                <button type="button"
+                                    x-ref="sidebarTrigger-{{ $group['id'] }}"
+                                    @click="showSidebarPanel(@js($group['id']))"
+                                    :aria-expanded="(sidebarPanel === @js($group['id'])).toString()"
+                                    aria-controls="admin-nav-{{ $group['id'] }}"
+                                    class="group flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-right text-[13px] font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                                    <x-admin.nav-icon :name="$group['icon']" />
+                                    <span class="min-w-0 flex-1">{{ $group['label'] }}</span>
+                                    <x-admin.nav-icon name="chevron-left" size="xs" class="text-white/50" />
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+                </nav>
+                @foreach ($secondaryNavGroups as $group)
+                    <nav id="admin-nav-{{ $group['id'] }}"
+                        x-show="sidebarPanel === @js($group['id'])" x-cloak
+                        x-transition:enter="transition ease-out duration-150 motion-reduce:transition-none"
+                        x-transition:enter-start="opacity-0 -translate-x-2 motion-reduce:transform-none"
+                        x-transition:enter-end="opacity-100 translate-x-0"
+                        aria-label="{{ $group['label'] }}">
+                        <button type="button"
+                            x-ref="sidebarBack-{{ $group['id'] }}"
+                            @click="showMainSidebar()"
+                            class="mb-5 flex min-h-10 w-full items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-white/90 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                            <x-admin.nav-icon name="arrow-right" size="sm" />
+                            <span>منوی اصلی</span>
+                        </button>
+                        <div class="mb-4 flex items-center gap-3 border-b border-white/15 px-3 pb-4">
+                            <span class="grid size-10 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/5"><x-admin.nav-icon :name="$group['icon']" class="size-5" /></span>
+                            <div>
+                                <p class="text-[10px] font-medium text-white/55">ابزارها و تنظیمات</p>
+                                <h2 class="mt-1 text-sm font-bold text-white">{{ $group['label'] }}</h2>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            @foreach ($group['items'] as $item)
+                                <x-admin.nav-link :item="$item" />
+                            @endforeach
+                        </div>
+                    </nav>
                 @endforeach
-            </nav>
-            <div class="mt-6 space-y-1 border-t border-white/20 pt-3 text-sm font-semibold">
-                <a href="{{ route('admin.profile.edit') }}" @if (request()->routeIs('admin.profile.*')) aria-current="page" @endif class="block rounded-lg px-3 py-2.5 hover:bg-white/15 {{ request()->routeIs('admin.profile.*') ? 'bg-[#004DB3]' : '' }}">حساب کاربری من</a>
+            </div>
+            <div class="mt-4 shrink-0 space-y-1 border-t border-white/15 pt-3 text-[13px] font-medium">
+                <a href="{{ route('admin.profile.edit') }}" @if (request()->routeIs('admin.profile.*')) aria-current="page" @endif class="flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white {{ request()->routeIs('admin.profile.*') ? 'bg-white/15 text-white' : '' }}">
+                    <x-admin.nav-icon name="user-round" />
+                    <span>حساب کاربری من</span>
+                </a>
                 <form method="POST" action="{{ route('admin.logout') }}">
                     @csrf
-                    <button type="submit" class="w-full rounded-lg px-3 py-2.5 text-right text-white/80 hover:bg-white/15 hover:text-white">خروج از حساب</button>
+                    <button type="submit" class="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-right text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                        <x-admin.nav-icon name="log-out" />
+                        <span>خروج از حساب</span>
+                    </button>
                 </form>
             </div>
 

@@ -13,20 +13,47 @@ class AdminNavigationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_sidebar_groups_daily_work_and_highlights_the_current_page(): void
+    public function test_main_sidebar_keeps_daily_destinations_visible_and_moves_tools_to_secondary_panels(): void
     {
         $this->actingAs(User::factory()->create(), 'admin');
 
-        $response = $this->get('https://admin.localhost/billing/bundles')->assertOk();
-        $html = $response->getContent();
-        $start = strpos($html, '<nav ');
-        $sidebar = substr($html, $start, strpos($html, '</nav>', $start) - $start);
-        $this->assertStringContainsString('مشتریان و همکاران', $sidebar);
-        $this->assertStringContainsString('طرح‌ها و فروش', $sidebar);
-        $this->assertStringContainsString('تنظیمات پشتیبانی', $sidebar);
-        $this->assertStringContainsString('aria-controls="admin-nav-sales"', $sidebar);
-        $this->assertMatchesRegularExpression('/href="[^"]*billing\/bundles"\s+@?[^>]*aria-current="page"/u', $sidebar);
-        $this->assertLessThan(strpos($sidebar, 'سرورهای Proxmox'), strpos($sidebar, 'ماشین‌های مجازی'));
+        $response = $this->get('https://admin.localhost/profile')->assertOk()
+            ->assertSee('data-initial-panel="main"', false);
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+        $xpath = new \DOMXPath($document);
+        $this->assertSame(12, $xpath->query('//*[@id="admin-nav-main"]//a')->length);
+        $this->assertSame(5, $xpath->query('//*[@id="admin-nav-main"]//button[@aria-controls]')->length);
+        $main = $document->saveHTML($document->getElementById('admin-nav-main'));
+        foreach (['admin.customers.index', 'admin.projects.index', 'admin.resellers.index',
+            'admin.virtual-machines.index', 'admin.tickets.index', 'admin.incidents.index',
+            'admin.billing.overview', 'admin.billing.invoices.index', 'admin.billing.payments.index',
+            'admin.billing.wallets.index', 'admin.billing.transactions.index'] as $route) {
+            $this->assertStringContainsString('href="'.route($route).'"', $main);
+        }
+        foreach (['admin.proxmox-servers.index', 'admin.billing.rates.index', 'admin.users.index'] as $route) {
+            $this->assertStringNotContainsString('href="'.route($route).'"', $main);
+        }
+        foreach (['infrastructure' => 6, 'support-settings' => 2, 'billing-tools' => 2, 'sales' => 3, 'administration' => 4] as $panel => $count) {
+            $this->assertSame($count, $xpath->query('//*[@id="admin-nav-'.$panel.'"]//a')->length);
+            $this->assertStringContainsString('منوی اصلی', $document->saveHTML($document->getElementById('admin-nav-'.$panel)));
+        }
+    }
+
+    public function test_secondary_destination_opens_its_panel_and_highlights_the_current_page(): void
+    {
+        $this->actingAs(User::factory()->create(), 'admin');
+
+        $response = $this->get('https://admin.localhost/billing/bundles')->assertOk()
+            ->assertSee('data-initial-panel="sales"', false)
+            ->assertSee('background-color: #073C8C', false);
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+        $xpath = new \DOMXPath($document);
+        $active = $xpath->query('//*[@id="admin-nav-sales"]//a[@aria-current="page"]');
+        $this->assertSame(1, $active->length);
+        $this->assertSame(route('admin.billing.bundles.index'), $active->item(0)->getAttribute('href'));
+        $this->assertStringNotContainsString('adminNavGroup', $response->getContent());
     }
 
     public function test_page_search_supports_english_and_persian_navigation_terms(): void
@@ -38,7 +65,7 @@ class AdminNavigationTest extends TestCase
                 ->assertOk()
                 ->assertJsonPath('groups.0.label', 'صفحات مدیریت')
                 ->assertJsonPath('groups.0.items.0.title', 'قیمت منابع')
-                ->assertJsonPath('groups.0.items.0.subtitle', 'طرح‌ها و فروش')
+                ->assertJsonPath('groups.0.items.0.subtitle', 'طرح‌ها و پروموشن‌ها')
                 ->assertJsonPath('groups.0.items.0.url', route('admin.billing.rates.index'));
         }
     }
@@ -52,12 +79,29 @@ class AdminNavigationTest extends TestCase
 
         $this->get('https://admin.localhost/profile')->assertOk()
             ->assertSee('پشتیبانی و رخدادها')
-            ->assertDontSee('aria-controls="admin-nav-finance"', false)
-            ->assertDontSee('aria-controls="admin-nav-sales"', false)
+            ->assertDontSee('id="admin-nav-finance"', false)
+            ->assertDontSee('id="admin-nav-sales"', false)
             ->assertDontSee('تنظیمات پشتیبانی');
         $this->getJson('https://admin.localhost/search?q=pricing')->assertExactJson(['groups' => []]);
         $this->getJson('https://admin.localhost/search?q=tickets')
             ->assertJsonPath('groups.0.items.0.title', 'تیکت‌ها');
+    }
+
+    public function test_custom_admin_with_only_pricing_access_gets_only_the_sales_panel(): void
+    {
+        $this->actingAs(User::factory()->create([
+            'role' => AdminRole::Custom,
+            'permissions' => ['pricing.manage'],
+        ]), 'admin');
+
+        $this->get('https://admin.localhost/billing/rates')->assertOk()
+            ->assertSee('data-initial-panel="sales"', false)
+            ->assertSee('aria-controls="admin-nav-sales"', false)
+            ->assertDontSee('id="admin-nav-infrastructure"', false)
+            ->assertDontSee('id="admin-nav-administration"', false)
+            ->assertDontSee('href="'.route('admin.billing.bundles.index').'"', false);
+        $this->getJson('https://admin.localhost/search?q=pricing')
+            ->assertJsonPath('groups.0.items.0.url', route('admin.billing.rates.index'));
     }
 
     public function test_ticket_badge_counts_only_tickets_awaiting_admin_response(): void
