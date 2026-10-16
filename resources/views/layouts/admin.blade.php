@@ -30,9 +30,9 @@
             init() {
                 try {
                     const saved = JSON.parse(localStorage.getItem(`aviato.admin.${userId}.nav.${id}`));
-                    this.expanded = active || (typeof saved === 'boolean' ? saved : false);
+                    this.expanded = active || (typeof saved === 'boolean' ? saved : true);
                 } catch {
-                    this.expanded = active;
+                    this.expanded = true;
                 }
             },
             toggle() {
