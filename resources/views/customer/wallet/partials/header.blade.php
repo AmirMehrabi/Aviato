@@ -13,7 +13,7 @@
                 @foreach ([
                     ['label' => 'موجودی قابل استفاده', 'value' => $wallets->format($effectiveBalance), 'tone' => $effectiveBalance < 0 ? 'text-rose-600' : 'text-slate-950'],
                     ['label' => 'برآورد ماهانه کل کیف پول', 'value' => $wallets->format($monthlyEstimate), 'tone' => 'text-slate-950'],
-                    ['label' => 'کسری پوشش هزینه یک ماه', 'value' => $wallets->format($suggestedTopUp), 'tone' => 'text-[#0069FF]'],
+                    ['label' => 'شارژ پیشنهادی برای یک ماه', 'value' => $wallets->format($suggestedTopUp), 'tone' => 'text-[#0069FF]'],
                 ] as $item)
                     <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                         <dt class="text-xs font-bold text-slate-500">{{ $item['label'] }}</dt>
