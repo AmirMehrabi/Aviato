@@ -110,8 +110,8 @@ class WorkspaceWalletRiskTest extends TestCase
             ->post('https://cp.localhost/projects/switch', ['project_id' => $project->id])
             ->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id);
 
-        $workspaceBalance = app(WalletService::class)->format(1234560);
-        $personalBalance = app(WalletService::class)->format(8765430);
+        $workspaceBalance = app(WalletService::class)->formatAvailableBalance(1234560);
+        $personalBalance = app(WalletService::class)->formatAvailableBalance(8765430);
 
         foreach (['dashboard', 'projects', 'servers', 'backups', 'monitoring', 'wallet'] as $page) {
             $response = $this->get('https://cp.localhost/'.$page)->assertOk();

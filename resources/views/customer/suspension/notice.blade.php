@@ -47,7 +47,7 @@
 
             <div class="grid gap-4 sm:grid-cols-2">
                 @foreach ([
-                    ['label' => 'موجودی قابل استفاده', 'value' => $wallets->format($effectiveBalance), 'color' => $effectiveBalance < 0 ? 'text-red-600' : 'text-slate-950'],
+                    ['label' => 'موجودی قابل استفاده', 'value' => $wallets->formatAvailableBalance($effectiveBalance), 'color' => $effectiveBalance < 0 ? 'text-red-600' : 'text-slate-950'],
                     ['label' => 'پروژه فعال', 'value' => $activeProject->name, 'color' => 'text-slate-950'],
                 ] as $item)
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">

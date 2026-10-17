@@ -30,13 +30,13 @@ class CustomerPendingUsageTest extends TestCase
             ->assertDontSee('کارکرد تسویه‌نشده')
             ->assertDontSee('موجودی ثبت‌شده')
             ->assertDontSee($wallets->format(500000))
-            ->assertSee($wallets->format(80000));
+            ->assertSee($wallets->formatAvailableBalance(80000));
 
         $this->get('https://cp.localhost/wallet')
             ->assertOk()
             ->assertViewHas('effectiveBalance', 80000)
             ->assertSeeInOrder([
-                'موجودی قابل استفاده', $wallets->format(80000),
+                'موجودی قابل استفاده', $wallets->formatAvailableBalance(80000),
             ])
             ->assertDontSee('کارکرد تسویه‌نشده')
             ->assertDontSee('موجودی ثبت‌شده')
@@ -72,7 +72,7 @@ class CustomerPendingUsageTest extends TestCase
             ->assertOk()
             ->assertViewHas('effectiveBalance', -20000)
             ->assertSee('موجودی کیف پول منفی است')
-            ->assertSee(app(WalletService::class)->format(-20000));
+            ->assertSee(app(WalletService::class)->formatAvailableBalance(-20000));
     }
 
     public function test_workspace_admin_sees_owners_available_balance_instead_of_their_own(): void
@@ -88,7 +88,7 @@ class CustomerPendingUsageTest extends TestCase
             ->get('https://cp.localhost/dashboard')
             ->assertOk()
             ->assertViewHas('effectiveBalance', 80000)
-            ->assertSee(app(WalletService::class)->format(80000))
+            ->assertSee(app(WalletService::class)->formatAvailableBalance(80000))
             ->assertDontSee(app(WalletService::class)->format(900000));
     }
 
@@ -104,7 +104,7 @@ class CustomerPendingUsageTest extends TestCase
             ->get('https://cp.localhost/dashboard')
             ->assertOk()
             ->assertDontSee('کارکرد تسویه‌نشده')
-            ->assertDontSee(app(WalletService::class)->format(80000));
+            ->assertDontSee(app(WalletService::class)->formatAvailableBalance(80000));
     }
 
     private function customerWithPendingNetworkUsage(): Customer

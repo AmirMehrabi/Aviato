@@ -49,6 +49,20 @@ class WalletService
         return $this->record($customer, $signedAmount, WalletTransaction::TYPE_ADJUSTMENT, $description, $actor, null, $metadata, true);
     }
 
+    public function formatAvailableBalance(int $amount, ?string $currency = null): string
+    {
+        $currency ??= AppSetting::currency();
+        $step = match ($currency) {
+            'IRR' => 100000,
+            'IRT' => 10000,
+            default => 1,
+        };
+        // Preserve debt visibility: round the magnitude without losing its sign.
+        $rounded = intdiv(abs($amount) + $step - 1, $step) * $step;
+
+        return $this->format($amount < 0 ? -$rounded : $rounded, $currency);
+    }
+
     public function format(int $amount, ?string $currency = null): string
     {
         $currency ??= AppSetting::currency();
