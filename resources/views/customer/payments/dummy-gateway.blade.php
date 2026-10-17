@@ -32,7 +32,7 @@
                 <p class="mt-3 text-xl font-black text-slate-950">{{ strtoupper($payment->provider) }}</p>
             </div>
             <div class="rounded-3xl border border-slate-200 p-5">
-                <p class="text-xs font-black text-slate-500">موجودی فعلی</p>
+                <p class="text-xs font-black text-slate-500">موجودی ثبت‌شده کیف پول</p>
                 <p class="mt-3 text-xl font-black {{ $wallet->balance < 0 ? 'text-rose-600' : 'text-slate-950' }}">{{ $wallets->format($wallet->balance) }}</p>
             </div>
         </div>

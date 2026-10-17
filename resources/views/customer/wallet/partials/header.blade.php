@@ -9,10 +9,11 @@
                     <a href="{{ route('customer.wallet.show', ['tab' => 'top-up'], false) }}" class="inline-flex min-h-11 items-center rounded-xl bg-[#0069FF] px-5 text-sm font-black text-white hover:bg-[#0050D0]">افزایش موجودی</a>
                 @endif
             </div>
-            <dl class="grid gap-3 pb-7 sm:grid-cols-2 lg:grid-cols-4">
+            <dl class="grid gap-3 pb-7 sm:grid-cols-2 xl:grid-cols-5">
                 @foreach ([
-                    ['label' => 'موجودی کیف پول', 'value' => $wallets->format($wallet->balance), 'tone' => $wallet->balance < 0 ? 'text-rose-600' : 'text-slate-950'],
                     ['label' => 'موجودی قابل استفاده', 'value' => $wallets->format($effectiveBalance), 'tone' => $effectiveBalance < 0 ? 'text-rose-600' : 'text-slate-950'],
+                    ['label' => 'کارکرد تسویه‌نشده', 'value' => $wallets->format($wallet->balance - $effectiveBalance), 'tone' => 'text-amber-700'],
+                    ['label' => 'موجودی ثبت‌شده کیف پول', 'value' => $wallets->format($wallet->balance), 'tone' => $wallet->balance < 0 ? 'text-rose-600' : 'text-slate-950'],
                     ['label' => 'برآورد ماهانه کل کیف پول', 'value' => $wallets->format($monthlyEstimate), 'tone' => 'text-slate-950'],
                     ['label' => 'کسری پوشش هزینه یک ماه', 'value' => $wallets->format($suggestedTopUp), 'tone' => 'text-[#0069FF]'],
                 ] as $item)
@@ -22,6 +23,7 @@
                     </div>
                 @endforeach
             </dl>
+            <p class="pb-4 text-xs leading-6 text-slate-500">موجودی قابل استفاده پس از کسر کارکرد تسویه‌نشده محاسبه می‌شود و مبنای هشدارها و محدودیت خدمات است. کارکرد شامل شبکه و سایر خدمات است و با ثبت مصرف به‌روز می‌شود؛ دریافت مصرف شبکه ممکن است با تأخیر همراه باشد.</p>
             <nav class="flex gap-8 overflow-x-auto" aria-label="بخش‌های کیف پول">
                 @foreach ($tabItems as $item)
                     <a href="{{ route('customer.wallet.show', ['tab' => $item['key']], false) }}" @if($selectedTab === $item['key']) aria-current="page" @endif class="whitespace-nowrap border-b-2 py-4 text-sm {{ $selectedTab === $item['key'] ? 'border-[#0069FF] font-black text-[#0069FF]' : 'border-transparent font-bold text-slate-500 hover:text-slate-800' }}">{{ $item['label'] }}</a>

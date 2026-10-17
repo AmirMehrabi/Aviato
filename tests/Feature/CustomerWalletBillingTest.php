@@ -354,7 +354,7 @@ class CustomerWalletBillingTest extends TestCase
             ->get($this->customerBaseUrl.'/dashboard')
             ->assertOk()
             ->assertSee('هزینه و صورتحساب')
-            ->assertSee('موجودی کیف پول')
+            ->assertSee('موجودی قابل استفاده')
             ->assertSee($ownerBalance)
             ->assertSee('/wallet', false)
             ->assertViewHas('dashboardStats', fn (array $stats): bool => $stats['monthly_spend'] === 730000)

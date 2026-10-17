@@ -47,7 +47,7 @@
 
 @section('content')
     @php
-        $walletIsBlocked = $canViewBilling && ($wallet->is_locked || $wallet->balance < 0);
+        $walletIsBlocked = $canViewBilling && ($wallet->is_locked || $effectiveBalance <= 0);
         $workspaceRoleLabels = ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'];
         $workspaceRole = $workspaceRoleLabels[$activeMembership?->role ?? 'member'] ?? 'عضو';
         $attentionItems = collect([
@@ -83,8 +83,9 @@
                         </svg>
                     </span>
                     <span class="min-w-0">
-                        <span class="block text-xs font-black text-slate-600">موجودی کیف پول</span>
-                        <span class="block truncate text-sm font-black {{ $walletIsBlocked ? 'text-red-700' : 'text-slate-950' }}">{{ $wallets->format($wallet->balance) }}</span>
+                        <span class="block text-xs font-black text-slate-600">موجودی قابل استفاده</span>
+                        <span class="block truncate text-sm font-black {{ $walletIsBlocked ? 'text-red-700' : 'text-slate-950' }}">{{ $wallets->format($effectiveBalance) }}</span>
+                        <span class="block text-xs leading-5 text-slate-500">کارکرد تسویه‌نشده: {{ $wallets->format($wallet->balance - $effectiveBalance) }}</span>
                     </span>
                     <a
                         href="{{ route('customer.wallet.show', ['topup' => 1], false) }}"

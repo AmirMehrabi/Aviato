@@ -266,23 +266,23 @@ class WorkspaceWalletAlertTest extends TestCase
 
         Http::fake(['api.kavenegar.com/*' => Http::response([
             'return' => ['status' => 200, 'message' => 'تایید شد'],
-            'entries' => [['messageid' => 123, 'message' => 'موجودی فضای کاری جدید 3,118,084 تومان']],
+            'entries' => [['messageid' => 123, 'message' => 'موجودی فضای کاری جدید 3,105,122 تومان']],
         ])]);
         Log::spy();
 
         $this->assertTrue(app(WorkspaceWalletAlertService::class)->sendSmsNow($project, $owner, ['balance' => 31_051_220]));
 
         Http::assertSent(fn ($request): bool => $request['token10'] === 'فضای کاری جدید'
-            && $request['token20'] === '3,118,084'
+            && $request['token20'] === '3,105,122'
             && ! isset($request['token2'], $request['token3']));
         Log::shouldHaveReceived('info')->once()->with('Workspace wallet SMS notification sent.', Mockery::on(
             fn (array $context): bool => $context['project_id'] === $project->id
                 && $context['wallet_balance'] === 31_180_840
                 && $context['effective_balance'] === 31_051_220
                 && $context['message_id'] === 123
-                && $context['message'] === 'موجودی فضای کاری جدید 3,118,084 تومان'
+                && $context['message'] === 'موجودی فضای کاری جدید 3,105,122 تومان'
                 && $context['tokens']['token10'] === 'فضای کاری جدید'
-                && $context['tokens']['token20'] === '3,118,084'
+                && $context['tokens']['token20'] === '3,105,122'
         ));
     }
 

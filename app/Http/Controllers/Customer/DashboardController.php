@@ -9,6 +9,7 @@ use App\Models\VmDisk;
 use App\Services\BillingService;
 use App\Services\PortalCache;
 use App\Services\ProjectAccessService;
+use App\Services\UsageBalanceService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -141,6 +142,7 @@ class DashboardController extends Controller
             'activeMembership' => $this->projects->membership($activeProject, $customer),
             'projects' => $projects,
             'wallet' => $wallet,
+            'effectiveBalance' => $canViewBilling ? app(UsageBalanceService::class)->effectiveBalance($activeProject->owner) : null,
             'wallets' => $this->wallets,
             'virtualMachines' => $virtualMachines,
             'summary' => $summary,
