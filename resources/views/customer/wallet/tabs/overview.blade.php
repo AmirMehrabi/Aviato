@@ -1,7 +1,7 @@
         <section class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div class="rounded-2xl border border-slate-200 bg-white p-6">
                 <h2 class="text-xl font-black text-slate-950">پوشش هزینه‌ها</h2>
-                <p class="mt-2 text-sm leading-7 text-slate-600">این برآورد بر پایه وضعیت فعلی سرورها، دیسک‌ها و نسخه‌های پشتیبان است. تغییر منابع، وضعیت سرورها و مصرف شبکه می‌تواند مبلغ واقعی را تغییر دهد.</p>
+                <p class="mt-2 text-sm leading-7 text-slate-600">این برآورد بر پایه وضعیت فعلی سرورها، دیسک‌ها، نسخه‌های پشتیبان و میانگین مصرف شبکه است. سهمیه رایگان شبکه هر سرور در محاسبه لحاظ می‌شود. تغییر منابع، وضعیت سرورها و مصرف شبکه می‌تواند مبلغ واقعی را تغییر دهد.</p>
                 <dl class="mt-6 divide-y divide-slate-100 text-sm">
                     <div class="flex items-center justify-between gap-4 py-3"><dt class="text-slate-600">برآورد این فضای کاری</dt><dd class="font-black text-slate-950">{{ $wallets->format($projectMonthlyEstimate) }}</dd></div>
                     <div class="flex items-center justify-between gap-4 py-3"><dt class="text-slate-600">برآورد تمام فضاهای کاری این کیف پول</dt><dd class="font-black text-slate-950">{{ $wallets->format($monthlyEstimate) }}</dd></div>

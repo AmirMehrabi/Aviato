@@ -16,7 +16,7 @@ class CustomerPendingUsageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_customer_sees_available_balance_and_pending_network_usage_before_settlement(): void
+    public function test_customer_sees_only_available_balance_before_settlement(): void
     {
         $this->freezeTime();
         $owner = $this->customerWithPendingNetworkUsage();
@@ -27,7 +27,9 @@ class CustomerPendingUsageTest extends TestCase
             ->assertOk()
             ->assertViewHas('effectiveBalance', 80000)
             ->assertSee('موجودی قابل استفاده')
-            ->assertSee('کارکرد تسویه‌نشده: '.$wallets->format(420000))
+            ->assertDontSee('کارکرد تسویه‌نشده')
+            ->assertDontSee('موجودی ثبت‌شده')
+            ->assertDontSee($wallets->format(500000))
             ->assertSee($wallets->format(80000));
 
         $this->get('https://cp.localhost/wallet')
@@ -35,9 +37,11 @@ class CustomerPendingUsageTest extends TestCase
             ->assertViewHas('effectiveBalance', 80000)
             ->assertSeeInOrder([
                 'موجودی قابل استفاده', $wallets->format(80000),
-                'کارکرد تسویه‌نشده', $wallets->format(420000),
-                'موجودی ثبت‌شده کیف پول', $wallets->format(500000),
-            ]);
+            ])
+            ->assertDontSee('کارکرد تسویه‌نشده')
+            ->assertDontSee('موجودی ثبت‌شده')
+            ->assertDontSee($wallets->format(420000))
+            ->assertDontSee($wallets->format(500000));
     }
 
     public function test_settlement_clears_pending_usage_without_reducing_available_balance_again(): void
@@ -84,7 +88,7 @@ class CustomerPendingUsageTest extends TestCase
             ->get('https://cp.localhost/dashboard')
             ->assertOk()
             ->assertViewHas('effectiveBalance', 80000)
-            ->assertSee('کارکرد تسویه‌نشده: '.app(WalletService::class)->format(420000))
+            ->assertSee(app(WalletService::class)->format(80000))
             ->assertDontSee(app(WalletService::class)->format(900000));
     }
 

@@ -34,7 +34,6 @@
         $effectiveWalletBalance = $billingOwner instanceof \App\Models\Customer
             ? app(\App\Services\UsageBalanceService::class)->effectiveBalance($billingOwner)
             : $sidebarWallet->balance;
-        $pendingWalletUsage = $sidebarWallet->balance - $effectiveWalletBalance;
         $balanceIsNegative = $effectiveWalletBalance < 0;
         $walletIsDepleted = $effectiveWalletBalance <= 0;
         $walletIsOverdrawn = $effectiveWalletBalance < 0;
@@ -360,7 +359,6 @@
                         @if($canViewBilling)
                         <p class="mb-1 text-[11px] font-bold text-slate-300">موجودی قابل استفاده</p>
                         <p class="truncate text-lg font-black {{ $activeWalletRisk && $activeWalletRisk['tone'] !== 'warning' ? 'text-rose-200' : ($balanceIsNegative ? 'text-red-200' : 'text-white') }}">{{ $wallets->format($effectiveWalletBalance) }}</p>
-                        <p class="mt-1 text-[11px] leading-5 text-slate-300">کارکرد تسویه‌نشده: {{ $wallets->format($pendingWalletUsage) }}</p>
                         @if($activeWalletRisk)
                             <p class="mt-1 text-[11px] font-bold leading-5 {{ $activeWalletRisk['tone'] === 'warning' ? 'text-amber-200' : 'text-rose-200' }}">
                                 {{ $activeWalletRisk['tone'] === 'depleted' ? 'اعتبار قابل استفاده پایان یافته است.' : 'اعتبار قابل استفاده: '.number_format($activeWalletRisk['percent'], 0).'٪ هزینه ماهانه' }}
@@ -525,8 +523,6 @@
                                 </div>
                                 <p class="mt-3 text-xs font-bold text-slate-500">موجودی قابل استفاده</p>
                                 <p class="mt-3 text-2xl font-black {{ $balanceIsNegative ? 'text-red-600' : 'text-slate-950' }}">{{ $wallets->format($effectiveWalletBalance) }}</p>
-                                <p class="mt-2 text-xs leading-6 text-slate-500">کارکرد تسویه‌نشده: {{ $wallets->format($pendingWalletUsage) }}</p>
-                                <p class="text-xs leading-6 text-slate-500">موجودی ثبت‌شده: {{ $wallets->format($sidebarWallet->balance) }}</p>
                                 <div class="mt-4 grid grid-cols-2 gap-2">
                                     <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50">تراکنش ها</a>
                                     <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="inline-flex justify-center rounded-lg bg-[#0069FF] px-3 py-2 text-sm font-black text-white transition hover:bg-[#0050D0]">شارژ</a>

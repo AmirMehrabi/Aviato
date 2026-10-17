@@ -493,10 +493,10 @@ class CustomerWalletBillingTest extends TestCase
             ->withSession([ProjectAccessService::SESSION_KEY => $project->id])
             ->get($this->customerBaseUrl.'/wallet')
             ->assertOk()
-            ->assertViewHas('projectMonthlyEstimate', 730000)
-            ->assertViewHas('monthlyEstimate', 1460000)
-            ->assertViewHas('suggestedTopUp', 960000)
-            ->assertViewHas('suggestedTopUpToman', 96000)
+            ->assertViewHas('projectMonthlyEstimate', 800000)
+            ->assertViewHas('monthlyEstimate', 1500000)
+            ->assertViewHas('suggestedTopUp', 1000000)
+            ->assertViewHas('suggestedTopUpToman', 100000)
             ->assertDontSee('private-server-'.$project->id)
             ->assertDontSee('private-server-'.$otherProject->id);
 
@@ -644,11 +644,11 @@ class CustomerWalletBillingTest extends TestCase
 
         $this->get($this->customerBaseUrl.'/wallet?tab=top-up')
             ->assertOk()
-            ->assertViewHas('projectMonthlyEstimate', 3315000)
-            ->assertViewHas('recommendedTopUpToman', 332000)
-            ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000, 332000])
+            ->assertViewHas('projectMonthlyEstimate', 3400000)
+            ->assertViewHas('recommendedTopUpToman', 340000)
+            ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000, 340000])
             ->assertSee('برآورد ماهانه')
-            ->assertSee('۳۳۲,۰۰۰');
+            ->assertSee('۳۴۰,۰۰۰');
     }
 
     public function test_wallet_page_shows_gateway_selector_when_multiple_gateways_are_available(): void

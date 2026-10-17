@@ -22,7 +22,7 @@
             </div>
         </div>
 
-        <div class="mt-8 grid gap-4 md:grid-cols-3">
+        <div class="mt-8 grid gap-4 md:grid-cols-2">
             <div class="rounded-3xl border border-slate-200 p-5">
                 <p class="text-xs font-black text-slate-500">مبلغ</p>
                 <p class="mt-3 text-xl font-black text-slate-950">{{ $wallets->format($payment->amount) }}</p>
@@ -30,10 +30,6 @@
             <div class="rounded-3xl border border-slate-200 p-5">
                 <p class="text-xs font-black text-slate-500">ارائه دهنده</p>
                 <p class="mt-3 text-xl font-black text-slate-950">{{ strtoupper($payment->provider) }}</p>
-            </div>
-            <div class="rounded-3xl border border-slate-200 p-5">
-                <p class="text-xs font-black text-slate-500">موجودی ثبت‌شده کیف پول</p>
-                <p class="mt-3 text-xl font-black {{ $wallet->balance < 0 ? 'text-rose-600' : 'text-slate-950' }}">{{ $wallets->format($wallet->balance) }}</p>
             </div>
         </div>
 

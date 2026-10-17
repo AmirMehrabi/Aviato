@@ -85,7 +85,6 @@
                     <span class="min-w-0">
                         <span class="block text-xs font-black text-slate-600">موجودی قابل استفاده</span>
                         <span class="block truncate text-sm font-black {{ $walletIsBlocked ? 'text-red-700' : 'text-slate-950' }}">{{ $wallets->format($effectiveBalance) }}</span>
-                        <span class="block text-xs leading-5 text-slate-500">کارکرد تسویه‌نشده: {{ $wallets->format($wallet->balance - $effectiveBalance) }}</span>
                     </span>
                     <a
                         href="{{ route('customer.wallet.show', ['topup' => 1], false) }}"

@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use App\Models\Payment;
 use App\Models\PromotionException;
 use App\Models\WalletTransaction;
+use App\Services\NetworkMonthlyEstimateService;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
 use App\Services\UsageBalanceService;
@@ -75,13 +76,16 @@ class WalletController extends Controller
             })
             ->where('created_at', '>=', $monthStart);
         $walletSnapshot = $this->walletAlerts->snapshot($activeProject->owner);
-        $monthlyEstimate = $walletSnapshot['monthly_cost'];
+        $estimates = app(NetworkMonthlyEstimateService::class);
+        $networkEstimate = $estimates->forOwner($activeProject->owner);
+        $monthlyEstimate = $estimates->roundedTotal($walletSnapshot['monthly_cost'] + $networkEstimate['amount']);
         $effectiveBalance = $walletSnapshot['balance'];
         $suggestedTopUp = max(0, $monthlyEstimate - $effectiveBalance);
         $suggestedTopUpToman = AppSetting::currency() === 'IRR'
             ? (int) ceil($suggestedTopUp / 10)
             : $suggestedTopUp;
-        $projectMonthlyEstimate = $this->walletAlerts->projectMonthlyCost($activeProject);
+        $projectNetworkEstimate = $estimates->forOwner($activeProject->owner, $activeProject);
+        $projectMonthlyEstimate = $estimates->roundedTotal($this->walletAlerts->projectMonthlyCost($activeProject) + $projectNetworkEstimate['amount']);
         $projectMonthlyEstimateToman = AppSetting::currency() === 'IRR'
             ? (int) ceil($projectMonthlyEstimate / 10)
             : $projectMonthlyEstimate;
@@ -109,6 +113,7 @@ class WalletController extends Controller
             'selectedTab' => $selectedTab,
             'effectiveBalance' => $effectiveBalance,
             'monthlyEstimate' => $monthlyEstimate,
+            'networkEstimate' => $networkEstimate,
             'projectMonthlyEstimate' => $projectMonthlyEstimate,
             'suggestedTopUp' => $suggestedTopUp,
             'suggestedTopUpToman' => $suggestedTopUpToman,
