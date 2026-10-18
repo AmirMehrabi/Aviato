@@ -9,6 +9,7 @@ use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
@@ -33,6 +34,8 @@ class IncidentController extends Controller
 
         return view('admin.incidents.create', ['incident' => new Incident([
             'status' => Incident::STATUS_INVESTIGATING,
+            'category' => 'compute',
+            'severity' => 'warning',
             'started_at' => now()->format('Y-m-d\\TH:i'),
         ])]);
     }
@@ -72,6 +75,11 @@ class IncidentController extends Controller
     private function payload(IncidentRequest $request, ?Incident $incident = null): array
     {
         $data = $request->validated();
+        if ($data['status'] === Incident::STATUS_RESOLVED) {
+            $data['ended_at'] = $data['ended_at'] ?? now()->max(Carbon::parse($data['started_at']));
+        } else {
+            $data['ended_at'] = null;
+        }
         $data['slug'] = $data['slug'] ?? Str::slug($data['title']);
         $data['is_published'] = $request->boolean('is_published');
         $data['published_at'] = $data['is_published']

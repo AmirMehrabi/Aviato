@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'title', 'slug', 'status', 'affected_service', 'impact_summary', 'summary', 'root_cause',
+    'title', 'slug', 'status', 'category', 'severity', 'affected_service', 'impact_summary', 'summary', 'root_cause',
     'customer_impact', 'resolution', 'next_steps', 'final_status', 'started_at', 'ended_at',
     'is_published', 'published_at', 'meta_description',
 ])]
@@ -22,6 +22,17 @@ class Incident extends Model
     {
         return IncidentFactory::new();
     }
+
+    public const CATEGORIES = [
+        'compute' => 'ماشین‌های مجازی',
+        'network' => 'شبکه و ارتباطات',
+        'panel' => 'پنل کاربری و API',
+    ];
+
+    public const SEVERITIES = [
+        'warning' => 'اختلال جزئی',
+        'danger' => 'اختلال جدی',
+    ];
 
     public const STATUS_INVESTIGATING = 'investigating';
 

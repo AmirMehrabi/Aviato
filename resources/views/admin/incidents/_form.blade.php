@@ -13,6 +13,22 @@
             <input name="slug" value="{{ old('slug', $incident->slug) }}" placeholder="خودکار تولید می‌شود" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3" dir="ltr">
         </label>
         <label>
+            <span class="text-sm font-black text-slate-700">دسته‌بندی</span>
+            <select name="category" required class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3">
+                @foreach (\App\Models\Incident::CATEGORIES as $value => $label)
+                    <option value="{{ $value }}" @selected(old('category', $incident->category) === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+        </label>
+        <label>
+            <span class="text-sm font-black text-slate-700">شدت اختلال</span>
+            <select name="severity" required class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3">
+                @foreach (\App\Models\Incident::SEVERITIES as $value => $label)
+                    <option value="{{ $value }}" @selected(old('severity', $incident->severity) === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+        </label>
+        <label>
             <span class="text-sm font-black text-slate-700">سرویس تحت تأثیر</span>
             <input name="affected_service" value="{{ old('affected_service', $incident->affected_service) }}" required class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3">
         </label>
@@ -35,7 +51,7 @@
             <input type="datetime-local" name="started_at" value="{{ old('started_at', $startedAt) }}" required class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3">
         </label>
         <label>
-            <span class="text-sm font-black text-slate-700">زمان پایان</span>
+            <span class="text-sm font-black text-slate-700">زمان پایان (فقط برای رخداد رفع‌شده)</span>
             <input type="datetime-local" name="ended_at" value="{{ old('ended_at', $endedAt) }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3">
         </label>
     </div>
@@ -53,6 +69,8 @@
             </label>
         @endforeach
     </div>
+
+    <p class="text-sm text-slate-500">برای رخداد رفع‌شده، زمان پایان خالی به‌صورت خودکار ثبت می‌شود. دسته‌بندی و شدت اختلال، وضعیت صفحه عمومی را تعیین می‌کنند.</p>
 
     <label class="block">
         <span class="text-sm font-black text-slate-700">توضیحات متا</span>

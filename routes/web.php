@@ -570,6 +570,8 @@ Route::get('/changelog', function () {
 
     return view('changelog');
 })->name('changelog');
+Route::get('/status', \App\Http\Controllers\StatusController::class)->name('status');
+
 Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
 Route::get('/incidents/{slug}', [IncidentController::class, 'show'])->name('incidents.show');
 Route::get('/blog', [BlogController::class, 'index'])->name('blog');

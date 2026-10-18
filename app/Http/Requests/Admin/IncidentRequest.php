@@ -21,6 +21,8 @@ class IncidentRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('incidents', 'slug')->ignore($incident)],
             'status' => ['required', Rule::in(Incident::STATUSES)],
+            'category' => ['required', Rule::in(array_keys(Incident::CATEGORIES))],
+            'severity' => ['required', Rule::in(array_keys(Incident::SEVERITIES))],
             'affected_service' => ['required', 'string', 'max:255'],
             'impact_summary' => ['required', 'string', 'max:2000'],
             'summary' => ['required', 'string'],
@@ -30,7 +32,7 @@ class IncidentRequest extends FormRequest
             'next_steps' => ['nullable', 'string'],
             'final_status' => ['nullable', 'string', 'max:255'],
             'started_at' => ['required', 'date'],
-            'ended_at' => ['nullable', 'date', 'after_or_equal:started_at'],
+            'ended_at' => ['nullable', 'date', 'after_or_equal:started_at', 'prohibited_unless:status,resolved'],
             'is_published' => ['nullable', 'boolean'],
             'meta_description' => ['nullable', 'string', 'max:320'],
         ];

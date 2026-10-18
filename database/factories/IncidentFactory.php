@@ -19,6 +19,8 @@ class IncidentFactory extends Factory
             'slug' => fake()->unique()->slug(),
             'status' => Incident::STATUS_RESOLVED,
             'affected_service' => 'Cloud VPS',
+            'category' => 'compute',
+            'severity' => 'warning',
             'impact_summary' => fake()->sentence(),
             'summary' => fake()->paragraph(),
             'root_cause' => fake()->paragraph(),
