@@ -170,6 +170,7 @@ class SettingController extends Controller
             'ticketKavenegarCustomerReplyTemplate' => (string) AppSetting::getValue(AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE, ''),
             'ticketKavenegarAdminReplyTemplate' => (string) AppSetting::getValue(AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE, ''),
             'ticketKavenegarAssignmentTemplate' => (string) AppSetting::getValue(AppSetting::TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE, ''),
+            'vmExtraDiskEnabled' => AppSetting::vmExtraDiskEnabled(),
             'vmCreationChargeEnabled' => AppSetting::vmCreationChargeEnabled(),
             'vmCreationChargePercentage' => AppSetting::vmCreationChargePercentage(),
             'unverifiedCustomerVmLimit' => AppSetting::unverifiedCustomerVmLimit(),
@@ -243,6 +244,7 @@ class SettingController extends Controller
                 'company_postal_code' => ['nullable', 'string', 'max:30'],
             ],
             'billing' => [
+                'vm_extra_disk_enabled' => ['required', 'boolean'],
                 'tax_enabled' => ['required', 'boolean'],
                 'tax_rate_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
                 'vm_creation_charge_enabled' => ['required', 'boolean'],
@@ -371,6 +373,7 @@ class SettingController extends Controller
                 ['company_postal_code', AppSetting::COMPANY_POSTAL_CODE, 'string', 'company'],
             ],
             'billing' => [
+                ['vm_extra_disk_enabled', AppSetting::VM_EXTRA_DISK_ENABLED, 'boolean', 'vm'],
                 ['tax_enabled', AppSetting::TAX_ENABLED, 'boolean', 'billing'], ['tax_rate_percentage', AppSetting::TAX_RATE_PERCENTAGE, 'float', 'billing'],
                 ['vm_creation_charge_enabled', AppSetting::VM_CREATION_CHARGE_ENABLED, 'boolean', 'billing'], ['vm_creation_charge_percentage', AppSetting::VM_CREATION_CHARGE_PERCENTAGE, 'float', 'billing'],
                 ['hetzner_usd_to_irr_rate', AppSetting::HETZNER_USD_TO_IRR_RATE, 'integer', 'hetzner'], ['hetzner_price_markup_percentage', AppSetting::HETZNER_PRICE_MARKUP_PERCENTAGE, 'float', 'hetzner'],

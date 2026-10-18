@@ -575,7 +575,8 @@ class ServerController extends Controller
                     ->exists()))
             ->values() ?? collect();
         $hasPendingUpgrade = $server->upgradeOrders->contains(fn ($order): bool => $order->isPending());
-        $extraDiskOptions = ($server->isHetzner()
+        $extraDiskEnabled = AppSetting::vmExtraDiskEnabled();
+        $extraDiskOptions = (! $extraDiskEnabled || $server->isHetzner()
             ? collect()
             : collect([10, 25, 50, 100, 250, 500]))
             ->map(fn (int $size): array => $this->upgrades->previewExtraDisk($server, $size))
@@ -645,6 +646,7 @@ class ServerController extends Controller
             'bundlePreviews' => $eligibleBundles->mapWithKeys(fn (VmBundle $bundle): array => [
                 $bundle->id => $this->upgrades->previewBundleUpgrade($server, $bundle),
             ]),
+            'extraDiskEnabled' => $extraDiskEnabled,
             'extraDiskOptions' => $extraDiskOptions,
             'hasPendingUpgrade' => $hasPendingUpgrade,
             'invoiceCount' => $customer->invoices()->count(),

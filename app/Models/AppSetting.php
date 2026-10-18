@@ -93,6 +93,8 @@ class AppSetting extends Model
 
     public const TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE = 'ticket.kavenegar.assignment_template';
 
+    public const VM_EXTRA_DISK_ENABLED = 'vm.extra_disk.enabled';
+
     public const VM_CREATION_CHARGE_ENABLED = 'vm.creation_charge.enabled';
 
     public const VM_CREATION_CHARGE_PERCENTAGE = 'vm.creation_charge.percentage';
@@ -182,6 +184,11 @@ class AppSetting extends Model
             ['key' => $key],
             ['value' => $value, 'type' => $type, 'group' => $group],
         );
+    }
+
+    public static function vmExtraDiskEnabled(): bool
+    {
+        return filter_var(static::getValue(self::VM_EXTRA_DISK_ENABLED, false), FILTER_VALIDATE_BOOL);
     }
 
     public static function currency(): string

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ApplyVmUpgradeJob;
+use App\Models\AppSetting;
 use App\Models\CloudImage;
 use App\Models\Customer;
 use App\Models\ProxmoxServer;
@@ -122,6 +123,59 @@ class CustomerVmUpgradeTest extends TestCase
             ->get($this->customerBaseUrl.'/servers/'.$vm->uuid)
             ->assertOk()
             ->assertDontSee('ارتقای منابع');
+    }
+
+    public function test_extra_disk_is_hidden_and_requests_are_rejected_by_default(): void
+    {
+        Bus::fake();
+        [$customer, $vm] = $this->upgradeCatalog();
+        $url = $this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrade';
+
+        $this->assertFalse(AppSetting::vmExtraDiskEnabled());
+        $this->actingAs($customer, 'customer')->get($url)
+            ->assertOk()
+            ->assertSee('ثبت ارتقای پلن')
+            ->assertDontSee('name="size_gb"', false)
+            ->assertDontSee('افزودن دیسک')
+            ->assertDontSee('xl:grid-cols-2', false);
+
+        $this->from($url)->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrades/extra-disk', ['size_gb' => 10])
+            ->assertRedirect($url)
+            ->assertSessionHasErrors('size_gb');
+
+        $this->assertDatabaseCount('vm_upgrade_orders', 0);
+        $this->assertDatabaseCount('vm_disks', 0);
+        $this->assertDatabaseCount('usage_accruals', 0);
+        Bus::assertNotDispatched(ApplyVmUpgradeJob::class);
+    }
+
+    public function test_customer_can_order_extra_disk_only_while_enabled(): void
+    {
+        Bus::fake();
+        [$customer, $vm] = $this->upgradeCatalog();
+        $url = $this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrade';
+        AppSetting::setValue(AppSetting::VM_EXTRA_DISK_ENABLED, true, 'boolean', 'vm');
+
+        $this->actingAs($customer, 'customer')->get($url)
+            ->assertOk()
+            ->assertSee('name="size_gb"', false)
+            ->assertSee('افزودن دیسک');
+
+        $this->from($url)->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrades/extra-disk', ['size_gb' => 10])
+            ->assertRedirect($url)
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('vm_upgrade_orders', ['virtual_machine_id' => $vm->id, 'type' => VmUpgradeOrder::TYPE_EXTRA_DISK]);
+        $this->assertDatabaseHas('vm_disks', ['virtual_machine_id' => $vm->id, 'size_gb' => 10, 'status' => VmDisk::STATUS_PENDING]);
+        Bus::assertDispatched(ApplyVmUpgradeJob::class);
+
+        AppSetting::setValue(AppSetting::VM_EXTRA_DISK_ENABLED, false, 'boolean', 'vm');
+        $this->get($url)->assertOk()->assertDontSee('name="size_gb"', false);
+        $this->from($url)->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrades/extra-disk', ['size_gb' => 25])
+            ->assertRedirect($url)
+            ->assertSessionHasErrors('size_gb');
+        $this->assertDatabaseCount('vm_upgrade_orders', 1);
+        $this->assertDatabaseCount('vm_disks', 1);
     }
 
     public function test_apply_bundle_upgrade_job_updates_proxmox_and_local_resources(): void

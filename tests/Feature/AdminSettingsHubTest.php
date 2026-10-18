@@ -47,6 +47,30 @@ class AdminSettingsHubTest extends TestCase
         $this->assertSame('USD', AppSetting::currency());
     }
 
+    public function test_admin_can_enable_and_disable_customer_extra_disks(): void
+    {
+        $admin = User::factory()->create();
+        $this->actingAs($admin, 'admin')->get('https://admin.localhost/settings/billing')
+            ->assertOk()
+            ->assertViewHas('vmExtraDiskEnabled', false)
+            ->assertSee('name="vm_extra_disk_enabled"', false);
+
+        foreach ([true, false] as $enabled) {
+            $this->patch('https://admin.localhost/settings/billing', [
+                'tax_enabled' => 0,
+                'tax_rate_percentage' => 10,
+                'vm_creation_charge_enabled' => 0,
+                'vm_creation_charge_percentage' => 0,
+                'vm_extra_disk_enabled' => (int) $enabled,
+            ])->assertRedirect('https://admin.localhost/settings/billing')
+                ->assertSessionHasNoErrors();
+
+            $this->assertSame($enabled, AppSetting::vmExtraDiskEnabled());
+            $this->get('https://admin.localhost/settings/billing')
+                ->assertOk()->assertViewHas('vmExtraDiskEnabled', $enabled);
+        }
+    }
+
     public function test_admin_can_configure_company_identity_and_receipt_logo(): void
     {
         Storage::fake('public');

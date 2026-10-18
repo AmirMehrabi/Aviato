@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\ApplyVmUpgradeJob;
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
@@ -99,6 +100,10 @@ class VmUpgradeService
 
     public function requestExtraDisk(Customer $customer, VirtualMachine $vm, int $sizeGb): VmUpgradeOrder
     {
+        if (! AppSetting::vmExtraDiskEnabled()) {
+            throw ValidationException::withMessages(['size_gb' => 'افزودن دیسک اضافه در حال حاضر غیرفعال است.']);
+        }
+
         $order = DB::transaction(function () use ($vm, $sizeGb): VmUpgradeOrder {
             $locked = $this->lockedVm($vm->id);
             $locked->loadMissing(['project.owner', 'customer']);
