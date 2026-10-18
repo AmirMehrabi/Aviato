@@ -14,7 +14,7 @@
     </section>
 
     <section class="availability" aria-labelledby="availability-heading">
-        <div class="section-heading"><div><h2 id="availability-heading">پایداری سرویس‌ها</h2><p>سه ماه اخیر · {{ jdf($start, 'j F') }} تا {{ jdf($today, 'j F Y') }}</p></div><span class="period-label">۳ ماه اخیر</span></div>
+        <div class="section-heading"><div><h2 id="availability-heading">پایداری سرویس‌ها</h2><p>۹۰ روز اخیر · {{ jdf($start, 'j F') }} تا {{ jdf($today, 'j F Y') }}</p></div><span class="period-label">۹۰ روز اخیر</span></div>
         <div class="legend"><span><i class="dot healthy"></i> بدون اختلال</span><span><i class="dot warning"></i> اختلال جزئی</span><span><i class="dot danger"></i> اختلال جدی</span></div>
         <p class="timeline-hint">برای مشاهده جزئیات، روی هر روز مکث کنید یا آن را لمس کنید.</p>
         <div class="service-list">
@@ -34,7 +34,7 @@
                                         <button type="button" class="day-bar {{ $severity }}" data-date="{{ $day['date'] }}" data-tooltip-date="{{ $day['label'] }}" data-tooltip-detail="{{ $detail }}" aria-label="{{ $day['label'] }}؛ {{ $service['name'] }}؛ {{ $detail }}" aria-describedby="day-tooltip"></button>
                                     @endforeach
                                 </div>
-                                <span class="month-label">{{ $month['label'] }}</span>
+                                <span class="month-label" @if(count($month['days']) < 10) style="visibility: hidden" @endif>{{ $month['label'] }}</span>
                             </div>
                         @endforeach
                     </div>

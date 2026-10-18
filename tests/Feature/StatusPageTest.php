@@ -11,7 +11,7 @@ class StatusPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_public_status_renders_three_jalali_months_and_three_categories(): void
+    public function test_public_status_renders_ninety_days_and_three_categories(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-10-18 12:00:00', 'Asia/Tehran'));
 
@@ -20,26 +20,30 @@ class StatusPageTest extends TestCase
             ->assertSee('ماشین‌های مجازی')->assertSee('شبکه و ارتباطات')->assertSee('پنل کاربری و API')
             ->assertDontSee('فضای ذخیره‌سازی')
             ->assertSee('همه سرویس‌ها فعال هستند')
-            ->assertSee('مرداد 1405')->assertSee('شهریور 1405')->assertSee('مهر 1405')
+            ->assertSee('۹۰ روز اخیر')->assertSee('تیر 1405')->assertSee('مرداد 1405')->assertSee('شهریور 1405')->assertSee('مهر 1405')
             ->assertSee('data-tooltip-detail="بدون رخداد؛', false)
             ->assertSee('در این بازه هیچ رخدادی گزارش نشده است.')
             ->assertSee('بازگشت به صفحه اصلی');
 
         $months = $response->viewData('months');
         $days = collect($months)->flatMap(fn ($month) => $month['days']);
-        $this->assertCount(3, $months);
-        $this->assertSame('2026-07-23', $days->first()['date']);
+        $this->assertCount(4, $months);
+        $this->assertSame('2026-07-21', $days->first()['date']);
         $this->assertSame('2026-10-18', $days->last()['date']);
-        $this->assertSame(88, $days->count());
+        $this->assertCount(90, $days);
     }
 
-    public function test_three_month_window_crosses_the_jalali_new_year(): void
+    public function test_ninety_day_window_crosses_the_jalali_new_year(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-03-25 12:00:00', 'Asia/Tehran'));
 
         $response = $this->get('/status')->assertOk();
         $months = $response->viewData('months');
-        $this->assertSame(['1404-11', '1404-12', '1405-01'], array_keys($months));
+        $this->assertSame(['1404-10', '1404-11', '1404-12', '1405-01'], array_keys($months));
+        $days = collect($months)->flatMap(fn ($month) => $month['days']);
+        $this->assertCount(90, $days);
+        $this->assertSame('2025-12-26', $days->first()['date']);
+        $this->assertSame('2026-03-25', $days->last()['date']);
     }
 
     public function test_status_only_exposes_published_started_incidents_and_tracks_active_severity(): void

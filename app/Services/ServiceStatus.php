@@ -13,9 +13,7 @@ class ServiceStatus
     {
         $now = CarbonImmutable::now('Asia/Tehran');
         $today = $now->startOfDay();
-        $jalaliToday = Jalalian::fromCarbon($today->toMutable());
-        $firstMonth = new Jalalian($jalaliToday->getYear(), $jalaliToday->getMonth(), 1, timezone: new \DateTimeZone('Asia/Tehran'));
-        $start = CarbonImmutable::instance($firstMonth->subMonths(2)->toCarbon())->setTimezone('Asia/Tehran')->startOfDay();
+        $start = $today->subDays(89);
 
         $incidents = Incident::query()
             ->where('is_published', true)
