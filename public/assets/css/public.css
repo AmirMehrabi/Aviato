@@ -45,7 +45,7 @@ button {
 h1,h2,h3,p {
     margin:0;
 }
-.status-shell {
+.public-shell {
     max-width:956px;
     padding:0 36px;
     margin:auto;
@@ -403,7 +403,7 @@ h1 {
     margin-top:5px;
 }
 @media(max-width:600px) {
-    .status-shell {
+    .public-shell {
         padding:0 20px;
     }
     .site-header {
@@ -527,3 +527,30 @@ h1 {
 .incident h3 a:hover { text-decoration:underline; text-underline-offset:4px; }
 .unresolved { color:#946d26; background:#fff4d9; font-size:9px; padding:3px 7px; border-radius:4px; white-space:nowrap; }
 .empty-history { padding:10px 0 20px; color:#7b8380; font-size:12px; }
+
+.site-footer nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.site-footer a:hover {
+    color: #202726;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+.public-skip {
+    position: absolute;
+    top: -100px;
+    right: 24px;
+    padding: 12px;
+    background: #fff;
+    z-index: 30;
+}
+.public-skip:focus {
+    top: 12px;
+}
+@media (max-width: 600px) {
+    .site-footer {
+        flex-wrap: wrap;
+    }
+}

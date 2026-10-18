@@ -355,6 +355,7 @@
                         <a href="{{ route('solutions') }}" class="hover:text-[#0069FF]">راهکارها</a>
                         <a href="{{ route('api.documentation') }}" class="hover:text-[#0069FF]">مستندات</a>
                         <a href="{{ route('blog') }}" class="hover:text-[#0069FF]">بلاگ</a>
+                        <a href="{{ route('status') }}" class="hover:text-[#0069FF]">وضعیت سرویس‌ها</a>
                         <a href="{{ route('contact') }}" class="hover:text-[#0069FF]">تماس با ما</a>
                     </nav>
 
@@ -397,6 +398,7 @@
                         <a href="{{ route('pricing') }}" class="transition hover:text-[#2C67C9]">قیمت‌گذاری</a>
                         <a href="{{ route('solutions') }}" class="transition hover:text-[#2C67C9]">راهکارهای ما</a>
                         <a href="{{ route('solutions.colocation') }}" class="transition hover:text-[#2C67C9]">Co-location</a>
+                        <a href="{{ route('status') }}" class="transition hover:text-[#2C67C9]">وضعیت سرویس‌ها</a>
                         <a href="{{ route('incidents.index') }}" class="transition hover:text-[#2C67C9]">گزارش رخدادها</a>
                         <a href="{{ route('blog') }}" class="transition hover:text-[#2C67C9]">بلاگ</a>
                     </div>
