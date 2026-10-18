@@ -178,6 +178,7 @@ document.addEventListener('alpine:init', () => {
                                                         @adminAbility('billing.read')
                             <th class="px-5 py-4">هزینه ماهانه فعلی</th>
                             @endadminAbility
+                            <x-admin.sortable-heading label="تاریخ ایجاد" column="created_at" :sort="$sort" />
                             <th class="px-5 py-4">عملیات</th>
                         </tr>
                     </thead>
@@ -218,6 +219,7 @@ document.addEventListener('alpine:init', () => {
 <td class="px-5 py-4 font-black">{{ $money->format($vm->isRunning() ? $billing->estimateMonthly($vm) : $billing->estimateStoppedMonthly($vm)) }}</td>
                                 @endadminAbility
 
+                                <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $vm->created_at?->format('Y/m/d') }}</td>
                                 <td class="px-5 py-4">
                                     <div class="flex gap-1.5">
 
@@ -234,7 +236,7 @@ document.addEventListener('alpine:init', () => {
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="10" class="px-5 py-10 text-center text-slate-500">VM ثبت نشده است.</td></tr>
+                            <tr><td colspan="11" class="px-5 py-10 text-center text-slate-500">VM ثبت نشده است.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

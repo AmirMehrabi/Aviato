@@ -39,6 +39,32 @@ class AdminVirtualMachineActionsTest extends TestCase
         ]);
     }
 
+    public function test_vm_index_displays_creation_dates_and_sorts_by_them(): void
+    {
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $newer = $this->readyVm($customer, ['name' => 'newer-vm', 'created_at' => '2026-10-15 12:00:00']);
+        $newer->forceFill(['created_at' => '2026-10-15 12:00:00'])->save();
+        $older = $newer->replicate(['uuid']);
+        $older->forceFill(['name' => 'older-vm', 'vmid' => 102, 'created_at' => '2026-10-01 12:00:00']);
+        $older->save();
+
+        $this->actingAs($admin, 'admin')
+            ->get($this->adminBaseUrl.'/virtual-machines')
+            ->assertOk()
+            ->assertSee('تاریخ ایجاد')
+            ->assertSee('data-sort-column="created_at"', false)
+            ->assertSee('2026/10/15')
+            ->assertSee('2026/10/01')
+            ->assertViewHas('vms', fn ($vms) => $vms->modelKeys() === [$newer->id, $older->id]);
+
+        foreach (['asc' => [$older->id, $newer->id], 'desc' => [$newer->id, $older->id]] as $direction => $ids) {
+            $this->get($this->adminBaseUrl.'/virtual-machines?sort=created_at&direction='.$direction)
+                ->assertOk()
+                ->assertViewHas('vms', fn ($vms) => $vms->modelKeys() === $ids);
+        }
+    }
+
     public function test_admin_can_open_vm_console_page(): void
     {
         $admin = User::factory()->create();
