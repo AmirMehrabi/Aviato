@@ -71,7 +71,7 @@ class NotificationTemplateController extends Controller
         abort_unless(isset($templates->catalog()[$event]), 404);
         $mail = new BrandedNotificationMail($event, $this->samples(), route('dashboard'), $templates->catalog()[$event]['required'] ? '123456' : null);
 
-        return response($mail->render())->header('Content-Security-Policy', "default-src 'none'; img-src https: http:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'");
+        return response($mail->render())->header('Content-Security-Policy', "default-src 'none'; img-src https: http:; font-src https: http:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'");
     }
 
     public function test(Request $request, string $event, NotificationTemplates $templates)
