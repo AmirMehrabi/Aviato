@@ -9,6 +9,7 @@ use App\Models\TicketCategory;
 use App\Models\TicketMessage;
 use App\Models\User;
 use App\Models\VirtualMachine;
+use App\Notifications\TicketDatabaseNotification;
 use App\Services\Tickets\TicketService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -457,6 +458,36 @@ class TicketingTest extends TestCase
         $this->post('https://cp.localhost/tickets/'.$ticket->number.'/reply', ['body' => 'Unauthorized reply'])
             ->assertNotFound();
         $this->assertSame(1, $ticket->messages()->count());
+    }
+
+    public function test_opening_ticket_marks_only_its_notifications_read_for_the_viewer_in_both_portals(): void
+    {
+        $admin = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $service = app(TicketService::class);
+        $ticket = $service->create($customer, ['subject' => 'Viewed ticket', 'body' => 'Customer message'], $customer);
+        $other = $service->create($customer, ['subject' => 'Other ticket', 'body' => 'Other message'], $customer);
+        $reply = $service->reply($ticket, $admin, 'Support reply');
+        $customerMessage = $ticket->messages()->where('author_type', Customer::class)->firstOrFail();
+
+        foreach ([$admin, $customer] as $recipient) {
+            $recipient->notifications()->delete();
+            foreach ([$ticket, $ticket, $other] as $notifiedTicket) {
+                $recipient->notify(new TicketDatabaseNotification($notifiedTicket, 'reply', 'Ticket reply', 'New reply'));
+            }
+        }
+
+        $this->actingAs($customer, 'customer')->get('https://cp.localhost/tickets/'.$ticket->number)->assertOk();
+        $this->assertNotNull($reply->fresh()->seen_by_customer_at);
+        $this->assertSame(1, $customer->unreadNotifications()->count());
+        $this->assertSame($other->id, $customer->unreadNotifications()->firstOrFail()->data['ticket_id']);
+        $this->assertSame(3, $admin->unreadNotifications()->count());
+
+        $this->actingAs($admin, 'admin')->get('https://admin.localhost/tickets/'.$ticket->number)->assertOk();
+        $this->assertNotNull($customerMessage->fresh()->seen_by_admin_at);
+        $this->assertSame(1, $admin->unreadNotifications()->count());
+        $this->assertSame($other->id, $admin->unreadNotifications()->firstOrFail()->data['ticket_id']);
+        $this->assertSame(1, $customer->unreadNotifications()->count());
     }
 
     private function vmFor(Customer $customer): VirtualMachine

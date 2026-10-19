@@ -10,6 +10,7 @@
 
 <div
     class="notification-center relative"
+    @notification-unread-changed.window="unreadCount = Number($event.detail.count || 0)"
     x-data="notificationCenter({
         feedUrl: @js($feedUrl),
         markReadUrlTemplate: @js($markReadUrlTemplate),

@@ -98,6 +98,8 @@ class TicketController extends Controller
     public function show(Request $request, Ticket $ticket): View
     {
         abort_unless((int) $ticket->customer_id === (int) $request->user('customer')->id, 404);
+        $this->markSeen($request, $ticket);
+
         $ticket->load(['category', 'supportTeam', 'assignee', 'virtualMachine', 'messages' => fn ($query) => $query->orderBy('created_at')->orderBy('id'), 'messages.author', 'messages.attachments', 'events.actor']);
 
         return view('customer.tickets.show', array_merge($this->layoutData($request), [
@@ -128,12 +130,7 @@ class TicketController extends Controller
 
         abort_unless((int) $ticket->customer_id === (int) $customer->id, 404);
 
-        $ticket->publicMessages()
-            ->where('author_type', User::class)
-            ->whereNull('seen_by_customer_at')
-            ->update(['seen_by_customer_at' => now()]);
-
-        $this->notifications->markTicketRead($customer, $ticket);
+        $this->markSeen($request, $ticket);
 
         return response()->json([
             'unread_replies_count' => 0,
@@ -148,6 +145,16 @@ class TicketController extends Controller
         $this->tickets->updateStatus($ticket, $request->user('customer'), Ticket::STATUS_CLOSED);
 
         return back()->with('status', 'تیکت بسته شد.');
+    }
+
+    private function markSeen(Request $request, Ticket $ticket): void
+    {
+        $ticket->publicMessages()
+            ->where('author_type', User::class)
+            ->whereNull('seen_by_customer_at')
+            ->update(['seen_by_customer_at' => now()]);
+
+        $this->notifications->markTicketRead($request->user('customer'), $ticket);
     }
 
     private function rules(): array

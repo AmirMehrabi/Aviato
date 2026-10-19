@@ -146,8 +146,10 @@ class TicketController extends Controller
         return redirect()->route('admin.tickets.show', $ticket)->with('status', 'تیکت برای مشتری ثبت شد.');
     }
 
-    public function show(Ticket $ticket): View
+    public function show(Request $request, Ticket $ticket): View
     {
+        $this->markSeen($request, $ticket);
+
         $ticket->load(['customer.virtualMachines' => fn ($query) => $query->notDeleted(), 'category', 'supportTeam', 'assignee', 'virtualMachine', 'messages' => fn ($query) => $query->orderBy('created_at')->orderBy('id'), 'messages.author', 'messages.attachments', 'events.actor']);
 
         return view('admin.tickets.show', [
@@ -179,12 +181,7 @@ class TicketController extends Controller
 
     public function seen(Request $request, Ticket $ticket): JsonResponse
     {
-        $ticket->publicMessages()
-            ->where('author_type', Customer::class)
-            ->whereNull('seen_by_admin_at')
-            ->update(['seen_by_admin_at' => now()]);
-
-        $this->notifications->markTicketRead($request->user('admin'), $ticket);
+        $this->markSeen($request, $ticket);
 
         return response()->json([
             'unread_replies_count' => 0,
@@ -211,5 +208,15 @@ class TicketController extends Controller
         $this->tickets->updateStatus($ticket, $request->user('admin'), $data['status']);
 
         return back()->with('status', 'وضعیت تیکت به‌روزرسانی شد.');
+    }
+
+    private function markSeen(Request $request, Ticket $ticket): void
+    {
+        $ticket->publicMessages()
+            ->where('author_type', Customer::class)
+            ->whereNull('seen_by_admin_at')
+            ->update(['seen_by_admin_at' => now()]);
+
+        $this->notifications->markTicketRead($request->user('admin'), $ticket);
     }
 }
