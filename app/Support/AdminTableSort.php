@@ -33,6 +33,11 @@ class AdminTableSort
             'columns' => ['method' => 'method', 'route' => 'route', 'status_code' => 'status_code', 'duration_ms' => 'duration_ms', 'created_at' => 'created_at'],
             'default' => [['created_at', 'desc']],
         ],
+        'billing-network' => [
+            'columns' => ['id' => 'virtual_machines.id', 'display_name' => 'display_name', 'rated_bytes' => 'rated_bytes', 'included_bytes' => 'included_bytes', 'billable_bytes' => 'billable_bytes', 'accrued_amount' => 'accrued_amount'],
+            'default' => [['id', 'desc']],
+            'nullable' => ['display_name'],
+        ],
         'billing-payments' => [
             'columns' => ['provider' => 'provider', 'amount' => 'amount', 'status' => 'status', 'created_at' => 'created_at'],
             'default' => [['created_at', 'desc']],

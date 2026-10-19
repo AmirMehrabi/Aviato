@@ -17,6 +17,7 @@ use App\Services\NetworkUsageReconciliationService;
 use App\Services\NetworkUsageReportService;
 use App\Services\PortalCache;
 use App\Services\WalletService;
+use App\Support\AdminTableSort;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -31,18 +32,33 @@ class NetworkBillingController extends Controller
 
     public function index(Request $request): View
     {
-        $status = $request->validate(['status' => ['nullable', Rule::in(['pending', 'rated', 'ignored', 'quarantined'])]])['status'] ?? null;
-        $machines = VirtualMachine::query()
+        $data = $request->validate([
+            'status' => ['nullable', Rule::in(['pending', 'rated', 'ignored', 'quarantined'])],
+            'sort' => ['nullable', 'string', 'max:80'],
+            'direction' => ['nullable', 'in:asc,desc'],
+        ]);
+        $status = $data['status'] ?? null;
+        $query = VirtualMachine::query()
             ->notDeleted()
-            ->with(['customer', 'latestNetworkBillingPeriod'])
-            ->latest('id')
-            ->paginate(15)
+            ->with(['customer', 'latestNetworkBillingPeriod']);
+        foreach (['rated_bytes', 'included_bytes', 'billable_bytes', 'accrued_amount'] as $column) {
+            $query->addSelect([
+                $column => VmNetworkBillingPeriod::query()
+                    ->select($column)
+                    ->whereColumn('virtual_machine_id', 'virtual_machines.id')
+                    ->orderByDesc('period_start')
+                    ->orderByDesc('id')
+                    ->limit(1),
+            ]);
+        }
+        $sort = AdminTableSort::apply($query, $request, 'billing-network');
+        $machines = $query->paginate(15)
             ->withQueryString();
         $checkpoint = NetworkIngestionCheckpoint::query()->where('source', config('services.ipdr.source', 'ipdr'))->first();
 
         return view('admin.billing.network.index', [
             'checkpoint' => $checkpoint, 'machines' => $machines, 'reports' => $this->reports, 'wallets' => $this->wallets,
-            'statusFilter' => $status,
+            'statusFilter' => $status, 'sort' => $sort,
             'stats' => app(PortalCache::class)->remember('network', 'network-stats:'.(int) $request->user('admin')->allows('billing.read'), config('performance.admin_ttl'), fn (): array => [
                 'month_bytes' => (int) VmNetworkBillingPeriod::query()->where('period_end', '>', now())->sum('rated_bytes'),
                 'month_amount' => ! $request->user('admin')->allows('billing.read') ? null : (int) VmNetworkBillingPeriod::query()->where('period_end', '>', now())->sum('accrued_amount'),

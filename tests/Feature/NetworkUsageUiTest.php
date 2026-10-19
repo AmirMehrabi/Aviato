@@ -44,6 +44,50 @@ class NetworkUsageUiTest extends TestCase
             ->assertSee('بدون داده');
     }
 
+    public function test_admin_can_sort_network_usage_across_pages_and_save_preference(): void
+    {
+        $vm = $this->meteredVm();
+        $period = $this->period($vm);
+        $ids = [$vm->id];
+        for ($i = 1; $i <= 16; $i++) {
+            $machine = $vm->replicate(['uuid']);
+            $machine->display_name = 'Sorted machine '.$i;
+            $machine->save();
+            $ids[] = $machine->id;
+            $latest = $period->replicate();
+            $latest->virtual_machine_id = $machine->id;
+            $latest->rated_bytes = $period->rated_bytes + $i;
+            $latest->save();
+            $older = $latest->replicate();
+            $older->period_start = now()->subMonth()->startOfMonth();
+            $older->period_end = now()->startOfMonth();
+            $older->rated_bytes = PHP_INT_MAX - $i;
+            $older->save();
+        }
+        $withoutData = $vm->replicate(['uuid']);
+        $withoutData->save();
+        $this->actingAs(User::factory()->create(), 'admin');
+
+        $this->get('https://admin.localhost/billing/network?sort=rated_bytes&direction=desc')
+            ->assertOk()
+            ->assertSee('data-sort-column="rated_bytes"', false)
+            ->assertViewHas('machines', fn ($machines) => $machines->pluck('id')->all() === array_slice(array_reverse($ids), 0, 15));
+        $this->get('https://admin.localhost/billing/network?sort=rated_bytes&direction=desc&page=2')
+            ->assertOk()
+            ->assertViewHas('machines', fn ($machines) => $machines->pluck('id')->all() === [$ids[1], $ids[0], $withoutData->id]);
+        $this->get('https://admin.localhost/billing/network?sort=rated_bytes&direction=asc')
+            ->assertOk()
+            ->assertViewHas('machines', fn ($machines) => $machines->pluck('id')->all() === array_merge([$withoutData->id], array_slice($ids, 0, 14)));
+
+        $this->putJson('https://admin.localhost/table-preferences/billing-network', [
+            'column' => 'rated_bytes', 'direction' => 'desc',
+        ])->assertOk();
+        $this->get('https://admin.localhost/billing/network')
+            ->assertOk()
+            ->assertViewHas('sort', fn ($sort) => $sort['column'] === 'rated_bytes' && $sort['source'] === 'preference')
+            ->assertViewHas('machines', fn ($machines) => $machines->pluck('id')->all() === array_slice(array_reverse($ids), 0, 15));
+    }
+
     public function test_customer_sees_network_summary_for_accessible_vm(): void
     {
         $vm = $this->meteredVm();
