@@ -8,11 +8,32 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class SettingController extends Controller
 {
+    public function testEmail(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['test_email' => ['required', 'email', 'max:255']]);
+        if (blank(AppSetting::getValue(AppSetting::SMTP_HOST))) {
+            return back()->withErrors(['test_email' => 'ابتدا تنظیمات SMTP را ذخیره کنید.']);
+        }
+
+        try {
+            Mail::raw(
+                'این ایمیل برای بررسی تنظیمات SMTP آویاتو ارسال شده است.',
+                fn ($message) => $message->to($data['test_email'])->subject('آزمایش ارسال ایمیل آویاتو'),
+            );
+        } catch (\Throwable $exception) {
+            // Transport errors can contain credentials; do not expose them.
+            return back()->withErrors(['test_email' => 'ارسال ناموفق بود. میزبان، پورت، رمزنگاری و اطلاعات ورود SMTP را بررسی کنید.']);
+        }
+
+        return back()->with('status', 'ایمیل آزمایشی به سرور ایمیل تحویل داده شد. پوشه هرزنامه را نیز بررسی کنید.');
+    }
+
     public function edit(): View
     {
         return view('admin.settings.edit', [
@@ -296,10 +317,10 @@ class SettingController extends Controller
                 'kavenegar_template' => ['nullable', 'string', 'max:100'],
             ],
             'email' => [
-                'smtp_host' => ['nullable', 'string', 'max:255'], 'smtp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+                'smtp_host' => ['required', 'string', 'max:255'], 'smtp_port' => ['required', 'integer', 'min:1', 'max:65535'],
                 'smtp_username' => ['nullable', 'string', 'max:255'], 'smtp_password' => ['nullable', 'string', 'max:255'],
                 'smtp_encryption' => ['nullable', 'string', Rule::in(array_keys(AppSetting::smtpEncryptions()))],
-                'smtp_from_address' => ['nullable', 'email', 'max:255'], 'smtp_from_name' => ['nullable', 'string', 'max:255'],
+                'smtp_from_address' => ['required', 'email', 'max:255'], 'smtp_from_name' => ['nullable', 'string', 'max:255'],
             ],
             'tickets' => [
                 'ticket_email_notifications_enabled' => ['nullable', 'boolean'], 'ticket_sms_notifications_enabled' => ['nullable', 'boolean'],

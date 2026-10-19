@@ -15,6 +15,9 @@
             <p class="mt-2 text-sm leading-7 text-slate-500">برای پیدا کردن تنظیمات موردنظر، یکی از بخش‌های زیر را انتخاب کنید. هر بخش صفحه و فرم ذخیره‌سازی مستقل خودش را دارد.</p>
         </div>
 
+        @adminRoute('admin.settings.notifications.index')
+        <a href="{{ route('admin.settings.notifications.index') }}" class="mt-6 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-bold text-white">قالب‌ها و اعلان‌ها</a>
+        @endadminRoute
         <div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             @foreach ($sections as $key => $section)
 

@@ -3,28 +3,11 @@
 namespace App\Mail;
 
 use App\Models\Customer;
-use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 
-class CustomerLoginOtpCodeMail extends Mailable
+class CustomerLoginOtpCodeMail extends BrandedNotificationMail
 {
-    use Queueable, SerializesModels;
-
-    public function __construct(
-        public Customer $customer,
-        public string $code,
-    ) {}
-
-    public function envelope(): Envelope
+    public function __construct(public Customer $customer, string $code)
     {
-        return new Envelope(subject: 'کد ورود یک‌بارمصرف پنل مشتری');
-    }
-
-    public function content(): Content
-    {
-        return new Content(view: 'emails.customer-login-otp-code');
+        parent::__construct('login_code', ['name' => $customer->name], code: $code);
     }
 }

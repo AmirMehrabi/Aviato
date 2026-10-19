@@ -9,6 +9,7 @@
 @endphp
 
 @section('content')
+<div class="px-4 pt-5 md:px-8"><a href="{{ route('customer.notification-preferences.edit') }}" class="text-sm font-bold text-blue-600">تنظیمات اعلان‌ها ←</a></div>
     <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

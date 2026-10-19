@@ -20,6 +20,7 @@ use App\Models\VmUpgradeOrder;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\MeteringInventoryService;
+use App\Services\Notifications\NotificationEventSubscriber;
 use App\Services\Payments\DummyPaymentGateway;
 use App\Services\Payments\HesabroPaymentGateway;
 use App\Services\Payments\MellatClientInterface;
@@ -28,6 +29,7 @@ use App\Services\Payments\MellatSoapClient;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Payments\ZibalPaymentGateway;
 use App\Services\PortalCache;
+use App\Services\SettingsMailManager;
 use App\Support\AdminAccess;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
@@ -41,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->extend('mail.manager', fn ($manager, $app) => new SettingsMailManager($app));
         $this->app->bind(MellatClientInterface::class, MellatSoapClient::class);
         $this->app->singleton(PaymentGatewayManager::class, function ($app): PaymentGatewayManager {
             return new PaymentGatewayManager($app, [
@@ -57,6 +60,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        app(NotificationEventSubscriber::class)->register();
         // Rotate immediately for this process and again after commit, so a reader
         // cannot retain a snapshot built before the transaction became visible.
         $invalidate = function (Model $model, array $scopes): void {

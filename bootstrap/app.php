@@ -67,6 +67,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->dontFlash([
             'code',
             'promotion_code',
+            'smtp_password',
             'login_password',
             'login_password_confirmation',
         ]);

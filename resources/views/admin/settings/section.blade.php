@@ -35,6 +35,17 @@
             </form>
 @endadminRoute
 
+            @if ($section === 'email')
+                @adminRoute('admin.settings.email.test')
+                <form method="POST" action="{{ route('admin.settings.email.test') }}" class="mt-7 space-y-4 border-t border-slate-100 pt-5">
+                    @csrf
+                    <h2 class="text-lg font-black text-slate-950">آزمایش ارسال ایمیل</h2>
+                    <p class="text-sm text-slate-500">ابتدا تنظیمات بالا را ذخیره کنید. آزمایش با تنظیمات ذخیره‌شده انجام می‌شود و اعلان‌های مشتریان را فعال نمی‌کند.</p>
+                    <x-form.input name="test_email" type="email" label="ایمیل گیرنده آزمایش" :value="auth('admin')->user()->email" dir-ltr />
+                    <button class="rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-black text-white">ارسال ایمیل آزمایشی</button>
+                </form>
+                @endadminRoute
+            @endif
         </div>
     </div>
 </div>

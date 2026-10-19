@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\CustomerPasswordResetCodeMail;
 use App\Models\Customer;
+use App\Services\Notifications\NotificationEventSubscriber;
 use App\Services\Sms\VerificationSmsSender;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,8 @@ use Throwable;
 class CustomerPasswordResetController extends Controller
 {
     private const SESSION_IDENTIFIER = 'customer_password_reset.identifier';
+
+    private const SESSION_TOKEN = 'customer_password_reset.verified_token';
 
     private const SESSION_CHANNEL = 'customer_password_reset.channel';
 
@@ -58,7 +61,7 @@ class CustomerPasswordResetController extends Controller
 
             return back()
                 ->withInput()
-                ->withErrors(['login' => $e->getMessage()]);
+                ->withErrors(['login' => 'ارسال کد بازیابی انجام نشد. کمی بعد دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.']);
         }
 
         return redirect()
@@ -92,6 +95,7 @@ class CustomerPasswordResetController extends Controller
             return back()->withErrors(['code' => 'کد OTP نادرست است.'])->withInput();
         }
 
+        $request->session()->put(self::SESSION_TOKEN, $record->token);
         $request->session()->put(self::SESSION_IDENTIFIER, $data['login']);
         $request->session()->put(self::SESSION_CHANNEL, $data['channel']);
 
@@ -131,11 +135,24 @@ class CustomerPasswordResetController extends Controller
                 ->withErrors(['login' => 'حساب مشتری پیدا نشد.']);
         }
 
-        $customer->forceFill([
-            'password' => $data['password'],
-        ])->save();
+        $changed = DB::transaction(function () use ($request, $identifier, $customer, $data): bool {
+            $record = DB::table('customer_password_reset_tokens')->where('email', $identifier)->lockForUpdate()->first();
+            if (! $record || ! $record->created_at
+                || Carbon::parse($record->created_at)->addMinutes(10)->isPast()
+                || ! hash_equals($record->token, (string) $request->session()->get(self::SESSION_TOKEN, ''))) {
+                return false;
+            }
+            $customer->forceFill(['password' => $data['password']])->save();
+            DB::table('customer_password_reset_tokens')->where('email', $identifier)->delete();
 
-        DB::table('customer_password_reset_tokens')->where('email', $identifier)->delete();
+            return true;
+        });
+        if (! $changed) {
+            $this->clearResetSession($request);
+
+            return redirect()->route('customer.password.request')->withErrors(['login' => 'درخواست بازیابی منقضی شده است. کد جدید دریافت کنید.']);
+        }
+        app(NotificationEventSubscriber::class)->notify($customer, 'password_changed', [], route('customer.profile.show'));
         $this->clearResetSession($request);
 
         return redirect()->route('customer.login')
@@ -179,6 +196,7 @@ class CustomerPasswordResetController extends Controller
     private function clearResetSession(Request $request): void
     {
         $request->session()->forget([
+            self::SESSION_TOKEN,
             self::SESSION_IDENTIFIER,
             self::SESSION_CHANNEL,
         ]);

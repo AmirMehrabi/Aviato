@@ -178,6 +178,10 @@ class AppSetting extends Model
 
     public static function setValue(string $key, mixed $value, string $type = 'string', string $group = 'general'): self
     {
+        if ($key === self::SMTP_PASSWORD && filled($value)) {
+            $value = 'encrypted:'.Crypt::encryptString($value);
+        }
+
         Cache::forget("settings.{$key}");
 
         return static::query()->updateOrCreate(

@@ -3,32 +3,11 @@
 namespace App\Mail;
 
 use App\Models\Customer;
-use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 
-class CustomerPasswordResetCodeMail extends Mailable
+class CustomerPasswordResetCodeMail extends BrandedNotificationMail
 {
-    use Queueable, SerializesModels;
-
-    public function __construct(
-        public Customer $customer,
-        public string $code
-    ) {}
-
-    public function envelope(): Envelope
+    public function __construct(public Customer $customer, string $code)
     {
-        return new Envelope(
-            subject: 'کد بازیابی رمز عبور پنل مشتری',
-        );
-    }
-
-    public function content(): Content
-    {
-        return new Content(
-            view: 'emails.customer-password-reset-code',
-        );
+        parent::__construct('password_reset', ['name' => $customer->name], code: $code);
     }
 }

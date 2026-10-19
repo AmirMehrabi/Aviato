@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\InfrastructureLocationController;
 use App\Http\Controllers\Admin\IpPoolController;
 use App\Http\Controllers\Admin\NetworkBillingController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\NotificationTemplateController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Admin\PromotionController;
@@ -48,6 +49,7 @@ use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\MonitoringController;
 use App\Http\Controllers\Customer\NetworkUsageController;
 use App\Http\Controllers\Customer\NotificationController as CustomerNotificationController;
+use App\Http\Controllers\Customer\NotificationPreferenceController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\PaymentReceiptController;
 use App\Http\Controllers\Customer\ProfileController;
@@ -64,6 +66,7 @@ use App\Http\Controllers\ElecompController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\StatusController;
 use App\Models\VmBundle;
 use App\Services\MarketingPosts;
 use App\Services\WalletService;
@@ -167,10 +170,16 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.table-preferences.destroy');
 
         Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
+        Route::get('settings/notifications', [NotificationTemplateController::class, 'index'])->name('admin.settings.notifications.index');
+        Route::patch('settings/notifications/templates', [NotificationTemplateController::class, 'update'])->name('admin.settings.notifications.update');
+        Route::patch('settings/notifications/branding', [NotificationTemplateController::class, 'branding'])->name('admin.settings.notifications.branding');
+        Route::get('settings/notifications/{event}/preview', [NotificationTemplateController::class, 'preview'])->name('admin.settings.notifications.preview');
+        Route::post('settings/notifications/{event}/test', [NotificationTemplateController::class, 'test'])->middleware('throttle:5,1')->name('admin.settings.notifications.test');
         Route::get('settings/{section}', [SettingController::class, 'section'])
             ->whereIn('section', ['general', 'billing', 'payments', 'hesabro-accounting', 'verification', 'sms', 'email', 'tickets', 'protection'])
             ->name('admin.settings.section');
         Route::get('api-activity', [ApiActivityController::class, 'index'])->name('admin.api-activity.index');
+        Route::post('settings/email/test', [SettingController::class, 'testEmail'])->middleware('throttle:5,1')->name('admin.settings.email.test');
         Route::patch('settings', [SettingController::class, 'update'])->name('admin.settings.update');
         Route::patch('settings/{section}', [SettingController::class, 'updateSection'])
             ->whereIn('section', ['general', 'billing', 'payments', 'hesabro-accounting', 'verification', 'sms', 'email', 'tickets', 'protection'])
@@ -421,6 +430,8 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
     Route::middleware('auth:customer')->group(function () use ($customerHome) {
         Route::get($customerHome, DashboardController::class)->name('dashboard');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
+        Route::get('profile/notifications', [NotificationPreferenceController::class, 'edit'])->name('customer.notification-preferences.edit');
+        Route::patch('profile/notifications', [NotificationPreferenceController::class, 'update'])->name('customer.notification-preferences.update');
         Route::get('notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');
         Route::post('notifications/mark-all-read', [CustomerNotificationController::class, 'markAllRead'])->name('customer.notifications.mark-all-read');
         Route::post('notifications/{notification}/read', [CustomerNotificationController::class, 'markRead'])->name('customer.notifications.read');
@@ -570,7 +581,7 @@ Route::get('/changelog', function () {
 
     return view('changelog');
 })->name('changelog');
-Route::get('/status', \App\Http\Controllers\StatusController::class)->name('status');
+Route::get('/status', StatusController::class)->name('status');
 
 Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
 Route::get('/incidents/{slug}', [IncidentController::class, 'show'])->name('incidents.show');
