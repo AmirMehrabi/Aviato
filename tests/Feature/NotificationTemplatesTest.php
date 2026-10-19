@@ -146,6 +146,7 @@ class NotificationTemplatesTest extends TestCase
         app(NotificationDispatcher::class)->email($customer, 'signed_in', []);
         $delivery = DB::table('notification_deliveries')->first();
         $job = new SendNotificationEmail($delivery->id, $customer->getMorphClass(), $customer->id, [], null);
+        Mail::shouldReceive('mailer')->with('settings_smtp')->andReturnSelf();
         Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('private transport details'));
         try {
             $job->handle(app(NotificationTemplates::class));

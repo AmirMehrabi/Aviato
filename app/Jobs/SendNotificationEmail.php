@@ -18,6 +18,10 @@ class SendNotificationEmail implements ShouldBeEncrypted, ShouldQueue
 
     public int $tries = 3;
 
+    public int $timeout = 30;
+
+    public bool $failOnTimeout = true;
+
     public function __construct(public int $deliveryId, public string $recipientType, public int $recipientId, public array $variables, public ?string $actionUrl) {}
 
     public function backoff(): array
@@ -39,7 +43,7 @@ class SendNotificationEmail implements ShouldBeEncrypted, ShouldQueue
             return;
         }
         DB::table('notification_deliveries')->where('id', $this->deliveryId)->increment('attempts');
-        Mail::to($delivery->recipient)->send(new BrandedNotificationMail($delivery->event, $this->variables, $this->actionUrl));
+        Mail::mailer('settings_smtp')->to($delivery->recipient)->send(new BrandedNotificationMail($delivery->event, $this->variables, $this->actionUrl));
         DB::table('notification_deliveries')->where('id', $this->deliveryId)->update(['status' => 'sent', 'sent_at' => now(), 'updated_at' => now()]);
     }
 

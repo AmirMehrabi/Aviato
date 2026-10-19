@@ -2,6 +2,8 @@
 
 return [
 
+    'queue_connection' => env('MAIL_QUEUE_CONNECTION', 'redis'),
+
     /*
     |--------------------------------------------------------------------------
     | Default Mailer

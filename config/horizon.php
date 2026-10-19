@@ -104,6 +104,14 @@ return [
     */
 
     'defaults' => [
+        'supervisor-auth-mail' => [
+            'connection' => 'redis', 'queue' => ['auth-mail'], 'balance' => 'simple',
+            'processes' => 1, 'tries' => 3, 'timeout' => 35, 'memory' => 128, 'sleep' => 1,
+        ],
+        'supervisor-mail' => [
+            'connection' => 'redis', 'queue' => ['mail'], 'balance' => 'simple',
+            'processes' => 1, 'tries' => 3, 'timeout' => 35, 'memory' => 128, 'sleep' => 1,
+        ],
         'supervisor-default' => [
             'connection' => 'redis',
             'queue' => ['default'],
@@ -184,6 +192,8 @@ return [
 
     'environments' => [
         'production' => [
+            'supervisor-auth-mail' => ['processes' => 1],
+            'supervisor-mail' => ['processes' => 1],
             'supervisor-default' => [
                 'processes' => (int) env('HORIZON_DEFAULT_PROCESSES', 2),
             ],
@@ -202,6 +212,8 @@ return [
         ],
 
         'local' => [
+            'supervisor-auth-mail' => ['processes' => 1],
+            'supervisor-mail' => ['processes' => 1],
             'supervisor-default' => [
                 'processes' => 1,
                 'memory' => 128,

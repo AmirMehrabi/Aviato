@@ -2,9 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Mail\CustomerLoginOtpCodeMail;
-use App\Mail\CustomerPasswordResetCodeMail;
-use App\Mail\CustomerVerificationCodeMail;
+use App\Jobs\SendAuthenticationEmail;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\User;
@@ -14,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\Concerns\FundsCustomerWallet;
 use Tests\TestCase;
 
@@ -21,6 +20,12 @@ class PortalAuthenticationTest extends TestCase
 {
     use FundsCustomerWallet, RefreshDatabase;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Queue::fake();
+    }
 
     public function test_customer_register_requires_email_verification_before_login(): void
     {
@@ -48,7 +53,7 @@ class PortalAuthenticationTest extends TestCase
         $this->assertNotNull($customer->email_verification_code);
         $this->assertNotNull($customer->email_verification_expires_at);
 
-        Mail::assertSent(CustomerVerificationCodeMail::class);
+        Queue::assertPushed(SendAuthenticationEmail::class, fn ($job) => $job->event === 'email_verification');
     }
 
     public function test_customer_can_verify_email_code_and_login(): void
@@ -302,7 +307,7 @@ class PortalAuthenticationTest extends TestCase
         $this->post('https://cp.localhost/login/otp', ['login' => 'customer@example.com'])
             ->assertRedirect('https://cp.localhost/login/otp/verify');
 
-        Mail::assertSent(CustomerLoginOtpCodeMail::class, fn (CustomerLoginOtpCodeMail $mail): bool => $mail->customer->is($customer));
+        Queue::assertPushed(SendAuthenticationEmail::class, fn ($job) => $job->event === 'login_code' && $job->customerId === $customer->id);
         $challenge = DB::table('customer_login_otp_challenges')->where('customer_id', $customer->id)->first();
         $this->assertSame('email', $challenge->channel);
     }
@@ -390,7 +395,7 @@ class PortalAuthenticationTest extends TestCase
         ]);
 
         $response->assertRedirect('https://cp.localhost/password/otp?login=customer%40example.com&channel=email');
-        Mail::assertSent(CustomerPasswordResetCodeMail::class);
+        Queue::assertPushed(SendAuthenticationEmail::class, fn ($job) => $job->event === 'password_reset');
 
         $record = DB::table('customer_password_reset_tokens')->where('email', 'customer@example.com')->first();
         $this->assertNotNull($record);

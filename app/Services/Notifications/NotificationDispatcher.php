@@ -13,14 +13,14 @@ class NotificationDispatcher
         if (blank($recipient->email) || ! app(NotificationTemplates::class)->enabled($event, 'email', $recipient)) {
             return;
         }
-        // Queue only non-secret notification data. Authentication codes use immediate mail.
+        // SMTP work runs on dedicated email workers, separate from business jobs.
         $id = null;
         try {
             $id = DB::table('notification_deliveries')->insertGetId([
                 'event' => $event, 'recipient' => $recipient->email, 'status' => 'queued',
                 'created_at' => now(), 'updated_at' => now(),
             ]);
-            SendNotificationEmail::dispatch($id, $recipient->getMorphClass(), $recipient->getKey(), $variables + ['name' => $recipient->name], $url)->afterCommit();
+            SendNotificationEmail::dispatch($id, $recipient->getMorphClass(), $recipient->getKey(), $variables + ['name' => $recipient->name], $url)->onConnection(EmailQueue::connection())->onQueue('mail')->afterCommit();
         } catch (\Throwable) {
             if ($id !== null) {
                 DB::table('notification_deliveries')->where('id', $id)->update(['status' => 'failed', 'updated_at' => now()]);

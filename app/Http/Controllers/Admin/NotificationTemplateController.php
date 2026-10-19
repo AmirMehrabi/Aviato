@@ -79,7 +79,7 @@ class NotificationTemplateController extends Controller
         abort_unless(isset($templates->catalog()[$event]), 404);
         $data = $request->validate(['test_email' => ['required', 'email', 'max:255']]);
         try {
-            Mail::to($data['test_email'])->send(new BrandedNotificationMail($event, $this->samples(), route('dashboard'), $templates->catalog()[$event]['required'] ? '123456' : null));
+            Mail::mailer('settings_smtp')->to($data['test_email'])->send(new BrandedNotificationMail($event, $this->samples(), route('dashboard'), $templates->catalog()[$event]['required'] ? '123456' : null));
         } catch (\Throwable) {
             return back()->withErrors(['test_email' => 'ارسال ناموفق بود. تنظیمات SMTP را بررسی کنید.']);
         }

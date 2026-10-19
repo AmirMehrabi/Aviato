@@ -35,7 +35,7 @@ class SettingsMailManager extends MailManager
                     'password' => $password,
                     'auto_tls' => $encryption === 'tls',
                     'require_tls' => $encryption === 'tls',
-                    'timeout' => 15,
+                    'timeout' => 8,
                     'from' => [
                         'address' => $settings[AppSetting::SMTP_FROM_ADDRESS] ?? $this->app['config']->get('mail.from.address'),
                         'name' => $settings[AppSetting::SMTP_FROM_NAME] ?? $this->app['config']->get('mail.from.name'),
@@ -46,6 +46,10 @@ class SettingsMailManager extends MailManager
             }
 
             $name ??= 'settings_smtp';
+        }
+
+        if ($name === 'settings_smtp' && blank($settings[AppSetting::SMTP_HOST] ?? null)) {
+            throw new \RuntimeException('SMTP is not configured in admin settings.');
         }
 
         return parent::mailer($name);

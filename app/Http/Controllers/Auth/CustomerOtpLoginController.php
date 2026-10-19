@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Mail\CustomerLoginOtpCodeMail;
 use App\Models\AppSetting;
 use App\Models\Customer;
+use App\Services\Notifications\AuthenticationMailDispatcher;
 use App\Services\Sms\VerificationSmsSender;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +13,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -95,7 +94,7 @@ class CustomerOtpLoginController extends Controller
         } catch (Throwable $e) {
             DB::table('customer_login_otp_challenges')->where('id', $challenge)->delete();
 
-            return back()->withInput()->withErrors(['login' => $e->getMessage()]);
+            return back()->withInput()->withErrors(['login' => 'ثبت درخواست ارسال کد انجام نشد. کمی بعد دوباره تلاش کنید.']);
         }
 
         $request->session()->put([
@@ -107,7 +106,7 @@ class CustomerOtpLoginController extends Controller
         return redirect()->route('customer.login.otp.verify')
             ->with('status', $channel === 'sms'
                 ? 'کد ورود به شماره موبایل شما ارسال شد.'
-                : 'کد ورود به ایمیل شما ارسال شد.');
+                : 'کد ورود در صف ارسال ایمیل قرار گرفت. دریافت آن ممکن است کمی زمان ببرد.');
     }
 
     public function verify(Request $request): RedirectResponse
@@ -168,21 +167,23 @@ class CustomerOtpLoginController extends Controller
 
         $code = (string) random_int(100000, 999999);
         try {
-            $this->sendCodeToCustomer($customer, $challenge->channel, $code);
+            DB::transaction(function () use ($challenge, $customer, $code): void {
+                DB::table('customer_login_otp_challenges')->where('id', $challenge->id)->update([
+                    'token' => Hash::make($code),
+                    'attempts' => 0,
+                    'sent_at' => now(),
+                    'expires_at' => now()->addMinutes(10),
+                    'updated_at' => now(),
+                ]);
+                $this->sendCodeToCustomer($customer, $challenge->channel, $code);
+            });
         } catch (Throwable $e) {
-            return back()->withErrors(['code' => $e->getMessage()]);
+            return back()->withErrors(['code' => 'ثبت درخواست ارسال کد انجام نشد. کمی بعد دوباره تلاش کنید.']);
         }
 
-        DB::table('customer_login_otp_challenges')->where('id', $challenge->id)->update([
-            'token' => Hash::make($code),
-            'attempts' => 0,
-            'sent_at' => now(),
-            'expires_at' => now()->addMinutes(10),
-            'updated_at' => now(),
-        ]);
         RateLimiter::clear('customer-login-otp:verify:'.$challenge->challenge);
 
-        return back()->with('status', 'کد جدید برای شما ارسال شد.');
+        return back()->with('status', $challenge->channel === 'sms' ? 'کد جدید برای شما ارسال شد.' : 'کد جدید در صف ارسال ایمیل قرار گرفت.');
     }
 
     private function challengeFromSession(Request $request): ?object
@@ -222,7 +223,7 @@ class CustomerOtpLoginController extends Controller
             return;
         }
 
-        Mail::to($customer->email)->send(new CustomerLoginOtpCodeMail($customer, $code));
+        app(AuthenticationMailDispatcher::class)->send($customer, 'login_code', $code);
     }
 
     private function normalizeIdentifier(string $identifier): string

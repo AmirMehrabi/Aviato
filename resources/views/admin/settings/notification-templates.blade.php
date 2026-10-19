@@ -4,7 +4,7 @@
 <div class="space-y-6 px-4 py-6 md:px-8">
     <a href="{{ route('admin.settings.edit') }}" class="text-sm font-bold text-blue-600">→ بازگشت به تنظیمات</a>
     <h1 class="text-2xl font-black text-slate-950">قالب‌ها و اعلان‌ها</h1>
-    <p class="text-sm leading-7 text-slate-500">برای هر رویداد، کانال ارسال و متن پیشنهادی را مدیریت کنید. کدهای امنیتی همیشه ارسال می‌شوند. اعلان‌های ایمیلی تیکت به فعال بودن ایمیل در تنظیمات تیکت هم نیاز دارند. ارسال اعلان‌های اختیاری از طریق صف انجام می‌شود.</p>
+    <p class="text-sm leading-7 text-slate-500">برای هر رویداد، کانال ارسال و متن پیشنهادی را مدیریت کنید. کدهای امنیتی همیشه ارسال می‌شوند. اعلان‌های ایمیلی تیکت به فعال بودن ایمیل در تنظیمات تیکت هم نیاز دارند. تمام ایمیل‌های مشتریان در پس‌زمینه ارسال می‌شوند؛ اختلال SMTP عملیات پنل را متوقف نمی‌کند.</p>
     @if(session('status'))<div role="status" class="rounded-lg bg-blue-50 p-4 text-blue-900">{{ session('status') }}</div>@endif
     @if($errors->any())<div role="alert" class="rounded-lg bg-red-50 p-4 text-red-800">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
     <form method="POST" action="{{ route('admin.settings.notifications.branding') }}" class="space-y-4 rounded-2xl border border-slate-200 bg-white p-6">
@@ -48,8 +48,8 @@
         </details>
     @endforeach
     <section class="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 class="mb-4 text-lg font-black">تاریخچه ارسال ایمیل‌های اختیاری</h2>
-        <p class="mb-4 text-xs text-slate-500">«تحویل به سرور» به معنی تأیید دریافت در صندوق مشتری نیست. پیام‌های امنیتی و ایمیل‌های نمونه در این فهرست ثبت نمی‌شوند.</p>
+        <h2 class="mb-4 text-lg font-black">تاریخچه ارسال ایمیل‌ها</h2>
+        <p class="mb-4 text-xs text-slate-500">«تحویل به سرور» به معنی تأیید دریافت در صندوق مشتری نیست. ارسال پیام‌های امنیتی نیز ثبت می‌شود؛ کدها و رمزها در این فهرست ذخیره نمی‌شوند. ایمیل‌های نمونه جدا هستند.</p>
         <table class="w-full text-right text-sm"><thead><tr><th class="p-2">رویداد</th><th class="p-2">گیرنده</th><th class="p-2">وضعیت</th><th class="p-2">تلاش‌ها</th><th class="p-2">زمان</th></tr></thead><tbody>
         @forelse($deliveries as $delivery)<tr class="border-t border-slate-100"><td class="p-2">{{ $templates[$delivery->event]['label'] ?? $delivery->event }}</td><td dir="ltr" class="p-2">{{ $delivery->recipient }}</td><td class="p-2">{{ ['queued' => 'در صف', 'sent' => 'تحویل به سرور', 'failed' => 'ناموفق', 'suppressed' => 'لغوشده طبق تنظیمات'][$delivery->status] ?? $delivery->status }}</td><td class="p-2">{{ $delivery->attempts }}</td><td class="p-2">{{ $delivery->created_at }}</td></tr>@empty<tr><td colspan="5" class="p-4 text-slate-500">هنوز ارسالی ثبت نشده است.</td></tr>@endforelse
         </tbody></table>

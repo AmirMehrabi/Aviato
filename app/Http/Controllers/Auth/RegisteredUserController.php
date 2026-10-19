@@ -70,7 +70,7 @@ class RegisteredUserController extends Controller
 
                 return back()
                     ->withInput($request->except('password', 'password_confirmation'))
-                    ->withErrors(['verification' => $e->getMessage()]);
+                    ->withErrors(['verification' => 'ثبت درخواست ارسال کد انجام نشد. کمی بعد دوباره تلاش کنید.']);
             }
 
             $referralCode = trim((string) ($data['ref'] ?? ''));
@@ -87,7 +87,7 @@ class RegisteredUserController extends Controller
 
             return redirect()
                 ->route('customer.verification.notice', $routeParams)
-                ->with('status', $verificationMode === 'sms' ? 'کد تایید پیامک ارسال شد.' : 'کد تایید برای ایمیل شما ارسال شد.');
+                ->with('status', $verificationMode === 'sms' ? 'کد تایید پیامک ارسال شد.' : 'کد تأیید در صف ارسال ایمیل قرار گرفت.');
         }
 
         $referralCode = trim((string) ($data['ref'] ?? ''));

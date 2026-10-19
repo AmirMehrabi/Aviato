@@ -3,16 +3,15 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Mail\CustomerVerificationCodeMail;
 use App\Models\AppSetting;
 use App\Models\Customer;
+use App\Services\Notifications\AuthenticationMailDispatcher;
 use App\Services\ResellerService;
 use App\Services\Sms\VerificationSmsSender;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 use Throwable;
 
@@ -113,10 +112,10 @@ class CustomerEmailVerificationController extends Controller
         try {
             self::sendVerificationCode($customer, $mode);
         } catch (Throwable $e) {
-            return back()->withErrors(['verification' => $e->getMessage()])->withInput();
+            return back()->withErrors(['verification' => 'ثبت درخواست ارسال کد انجام نشد. کمی بعد دوباره تلاش کنید.'])->withInput();
         }
 
-        return back()->with('status', 'کد تایید جدید ارسال شد.');
+        return back()->with('status', $mode === 'sms' ? 'کد تایید جدید ارسال شد.' : 'کد تأیید در صف ارسال ایمیل قرار گرفت.');
     }
 
     public static function sendVerificationCode(Customer $customer, ?string $mode = null): void
@@ -139,6 +138,6 @@ class CustomerEmailVerificationController extends Controller
             return;
         }
 
-        Mail::to($customer->email)->send(new CustomerVerificationCodeMail($customer, $code));
+        app(AuthenticationMailDispatcher::class)->send($customer, 'email_verification', $code);
     }
 }

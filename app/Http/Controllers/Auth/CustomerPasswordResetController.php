@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Mail\CustomerPasswordResetCodeMail;
 use App\Models\Customer;
+use App\Services\Notifications\AuthenticationMailDispatcher;
 use App\Services\Notifications\NotificationEventSubscriber;
 use App\Services\Sms\VerificationSmsSender;
 use Illuminate\Http\RedirectResponse;
@@ -12,7 +12,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Throwable;
@@ -66,7 +65,7 @@ class CustomerPasswordResetController extends Controller
 
         return redirect()
             ->route('customer.password.otp', ['login' => $identifier, 'channel' => $channel])
-            ->with('status', $channel === 'sms' ? 'کد OTP بازیابی رمز با پیامک ارسال شد.' : 'کد OTP بازیابی رمز به ایمیل شما ارسال شد.');
+            ->with('status', $channel === 'sms' ? 'کد OTP بازیابی رمز با پیامک ارسال شد.' : 'درخواست ارسال کد بازیابی در صف قرار گرفت. دریافت ایمیل ممکن است کمی زمان ببرد؛ پوشه هرزنامه را نیز بررسی کنید.');
     }
 
     public function otpForm(Request $request): View
@@ -190,7 +189,7 @@ class CustomerPasswordResetController extends Controller
             return;
         }
 
-        Mail::to($customer->email)->send(new CustomerPasswordResetCodeMail($customer, $code));
+        app(AuthenticationMailDispatcher::class)->send($customer, 'password_reset', $code);
     }
 
     private function clearResetSession(Request $request): void

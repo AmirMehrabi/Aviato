@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendAuthenticationEmail;
 use App\Mail\CustomerPasswordResetCodeMail;
 use App\Models\Customer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class CustomerEmailPasswordRecoveryTest extends TestCase
@@ -17,6 +19,7 @@ class CustomerEmailPasswordRecoveryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Queue::fake();
         config(['portals.admin.domain' => 'admin.localhost', 'portals.customer.domain' => 'cp.localhost']);
     }
 
@@ -26,11 +29,13 @@ class CustomerEmailPasswordRecoveryTest extends TestCase
         $customer = Customer::factory()->create(['password' => 'original-password']);
         $this->post('https://cp.localhost/password/forgot', ['login' => $customer->email])->assertRedirect();
         $code = null;
-        Mail::assertSent(CustomerPasswordResetCodeMail::class, function ($mail) use (&$code, $customer): bool {
-            $code = $mail->code;
+        Queue::assertPushed(SendAuthenticationEmail::class, function ($job) use (&$code, $customer): bool {
+            $code = $job->code;
+            $job->handle();
 
-            return $mail->hasTo($customer->email) && str_contains($mail->render(), $code);
+            return $job->customerId === $customer->id;
         });
+        Mail::assertSent(CustomerPasswordResetCodeMail::class, fn ($mail) => $mail->hasTo($customer->email));
         $this->post('https://cp.localhost/password/otp', ['login' => $customer->email, 'channel' => 'email', 'code' => $code])->assertRedirect('https://cp.localhost/password/reset');
         $this->post('https://cp.localhost/password/reset', ['password' => 'replacement-password', 'password_confirmation' => 'replacement-password'])->assertRedirect('https://cp.localhost/login');
         $this->assertTrue(Hash::check('replacement-password', $customer->refresh()->password));
