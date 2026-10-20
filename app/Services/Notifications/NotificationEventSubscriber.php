@@ -32,7 +32,8 @@ class NotificationEventSubscriber
             }
         });
         Event::listen(Login::class, function (Login $event): void {
-            if ($event->guard === 'customer' && $event->user instanceof Customer) {
+            if ($event->guard === 'customer' && $event->user instanceof Customer
+                && ! (request()->hasSession() && request()->session()->has('impersonated_by_admin_id'))) {
                 $this->notify($event->user, 'signed_in', ['ip' => request()->ip(), 'time' => now('Asia/Tehran')->format('Y-m-d H:i').' (تهران)'], route('dashboard'));
             }
         });

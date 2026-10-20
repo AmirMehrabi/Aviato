@@ -106,14 +106,19 @@ class AuthenticatedSessionController extends Controller
             DB::table('admin_session_users')->where('session_id', $request->session()->getId())->delete();
         }
 
+        $admin = $wasImpersonating ? $request->user('admin') : null;
         Auth::guard($portal)->logout();
 
         if ($wasImpersonating) {
-            $request->session()->forget(['impersonated_by_admin_id', 'impersonated_customer_id']);
-            $request->session()->invalidate();
+            $request->session()->forget(['impersonated_by_admin_id', 'impersonated_customer_id', 'customer']);
+            if ($admin instanceof User) {
+                $request->session()->regenerate(true);
+            } else {
+                $request->session()->invalidate();
+            }
             $request->session()->regenerateToken();
 
-            return redirect()->route(AdminAccess::landingRoute(auth('admin')->user()));
+            return redirect()->route($admin instanceof User ? AdminAccess::landingRoute($admin) : 'admin.login');
         }
 
         $request->session()->invalidate();

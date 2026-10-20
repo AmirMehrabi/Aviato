@@ -28,12 +28,13 @@ class CustomerImpersonationController extends Controller
 
         $customer = Customer::query()->findOrFail($impersonation['customer_id']);
 
-        Auth::guard('customer')->login($customer);
-        $request->session()->regenerate();
         $request->session()->put([
             'impersonated_by_admin_id' => $impersonation['admin_id'],
             'impersonated_customer_id' => $customer->getKey(),
         ]);
+
+        Auth::guard('customer')->login($customer);
+        $request->session()->regenerate();
 
         return redirect()->route('dashboard')
             ->with('status', 'شما اکنون به عنوان '.$customer->name.' وارد پورتال مشتری شده‌اید.');
