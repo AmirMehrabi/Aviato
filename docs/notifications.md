@@ -28,3 +28,9 @@ The admin template page shows queued, server-accepted, failed, and suppressed op
 4. Choose a new password and sign in with it. The code is single use. A replacement code invalidates a previously verified recovery session.
 
 Local automated tests cover the complete recovery flow using the generated code, code expiry after verification, replacement and reuse rejection, branded template rendering, editing/restoring, channel preferences, and queued delivery. No live customer email is sent by these tests.
+
+## Initial server credentials
+
+When server-ready email is enabled, newly provisioned servers include name, IP address, username, and the initial password in a dedicated email section. This section and the instruction to change the password on first login remain present even with custom message copy. Server name, IP, and username are also available as `{{server_name}}`, `{{server_ip}}`, and `{{username}}` placeholders. Passwords are deliberately not template placeholders or in-app notification data.
+
+The initial password travels through encrypted provisioning and email queue payloads; it is not saved back to the VM record, notification inbox, or delivery history. This works for servers created after deployment. Already-hashed passwords cannot be recovered for older servers or manually requeued provisioning jobs. If no password is available, the email explains how to use the configured SSH key or check/reset credentials in the panel. The email requests a password change; it does not force an operating-system password change.

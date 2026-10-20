@@ -8,6 +8,7 @@ use App\Models\VirtualMachine;
 use App\Notifications\TemplatedNotification;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Notifications\Events\NotificationSending;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
@@ -26,7 +27,9 @@ class NotificationEventSubscriber
                 return;
             }
             // Email is independent of the in-app preference.
-            $this->email($event->notifiable, $key, $data);
+            if (! $event->notification instanceof TemplatedNotification || $event->notification->sendEmail) {
+                $this->email($event->notifiable, $key, $data);
+            }
             if (! app(NotificationTemplates::class)->enabled($key, 'in_app', $event->notifiable)) {
                 return false;
             }
@@ -50,17 +53,32 @@ class NotificationEventSubscriber
             if ($vm->wasChanged('provisioning_status') && $vm->provisioning_status === 'ready') {
                 DB::afterCommit(function () use ($vm): void {
                     if ($vm->customer) {
-                        $this->notify($vm->customer, 'server_ready', ['server_name' => $vm->display_name], route('customer.servers.show', $vm));
+                        $variables = [
+                            'server_name' => $vm->display_name,
+                            'server_ip' => $vm->ip_address ?: 'در پنل بررسی کنید',
+                            'username' => $vm->login_username ?: 'در پنل بررسی کنید',
+                        ];
+                        $url = route('customer.servers.show', $vm);
+                        $this->notify($vm->customer, 'server_ready', $variables, $url, false);
+                        $password = $vm->notificationPasswordEncrypted !== null
+                            ? Crypt::decryptString($vm->notificationPasswordEncrypted)
+                            : ($vm->retain_login_password ? $vm->login_password : null);
+                        app(NotificationDispatcher::class)->email($vm->customer, 'server_ready', $variables + [
+                            'initial_password' => $password,
+                            'password_notice' => filled($password) ? '' : (filled($vm->ssh_public_key)
+                                ? 'برای ورود از کلید SSH انتخاب‌شده هنگام ساخت سرور استفاده کنید.'
+                                : 'رمز اولیه در دسترس نیست؛ اطلاعات ورود یا گزینه بازنشانی رمز را در پنل بررسی کنید.'),
+                        ], $url);
                     }
                 });
             }
         });
     }
 
-    public function notify(object $recipient, string $event, array $variables, string $url): void
+    public function notify(object $recipient, string $event, array $variables, string $url, bool $sendEmail = true): void
     {
         try {
-            $recipient->notify(new TemplatedNotification($event, $variables, $url));
+            $recipient->notify(new TemplatedNotification($event, $variables, $url, $sendEmail));
         } catch (\Throwable) {
             Log::warning('Optional notification failed.', ['event' => $event]);
         }

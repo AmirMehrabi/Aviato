@@ -79,7 +79,7 @@ class CloudVmProvisioningTest extends TestCase
             'status' => IpAddress::STATUS_RESERVED,
         ]);
 
-        Bus::assertDispatched(ProvisionCloudVirtualMachine::class);
+        Bus::assertDispatched(ProvisionCloudVirtualMachine::class, fn ($job) => $job->options['initial_password'] === $password);
     }
 
     public function test_customer_create_page_marks_images_without_available_ip(): void

@@ -104,6 +104,9 @@ class VirtualMachine extends Model
 
     public const PROVISION_FAILED = 'failed';
 
+    // Transient provisioning context; never stored as a database attribute.
+    public ?string $notificationPasswordEncrypted = null;
+
     protected static function booted(): void
     {
         static::creating(function (VirtualMachine $virtualMachine): void {

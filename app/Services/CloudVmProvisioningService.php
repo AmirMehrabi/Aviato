@@ -150,6 +150,7 @@ class CloudVmProvisioningService
                 'start_after_create' => (bool) ($data['start_after_create'] ?? true),
                 'onboot' => (bool) ($data['onboot'] ?? false),
                 'bootstrap_password' => $image->os_family === 'windows' ? $password : null,
+                'initial_password' => $password,
             ])->onQueue(ProvisionCloudVirtualMachine::QUEUE);
         }
 

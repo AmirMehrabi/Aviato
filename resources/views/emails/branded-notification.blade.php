@@ -26,6 +26,17 @@
         @foreach (explode("\n", $notification['body']) as $line)
             <p dir="rtl" style="direction:rtl;text-align:right;font-family:'Vazirmatn',Tahoma,Arial,sans-serif;font-size:14px;line-height:2;margin:0 0 12px;">{{ $line }}</p>
         @endforeach
+        @if ($event === 'server_ready')
+            <table role="presentation" dir="rtl" width="100%" cellpadding="12" cellspacing="0" style="margin:20px 0;background:#ebf3ff;border-radius:10px;font-family:'Vazirmatn',Tahoma,Arial,sans-serif;direction:rtl;text-align:right;">
+                @foreach (['server_name' => 'نام سرور', 'server_ip' => 'نشانی IP', 'username' => 'نام کاربری', 'initial_password' => 'رمز عبور اولیه'] as $field => $label)
+                    <tr><th dir="rtl" align="right" style="font-size:13px;">{{ $label }}</th><td dir="{{ $field === 'server_name' ? 'rtl' : 'ltr' }}" align="right" style="font-size:14px;unicode-bidi:isolate;overflow-wrap:anywhere;">{{ $variables[$field] ?? 'در دسترس نیست' }}</td></tr>
+                @endforeach
+            </table>
+            @if (filled($variables['password_notice'] ?? null))
+                <p dir="rtl" style="direction:rtl;text-align:right;font-family:'Vazirmatn',Tahoma,Arial,sans-serif;font-size:14px;line-height:2;">{{ $variables['password_notice'] }}</p>
+            @endif
+            <p dir="rtl" style="direction:rtl;text-align:right;font-family:'Vazirmatn',Tahoma,Arial,sans-serif;font-size:14px;font-weight:bold;line-height:2;">لطفاً پس از اولین ورود به سرور، رمز عبور را تغییر دهید. اطلاعات ورود را با دیگران به اشتراک نگذارید.</p>
+        @endif
         @if ($code)
             <p dir="ltr" style="direction:ltr;unicode-bidi:isolate;font-family:'Vazirmatn',Tahoma,Arial,sans-serif;padding:18px;background:#ebf3ff;border-radius:10px;text-align:center;color:#0069ff;font-size:34px;font-weight:bold;letter-spacing:8px;">{{ $code }}</p>
         @endif

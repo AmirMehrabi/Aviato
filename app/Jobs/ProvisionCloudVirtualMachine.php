@@ -12,6 +12,7 @@ use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
@@ -46,6 +47,11 @@ class ProvisionCloudVirtualMachine implements ShouldBeEncrypted, ShouldQueue
         $vm = VirtualMachine::query()
             ->with(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool', 'project.owner', 'customer', 'infrastructureLocation.hetznerAccount'])
             ->findOrFail($this->virtualMachineId);
+
+        $initialPassword = $this->options['initial_password'] ?? $this->options['bootstrap_password'] ?? null;
+        if (filled($initialPassword)) {
+            $vm->notificationPasswordEncrypted = Crypt::encryptString($initialPassword);
+        }
 
         if ($vm->isHetzner()) {
             $this->handleHetzner($vm, $wallets, $hetzner ?? app(HetznerCloudService::class));
@@ -305,6 +311,10 @@ class ProvisionCloudVirtualMachine implements ShouldBeEncrypted, ShouldQueue
             }
 
             $create = $hetzner->createServer($account, $payload);
+            if ($vm->notificationPasswordEncrypted === null && filled($create['root_password'] ?? null)) {
+                $vm->notificationPasswordEncrypted = Crypt::encryptString($create['root_password']);
+                $vm->login_username = $vm->login_username ?: 'root';
+            }
             $server = $create['server'] ?? [];
             $actionId = $create['action']['id'] ?? null;
             $history[] = ['step' => 'create', 'result' => array_diff_key($create, ['root_password' => true]), 'at' => now()->toISOString()];

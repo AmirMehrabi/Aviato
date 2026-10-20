@@ -19,7 +19,7 @@ class NotificationTemplates
             'workspace_added' => ['دعوت به فضای کاری', 'فضای کاری تازه در آویاتو', "{{name}} عزیز،\n{{body}}\nهمراه تیم خود، مسیر ابری تازه‌ای بسازید.", false],
             'workspace_wallet_balance' => ['موجودی کیف پول', 'موجودی کیف پول آویاتو', "{{name}} عزیز،\n{{body}}\nبا شارژ به‌موقع کیف پول، سرویس‌های خود را بدون وقفه نگه دارید.", false],
             'vm_wallet_retention' => ['نگهداری و حذف سرور', '{{title}} | آویاتو', "{{name}} عزیز،\n{{body}}\nبرای بررسی وضعیت سرویس و پرداخت، به پنل خود مراجعه کنید.", false],
-            'server_ready' => ['آماده شدن سرور', 'سرور شما در آویاتو آماده است', "{{name}} عزیز،\nسرور «{{server_name}}» آماده استفاده است.\nهمه‌چیز برای قدم بعدی شما در ابر آماده است؛ از پنل، سرویس خود را مدیریت کنید.", false],
+            'server_ready' => ['آماده شدن سرور', 'سرور شما در آویاتو آماده است', "{{name}} عزیز،\nسرور «{{server_name}}» آماده استفاده است.\nنشانی IP: {{server_ip}}\nنام کاربری: {{username}}\nلطفاً برای امنیت حساب سرور، پس از اولین ورود رمز عبور را تغییر دهید.", false],
             'payment_received' => ['پرداخت موفق', 'پرداخت شما در آویاتو ثبت شد', "{{name}} عزیز،\nپرداخت شما به مبلغ {{amount}} ثبت شد.\nشماره رسید: {{receipt}}\nاز همراهی شما با آویاتو سپاسگزاریم.", false],
             'vm_node_move_finished' => ['انتقال Node (مدیر)', 'انتقال ماشین‌ها پایان یافت | آویاتو', "{{name}} عزیز،\n{{body}}", false],
         ];
@@ -78,7 +78,7 @@ class NotificationTemplates
     public function render(string $event, array $variables = []): array
     {
         $template = $this->all()[$event];
-        $variables += ['name' => 'همراه آویاتو', 'title' => $template['label'], 'body' => '', 'ticket_number' => '', 'server_name' => '', 'amount' => '', 'receipt' => '', 'time' => '', 'ip' => ''];
+        $variables += ['name' => 'همراه آویاتو', 'title' => $template['label'], 'body' => '', 'ticket_number' => '', 'server_name' => '', 'server_ip' => '', 'username' => '', 'amount' => '', 'receipt' => '', 'time' => '', 'ip' => ''];
         $replace = collect($variables)->mapWithKeys(fn ($value, $key) => ['{{'.$key.'}}' => is_scalar($value) ? (string) $value : ''])->all();
 
         return ['subject' => strtr($template['subject'], $replace), 'body' => strtr($template['body'], $replace)];

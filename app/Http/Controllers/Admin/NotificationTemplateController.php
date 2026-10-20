@@ -32,7 +32,7 @@ class NotificationTemplateController extends Controller
         ]);
         foreach (['subject', 'body'] as $field) {
             preg_match_all('/\{\{(.*?)\}\}/', $data[$field], $matches);
-            if (array_diff($matches[1], ['name', 'title', 'body', 'ticket_number', 'server_name', 'amount', 'receipt', 'time', 'ip'])) {
+            if (array_diff($matches[1], ['name', 'title', 'body', 'ticket_number', 'server_name', 'server_ip', 'username', 'amount', 'receipt', 'time', 'ip'])) {
                 return back()->withErrors([$field => 'متغیر ناشناخته است. از متغیرهای معرفی‌شده استفاده کنید.'])->withInput();
             }
         }
@@ -89,6 +89,6 @@ class NotificationTemplateController extends Controller
 
     private function samples(): array
     {
-        return ['name' => 'همراه آویاتو', 'title' => 'یک خبر از آویاتو', 'body' => 'این یک پیام نمونه برای بررسی قالب است.', 'ticket_number' => 'T-1001', 'server_name' => 'my-cloud', 'amount' => '۱۰۰٬۰۰۰ ریال', 'receipt' => 'RCP-00000001', 'time' => now('Asia/Tehran')->format('Y-m-d H:i'), 'ip' => '192.0.2.1'];
+        return ['name' => 'همراه آویاتو', 'title' => 'یک خبر از آویاتو', 'body' => 'این یک پیام نمونه برای بررسی قالب است.', 'ticket_number' => 'T-1001', 'server_name' => 'my-cloud', 'server_ip' => '192.0.2.10', 'username' => 'ubuntu', 'initial_password' => 'Example-Only-Change-Me!', 'amount' => '۱۰۰٬۰۰۰ ریال', 'receipt' => 'RCP-00000001', 'time' => now('Asia/Tehran')->format('Y-m-d H:i'), 'ip' => '192.0.2.1'];
     }
 }

@@ -7,7 +7,7 @@ use Illuminate\Notifications\Notification;
 
 class TemplatedNotification extends Notification
 {
-    public function __construct(public string $event, public array $variables, public string $url) {}
+    public function __construct(public string $event, public array $variables, public string $url, public bool $sendEmail = true) {}
 
     public function via(object $notifiable): array
     {
