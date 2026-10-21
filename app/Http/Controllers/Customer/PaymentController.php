@@ -14,6 +14,7 @@ use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 
@@ -122,6 +123,21 @@ class PaymentController extends Controller
 
     public function callback(Request $request, Payment $payment): RedirectResponse
     {
+        if ($payment->provider === 'hesabro') {
+            DB::transaction(function () use ($request, $payment): void {
+                $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+                $payload = $locked->gateway_payload ?? [];
+                $payload['callbacks'][] = [
+                    'received_at' => now()->toIso8601String(),
+                    'method' => $request->method(),
+                    'query' => $request->query(),
+                    'body' => $request->post(),
+                ];
+                $locked->forceFill(['gateway_payload' => $payload])->save();
+            });
+            $payment->refresh();
+        }
+
         if ($payment->isPending()) {
             try {
                 $this->payments->completeTopUp($payment, $request->all() + [

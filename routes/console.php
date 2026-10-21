@@ -27,6 +27,8 @@ use App\Services\WorkspaceWalletAlertService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\Console\Command\Command;
 
 Artisan::command('billing:charge-usage', function (UsageBillingService $billing) {
@@ -459,3 +461,35 @@ Schedule::command('backup:run-due')->everyFifteenMinutes();
 Schedule::command('backup:sync')->hourlyAt(10);
 Schedule::command('virtual-machines:reconcile-pending')->everyTenMinutes();
 Schedule::command('vm-upgrades:reconcile')->everyFiveMinutes()->withoutOverlapping();
+
+Artisan::command('hesabro:callback-test {token? : Review an existing capture session} {--base-url=https://aviato.ir : Public HTTPS application origin}', function (): int {
+    $disk = Storage::disk('local');
+    $token = $this->argument('token');
+    if ($token) {
+        if (! Str::isUuid($token) || ! $disk->exists('hesabro-tests/'.$token.'/session.json')) {
+            $this->error('Capture session not found.');
+
+            return 1;
+        }
+        $path = 'hesabro-tests/'.$token.'/callbacks.jsonl';
+        $this->line($disk->exists($path) ? $disk->get($path) : 'No callbacks received yet.');
+
+        return 0;
+    }
+    $base = rtrim($this->option('base-url'), '/');
+    if (! filter_var($base, FILTER_VALIDATE_URL) || parse_url($base, PHP_URL_SCHEME) !== 'https') {
+        $this->error('Use the public HTTPS application origin.');
+
+        return 1;
+    }
+    $token = (string) Str::uuid();
+    if (! $disk->put('hesabro-tests/'.$token.'/session.json', json_encode(['expires_at' => now()->addDay()->timestamp]))) {
+        $this->error('Could not save capture session.');
+
+        return 1;
+    }
+    $this->info($base.'/api/v1/hesabro/wallet/callback/'.$token);
+    $this->line('Expires in 24 hours. Review: php artisan hesabro:callback-test '.$token);
+
+    return 0;
+})->purpose('Create a private Hesabro test callback capture or review received requests');

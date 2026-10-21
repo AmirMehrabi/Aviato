@@ -690,6 +690,7 @@ class CustomerWalletBillingTest extends TestCase
         Http::assertSent(fn ($request): bool => $request->method() === 'POST'
             && $request->url() === 'https://api.hesabro.ir/@sabz-co/payment-service/wallet/user-charge?username=09123456789'
             && $request->hasHeader('Authorization', 'Basic '.base64_encode('client-id:client-secret'))
+            && $request->hasHeader('Idempotency-Key', 'hesabro-charge-'.$payment->authority)
             && $request['amount'] === 1000000
             && str_ends_with($request['callback_url'], '/wallet/payments/1/callback'));
     }
@@ -853,7 +854,20 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertDatabaseCount('wallet_transactions', 0);
     }
 
-    public function test_hesabro_callback_credits_wallet_on_success(): void
+    public function test_hesabro_rejects_http_error_even_with_a_valid_looking_charge_body(): void
+    {
+        $customer = Customer::factory()->create(['phone' => '09123456789']);
+        $this->enableHesabroGateway();
+        Http::fake(fn ($request) => Http::response([
+            'amount' => 1000000,
+            'callback_url' => $request['callback_url'],
+            'go_to_ipg_url' => 'https://payments.example/pay/token/123456',
+        ], 500));
+        $this->expectException(HesabroPaymentException::class);
+        app(PaymentService::class)->createTopUp($customer, 1000000, provider: 'hesabro');
+    }
+
+    public function test_hesabro_callback_is_stored_without_crediting_unverified_payment(): void
     {
         $customer = Customer::factory()->create();
         $this->enableHesabroGateway();
@@ -875,10 +889,14 @@ class CustomerWalletBillingTest extends TestCase
         ])->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
 
         $payment->refresh();
-        $this->assertSame(Payment::STATUS_SUCCESSFUL, $payment->status);
+        $this->assertSame(Payment::STATUS_PENDING, $payment->status);
         $this->assertSame('987', $payment->gateway_payload['callback']['order_id']);
-        $this->assertDatabaseCount('wallet_transactions', 1);
-        $this->assertSame(1000000, $customer->wallet()->firstOrFail()->balance);
+        $this->assertCount(1, $payment->gateway_payload['callbacks']);
+        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [])->assertRedirect();
+        $this->assertCount(2, $payment->fresh()->gateway_payload['callbacks']);
+        $this->assertSame(Payment::STATUS_PENDING, $payment->fresh()->status);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+        $this->assertSame(0, $customer->wallet()->firstOrFail()->balance);
     }
 
     public function test_wallet_page_shows_transactions_and_filters(): void

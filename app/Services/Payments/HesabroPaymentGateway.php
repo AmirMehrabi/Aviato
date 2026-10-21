@@ -34,6 +34,7 @@ class HesabroPaymentGateway implements PaymentGatewayInterface
         $username = $this->username($payment);
         $callbackUrl = $this->callbackUrl($payment);
         $response = $this->request('POST', $this->endpointPath('/payment-service/wallet/user-charge'), [
+            'headers' => ['Idempotency-Key' => 'hesabro-charge-'.$payment->authority],
             'query' => ['username' => $username],
             'json' => [
                 'amount' => $payment->amount,
@@ -87,18 +88,11 @@ class HesabroPaymentGateway implements PaymentGatewayInterface
             );
         }
 
-        $providerReference = $this->providerReference($payload, $payment);
-
-        return [
-            'provider_reference' => $providerReference,
-            'status' => 'successful',
-            'payload' => [
-                'callback' => $payload,
-                'verified_at' => now()->toIso8601String(),
-                'provider_reference' => $providerReference,
-                'status' => 'successful',
-            ],
-        ];
+        // A browser callback is untrusted; it cannot establish that funds were received.
+        throw new HesabroPaymentException(
+            'پاسخ حسابرو ذخیره شد؛ تأیید پرداخت از سمت سرویس حسابرو هنوز پیاده‌سازی نشده است.',
+            context: ['stage' => 'verification_unavailable'],
+        );
     }
 
     private function ensureConfigured(): void
@@ -182,7 +176,7 @@ class HesabroPaymentGateway implements PaymentGatewayInterface
             );
         }
 
-        if (! $this->isEnvelopeSuccessful($body)) {
+        if (! $response->successful() || ! $this->isEnvelopeSuccessful($body)) {
             throw new HesabroPaymentException(
                 (string) data_get($body, 'message', data_get($body, 'errors.0.0', data_get($body, 'errors.0.message', $fallbackMessage))),
                 responseCode: (string) $response->status(),
@@ -227,21 +221,5 @@ class HesabroPaymentGateway implements PaymentGatewayInterface
             || $success === false
             || $code !== '' && $code !== '0' && $code !== '200'
             || $resCode !== '' && ! in_array($resCode, ['0', '00'], true);
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function providerReference(array $payload, Payment $payment): string
-    {
-        foreach (['order_id', 'payment_id', 'transaction_id', 'reference_id', 'ref_id', 'tracking_code', 'authority'] as $key) {
-            $value = trim((string) data_get($payload, $key, ''));
-
-            if ($value !== '') {
-                return $value;
-            }
-        }
-
-        return $payment->authority;
     }
 }

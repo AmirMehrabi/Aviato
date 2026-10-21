@@ -1,12 +1,17 @@
 <?php
 
 use App\Http\Controllers\Admin\ProxmoxServerController;
+use App\Http\Controllers\Api\HesabroTestCallbackController;
 use App\Http\Controllers\Api\IpdrDeliveryController;
 use App\Http\Controllers\Api\MeteringInventoryController;
 use App\Http\Controllers\Api\VirtualMachineController;
 use App\Http\Controllers\Api\WalletController;
 use App\Http\Middleware\IpdrIntegrationAuth;
 use Illuminate\Support\Facades\Route;
+
+Route::match(['GET', 'POST'], 'v1/hesabro/wallet/callback/{token}', HesabroTestCallbackController::class)
+    ->whereUuid('token')
+    ->middleware('throttle:30,1');
 
 Route::prefix('internal/v1/metering/inventory')->middleware(['metering.inventory.auth', 'throttle:120,1'])->group(function (): void {
     Route::get('/', [MeteringInventoryController::class, 'changes']);
