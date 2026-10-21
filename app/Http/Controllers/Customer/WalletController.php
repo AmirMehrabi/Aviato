@@ -90,13 +90,17 @@ class WalletController extends Controller
             ? (int) ceil($projectMonthlyEstimate / 10)
             : $projectMonthlyEstimate;
         $roundedMonthlyEstimateToman = intdiv($projectMonthlyEstimateToman + 999, 1000) * 1000;
+        $minimumTopUpToman = AppSetting::walletMinimumTopUpToman();
         $recommendedTopUpToman = $activeProject->virtualMachines()->notDeleted()->exists()
-            && $roundedMonthlyEstimateToman >= 250000
+            && $roundedMonthlyEstimateToman >= $minimumTopUpToman
             && $roundedMonthlyEstimateToman <= 50000000
                 ? $roundedMonthlyEstimateToman
                 : null;
-        $topUpPresets = [250000, 500000, 1000000, 2500000];
-        $lastPreset = $recommendedTopUpToman ?? 10000000;
+        $topUpPresets = array_values(array_unique(array_filter(
+            [$minimumTopUpToman, 250000, 500000, 1000000, 2500000],
+            fn (int $amount): bool => $amount >= $minimumTopUpToman,
+        )));
+        $lastPreset = $recommendedTopUpToman ?? max($minimumTopUpToman, 10000000);
         $topUpPresets = array_values(array_filter($topUpPresets, fn (int $amount): bool => $amount !== $lastPreset));
         $topUpPresets[] = $lastPreset;
 
@@ -121,6 +125,7 @@ class WalletController extends Controller
             'monthlyCredits' => (int) (clone $baseQuery)->where('amount', '>', 0)->sum('amount'),
             'monthlyCharges' => (int) abs((clone $baseQuery)->where('amount', '<', 0)->sum('amount')),
             'canTopUp' => $this->projects->canViewBilling($activeProject, $customer),
+            'minimumTopUpToman' => $minimumTopUpToman,
             'topUpPresets' => $topUpPresets,
             'availablePaymentGateways' => $this->paymentGateways->available(),
             'defaultPaymentGateway' => AppSetting::defaultPaymentGateway(),

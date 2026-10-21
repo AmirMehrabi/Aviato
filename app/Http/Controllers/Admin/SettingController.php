@@ -57,6 +57,10 @@ class SettingController extends Controller
 
         $data = $request->validate($this->sectionRules($section));
 
+        if ($section === 'billing') {
+            $data['wallet_minimum_top_up_toman'] ??= AppSetting::walletMinimumTopUpToman();
+        }
+
         if ($section === 'protection') {
             $data['wallet_retention_days'] ??= AppSetting::customerWalletRetentionDays();
             $data['wallet_shutdown_percentage'] ??= AppSetting::customerWalletShutdownPercentage();
@@ -229,6 +233,7 @@ class SettingController extends Controller
                 't_id_creditor_other' => AppSetting::HESABRO_ACCOUNTING_T_ID_CREDITOR_OTHER,
                 't_id_creditor' => AppSetting::HESABRO_ACCOUNTING_T_ID_CREDITOR,
             ])->mapWithKeys(fn (string $key, string $field): array => [$field => AppSetting::getValue($key, '')])->all(),
+            'walletMinimumTopUpToman' => AppSetting::walletMinimumTopUpToman(),
             'taxEnabled' => AppSetting::taxEnabled(),
             'taxRatePercentage' => AppSetting::taxRatePercentage(),
         ];
@@ -265,6 +270,7 @@ class SettingController extends Controller
                 'company_postal_code' => ['nullable', 'string', 'max:30'],
             ],
             'billing' => [
+                'wallet_minimum_top_up_toman' => ['sometimes', 'required', 'integer', 'min:1', 'max:50000000'],
                 'vm_extra_disk_enabled' => ['required', 'boolean'],
                 'tax_enabled' => ['required', 'boolean'],
                 'tax_rate_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
@@ -394,6 +400,7 @@ class SettingController extends Controller
                 ['company_postal_code', AppSetting::COMPANY_POSTAL_CODE, 'string', 'company'],
             ],
             'billing' => [
+                ['wallet_minimum_top_up_toman', AppSetting::WALLET_MINIMUM_TOP_UP_TOMAN, 'integer', 'billing'],
                 ['vm_extra_disk_enabled', AppSetting::VM_EXTRA_DISK_ENABLED, 'boolean', 'vm'],
                 ['tax_enabled', AppSetting::TAX_ENABLED, 'boolean', 'billing'], ['tax_rate_percentage', AppSetting::TAX_RATE_PERCENTAGE, 'float', 'billing'],
                 ['vm_creation_charge_enabled', AppSetting::VM_CREATION_CHARGE_ENABLED, 'boolean', 'billing'], ['vm_creation_charge_percentage', AppSetting::VM_CREATION_CHARGE_PERCENTAGE, 'float', 'billing'],

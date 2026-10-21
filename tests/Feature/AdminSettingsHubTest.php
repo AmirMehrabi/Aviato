@@ -71,6 +71,30 @@ class AdminSettingsHubTest extends TestCase
         }
     }
 
+    public function test_admin_can_configure_wallet_minimum_and_reject_invalid_amounts(): void
+    {
+        $admin = User::factory()->create();
+        $this->actingAs($admin, 'admin')->get('https://admin.localhost/settings/billing')
+            ->assertOk()->assertViewHas('walletMinimumTopUpToman', 250000);
+
+        $billing = [
+            'tax_enabled' => 0, 'tax_rate_percentage' => 0,
+            'vm_creation_charge_enabled' => 0, 'vm_creation_charge_percentage' => 0,
+            'vm_extra_disk_enabled' => 0,
+        ];
+        $this->patch('https://admin.localhost/settings/billing', $billing + ['wallet_minimum_top_up_toman' => 10000])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(10000, AppSetting::walletMinimumTopUpToman());
+        $this->get('https://admin.localhost/settings/billing')
+            ->assertOk()->assertViewHas('walletMinimumTopUpToman', 10000);
+
+        foreach ([0, -1, 1.5, 50000001, ''] as $amount) {
+            $this->patch('https://admin.localhost/settings/billing', $billing + ['wallet_minimum_top_up_toman' => $amount])
+                ->assertSessionHasErrors('wallet_minimum_top_up_toman');
+            $this->assertSame(10000, AppSetting::walletMinimumTopUpToman());
+        }
+    }
+
     public function test_admin_can_configure_company_identity_and_receipt_logo(): void
     {
         Storage::fake('public');

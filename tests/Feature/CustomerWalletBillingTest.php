@@ -555,6 +555,27 @@ class CustomerWalletBillingTest extends TestCase
         ]);
     }
 
+    public function test_wallet_uses_configured_minimum_for_display_and_payment_validation(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+        AppSetting::setValue(AppSetting::WALLET_MINIMUM_TOP_UP_TOMAN, 10000, 'integer', 'billing');
+
+        $this->actingAs($customer, 'customer')->get($this->customerBaseUrl.'/wallet?tab=top-up')
+            ->assertOk()->assertViewHas('minimumTopUpToman', 10000)
+            ->assertSee('حداقل ۱۰,۰۰۰')
+            ->assertViewHas('topUpPresets', fn ($presets) => in_array(10000, $presets, true));
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+            'amount_toman' => 9999, 'gateway' => 'mellat',
+        ])->assertSessionHasErrors('amount_toman');
+        $this->assertDatabaseCount('payments', 0);
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+            'amount_toman' => 10000, 'gateway' => 'mellat',
+        ])->assertRedirect($this->customerBaseUrl.'/wallet/payments/1/gateway');
+        $this->assertDatabaseHas('payments', ['customer_id' => $customer->id, 'amount' => 100000]);
+    }
+
     public function test_wallet_top_up_rejects_amount_below_minimum(): void
     {
         $customer = Customer::factory()->create();

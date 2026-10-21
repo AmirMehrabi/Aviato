@@ -4,6 +4,7 @@
         x-data="walletTopUp({
             initialAmount: @js($initialAmount),
             initialGateway: @js($initialGateway),
+            minimumTopUpToman: @js($minimumTopUpToman),
             presets: @js($topUpPresets),
             focusTopUp: @js(request()->boolean('topup') || request()->boolean('gift_card')),
             initialCode: @js(old('promotion_code', old('code', ''))),
@@ -17,7 +18,7 @@
                 <h2 class="text-xl font-black text-slate-950">افزایش موجودی</h2>
                 <p class="mt-2 text-sm leading-7 text-slate-500">اعتبار هدیه را فعال کنید یا مبلغ مورد نیاز را انتخاب و پرداخت کنید.</p>
                 @if (! empty($restoreAmountToman))
-                    <p class="mt-3 rounded-xl bg-blue-50 p-4 text-sm leading-7 text-blue-950">مبلغ پیشنهادی برای پوشش بدهی و هزینه مصرف اخیر، به‌همراه اعتبار مصرف سرورها انتخاب شده است. حداقل مبلغ پرداخت ۲۵۰٬۰۰۰ تومان است. پس از تأیید پرداخت و مثبت شدن موجودی قابل استفاده، محدودیت سرورها برداشته می‌شود.</p>
+                    <p class="mt-3 rounded-xl bg-blue-50 p-4 text-sm leading-7 text-blue-950">مبلغ پیشنهادی برای پوشش بدهی و هزینه مصرف اخیر، به‌همراه اعتبار مصرف سرورها انتخاب شده است. حداقل مبلغ پرداخت {{ \App\Support\PersianDigits::format($minimumTopUpToman) }} تومان است. پس از تأیید پرداخت و مثبت شدن موجودی قابل استفاده، محدودیت سرورها برداشته می‌شود.</p>
                 @endif
                 @if (! $canTopUp)
                     <div x-show="!isInstant" class="mt-7 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold leading-7 text-amber-900">
@@ -81,7 +82,7 @@
                                     <span class="shrink-0 border-r border-slate-200 pr-4 text-sm font-black text-slate-500">تومان</span>
                                 </div>
                                 <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs font-bold">
-                                    <span class="text-slate-400">حداقل ۲۵۰٬۰۰۰ و حداکثر ۵۰٬۰۰۰٬۰۰۰ تومان</span>
+                                    <span class="text-slate-400">حداقل {{ \App\Support\PersianDigits::format($minimumTopUpToman) }} و حداکثر ۵۰٬۰۰۰٬۰۰۰ تومان</span>
                                     <button x-show="amount" x-cloak type="button" @click="clearAmount()" class="text-slate-500 transition hover:text-rose-600">پاک کردن مبلغ</button>
                                 </div>
                                 @error('amount_toman')

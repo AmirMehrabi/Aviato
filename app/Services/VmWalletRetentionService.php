@@ -180,7 +180,7 @@ class VmWalletRetentionService
             'deadline' => $deadline,
             'expired' => $deadline->lte(now()),
             'count' => $machines->whereNotNull('wallet_retention_expires_at')->count(),
-            'top_up_toman' => min(50000000, max(250000, (int) ceil($target / 1000) * 100)),
+            'top_up_toman' => min(50000000, max(AppSetting::walletMinimumTopUpToman(), (int) ceil($target / 1000) * 100)),
             'requires_multiple_payments' => $target > 500000000,
         ];
     }

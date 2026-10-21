@@ -139,7 +139,7 @@ export function walletTopUp(config) {
         get amountLabel() { return this.amount ? `${this.formatAmount(this.amount)} تومان` : 'مبلغی انتخاب نشده'; },
         get canSubmit() {
             const amount = Number(this.amount);
-            return !this.submitting && !this.checking && !this.isInstant && amount >= 250000 && amount <= 50000000
+            return !this.submitting && !this.checking && !this.isInstant && amount >= Number(config.minimumTopUpToman) && amount <= 50000000
                 && Boolean(this.gateway) && (!this.hasCode || (this.codeChecked && this.minimumMet));
         },
         get canRedeem() { return this.isInstant && !this.checking && !this.submitting; },
