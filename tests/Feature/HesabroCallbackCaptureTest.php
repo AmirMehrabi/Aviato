@@ -8,6 +8,19 @@ use Tests\TestCase;
 
 class HesabroCallbackCaptureTest extends TestCase
 {
+    public function test_generic_callback_displays_the_current_get_and_post_payload(): void
+    {
+        $url = '/api/v1/hesabro/wallet/callback';
+        $this->get($url.'?status=success&reference_id=123')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/json')
+            ->assertJsonPath('query.reference_id', '123');
+        $this->postJson($url, ['status' => 'success', 'transaction_id' => '456'])
+            ->assertOk()
+            ->assertJsonPath('body.transaction_id', '456')
+            ->assertJsonPath('raw_body', '{"status":"success","transaction_id":"456"}');
+    }
+
     public function test_capture_records_get_and_post_without_exposing_saved_data(): void
     {
         Storage::fake('local');

@@ -9,6 +9,20 @@ use Illuminate\Support\Facades\Storage;
 
 class HesabroTestCallbackController extends Controller
 {
+    public function preview(Request $request): JsonResponse
+    {
+        abort_if(strlen($request->getContent()) > 65536, 413);
+
+        return response()->json([
+            'method' => $request->method(),
+            'query' => $request->query(),
+            'body' => $request->post(),
+            'raw_body' => $request->getContent(),
+        ], options: JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)
+            ->header('Cache-Control', 'no-store')
+            ->header('X-Content-Type-Options', 'nosniff');
+    }
+
     public function __invoke(Request $request, string $token): JsonResponse
     {
         $disk = Storage::disk('local');

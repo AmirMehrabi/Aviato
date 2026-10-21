@@ -2,6 +2,10 @@
 
 The gateway sends POST to `https://api.hesabro.ir/@{client}/payment-service/wallet/user-charge?username={customer phone}` with JSON `amount` (IRR) and `callback_url`, JSON Accept/Content-Type headers, Basic Auth using the payment Client ID and Client Secret, and a stable `Idempotency-Key` derived from the payment authority. Set the payment client to `sabz-co` and both credentials to the supplied API key to match the example curl. Credentials are managed in admin Settings → Payments; accounting credentials are separate. Portal top-ups enforce a higher minimum than a direct 10,000 IRR test.
 
+## Display a callback directly in the browser
+
+Use `https://aviato.ir/api/v1/hesabro/wallet/callback` as `callback_url` (no UUID or expiry). GET and POST responses show the current request method, query parameters, parsed body and raw body as formatted JSON. This preview does not persist data or update wallets. The separate capture sessions below remain available for persistent review.
+
 ## Capture a direct curl payment
 
 On the host serving the application, under the application runtime user, run:
