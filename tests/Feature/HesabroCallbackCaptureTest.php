@@ -8,6 +8,19 @@ use Tests\TestCase;
 
 class HesabroCallbackCaptureTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['payments.hesabro.debug_callbacks_enabled' => true]);
+    }
+
+    public function test_debug_endpoints_are_disabled_unless_explicitly_enabled(): void
+    {
+        config(['payments.hesabro.debug_callbacks_enabled' => false]);
+        $this->getJson('/api/v1/hesabro/wallet/callback?success=1')->assertNotFound();
+        $this->getJson('/api/v1/hesabro/wallet/callback/'.Str::uuid())->assertNotFound();
+    }
+
     public function test_generic_callback_displays_the_current_get_and_post_payload(): void
     {
         $url = '/api/v1/hesabro/wallet/callback';

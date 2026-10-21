@@ -138,14 +138,20 @@ class PaymentService
 
     public function failTopUp(Payment $payment, array $payload = []): Payment
     {
-        $this->promotions->releasePaymentReservation($payment, 'payment_failed');
-        $payment->forceFill([
-            'status' => Payment::STATUS_FAILED,
-            'failed_at' => now(),
-            'gateway_payload' => array_merge($payment->gateway_payload ?? [], $payload),
-        ])->save();
+        return DB::transaction(function () use ($payment, $payload): Payment {
+            $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+            if (! $locked->isPending()) {
+                return $payment->refresh();
+            }
+            $this->promotions->releasePaymentReservation($locked, 'payment_failed');
+            $locked->forceFill([
+                'status' => Payment::STATUS_FAILED,
+                'failed_at' => now(),
+                'gateway_payload' => array_merge($locked->gateway_payload ?? [], $payload),
+            ])->save();
 
-        return $payment;
+            return $payment->refresh();
+        });
     }
 
     /**

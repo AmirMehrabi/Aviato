@@ -11,6 +11,7 @@ return [
     ],
 
     'hesabro' => [
+        'debug_callbacks_enabled' => env('HESABRO_DEBUG_CALLBACKS_ENABLED', false),
         'base_url' => env('HESABRO_BASE_URL', 'https://api.hesabro.ir'),
         'accounting_base_url' => env('HESABRO_ACCOUNTING_BASE_URL', 'https://hesabro.ir/api/hesabro'),
     ],

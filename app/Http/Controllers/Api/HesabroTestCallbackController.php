@@ -11,6 +11,7 @@ class HesabroTestCallbackController extends Controller
 {
     public function preview(Request $request): JsonResponse
     {
+        abort_unless(config('payments.hesabro.debug_callbacks_enabled'), 404);
         abort_if(strlen($request->getContent()) > 65536, 413);
 
         return response()->json([
@@ -25,6 +26,7 @@ class HesabroTestCallbackController extends Controller
 
     public function __invoke(Request $request, string $token): JsonResponse
     {
+        abort_unless(config('payments.hesabro.debug_callbacks_enabled'), 404);
         $disk = Storage::disk('local');
         $directory = 'hesabro-tests/'.$token;
         abort_unless($disk->exists($directory.'/session.json'), 404);

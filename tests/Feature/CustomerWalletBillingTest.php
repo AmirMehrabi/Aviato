@@ -27,6 +27,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class CustomerWalletBillingTest extends TestCase
@@ -692,7 +693,8 @@ class CustomerWalletBillingTest extends TestCase
             && $request->hasHeader('Authorization', 'Basic '.base64_encode('client-id:client-secret'))
             && $request->hasHeader('Idempotency-Key', 'hesabro-charge-'.$payment->authority)
             && $request['amount'] === 1000000
-            && str_ends_with($request['callback_url'], '/wallet/payments/1/callback'));
+            && str_contains($request['callback_url'], '/wallet/payments/1/callback?')
+            && str_contains($request['callback_url'], 'signature='));
     }
 
     public function test_customer_can_complete_zibal_top_up_flow_once(): void
@@ -867,11 +869,12 @@ class CustomerWalletBillingTest extends TestCase
         app(PaymentService::class)->createTopUp($customer, 1000000, provider: 'hesabro');
     }
 
-    public function test_hesabro_callback_is_stored_without_crediting_unverified_payment(): void
+    private function pendingHesabroPayment(): Payment
     {
         $customer = Customer::factory()->create();
         $this->enableHesabroGateway();
-        $payment = Payment::create([
+
+        return Payment::create([
             'customer_id' => $customer->id,
             'wallet_id' => app(WalletService::class)->walletFor($customer)->id,
             'provider' => 'hesabro',
@@ -882,21 +885,79 @@ class CustomerWalletBillingTest extends TestCase
             'authority' => '987',
             'gateway_payload' => ['order_id' => '987'],
         ]);
+    }
 
-        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
-            'order_id' => '987',
-            'status' => 'success',
-        ])->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
+    private function signedHesabroCallback(Payment $payment): string
+    {
+        return $this->customerBaseUrl.URL::temporarySignedRoute(
+            'customer.wallet.payments.callback', now()->addDay(), ['payment' => $payment->id], absolute: false,
+        );
+    }
 
+    public function test_hesabro_signed_success_callback_credits_wallet_once_and_shows_success(): void
+    {
+        $payment = $this->pendingHesabroPayment();
+        $url = $this->signedHesabroCallback($payment).'&order_id=1573&model_id=1573&success=1';
+        $this->get($url)->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
         $payment->refresh();
-        $this->assertSame(Payment::STATUS_PENDING, $payment->status);
-        $this->assertSame('987', $payment->gateway_payload['callback']['order_id']);
+        $this->assertSame(Payment::STATUS_SUCCESSFUL, $payment->status);
+        $this->assertSame('1573', $payment->gateway_payload['callback']['order_id']);
         $this->assertCount(1, $payment->gateway_payload['callbacks']);
-        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [])->assertRedirect();
+        $this->get($url)->assertRedirect();
         $this->assertCount(2, $payment->fresh()->gateway_payload['callbacks']);
+        $this->get(str_replace('success=1', 'success=0', $url))->assertRedirect();
+        app(PaymentService::class)->failTopUp($payment, ['late_failure' => true]);
+        $this->assertSame(Payment::STATUS_SUCCESSFUL, $payment->fresh()->status);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+        $this->assertSame(1000000, $payment->customer->wallet()->firstOrFail()->balance);
+        $this->actingAs($payment->customer, 'customer')
+            ->get($this->customerBaseUrl.'/wallet?payment_id='.$payment->id)
+            ->assertOk()->assertSee('پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.');
+    }
+
+    public function test_hesabro_rejects_unsigned_tampered_expired_and_malformed_callbacks(): void
+    {
+        $payment = $this->pendingHesabroPayment();
+        $path = $this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback';
+        $this->get($path.'?order_id=1573&model_id=1573&success=1')->assertForbidden();
+        $url = $this->signedHesabroCallback($payment);
+        $this->get(str_replace('/'.$payment->id.'/callback', '/999/callback', $url))->assertNotFound();
+        $this->get($url.'&unexpected=1&order_id=1573&model_id=1573&success=1')->assertForbidden();
+        $this->getJson($url.'&order_id[]=1573&model_id=1573&success=1')->assertForbidden();
+        $this->getJson($url)->assertUnprocessable();
+        $this->travel(25)->hours();
+        $this->get($url.'&order_id=1573&model_id=1573&success=1')->assertForbidden();
+        $this->assertSame(['order_id' => '987'], $payment->fresh()->gateway_payload);
         $this->assertSame(Payment::STATUS_PENDING, $payment->fresh()->status);
         $this->assertDatabaseCount('wallet_transactions', 0);
-        $this->assertSame(0, $customer->wallet()->firstOrFail()->balance);
+    }
+
+    public function test_hesabro_binds_signature_to_payment_and_checks_stored_provider_identifiers(): void
+    {
+        $payment = $this->pendingHesabroPayment();
+        $other = $payment->replicate();
+        $other->authority = 'OTHER';
+        $other->save();
+        $url = $this->signedHesabroCallback($payment);
+        $this->get(str_replace('/'.$payment->id.'/callback', '/'.$other->id.'/callback', $url).'&order_id=1573&model_id=1573&success=1')
+            ->assertForbidden();
+        $payment->forceFill(['gateway_payload' => ['provider_order_id' => '1573', 'provider_model_id' => '1573']])->save();
+        $this->postJson($url, ['order_id' => '999', 'model_id' => '1573', 'success' => '1'])->assertForbidden();
+        $this->postJson($url, ['order_id' => '1573', 'model_id' => '1573', 'success' => '1'])->assertRedirect();
+        $this->assertSame(Payment::STATUS_SUCCESSFUL, $payment->fresh()->status);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+    }
+
+    public function test_hesabro_unsuccessful_return_redirects_to_portal_with_error(): void
+    {
+        $payment = $this->pendingHesabroPayment();
+        $this->get($this->signedHesabroCallback($payment).'&order_id=1573&model_id=1573&success=0')
+            ->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
+        $this->assertSame(Payment::STATUS_FAILED, $payment->fresh()->status);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+        $this->actingAs($payment->customer, 'customer')
+            ->get($this->customerBaseUrl.'/wallet?payment_id='.$payment->id)
+            ->assertOk()->assertSee('پرداخت تایید نشد و مبلغی به کیف پول اضافه نشد.');
     }
 
     public function test_wallet_page_shows_transactions_and_filters(): void

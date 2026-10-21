@@ -420,6 +420,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         ->name('customer.suspension.notice');
 
     Route::match(['GET', 'POST'], 'wallet/payments/{payment}/callback', [PaymentController::class, 'callback'])
+        ->middleware('throttle:60,1')
         ->withoutMiddleware([
             StartSession::class,
             ShareErrorsFromSession::class,

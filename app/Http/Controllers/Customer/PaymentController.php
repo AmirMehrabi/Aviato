@@ -16,6 +16,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
@@ -124,9 +126,23 @@ class PaymentController extends Controller
     public function callback(Request $request, Payment $payment): RedirectResponse
     {
         if ($payment->provider === 'hesabro') {
+            abort_unless(URL::hasValidRelativeSignature($request, ['order_id', 'model_id', 'success']), 403);
+            abort_if(strlen($request->getContent()) > 65536, 413);
+            $validator = Validator::make($request->all(), [
+                'order_id' => ['required', 'string', 'regex:/^[0-9]+$/', 'max:64'],
+                'model_id' => ['required', 'string', 'regex:/^[0-9]+$/', 'max:64'],
+                'success' => ['required', 'in:0,1'],
+            ]);
+            abort_if($validator->fails(), 422);
+            foreach (['order_id', 'model_id'] as $field) {
+                $expected = data_get($payment->gateway_payload, 'provider_'.$field);
+                abort_if($expected !== null && (string) $expected !== (string) $request->input($field), 403);
+            }
             DB::transaction(function () use ($request, $payment): void {
                 $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
                 $payload = $locked->gateway_payload ?? [];
+                $payload['callback_outcome'] = (string) $request->input('success') === '1' ? 'reported_successful' : 'reported_unsuccessful';
+                $payload['callbacks'] = array_slice($payload['callbacks'] ?? [], -19);
                 $payload['callbacks'][] = [
                     'received_at' => now()->toIso8601String(),
                     'method' => $request->method(),
@@ -189,7 +205,7 @@ class PaymentController extends Controller
     {
         return redirect()->route('customer.wallet.show', [
             'payment_id' => $payment->id,
-        ]);
+        ])->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
     private function normalizeTomanAmount(mixed $amount): ?string

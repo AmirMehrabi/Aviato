@@ -7,6 +7,7 @@ use App\Models\Payment;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -71,6 +72,8 @@ class HesabroPaymentGateway implements PaymentGatewayInterface
             'authority' => $payment->authority,
             'provider' => $this->key(),
             'status' => 'pending',
+            'provider_order_id' => is_scalar($data['order_id'] ?? null) ? (string) $data['order_id'] : null,
+            'provider_model_id' => is_scalar($data['model_id'] ?? null) ? (string) $data['model_id'] : null,
             'username' => $username,
             'amount' => $responseAmount,
             'redirect_url' => $redirectUrl,
@@ -80,19 +83,38 @@ class HesabroPaymentGateway implements PaymentGatewayInterface
 
     public function complete(Payment $payment, array $payload = []): array
     {
-        if ($this->isFailureCallback($payload)) {
+        $orderId = $payload['order_id'] ?? null;
+        $modelId = $payload['model_id'] ?? null;
+        $success = $payload['success'] ?? null;
+
+        if (! is_scalar($orderId) || ! ctype_digit((string) $orderId)
+            || ! is_scalar($modelId) || ! ctype_digit((string) $modelId)
+            || ! in_array($success, ['0', '1', 0, 1], true)) {
+            throw new HesabroPaymentException('اطلاعات بازگشتی حسابرو معتبر نیست.');
+        }
+        foreach (['order_id', 'model_id'] as $field) {
+            $expected = data_get($payment->gateway_payload, 'provider_'.$field);
+            if ($expected !== null && (string) $expected !== (string) $payload[$field]) {
+                throw new HesabroPaymentException('شناسه پرداخت حسابرو با درخواست ثبت‌شده همخوانی ندارد.');
+            }
+        }
+        if ((string) $success !== '1') {
             throw new HesabroPaymentException(
-                'پرداخت حسابرو با خطا یا لغو از سمت درگاه بازگشت داده شد.',
+                'پرداخت حسابرو ناموفق بود یا توسط کاربر لغو شد.',
                 shouldFailPayment: true,
-                context: ['stage' => 'callback_failed', 'callback' => $payload],
+                context: ['stage' => 'callback_failed'],
             );
         }
 
-        // A browser callback is untrusted; it cannot establish that funds were received.
-        throw new HesabroPaymentException(
-            'پاسخ حسابرو ذخیره شد؛ تأیید پرداخت از سمت سرویس حسابرو هنوز پیاده‌سازی نشده است.',
-            context: ['stage' => 'verification_unavailable'],
-        );
+        return [
+            'provider_reference' => (string) $orderId,
+            'status' => 'successful',
+            'payload' => [
+                'callback' => $payload,
+                'confirmation_method' => 'signed_browser_callback',
+                'confirmed_at' => now()->toIso8601String(),
+            ],
+        ];
     }
 
     private function ensureConfigured(): void
@@ -129,7 +151,14 @@ class HesabroPaymentGateway implements PaymentGatewayInterface
         $domain = (string) config('portals.customer.domain');
         $scheme = parse_url((string) config('app.url'), PHP_URL_SCHEME) ?: 'https';
 
-        return "{$scheme}://{$domain}/wallet/payments/{$payment->id}/callback";
+        $path = URL::temporarySignedRoute(
+            'customer.wallet.payments.callback',
+            now()->addDay(),
+            ['payment' => $payment->id],
+            absolute: false,
+        );
+
+        return "{$scheme}://{$domain}{$path}";
     }
 
     private function endpointPath(string $path): string
@@ -203,23 +232,5 @@ class HesabroPaymentGateway implements PaymentGatewayInterface
         }
 
         return true;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function isFailureCallback(array $payload): bool
-    {
-        $status = strtolower(trim((string) data_get($payload, 'status', data_get($payload, 'result', ''))));
-        $result = strtolower(trim((string) data_get($payload, 'payment_status', '')));
-        $success = data_get($payload, 'success');
-        $code = (string) data_get($payload, 'code', '');
-        $resCode = (string) data_get($payload, 'ResCode', data_get($payload, 'res_code', ''));
-
-        return in_array($status, ['failed', 'fail', 'canceled', 'cancelled', 'error'], true)
-            || in_array($result, ['failed', 'fail', 'canceled', 'cancelled', 'error'], true)
-            || $success === false
-            || $code !== '' && $code !== '0' && $code !== '200'
-            || $resCode !== '' && ! in_array($resCode, ['0', '00'], true);
     }
 }
