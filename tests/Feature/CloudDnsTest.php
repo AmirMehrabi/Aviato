@@ -299,7 +299,7 @@ class CloudDnsTest extends TestCase
         ], $owner);
         $this->actingAs($owner, 'customer');
         $response = $this->get('https://cp.localhost/cloud-dns/'.$zone->uuid);
-        $response->assertOk()->assertSee('192.0.2.7')->assertSee('ویرایش مقدارها');
+        $response->assertOk()->assertSee('192.0.2.7')->assertSee('dns-editor-title');
         if ($path = getenv('CLOUD_DNS_RENDER_PATH')) {
             file_put_contents($path, $response->getContent());
         }

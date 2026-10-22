@@ -60,7 +60,7 @@
             ],
             'مدیریت' => [
                 ...($activeMembership?->canReadDns() && app(\App\Services\CloudDns\CloudDnsRollout::class)->allows($customer, $activeProject) ? [
-                    ['key' => 'cloud-dns', 'label' => 'Cloud DNS', 'route' => route('customer.cloud-dns.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z'],
+                    ['key' => 'cloud-dns', 'label' => 'دی‌ان‌اس ابری', 'route' => route('customer.cloud-dns.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z'],
                 ] : []),
                 ...($canViewVms ? [
                     ['key' => 'servers', 'label' => 'ماشین ها', 'route' => route('customer.servers.index', [], false), 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
