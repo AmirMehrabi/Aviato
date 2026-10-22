@@ -8,12 +8,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 #[Fillable(['uuid', 'owner_customer_id', 'name', 'slug', 'is_default', 'wallet_alert_thresholds', 'wallet_alert_recipient_ids'])]
 class Project extends Model
 {
     protected static function booted(): void
     {
+        static::deleting(function (Project $project): void {
+            if ($project->dnsZones()->where('status', '!=', 'deleted')->exists()) {
+                throw ValidationException::withMessages(['dns' => 'ابتدا دامنه‌های Cloud DNS را حذف کنید.']);
+            }
+        });
+
         static::creating(function (Project $project): void {
             $project->uuid ??= (string) Str::uuid();
             $project->slug ??= Str::slug($project->name ?: 'project') ?: 'project';
@@ -38,6 +45,11 @@ class Project extends Model
     public function virtualMachines(): HasMany
     {
         return $this->hasMany(VirtualMachine::class);
+    }
+
+    public function dnsZones(): HasMany
+    {
+        return $this->hasMany(DnsZone::class);
     }
 
     public function storageBuckets(): HasMany

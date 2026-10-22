@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Backups contain API and TSIG credentials. Use a protected, encrypted destination.
+set -euo pipefail
+backup_directory="${1:?Usage: pull-backups /protected/backup/directory}"
+umask 077
+mkdir -p "$backup_directory"
+chmod 700 "$backup_directory"
+backup_stamp="$(date -u +%Y%m%d-%H%M%S)"
+for node in 14 15; do
+    archive="$backup_directory/ns-$node-$backup_stamp.tar.gz"
+    ssh -o BatchMode=yes "aviato@5.202.19.$node" 'sudo /usr/local/sbin/aviato-dns-backup && sudo tar -C /var/backups/powerdns -czf - .' > "$archive.partial"
+    gzip -t "$archive.partial"
+    mv "$archive.partial" "$archive"
+    printf 'Saved %s\n' "$archive"
+done

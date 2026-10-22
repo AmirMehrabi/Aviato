@@ -206,6 +206,8 @@ class ProjectController extends Controller
 
         $data = $request->validate([
             'identifier' => ['required', 'string', 'max:255'],
+            'dns_read' => ['sometimes', 'boolean'],
+            'dns_manage' => ['sometimes', 'boolean'],
             'role' => ['required', Rule::in([
                 ProjectMember::ROLE_ADMIN,
                 ProjectMember::ROLE_MEMBER,
@@ -233,6 +235,8 @@ class ProjectController extends Controller
                     ? ProjectMember::VM_ACCESS_ALL
                     : ProjectMember::defaultVmAccessScopeForRole($data['role']),
                 'invited_by_customer_id' => $customer->id,
+                'dns_read' => $request->boolean('dns_read'),
+                'dns_manage' => $request->boolean('dns_manage'),
             ],
         );
 
@@ -256,6 +260,8 @@ class ProjectController extends Controller
         abort_if($member->customer_id === $project->owner_customer_id, 422);
 
         $data = $request->validate([
+            'dns_read' => ['sometimes', 'boolean'],
+            'dns_manage' => ['sometimes', 'boolean'],
             'role' => ['required', Rule::in([
                 ProjectMember::ROLE_ADMIN,
                 ProjectMember::ROLE_MEMBER,
@@ -264,7 +270,7 @@ class ProjectController extends Controller
             ])],
         ]);
 
-        $member->update(['role' => $data['role']]);
+        $member->update(['role' => $data['role'], 'dns_read' => $request->boolean('dns_read'), 'dns_manage' => $request->boolean('dns_manage')]);
 
         return back()->with('status', 'نقش عضو به‌روزرسانی شد.');
     }

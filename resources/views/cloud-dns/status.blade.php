@@ -1,0 +1,2 @@
+@php($dnsLabels = ['unverified' => 'نیازمند تأیید', 'pending' => 'در انتظار انتشار', 'ready' => 'منتشرشده', 'suspended' => 'تعلیق', 'deleting' => 'در حال حذف', 'deleted' => 'حذف‌شده'])
+<span class="inline-flex rounded-full px-3 py-1 text-xs font-bold {{ $zone->status === 'ready' && ! $zone->last_error ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900' }}">{{ $zone->last_error ? 'نیازمند بررسی انتشار' : ($dnsLabels[$zone->status] ?? $zone->status) }}</span>

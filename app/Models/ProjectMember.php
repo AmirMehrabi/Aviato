@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-#[Fillable(['project_id', 'customer_id', 'invited_by_customer_id', 'role', 'vm_access_scope'])]
+#[Fillable(['project_id', 'customer_id', 'invited_by_customer_id', 'role', 'vm_access_scope', 'dns_read', 'dns_manage'])]
 class ProjectMember extends Model
 {
     public const ROLE_OWNER = 'owner';
@@ -72,6 +72,21 @@ class ProjectMember extends Model
     {
         return $this->belongsToMany(VirtualMachine::class, 'project_member_virtual_machines')
             ->withTimestamps();
+    }
+
+    protected function casts(): array
+    {
+        return ['dns_read' => 'boolean', 'dns_manage' => 'boolean'];
+    }
+
+    public function canReadDns(): bool
+    {
+        return $this->canManageMembers() || $this->dns_read || $this->dns_manage;
+    }
+
+    public function canManageDns(): bool
+    {
+        return $this->canManageMembers() || $this->dns_manage;
     }
 
     public function canManageMembers(): bool

@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Run as root after installing pdns-server pdns-backend-sqlite3 sqlite3 nginx.
+# Arguments: public-ip peer-ip primary|secondary credential-directory allowed-api-ips(comma-separated) [management-ip]
+set -euo pipefail
+address="$1"
+peer="$2"
+role="$3"
+credentials="$4"
+allowed="$5"
+management="${6:-$address}"
+listen_addresses="$address,127.0.0.1"
+if [[ "$management" != "$address" ]]; then listen_addresses="$address,$management,127.0.0.1"; fi
+[[ "$role" == primary || "$role" == secondary ]]
+install -d -m 750 -o pdns -g pdns /var/lib/powerdns
+if [[ ! -f /var/lib/powerdns/pdns.sqlite3 ]]; then
+    sqlite3 /var/lib/powerdns/pdns.sqlite3 < /usr/share/pdns-backend-sqlite3/schema/schema.sqlite3.sql
+    chown pdns:pdns /var/lib/powerdns/pdns.sqlite3
+    chmod 640 /var/lib/powerdns/pdns.sqlite3
+fi
+# Dedicated servers: explicitly select SQLite rather than the packaged BIND backend.
+install -d -m 700 /etc/powerdns/aviato-original
+cp -a --update=none /etc/powerdns/pdns.conf /etc/powerdns/aviato-original/
+cat > /etc/powerdns/pdns.conf <<EOF
+launch=gsqlite3
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+gsqlite3-dnssec=yes
+local-address=$listen_addresses
+local-port=53
+primary=$([[ "$role" == primary ]] && echo yes || echo no)
+secondary=$([[ "$role" == secondary ]] && echo yes || echo no)
+allow-axfr-ips=
+allow-notify-from=$peer
+only-notify=$peer/32
+api=yes
+api-key=$(cat "$credentials/api-key")
+webserver=yes
+webserver-address=127.0.0.1
+webserver-port=8081
+webserver-allow-from=127.0.0.1
+version-string=anonymous
+default-soa-content=ns1.aviato.ir hostmaster.aviato.ir 0 3600 600 1209600 300
+security-poll-suffix=
+setuid=pdns
+setgid=pdns
+EOF
+chmod 640 /etc/powerdns/pdns.conf
+chown root:pdns /etc/powerdns/pdns.conf
+install -d -m 700 /etc/nginx/cloud-dns
+install -m 600 "$credentials/server.key" /etc/nginx/cloud-dns/server.key
+install -m 644 "$credentials/server.crt" /etc/nginx/cloud-dns/server.crt
+{
+cat <<EOF
+server {
+    listen $management:8443 ssl;
+    server_name _;
+    ssl_certificate /etc/nginx/cloud-dns/server.crt;
+    ssl_certificate_key /etc/nginx/cloud-dns/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    server_tokens off;
+    client_max_body_size 2m;
+EOF
+IFS=',' read -ra sources <<< "$allowed"
+for source in "${sources[@]}"; do printf '    allow %s;\n' "$source"; done
+cat <<'EOF'
+    deny all;
+    location /api/v1/ {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host localhost;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 15s;
+    }
+    location / { return 404; }
+}
+EOF
+} > /etc/nginx/sites-available/cloud-dns
+rm -f /etc/nginx/sites-enabled/default
+ln -sfn /etc/nginx/sites-available/cloud-dns /etc/nginx/sites-enabled/cloud-dns
+nginx -t
+pdns_server --config=check
+systemctl enable pdns nginx
+systemctl restart pdns
+systemctl reload nginx
+pdnsutil tsigkey import aviato-transfer hmac-sha256 "$(cat "$credentials/tsig-key")"
+install -d -m 700 /var/backups/powerdns
+cat > /usr/local/sbin/aviato-dns-backup <<'EOF'
+#!/bin/sh
+set -eu
+umask 077
+backup="/var/backups/powerdns/$(date -u +%Y%m%d-%H%M%S)"
+mkdir -p "$backup"
+sqlite3 /var/lib/powerdns/pdns.sqlite3 ".backup '$backup/pdns.sqlite3'"
+cp /etc/powerdns/pdns.conf "$backup/"
+find /var/backups/powerdns -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec rm -rf -- {} +
+EOF
+chmod 700 /usr/local/sbin/aviato-dns-backup
+printf '17 2 * * * root /usr/local/sbin/aviato-dns-backup\n' > /etc/cron.d/aviato-dns-backup
+/usr/local/sbin/aviato-dns-backup
+systemctl is-active pdns nginx
+
+# Keep SSH available before enabling the dedicated-server firewall.
+ufw allow 22/tcp
+ufw allow 53/tcp
+ufw allow 53/udp
+for source in "${sources[@]}"; do
+    ufw allow from "$source" to "$management" port 8443 proto tcp
+done
+ufw --force enable

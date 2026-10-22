@@ -4,6 +4,9 @@ namespace App\Enums;
 
 enum AdminAbility: string
 {
+    case DnsRead = 'dns.read';
+    case DnsManage = 'dns.manage';
+
     case Dashboard = 'dashboard.view';
     case UsersManage = 'users.manage';
     case AuditView = 'audit.view';
@@ -53,6 +56,8 @@ enum AdminAbility: string
     public function label(): string
     {
         return match ($this) {
+            self::DnsRead => 'مشاهده Cloud DNS',
+            self::DnsManage => 'مدیریت Cloud DNS',
             self::Dashboard => 'مشاهده داشبورد',
             self::UsersManage => 'مدیریت حساب‌ها',
             self::AuditView => 'مشاهده ردپای مدیریتی',
@@ -104,6 +109,7 @@ enum AdminAbility: string
     public function group(): string
     {
         return match ($this) {
+            self::DnsRead, self::DnsManage => 'Cloud DNS',
             self::Dashboard => 'عمومی',
             self::UsersManage => 'کاربران پنل',
             self::AuditView => 'سیستم',

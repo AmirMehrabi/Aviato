@@ -1,0 +1,2 @@
+@if(session('status'))<div role="status" class="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-7 text-emerald-900">{{ session('status') }}</div>@endif
+@if($errors->any())<div role="alert" class="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm leading-7 text-red-800"><ul class="list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif

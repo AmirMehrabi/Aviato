@@ -17,6 +17,9 @@ class AdminNavigation
                 ['label' => 'فضاهای کاری', 'route' => 'admin.projects.index', 'active' => request()->routeIs('admin.projects.*'), 'icon' => 'folder-kanban', 'keywords' => 'projects workspaces'],
                 ['label' => 'فروشندگان', 'route' => 'admin.resellers.index', 'active' => request()->routeIs('admin.resellers.*'), 'icon' => 'handshake', 'keywords' => 'resellers partners'],
             ]],
+            ['id' => 'cloud-dns', 'label' => 'Cloud DNS', 'secondary' => false, 'icon' => null, 'items' => [
+                ['label' => 'Cloud DNS', 'route' => 'admin.cloud-dns.index', 'active' => request()->routeIs('admin.cloud-dns.*'), 'icon' => 'globe', 'keywords' => 'DNS domains records دامنه'],
+            ]],
             ['id' => 'compute', 'label' => 'زیرساخت', 'secondary' => false, 'icon' => null, 'items' => [
                 ['label' => 'ماشین‌های مجازی', 'route' => 'admin.virtual-machines.index', 'active' => request()->routeIs('admin.virtual-machines.*'), 'icon' => 'monitor', 'keywords' => 'virtual machines VM servers'],
             ]],

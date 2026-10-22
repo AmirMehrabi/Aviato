@@ -29,6 +29,10 @@ class ProjectLifecycleService
             $blockers['virtual_machines'] = 'این فضای کاری هنوز ماشین مجازی فعال یا در حال حذف دارد.';
         }
 
+        if ($project->dnsZones()->where('status', '!=', 'deleted')->exists()) {
+            $blockers['dns'] = 'ابتدا دامنه‌های Cloud DNS را حذف کنید و منتظر تکمیل حذف بمانید.';
+        }
+
         if ($project->storageBuckets()->exists() || $project->storageAccessKeys()->exists()) {
             $blockers['storage'] = 'ابتدا باکت‌ها و کلیدهای فضای ذخیره‌سازی این فضای کاری را حذف کنید.';
         }

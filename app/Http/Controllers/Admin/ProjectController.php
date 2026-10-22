@@ -211,6 +211,8 @@ class ProjectController extends Controller
                     ['customer_id' => $customer->id],
                     [
                         'role' => $customer->id === $project->owner_customer_id ? ProjectMember::ROLE_OWNER : $data['role'],
+                        'dns_read' => (bool) ($data['dns_read'] ?? false),
+                        'dns_manage' => (bool) ($data['dns_manage'] ?? false),
                         'vm_access_scope' => $customer->id === $project->owner_customer_id
                             ? ProjectMember::VM_ACCESS_ALL
                             : $data['vm_access_scope'],
@@ -236,6 +238,8 @@ class ProjectController extends Controller
         DB::transaction(function () use ($project, $member, $data): void {
             $member->update([
                 'role' => $data['role'],
+                'dns_read' => (bool) ($data['dns_read'] ?? false),
+                'dns_manage' => (bool) ($data['dns_manage'] ?? false),
                 'vm_access_scope' => $data['vm_access_scope'],
             ]);
 
@@ -335,6 +339,8 @@ class ProjectController extends Controller
                 ProjectMember::ROLE_VIEWER,
                 ProjectMember::ROLE_BILLING,
             ])],
+            'dns_read' => ['sometimes', 'boolean'],
+            'dns_manage' => ['sometimes', 'boolean'],
             'vm_access_scope' => ['required', Rule::in(ProjectMember::vmAccessScopes())],
             'vm_ids' => ['required_if:vm_access_scope,specific', 'array', 'min:1'],
             'vm_ids.*' => ['integer', Rule::exists('virtual_machines', 'id')->where('project_id', $project->id)],

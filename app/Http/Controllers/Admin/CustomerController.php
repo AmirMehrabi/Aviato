@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreCustomerRequest;
 use App\Http\Requests\Admin\UpdateCustomerRequest;
 use App\Jobs\ReconcileWalletRestrictions;
 use App\Models\Customer;
+use App\Models\DnsZone;
 use App\Services\BillingService;
 use App\Services\WalletService;
 use App\Support\AdminTableSort;
@@ -131,6 +132,7 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer): RedirectResponse
     {
+        abort_if(DnsZone::whereHas('project', fn ($q) => $q->where('owner_customer_id', $customer->id))->where('status', '!=', 'deleted')->exists(), 409, 'ابتدا دامنه‌های Cloud DNS مشتری را حذف کنید.');
         $customer->delete();
 
         return redirect()->route('admin.customers.index')

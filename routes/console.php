@@ -1,16 +1,21 @@
 <?php
 
 use App\Jobs\ApplyVmUpgradeJob;
+use App\Jobs\CheckDnsDelegation;
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Jobs\ReconcilePendingVirtualMachine;
 use App\Jobs\ReconcileWalletRestrictions;
 use App\Jobs\RunNetworkIntegration;
+use App\Jobs\SyncDnsZone;
 use App\Models\ApiRequestLog;
 use App\Models\Customer;
+use App\Models\DnsZone;
 use App\Models\HetznerAccount;
 use App\Models\NetworkIntegrationRun;
+use App\Models\Project;
 use App\Models\VirtualMachine;
 use App\Models\VmUpgradeOrder;
+use App\Services\CloudDns\CloudDnsService;
 use App\Services\HetznerCatalogSyncService;
 use App\Services\InvoiceService;
 use App\Services\MeteringInventoryService;
@@ -26,6 +31,7 @@ use App\Services\WorkspaceWalletAlertDispatcher;
 use App\Services\WorkspaceWalletAlertService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -493,3 +499,53 @@ Artisan::command('hesabro:callback-test {token? : Review an existing capture ses
 
     return 0;
 })->purpose('Create a private Hesabro test callback capture or review received requests');
+
+Artisan::command('cloud-dns:reconcile', function (): int {
+    if (! config('cloud-dns.enabled')) {
+        return 0;
+    }
+    DnsZone::whereNotNull('verified_at')->where('status', '!=', 'deleted')
+        ->orderBy('id')->chunkById(100, function ($zones): void {
+            foreach ($zones as $zone) {
+                SyncDnsZone::dispatch($zone->id);
+                if (! $zone->checked_at || $zone->checked_at->lt(now()->subMinutes(30))) {
+                    CheckDnsDelegation::dispatch($zone->id);
+                }
+            }
+        });
+
+    return 0;
+})->purpose('Reconcile desired DNS zones with both PowerDNS servers and check delegation');
+
+Artisan::command('cloud-dns:usage', function (): int {
+    Project::whereHas('dnsZones')->chunkById(100, function ($projects): void {
+        foreach ($projects as $project) {
+            foreach ($project->dnsZones()->whereNotNull('verified_at')->where('status', '!=', 'deleted')->with('recordSets')->get()->groupBy('plan') as $plan => $zones) {
+                DB::table('dns_usage_snapshots')->updateOrInsert(
+                    ['project_id' => $project->id, 'date' => now()->toDateString(), 'plan' => $plan],
+                    ['zones' => $zones->count(), 'records' => $zones->sum(fn ($z) => $z->recordSets->sum(fn ($r) => count($r->records))), 'created_at' => now(), 'updated_at' => now()],
+                );
+            }
+        }
+    });
+
+    return 0;
+})->purpose('Capture daily DNS inventory for future billing; does not charge wallets');
+
+Schedule::command('cloud-dns:reconcile')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('cloud-dns:usage')->dailyAt('23:50')->withoutOverlapping();
+
+Artisan::command('cloud-dns:add-domain {phone} {domain} {--project= : Project UUID; defaults to the customer default project}', function (CloudDnsService $dns): int {
+    $customer = Customer::where('phone', $this->argument('phone'))->firstOrFail();
+    $project = $customer->ownedProjects()
+        ->when($this->option('project'), fn ($q) => $q->where('uuid', $this->option('project')), fn ($q) => $q->where('is_default', true))
+        ->firstOrFail();
+    $zone = $dns->create($project, $this->argument('domain'), $customer);
+    $this->line('Project: '.$project->name);
+    $this->line('TXT name: _aviato-verification.'.$zone->name);
+    $this->line('TXT value: '.$zone->verification_token);
+    $this->line('Expires: '.$zone->verification_expires_at->toIso8601String());
+    $this->line('No delegation changes made. Import the current zone and verify TXT in the portal.');
+
+    return 0;
+})->purpose('Prepare a customer-owned DNS zone and print its TXT ownership challenge');
