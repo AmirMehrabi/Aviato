@@ -150,6 +150,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::prefix('cloud-dns')->name('admin.cloud-dns.')->middleware('no-store')->group(function (): void {
             $controller = CloudDnsController::class;
             Route::get('/', [$controller, 'index'])->name('index');
+            Route::post('rollout', [$controller, 'updateRollout'])->name('rollout.update');
             Route::get('{zone}', [$controller, 'show'])->name('show');
             Route::get('{zone}/export', [$controller, 'export'])->name('export');
             Route::post('{zone}/records', [$controller, 'records'])->middleware('throttle:60,1')->name('records');

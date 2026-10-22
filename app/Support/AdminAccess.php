@@ -124,6 +124,9 @@ class AdminAccess
 
             return [AdminAbility::CustomersRead, ...$special];
         }
+        if ($name === 'admin.cloud-dns.rollout.update') {
+            return [AdminAbility::DnsRead, AdminAbility::DnsRolloutManage];
+        }
         if (str_starts_with($name, 'admin.cloud-dns.')) {
             return [AdminAbility::DnsRead, ...($read ? [] : [AdminAbility::DnsManage])];
         }

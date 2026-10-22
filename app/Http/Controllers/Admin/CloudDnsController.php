@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\DnsZone;
+use App\Services\CloudDns\CloudDnsRollout;
 use App\Services\CloudDns\CloudDnsService;
 use App\Services\CloudDns\PowerDnsClient;
 use App\Services\CloudDns\RecordValidator;
 use App\Services\CloudDns\ZoneFile;
 use App\Support\AdminAccess;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CloudDnsController extends Controller
 {
@@ -37,7 +40,33 @@ class CloudDnsController extends Controller
             return $health;
         });
 
-        return view('admin.cloud-dns.index', compact('zones', 'health', 'search'));
+        $rollout = app(CloudDnsRollout::class)->configuration();
+        $canManageRollout = AdminAccess::allows($request->user('admin'), 'dns.rollout.manage');
+        $rolloutCustomers = $canManageRollout ? Customer::whereIn('id', $rollout['customer_ids'])->orderBy('name')->get(['id', 'name', 'email', 'phone']) : collect();
+
+        return view('admin.cloud-dns.index', compact('zones', 'health', 'search', 'rollout', 'canManageRollout', 'rolloutCustomers'));
+    }
+
+    public function updateRollout(Request $request, CloudDnsRollout $rollout)
+    {
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['mode', 'add', 'remove'])],
+            'mode' => ['required_if:action,mode', Rule::in(CloudDnsRollout::MODES)],
+            'identifier' => ['required_if:action,add', 'string', 'max:255'],
+            'customer_id' => ['required_if:action,remove', 'integer', 'exists:customers,id'],
+        ]);
+        $customerId = isset($data['customer_id']) ? (int) $data['customer_id'] : null;
+        if ($data['action'] === 'add') {
+            $identifier = trim($data['identifier']);
+            $customer = Customer::where('phone', $identifier)->orWhere('email', $identifier)->first();
+            if (! $customer) {
+                return back()->withInput()->withErrors(['identifier' => 'مشتری با این شماره موبایل یا ایمیل پیدا نشد.']);
+            }
+            $customerId = $customer->id;
+        }
+        $rollout->update($data['action'], $data['mode'] ?? null, $customerId);
+
+        return back()->with('status', 'تنظیمات انتشار Cloud DNS ذخیره شد و از درخواست بعدی اعمال می‌شود.');
     }
 
     public function show(Request $request, DnsZone $zone)

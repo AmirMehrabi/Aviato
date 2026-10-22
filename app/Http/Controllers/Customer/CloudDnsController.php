@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\DnsZone;
+use App\Services\CloudDns\CloudDnsRollout;
 use App\Services\CloudDns\CloudDnsService;
 use App\Services\CloudDns\RecordValidator;
 use App\Services\CloudDns\ZoneFile;
@@ -113,6 +114,7 @@ class CloudDnsController extends Controller
     {
         $customer = $request->user('customer');
         $project = $this->projects->activeProject($request, $customer);
+        abort_unless(app(CloudDnsRollout::class)->allows($customer, $project), 404);
         $membership = $this->projects->membership($project, $customer);
         abort_unless($membership && ($manage ? $membership->canManageDns() : $membership->canReadDns()), 404);
         if ($zone) {

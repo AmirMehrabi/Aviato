@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Enums\AdminRole;
 use App\Jobs\SyncDnsZone;
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\DnsZone;
 use App\Models\User;
+use App\Services\CloudDns\CloudDnsRollout;
 use App\Services\CloudDns\CloudDnsService;
 use App\Services\CloudDns\DnsLookup;
 use App\Services\CloudDns\RecordValidator;
@@ -27,6 +29,7 @@ class CloudDnsTest extends TestCase
     {
         parent::setUp();
         config(['cloud-dns.nodes.primary.url' => 'https://5.202.19.14:8443', 'cloud-dns.nodes.secondary.url' => 'https://5.202.19.15:8443', 'cloud-dns.enabled' => true, 'cloud-dns.nodes.primary.key' => 'test-primary', 'cloud-dns.nodes.secondary.key' => 'test-secondary']);
+        AppSetting::setValue(CloudDnsRollout::KEY, ['mode' => 'all', 'customer_ids' => []], 'json', 'cloud-dns');
         Queue::fake();
         Http::preventStrayRequests();
     }

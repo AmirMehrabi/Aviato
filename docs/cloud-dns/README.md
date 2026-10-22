@@ -58,6 +58,16 @@ Admin permissions `dns.read` and `dns.manage` control access to DNS pages and mu
 
 A per-domain unique TXT challenge must be visible in the existing DNS provider before provisioning. Delegation to the shared Aviato NS names is not ownership proof. Unverified reservations expire after 48 hours and can be reclaimed. Verified claims are retained through deletion until both nameservers confirm removal. Reassignment of an already verified domain requires support review; there is no automatic takeover path.
 
+## Gradual rollout
+
+Admin Cloud DNS includes a rollout panel controlled by `dns.rollout.manage` together with `dns.read`. Full administrators have it automatically; infrastructure/record-management roles do not receive rollout management implicitly. Custom admin roles can be granted the ability separately.
+
+Modes are `selected` (pilot allowlist), `all`, and `disabled` (pause customer portal access). Missing or invalid configuration defaults to `selected` with an empty list. Add/remove customers by phone or email. Mode changes preserve the allowlist for later reuse. Settings are stored atomically in the existing `app_settings` row `cloud-dns.rollout`; no new migration is needed. Authorization reads this setting directly so revocations apply on the next request.
+
+In selected mode, both the authenticated customer and the active project's owner must be allowlisted. Existing project membership and DNS read/manage permissions still apply. This prevents access through invitations to a non-pilot project or invitations to non-pilot members. The navigation is hidden for ineligible customers and all customer Cloud DNS actions, including direct URLs, exports and aliases, return 404.
+
+The rollout flag gates customer portal access only. It does not delete zones, stop authoritative DNS answers, stop reconciliation, disable admin operations, or replace the technical `CLOUD_DNS_ENABLED` switch. Administrative/CLI provisioning remains available to trusted operators. Keep the technical switch enabled when pausing a rollout so existing zones continue syncing.
+
 ## DNS changes, retries and deletion
 
 Aviato stores desired RRsets. Every mutation locks the zone row, increments a revision and records actor and before/after data. Verified zones enqueue idempotent synchronization. The worker locks each zone, replaces only changed RRsets on primary, configures secondary TSIG, and triggers transfers. It marks `ready` only after both serials match and only if the revision is still current.
