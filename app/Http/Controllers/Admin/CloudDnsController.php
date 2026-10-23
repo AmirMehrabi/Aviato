@@ -109,12 +109,12 @@ class CloudDnsController extends Controller
         return back()->with('status', 'تغییر وضعیت ثبت شد؛ وضعیت هر دو سرور را بررسی کنید.');
     }
 
-    public function import(Request $request, DnsZone $zone, ZoneFile $file)
+    public function import(Request $request, DnsZone $zone)
     {
         $data = $request->validate(['zone_file' => ['required', 'string', 'max:250000']]);
-        $this->dns->saveRecords($zone, $file->parse($zone->name, $data['zone_file']), $request->user('admin'));
+        $report = $this->dns->importRecords($zone, $data['zone_file'], $request->user('admin'));
 
-        return back()->with('status', 'ورودی ثبت شد.');
+        return back()->with('dns_import', $report);
     }
 
     public function export(Request $request, DnsZone $zone, ZoneFile $file)

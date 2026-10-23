@@ -94,6 +94,51 @@ class CloudDnsService
         });
     }
 
+    public function importRecords(DnsZone $zone, string $text, Model $actor): array
+    {
+        $file = new ZoneFile;
+        $inputs = $file->parse($zone->name, $text, true);
+        $report = ['imported' => 0, 'duplicates' => 0, 'warnings' => $file->warnings];
+        $this->mutate($zone, $actor, 'records.imported', function ($locked) use ($inputs, &$report): bool {
+            $this->editable($locked);
+            $count = $locked->recordSets()->get()->sum(fn ($record) => count($record->records));
+            $limit = config('cloud-dns.plans.'.$locked->plan.'.record_limit');
+            foreach ($inputs as $input) {
+                foreach (explode("\n", $input['content']) as $content) {
+                    try {
+                        $record = $this->validator->rrset($locked->name, [...$input, 'content' => $content]);
+                        $existing = $locked->recordSets()->where('name', $record['name'])->where('type', $record['type'])->first();
+                        $value = $record['records'][0];
+                        if ($existing && in_array($value, $existing->records, true)) {
+                            $report['duplicates']++;
+
+                            continue;
+                        }
+                        $conflict = $locked->recordSets()->where('name', $record['name'])
+                            ->where('type', $record['type'] === 'CNAME' ? '!=' : '=', 'CNAME')->exists();
+                        if ($conflict || ($record['type'] === 'CNAME' && $existing)) {
+                            throw ValidationException::withMessages(['content' => 'مقصد CNAME با رکورد موجود تداخل دارد.']);
+                        }
+                        if ($count >= $limit || ($existing && count($existing->records) >= 100)) {
+                            throw ValidationException::withMessages(['content' => 'سقف تعداد رکوردها تکمیل است.']);
+                        }
+                        $record['records'] = [...($existing?->records ?? []), $value];
+                        $record['ttl'] = $existing?->ttl ?? $record['ttl'];
+                        $locked->recordSets()->updateOrCreate(['name' => $record['name'], 'type' => $record['type']], $record);
+                        $count++;
+                        $report['imported']++;
+                    } catch (ValidationException $exception) {
+                        $report['warnings'][] = $input['name'].' '.$input['type'].': '.implode(' ', $exception->validator->errors()->all());
+                    }
+                }
+            }
+
+            return $report['imported'] > 0;
+        });
+
+        return $report;
+    }
+
     public function deleteRecord(DnsZone $zone, int $recordId, Model $actor): void
     {
         $this->mutate($zone, $actor, 'records.deleted', function ($locked) use ($recordId): void {
@@ -138,7 +183,9 @@ class CloudDnsService
             $locked = DnsZone::whereKey($zone->id)->lockForUpdate()->firstOrFail();
             abort_if($locked->status === 'deleted' || $locked->delete_requested_at, 409);
             $before = $this->snapshot($locked);
-            $callback($locked);
+            if ($callback($locked) === false) {
+                return;
+            }
             $locked->revision++;
             if ($locked->verified_at && ! in_array($locked->status, ['suspended', 'deleting', 'deleted'], true)) {
                 $locked->status = 'pending';

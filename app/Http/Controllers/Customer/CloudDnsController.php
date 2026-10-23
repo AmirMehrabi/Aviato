@@ -86,13 +86,13 @@ class CloudDnsController extends Controller
         return back()->with('status', 'حذف رکورد ثبت شد.');
     }
 
-    public function import(Request $request, DnsZone $zone, ZoneFile $file)
+    public function import(Request $request, DnsZone $zone)
     {
         $this->access($request, true, $zone);
         $data = $request->validate(['zone_file' => ['required', 'string', 'max:250000']]);
-        $this->dns->saveRecords($zone, $file->parse($zone->name, $data['zone_file']), $request->user('customer'));
+        $report = $this->dns->importRecords($zone, $data['zone_file'], $request->user('customer'));
 
-        return back()->with('status', 'ورودی ثبت شد؛ SOA و NS ریشه توسط آویاتو مدیریت می‌شوند.');
+        return back()->with('dns_import', $report);
     }
 
     public function export(Request $request, DnsZone $zone, ZoneFile $file)

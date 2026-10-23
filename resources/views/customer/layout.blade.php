@@ -628,7 +628,7 @@
                     @endif
                 @endunless
 
-                @if (session('status'))
+                @if (session('status') && ! View::hasSection('own_messages'))
                     <div class="mb-6 w-full rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif
                 @if (session('error'))
@@ -644,7 +644,7 @@
                         </div>
                     </section>
                 @endif
-                @if ($errors->any())
+                @if ($errors->any() && ! View::hasSection('own_messages'))
                     <div class="mb-6 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ $errors->first() }}</div>
                 @endif
 

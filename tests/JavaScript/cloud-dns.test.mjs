@@ -23,3 +23,21 @@ test('search includes record contents and type filter', () => {
     state.search = 'MAIL'; assert.equal(state.filtered.length, 1);
     state.filter = 'A'; assert.equal(state.filtered.length, 0);
 });
+
+test('record type changes choose useful defaults and retain a custom owner', () => {
+    const state = cloudDns({ zone: 'example.com', records: [] });
+    state.type = 'SRV'; state.changeType();
+    assert.equal(state.name, '_sip._tcp');
+    assert.equal(state.values[0].priority, '10');
+    state.type = 'TXT'; state.changeType();
+    assert.equal(state.name, '@');
+    state.name = '_dmarc'; state.type = 'CNAME'; state.changeType();
+    assert.equal(state.name, '_dmarc');
+});
+test('record sorting changes direction without changing source records', () => {
+    const state = cloudDns({ records: [{ type: 'TXT', name: 'z.example.com.', records: ['hello'] }, { type: 'A', name: 'a.example.com.', records: ['192.0.2.1'] }] });
+    assert.equal(state.filtered[0].type, 'A');
+    state.sortBy('type'); assert.equal(state.filtered[0].type, 'TXT');
+    state.sortBy('name'); assert.equal(state.filtered[0].name, 'a.example.com.');
+    assert.equal(state.records[0].type, 'TXT');
+});

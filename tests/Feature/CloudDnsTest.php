@@ -157,6 +157,51 @@ class CloudDnsTest extends TestCase
         app(ZoneFile::class)->parse('example.ir', "@ 300 IN A 192.0.2.1\n@ 300 IN HTTPS 1 . alpn=\"h2\"");
     }
 
+    public function test_import_keeps_valid_records_and_existing_values_while_reporting_invalid_records(): void
+    {
+        $owner = Customer::factory()->create();
+        $zone = $this->zone($owner);
+        $dns = app(CloudDnsService::class);
+        $dns->saveRecords($zone, [['name' => '@', 'type' => 'A', 'ttl' => 600, 'content' => '192.0.2.1']], $owner);
+        $report = $dns->importRecords($zone, "@ 300 IN A 192.0.2.1\n@ 300 IN A 192.0.2.2\n@ 300 IN A invalid\nsub IN SOA ns.example.ir. hostmaster.example.ir. 1 2 3 4 5\nwww IN CNAME target.example.ir.\nwww IN A 192.0.2.3\n@ IN TXT \"hello\"\n@ IN TXT hello", $owner);
+        $this->assertSame(3, $report['imported']);
+        $this->assertSame(2, $report['duplicates']);
+        $this->assertCount(3, $report['warnings']);
+        $a = $zone->recordSets()->where('type', 'A')->first();
+        $this->assertSame(['192.0.2.1', '192.0.2.2'], $a->records);
+        $this->assertSame(600, $a->ttl);
+        $this->assertSame(['"hello"'], $zone->recordSets()->where('type', 'TXT')->first()->records);
+        $revision = $zone->fresh()->revision;
+        $again = $dns->importRecords($zone, '@ 300 IN A 192.0.2.1', $owner);
+        $this->assertSame(0, $again['imported']);
+        $this->assertSame($revision, $zone->fresh()->revision);
+    }
+
+    public function test_import_respects_quota_and_preserves_existing_cname_target(): void
+    {
+        $owner = Customer::factory()->create();
+        $zone = $this->zone($owner);
+        $dns = app(CloudDnsService::class);
+        $dns->saveRecords($zone, [['name' => 'www', 'type' => 'CNAME', 'ttl' => 300, 'content' => 'original.example.ir.']], $owner);
+        config(['cloud-dns.plans.free.record_limit' => 2]);
+        $report = $dns->importRecords($zone, "www IN CNAME replacement.example.ir.\n@ IN A 192.0.2.1\nmail IN A 192.0.2.2", $owner);
+        $this->assertSame(1, $report['imported']);
+        $this->assertCount(2, $report['warnings']);
+        $this->assertSame(['original.example.ir.'], $zone->recordSets()->where('type', 'CNAME')->first()->records);
+    }
+
+    public function test_customer_import_endpoint_reports_partial_success_and_can_be_repeated(): void
+    {
+        $owner = Customer::factory()->create();
+        $zone = $this->zone($owner);
+        $url = 'https://cp.localhost/cloud-dns/'.$zone->uuid;
+        $this->actingAs($owner, 'customer')->from($url)->post($url.'/import', [
+            'zone_file' => "bad IN SOA ns.example.ir. hostmaster.example.ir. 1 2 3 4 5\n@ IN A 192.0.2.1\n@ IN A 192.0.2.1",
+        ])->assertRedirect($url)->assertSessionHasNoErrors()->assertSessionHas('dns_import.imported', 1)->assertSessionHas('dns_import.duplicates', 1);
+        $this->get($url)->assertOk()->assertSee('رکورد SOA فقط در ریشه مجاز است.')->assertSee('1 رکورد وارد شد');
+        $this->assertDatabaseCount('dns_record_sets', 1);
+    }
+
     public function test_expired_unverified_claims_can_be_reclaimed_but_verified_domains_cannot(): void
     {
         $owner = Customer::factory()->create();

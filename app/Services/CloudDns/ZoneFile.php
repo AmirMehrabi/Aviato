@@ -7,17 +7,20 @@ use Illuminate\Validation\ValidationException;
 
 class ZoneFile
 {
-    /** Parse a deliberately limited BIND zone format; unsupported syntax fails the entire import. */
-    public function parse(string $zone, string $text): array
+    /** Parse BIND records; tolerant imports report invalid records individually. */
+    public array $warnings = [];
+
+    public function parse(string $zone, string $text, bool $tolerant = false): array
     {
         if (strlen($text) > 250000) {
             $this->error('فایل بیش از حد بزرگ است.');
         }
+        $this->warnings = [];
         $lines = $this->logicalLines($text);
         $ttl = 300;
         $owner = null;
         $result = [];
-        foreach ($lines as $line) {
+        foreach ($lines as $index => $line) {
             preg_match_all('/"(?:[^"\\\\]|\\\\.)*"|[^\s]+/', trim($line), $matches);
             $tokens = $matches[0];
             if ($tokens === []) {
@@ -38,42 +41,54 @@ class ZoneFile
             if (str_starts_with($tokens[0], '$')) {
                 $this->error('دستورهای INCLUDE و GENERATE پشتیبانی نمی‌شوند.');
             }
-            if (! ctype_space($line[0])) {
-                $owner = array_shift($tokens);
-            }
-            if ($owner === null) {
-                $this->error('نام رکورد در اولین سطر لازم است.');
-            }
-            $recordTtl = $ttl;
-            while ($tokens !== [] && (strtoupper($tokens[0]) === 'IN' || preg_match('/^\d+[smhdw]?$/iD', $tokens[0]))) {
-                $token = array_shift($tokens);
-                if (strtoupper($token) !== 'IN') {
-                    $recordTtl = $this->ttl($token);
+            try {
+                if (! ctype_space($line[0])) {
+                    $owner = array_shift($tokens);
                 }
-            }
-            $type = strtoupper(array_shift($tokens) ?? '');
-            $name = $this->absolute($owner, $zone);
-            if ($type === 'SOA' || ($type === 'NS' && $name === $zone.'.')) {
-                if ($name !== $zone.'.') {
-                    $this->error('رکورد SOA فقط در ریشه مجاز است.');
+                if ($owner === null) {
+                    $this->error('نام رکورد در اولین سطر لازم است.');
                 }
+                $recordTtl = $ttl;
+                while ($tokens !== [] && (strtoupper($tokens[0]) === 'IN' || preg_match('/^\d+[smhdw]?$/iD', $tokens[0]))) {
+                    $token = array_shift($tokens);
+                    if (strtoupper($token) !== 'IN') {
+                        $recordTtl = $this->ttl($token);
+                    }
+                }
+                $type = strtoupper(array_shift($tokens) ?? '');
+                $name = $this->absolute($owner, $zone);
+                if ($type === 'SOA' || ($type === 'NS' && $name === $zone.'.')) {
+                    if ($name !== $zone.'.') {
+                        $this->error('رکورد SOA فقط در ریشه مجاز است.');
+                    }
 
-                continue; // Aviato owns the SOA and apex NS records.
+                    continue; // Aviato owns the SOA and apex NS records.
+                }
+                if (! in_array($type, RecordValidator::TYPES, true) || $tokens === []) {
+                    $this->error('نوع رکورد یا ساختار فایل پشتیبانی نمی‌شود: '.$type);
+                }
+                if (in_array($type, ['CNAME', 'NS', 'MX', 'SRV'], true)) {
+                    $tokens[count($tokens) - 1] = $this->absolute(end($tokens), $zone);
+                }
+                $content = implode(' ', $tokens);
+                if ($tolerant) {
+                    $validated = app(RecordValidator::class)->rrset($zone, ['name' => $name, 'type' => $type, 'ttl' => $recordTtl, 'content' => $content]);
+                    $content = implode("\n", $validated['records']);
+                }
+                $key = $name.'|'.$type;
+                if (isset($result[$key]) && $result[$key]['ttl'] !== $recordTtl) {
+                    $this->error('TTL همه مقدارهای یک مجموعه رکورد باید یکسان باشد.');
+                }
+                $result[$key] ??= ['name' => $name, 'type' => $type, 'ttl' => $recordTtl, 'content' => ''];
+                $result[$key]['content'] .= ($result[$key]['content'] === '' ? '' : "\n").$content;
+            } catch (ValidationException $exception) {
+                if (! $tolerant) {
+                    throw $exception;
+                }
+                $this->warnings[] = 'رکورد '.($index + 1).': '.implode(' ', $exception->validator->errors()->all());
             }
-            if (! in_array($type, RecordValidator::TYPES, true) || $tokens === []) {
-                $this->error('نوع رکورد یا ساختار فایل پشتیبانی نمی‌شود: '.$type);
-            }
-            if (in_array($type, ['CNAME', 'NS', 'MX', 'SRV'], true)) {
-                $tokens[count($tokens) - 1] = $this->absolute(end($tokens), $zone);
-            }
-            $key = $name.'|'.$type;
-            if (isset($result[$key]) && $result[$key]['ttl'] !== $recordTtl) {
-                $this->error('TTL همه مقدارهای یک مجموعه رکورد باید یکسان باشد.');
-            }
-            $result[$key] ??= ['name' => $name, 'type' => $type, 'ttl' => $recordTtl, 'content' => ''];
-            $result[$key]['content'] .= ($result[$key]['content'] === '' ? '' : "\n").implode(' ', $tokens);
         }
-        if ($result === []) {
+        if ($result === [] && ! $tolerant) {
             $this->error('هیچ رکورد قابل ورودی پیدا نشد.');
         }
 

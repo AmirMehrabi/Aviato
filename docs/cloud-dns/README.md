@@ -121,3 +121,9 @@ For primary failure, leave secondary answering existing zones while investigatin
 - Desktop/mobile previews were rendered with production assets; no page JavaScript errors or horizontal overflow were observed, and record search was exercised.
 - `npm run build` and Blade compilation passed. The existing large-JavaScript-chunk warning remains.
 - Production private API reachability and authenticated private transfers are deployment prerequisites and were verified during setup.
+
+### Record management and imports
+
+Verified domains with active delegation show records first, with connection details collapsed below the table. The shared admin/customer editor provides type-specific fields, owner defaults, examples, and TTL defaults. `@` is valid for apex A, AAAA, MX, TXT, and CAA records; CNAME and NS require a non-apex owner.
+
+Portal imports merge valid values into existing record sets, ignore canonical duplicate values, and preserve the TTL of existing sets. Invalid record values, unsupported types, non-apex SOA, CNAME conflicts, and quota overflow are reported without discarding other valid records. SOA and apex NS remain managed by Aviato. Unsafe file-level structure (such as an inconsistent ORIGIN or unclosed parentheses/quotes) still rejects the file before any writes. Imports containing only duplicates or rejected records do not increment the revision or queue synchronization.

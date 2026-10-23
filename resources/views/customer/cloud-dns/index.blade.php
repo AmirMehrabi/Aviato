@@ -1,4 +1,5 @@
 @extends('customer.layout')
+@section('own_messages', '1')
 @section('title', 'دی‌ان‌اس ابری')
 @section('header_title', 'دی‌ان‌اس ابری')
 @section('header_subtitle', 'دامنه‌ها و رکوردهای DNS فضای کاری شما')

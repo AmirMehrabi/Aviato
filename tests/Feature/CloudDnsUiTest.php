@@ -27,7 +27,8 @@ class CloudDnsUiTest extends TestCase
         $zone->update(['verified_at' => now(), 'status' => 'ready', 'synced_revision' => $zone->revision, 'delegation_status' => 'pending', 'checked_at' => now()]);
         $this->get($url)->assertOk()->assertDontSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('نیم‌سرورها هنوز متصل نیستند')->assertDontSee('دامنه به آویاتو متصل است');
         $zone->update(['delegation_status' => 'active']);
-        $this->get($url)->assertOk()->assertSee('دامنه به آویاتو متصل است');
+        $html = $this->get($url)->assertOk()->assertSee('دامنه به آویاتو متصل است')->getContent();
+        $this->assertLessThan(strpos($html, 'مشاهده تنظیمات اتصال'), strpos($html, 'id="dns-records"'));
         $zone->update(['status' => 'pending', 'revision' => $zone->revision + 1]);
         $this->get($url)->assertOk()->assertDontSee('دامنه به آویاتو متصل است')->assertSee('تغییرات در انتظار انتشار هستند');
     }
@@ -43,7 +44,9 @@ class CloudDnsUiTest extends TestCase
         $this->actingAs($customer, 'customer')->from($url)->post($url.'/records', [
             'name' => '@', 'type' => 'MX', 'ttl' => 300, 'content' => '10 invalid host', 'editor_mode' => 'edit',
         ])->assertRedirect($url)->assertSessionHasErrors('content')->assertSessionHasInput('content', '10 invalid host')->assertSessionHasInput('editor_mode', 'edit');
-        $this->get($url)->assertOk()->assertSee('dns-editor-title')->assertSee('10 invalid host');
+        $response = $this->get($url)->assertOk()->assertSee('dns-editor-title')->assertSee('10 invalid host');
+        $this->assertStringNotContainsString('<li>مقدار رکورد MX معتبر نیست.</li>', $response->getContent());
+        $this->assertStringNotContainsString('text-red-800">مقدار رکورد MX معتبر نیست.</div>', $response->getContent());
         $this->assertDatabaseCount('dns_record_sets', 0);
     }
 }
