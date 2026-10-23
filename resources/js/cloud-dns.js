@@ -49,7 +49,7 @@ export function cloudDns(options) {
         },
         sortBy(key) { this.ascending = this.sort === key ? !this.ascending : true; this.sort = key; },
         typeClass(type) {
-            return { A: 'bg-blue-100 text-blue-800', AAAA: 'bg-indigo-100 text-indigo-800', CNAME: 'bg-violet-100 text-violet-800', MX: 'bg-amber-100 text-amber-800', TXT: 'bg-slate-100 text-slate-800', CAA: 'bg-emerald-100 text-emerald-800', SRV: 'bg-cyan-100 text-cyan-800', NS: 'bg-orange-100 text-orange-800' }[type];
+            return { A: 'bg-blue-600 text-white', AAAA: 'bg-indigo-600 text-white', CNAME: 'bg-violet-600 text-white', MX: 'bg-amber-500 text-slate-950', TXT: 'bg-slate-700 text-white', CAA: 'bg-emerald-600 text-white', SRV: 'bg-cyan-700 text-white', NS: 'bg-orange-600 text-white' }[type];
         },
         ttlLabel(ttl) { return ttl % 3600 === 0 ? `${ttl / 3600} ساعت` : ttl % 60 === 0 ? `${ttl / 60} دقیقه` : `${ttl} ثانیه`; },
         openEditor(record = null) {

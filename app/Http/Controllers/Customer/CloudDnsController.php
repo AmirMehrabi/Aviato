@@ -42,12 +42,19 @@ class CloudDnsController extends Controller
         [$project, $membership] = $this->access($request, false, $zone);
         $zone->load(['recordSets' => fn ($q) => $q->orderBy('name')->orderBy('type')]);
 
+        $management = $request->routeIs('*.management');
+
         return view('customer.cloud-dns.show', [
             'wallets' => app(WalletService::class),
             'customer' => $request->user('customer'), 'activeProject' => $project, 'activeMembership' => $membership,
             'zone' => $zone, 'canManage' => $membership->canManageDns(), 'types' => RecordValidator::TYPES,
-            'changes' => $zone->changes()->latest('id')->paginate(15), 'admin' => false,
+            'management' => $management, 'changes' => $management ? $zone->changes()->latest('id')->paginate(15) : null, 'admin' => false,
         ]);
+    }
+
+    public function management(Request $request, DnsZone $zone)
+    {
+        return $this->show($request, $zone);
     }
 
     public function verify(Request $request, DnsZone $zone)

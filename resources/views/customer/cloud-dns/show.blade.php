@@ -2,7 +2,7 @@
 @section('own_messages', '1')
 @section('title', 'دی‌ان‌اس ابری · '.$zone->name)
 @section('header_title', 'دی‌ان‌اس ابری')
-@section('header_subtitle', 'مدیریت اتصال دامنه و رکوردها')
+@section('header_subtitle', $management ? 'تنظیمات دامنه و تاریخچه تغییرات' : 'مدیریت اتصال دامنه و رکوردها')
 @section('compact_header', '1')
 @php($activeNav = 'cloud-dns')
 @section('content')

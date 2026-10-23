@@ -152,6 +152,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             Route::get('/', [$controller, 'index'])->name('index');
             Route::post('rollout', [$controller, 'updateRollout'])->name('rollout.update');
             Route::get('{zone}', [$controller, 'show'])->name('show');
+            Route::get('{zone}/management', [$controller, 'management'])->name('management');
             Route::get('{zone}/export', [$controller, 'export'])->name('export');
             Route::post('{zone}/records', [$controller, 'records'])->middleware('throttle:60,1')->name('records');
             Route::delete('{zone}/records/{record}', [$controller, 'deleteRecord'])->name('records.destroy');
@@ -459,6 +460,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::get('/', [$controller, 'index'])->name('index');
             Route::post('/', [$controller, 'store'])->middleware('throttle:10,1')->name('store');
             Route::get('{zone}', [$controller, 'show'])->name('show');
+            Route::get('{zone}/management', [$controller, 'management'])->name('management');
             Route::post('{zone}/verify', [$controller, 'verify'])->middleware('throttle:5,1')->name('verify');
             Route::post('{zone}/check', [$controller, 'check'])->middleware('throttle:5,1')->name('check');
             Route::post('{zone}/records', [$controller, 'records'])->middleware('throttle:60,1')->name('records');

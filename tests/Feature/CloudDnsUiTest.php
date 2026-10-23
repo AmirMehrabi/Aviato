@@ -33,6 +33,24 @@ class CloudDnsUiTest extends TestCase
         $this->get($url)->assertOk()->assertDontSee('دامنه به آویاتو متصل است')->assertSee('تغییرات در انتظار انتشار هستند');
     }
 
+    public function test_management_page_contains_history_and_enforces_zone_ownership(): void
+    {
+        config(['cloud-dns.enabled' => true]);
+        AppSetting::setValue(CloudDnsRollout::KEY, ['mode' => 'all', 'customer_ids' => []], 'json', 'cloud-dns');
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        $zone = app(CloudDnsService::class)->create($customer->ensureDefaultProject(), 'example.ir', $customer);
+        $url = 'https://cp.localhost/cloud-dns/'.$zone->uuid;
+        $this->actingAs($customer, 'customer')->get($url)->assertOk()
+            ->assertDontSee('تاریخچه تغییرات')->assertDontSee('حذف دامنه از هر دو سرور')
+            ->assertSee('/cloud-dns/'.$zone->uuid.'/management', false)->assertViewHas('changes', null);
+        $this->get($url.'/management')->assertOk()->assertSee('تاریخچه تغییرات')
+            ->assertSee('حذف دامنه از هر دو سرور')->assertDontSee('id="dns-records"', false);
+        $other = Customer::factory()->create();
+        $other->ensureDefaultProject();
+        $this->actingAs($other, 'customer')->get($url.'/management')->assertNotFound();
+    }
+
     public function test_record_validation_retains_editor_values_for_correction(): void
     {
         config(['cloud-dns.enabled' => true]);

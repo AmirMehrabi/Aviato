@@ -231,6 +231,7 @@ class CloudDnsTest extends TestCase
         Http::fake(['*' => Http::response(['version' => '5.0.2'])]);
         $this->actingAs($admin, 'admin')->get('https://admin.localhost/cloud-dns')->assertOk();
         $this->get('https://admin.localhost/cloud-dns/'.$zone->uuid)->assertOk();
+        $this->get('https://admin.localhost/cloud-dns/'.$zone->uuid.'/management')->assertOk()->assertSee('تاریخچه تغییرات')->assertDontSee('حذف دامنه از هر دو سرور');
         $this->delete('https://admin.localhost/cloud-dns/'.$zone->uuid)->assertForbidden();
         $this->post('https://admin.localhost/cloud-dns/'.$zone->uuid.'/retry')->assertForbidden();
     }

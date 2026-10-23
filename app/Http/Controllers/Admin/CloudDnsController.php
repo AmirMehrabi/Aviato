@@ -74,10 +74,17 @@ class CloudDnsController extends Controller
         abort_if($zone->status === 'deleted', 404);
         $zone->load(['project.owner', 'recordSets' => fn ($q) => $q->orderBy('name')->orderBy('type')]);
 
+        $management = $request->routeIs('*.management');
+
         return view('admin.cloud-dns.show', [
             'zone' => $zone, 'canManage' => AdminAccess::allows($request->user('admin'), 'dns.manage'),
-            'changes' => $zone->changes()->latest('id')->paginate(15), 'types' => RecordValidator::TYPES, 'admin' => true,
+            'management' => $management, 'changes' => $management ? $zone->changes()->latest('id')->paginate(15) : null, 'types' => RecordValidator::TYPES, 'admin' => true,
         ]);
+    }
+
+    public function management(Request $request, DnsZone $zone)
+    {
+        return $this->show($request, $zone);
     }
 
     public function records(Request $request, DnsZone $zone)
