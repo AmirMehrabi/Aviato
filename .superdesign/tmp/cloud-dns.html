@@ -1,0 +1,353 @@
+<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Aviato Cloud DNS</title><link rel="stylesheet" href="https://aviato.ir/assets/fonts.css"><script src="https://cdn.tailwindcss.com"></script><style>body{font-family:IRANSans,sans-serif;color:#0f172a}summary{cursor:pointer}</style></head><body><div class="mx-auto min-h-screen max-w-6xl bg-white p-6">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-3 shadow-sm shadow-slate-200/50 backdrop-blur sm:px-4 md:px-6 lg:px-8">
+                <div class="flex h-16 items-center justify-between gap-2">
+                    <button
+                        type="button"
+                        x-ref="sidebarTrigger"
+                        class="grid size-11 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm shadow-slate-200/50 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] lg:hidden"
+                        @click="sidebarOpen = true; $nextTick(() => $refs.sidebarClose?.focus())"
+                        :aria-expanded="sidebarOpen.toString()"
+                        aria-label="باز کردن منو"
+                    >
+                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <div class="shrink-0 sm:min-w-0 sm:flex-1 md:max-w-md">
+                        <button
+                            type="button"
+                            @click="openSearch()"
+                            class="group flex size-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 text-sm text-slate-500 shadow-sm shadow-slate-200/40 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] sm:h-11 sm:w-full sm:justify-start sm:px-3"
+                        >
+                            <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-slate-500 shadow-sm shadow-slate-200/50 transition group-hover:text-[#0069FF]">
+                                <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"/>
+                                    <path d="m21 21-4.35-4.35" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+                            <span class="hidden truncate text-right font-bold sm:block">جستجو...</span>
+                            <span class="mr-auto hidden items-center gap-1 text-[11px] font-black text-slate-400 lg:flex">
+                                <kbd class="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 shadow-sm">Ctrl</kbd>
+                                <kbd class="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 shadow-sm">K</kbd>
+                            </span>
+                        </button>
+                    </div>
+
+                    <div class="flex shrink-0 items-center gap-2">
+                        <div
+    class="notification-center relative"
+    @notification-unread-changed.window="unreadCount = Number($event.detail.count || 0)"
+    x-data="notificationCenter({
+        feedUrl: '\/notifications',
+        markReadUrlTemplate: '\/notifications\/__NOTIFICATION__\/read',
+        markAllReadUrl: '\/notifications\/mark-all-read',
+        dismissUrlTemplate: '',
+        clearReadUrl: '',
+        unreadCount: 0,
+        csrf: 'n4tUvHFHO46hAlsr2TVSxThF5vwDb09eWKtLxmcN',
+    })"
+    @keydown.escape.window="if (open) close(true)"
+    @click.outside="close()"
+>
+    <button
+        x-ref="trigger"
+        type="button"
+        @click="toggle()"
+        class="relative grid size-11 place-items-center border border-slate-200 bg-white text-slate-600 shadow-sm shadow-slate-200/50 transition-colors duration-150 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] active:scale-[0.96] rounded-xl"
+        aria-label="اعلان‌ها"
+        :aria-expanded="open.toString()"
+        aria-controls="notification-center-panel"
+    >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span
+            x-cloak
+            
+            x-text="unreadCount > 99 ? '۹۹+' : unreadCount.toLocaleString('fa-IR')"
+            class="absolute -start-1.5 -top-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-[#0069FF] px-1 text-[10px] font-black leading-none text-white ring-2 ring-white"
+        ></span>
+    </button>
+
+    <section
+        id="notification-center-panel"
+        x-cloak
+        
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="translate-y-1 opacity-0"
+        x-transition:enter-end="translate-y-0 opacity-100"
+        x-transition:leave="transition ease-out duration-100"
+        x-transition:leave-start="translate-y-0 opacity-100"
+        x-transition:leave-end="translate-y-1 opacity-0"
+        class="absolute end-0 top-14 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white text-right shadow-2xl shadow-slate-950/15"
+        aria-labelledby="notification-center-title"
+        :aria-busy="loading.toString()"
+    >
+        <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5">
+            <div>
+                <h2 id="notification-center-title" class="text-sm font-black text-slate-950">اعلان‌ها</h2>
+                <p class="mt-0.5 text-xs font-bold text-slate-400" x-text="unreadCount ? `${unreadCount.toLocaleString('fa-IR')} اعلان خوانده‌نشده` : 'همه اعلان‌ها خوانده شده‌اند'"></p>
+            </div>
+            <button
+                type="button"
+                
+                :disabled="markingAll"
+                @click="markAllRead()"
+                class="min-h-10 rounded-xl px-3 text-xs font-black text-[#0069FF] transition-colors duration-150 hover:bg-[#EBF3FF] disabled:cursor-wait disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
+                x-text="markingAll ? 'در حال خواندن…' : 'خواندن همه'"
+            ></button>
+        </div>
+
+                <div class="max-h-[min(28rem,70vh)] overflow-y-auto p-2">
+            <template x-if="loading && items.length === 0">
+                <div class="space-y-2 p-2" aria-hidden="true">
+                    <template x-for="index in 3" :key="index">
+                        <div class="h-20 animate-pulse rounded-xl bg-slate-100"></div>
+                    </template>
+                </div>
+            </template>
+
+            <template x-if="!loading && items.length === 0 && !error">
+                <div class="px-5 py-10 text-center">
+                    <span class="mx-auto grid size-12 place-items-center rounded-2xl bg-slate-100 text-slate-400">
+                        <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <p class="mt-3 text-sm font-black text-slate-800">اعلانی ندارید</p>
+                    <p class="mt-1 text-xs font-bold leading-6 text-slate-500">اعلان‌های مربوط به فضای کاری، کیف پول و پشتیبانی اینجا نمایش داده می‌شوند.</p>
+                </div>
+            </template>
+
+            <template x-for="notification in items" :key="notification.id">
+                <article class="group rounded-xl p-3 transition-colors duration-150 hover:bg-slate-50" :class="notification.read ? '' : 'bg-[#F5F9FF]'">
+                    <div class="flex items-start gap-3">
+                        <span class="mt-1.5 size-2.5 shrink-0 rounded-full" :class="notification.read ? 'bg-slate-300' : 'bg-[#0069FF]'" aria-hidden="true"></span>
+                        <div class="min-w-0 flex-1">
+                            <a id="dns-action-1"
+                                :href="#dns-action-1"
+                                @click="openNotification($event, notification)"
+                                class="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
+                            >
+                                <span class="block text-sm font-black leading-6 text-slate-900" x-text="notification.title"></span>
+                                <span class="mt-0.5 block text-xs font-bold leading-6 text-slate-500" x-text="notification.body"></span>
+                            </a>
+                            <div class="mt-2 flex items-center justify-between gap-3">
+                                <span class="text-[11px] font-bold text-slate-400" x-text="formatDate(notification.created_at)"></span>
+                                <div class="flex items-center gap-1.5">
+                                    <button
+                                        type="button"
+                                        
+                                        :disabled="Boolean(markingIds[notification.id])"
+                                        @click="markRead(notification.id)"
+                                        class="min-h-9 rounded-lg px-2.5 text-[11px] font-black text-slate-600 transition-colors duration-150 hover:bg-white hover:text-[#0069FF] disabled:cursor-wait disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
+                                    >خواندن</button>
+                                                                        <a id="dns-action-2" :href="#dns-action-2" class="inline-flex min-h-9 items-center rounded-lg px-2.5 text-[11px] font-black text-[#0069FF] transition-colors duration-150 hover:bg-[#EBF3FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]" x-text="notification.action_label || 'مشاهده'"></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </template>
+        </div>
+
+        <div  class="border-t border-red-100 bg-red-50 px-4 py-3 text-xs font-bold leading-6 text-red-700">
+            <span x-text="error"></span>
+            <button type="button" @click="load()" class="mr-2 font-black underline decoration-2 underline-offset-4">تلاش دوباره</button>
+        </div>
+        <p class="sr-only" role="status" aria-live="polite" x-text="announcement"></p>
+    </section>
+</div>
+
+                                                <a id="dns-action-3" href="#dns-action-3" class="group inline-flex size-11 items-center justify-center rounded-xl border border-[#00A67E]/20 bg-[#00A67E] text-white shadow-lg shadow-[#00A67E]/20 transition hover:-translate-y-0.5 hover:bg-[#008F6E] hover:shadow-[#00A67E]/30 sm:w-auto sm:px-3.5" aria-label="ساخت ماشین">
+                            <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+                            </svg>
+                            <span class="hidden pr-2 text-sm font-black sm:inline">ساخت</span>
+                        </a>
+                        
+                                                <div class="relative hidden sm:block">
+                            <button
+                                type="button"
+                                @click="walletOpen = !walletOpen; profileOpen = false; searchOpen = false"
+                                class="group flex h-11 max-w-[9.5rem] items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 text-slate-600 shadow-sm shadow-slate-200/50 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] sm:max-w-none sm:px-3"
+                                aria-label="کیف پول"
+                                :aria-expanded="walletOpen.toString()"
+                            >
+                                <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700 transition group-hover:bg-white">
+                                    <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm12 3h4v5h-4a2.5 2.5 0 0 1 0-5Z" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <span class="min-w-0 text-right">
+                                    <span class="block truncate text-xs font-black leading-4 text-slate-800">۰ تومان</span>
+                                    <span class="hidden text-[10px] font-black leading-3 text-slate-400 sm:block">موجودی قابل استفاده</span>
+                                </span>
+                            </button>
+
+                            <div
+                                x-cloak
+                                
+                                x-transition
+                                @click.away="walletOpen = false"
+                                class="absolute left-0 top-14 z-50 w-72 rounded-xl border border-slate-200 bg-white p-4 text-right shadow-2xl shadow-slate-950/10"
+                            >
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-sm font-black text-slate-950">کیف پول</p>
+                                    <span class="rounded-md px-2 py-1 text-[11px] font-black bg-emerald-50 text-emerald-700">فعال</span>
+                                </div>
+                                <p class="mt-3 text-xs font-bold text-slate-500">موجودی قابل استفاده</p>
+                                <p class="mt-3 text-2xl font-black text-slate-950">۰ تومان</p>
+                                <div class="mt-4 grid grid-cols-2 gap-2">
+                                    <a id="dns-action-4" href="#dns-action-4" class="inline-flex justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50">تراکنش ها</a>
+                                    <a id="dns-action-5" href="#dns-action-5" class="inline-flex justify-center rounded-lg bg-[#0069FF] px-3 py-2 text-sm font-black text-white transition hover:bg-[#0050D0]">شارژ</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+            </header>
+
+            <div
+                x-cloak
+                
+                x-transition.opacity
+                @click.self="closePanels()"
+                class="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/45 px-4 pt-16 backdrop-blur-sm sm:pt-24"
+            >
+                <div class="w-full max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20">
+                    <div class="flex items-center gap-3 border-b border-slate-200 px-4 py-3">
+                        <svg class="size-5 shrink-0 text-[#0069FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35" stroke-linecap="round"/>
+                        </svg>
+                        <input
+                            x-ref="customerSearch"
+                            x-model="searchQuery"
+                            type="text"
+                            placeholder="نام ماشین، IP، صورتحساب یا عملیات را تایپ کنید..."
+                            class="h-11 min-w-0 flex-1 border-0 bg-transparent text-right text-base font-semibold text-slate-950 outline-none placeholder:text-slate-400"
+                        >
+                        <button type="button" @click="closePanels()" class="rounded-md px-2 py-1 text-xs font-black text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">ESC</button>
+                    </div>
+                    <div class="max-h-[420px] overflow-y-auto p-2">
+                        <template x-if="filteredSearchItems.length">
+                            <div class="space-y-1">
+                                <template x-for="item in filteredSearchItems" :key="item.url + item.title">
+                                    <button type="button" @click="goTo(item)" class="flex w-full items-center justify-between gap-4 rounded-lg px-3 py-3 text-right transition hover:bg-[#EBF3FF]">
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-sm font-black text-slate-950" x-text="item.title"></span>
+                                            <span class="mt-1 block truncate text-xs font-bold text-slate-500" x-text="item.description"></span>
+                                        </span>
+                                        <span class="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-500" x-text="item.type"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+                        <template x-if="!filteredSearchItems.length">
+                            <div class="px-4 py-10 text-center text-sm font-bold text-slate-500">نتیجه ای پیدا نشد.</div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="px-4 pb-8 md:px-6 lg:px-8 pt-4">
+                                                        <div class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+                        <div class="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="min-w-0">
+                            <nav class="flex flex-wrap items-center gap-2 text-xs font-black text-slate-400" aria-label="breadcrumb">
+                                <a id="dns-action-6" href="#dns-action-6" class="transition hover:text-[#0069FF]">کنسول ابری</a>
+                                <svg class="size-3.5 rotate-180 text-slate-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M12.78 4.22a.75.75 0 0 1 0 1.06L8.06 10l4.72 4.72a.75.75 0 1 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/>
+                                </svg>
+                                                                    <span class="truncate text-slate-700">Cloud DNS</span>
+                                                            </nav>
+                            <div class="mt-3">
+                                
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h1 class="truncate text-2xl font-black tracking-normal text-slate-950">Cloud DNS</h1>
+                                    <a id="dns-action-7" href="#dns-action-7" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-black text-slate-600 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
+                                        <span class="size-2 rounded-full bg-[#00A67E]"></span>
+                                        <span class="truncate">فضای کاری: Default Project</span>
+                                        <span class="hidden text-slate-400 sm:inline">مالک</span>
+                                    </a>
+                                </div>
+                                <p class="mt-1 max-w-3xl text-sm leading-7 text-slate-500">example.ir</p>
+                            </div>
+                        </div>
+                        
+                        </div>
+                    </div>
+                                    
+                                                                
+                                    <div class="space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-4"><div><a id="dns-action-8" href="#dns-action-8" class="text-sm font-bold text-[#0069FF]">بازگشت به دامنه‌ها</a><h1 class="mt-3 font-mono text-2xl font-black" dir="ltr">example.ir</h1></div><div class="flex items-center gap-3"><span class="inline-flex rounded-full px-3 py-1 text-xs font-bold bg-amber-50 text-amber-900">نیازمند تأیید</span>
+<span class="text-xs text-slate-500">طرح رایگان</span></div></div>
+    <div class="grid gap-4 md:grid-cols-3">
+        <section class="rounded-xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500">مالکیت دامنه</p><p class="mt-3 font-black">در انتظار رکورد TXT</p></section>
+        <section class="rounded-xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500">واگذاری در رجیسترار</p><p class="mt-3 font-black">نیازمند بررسی NS والد</p><p class="mt-2 text-xs text-slate-400">هنوز بررسی نشده</p></section>
+        <section class="rounded-xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500">انتشار در هر دو سرور</p><p class="mt-3 text-sm font-black">نسخه 0 از 1</p><p class="mt-2 font-mono text-xs text-slate-500" dir="ltr">NS1: — · NS2: —</p></section>
+    </div>
+            <section class="rounded-2xl border border-blue-200 bg-blue-50/50 p-5"><h2 class="font-black">۱. مالکیت را در DNS فعلی تأیید کنید</h2><p class="mt-2 text-sm leading-7 text-slate-600">در سرویس DNS فعلی دامنه، رکورد زیر را بسازید. فعلاً نیم‌سرورها را تغییر ندهید. تأیید تا 1405/08/02 19:41 معتبر است.</p><dl class="mt-4 space-y-3 rounded-xl border border-blue-100 bg-white p-4" dir="ltr"><div><dt class="text-xs text-slate-500">Type</dt><dd class="mt-1 font-mono text-sm">TXT</dd></div><div><dt class="text-xs text-slate-500">Name</dt><dd class="mt-1 break-all font-mono text-sm">_aviato-verification.example.ir</dd></div><div><dt class="text-xs text-slate-500">Value</dt><dd class="mt-1 select-all break-all font-mono text-sm">aviato-verification=YSXxZZ564vvvtOCyh94sN7vvcamfBcXMcGHxeWIPIV41hXIW</dd></div></dl><form method="POST" class="mt-4"><button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white">بررسی رکورد و تأیید مالکیت</button></form></section>
+        <section class="rounded-2xl border border-slate-200 p-5"><h2 class="font-black">۲. رکوردها را آماده کنید، سپس نیم‌سرورها را تغییر دهید</h2><p class="mt-2 text-sm leading-7 text-slate-600">تمام رکوردهای وب‌سایت، MX ایمیل، SPF، DKIM و تأیید سرویس‌ها را وارد کنید. بعد از تأیید مالکیت و انتشار در هر دو سرور، نیم‌سرورهای دامنه را در رجیسترار با دو نام زیر جایگزین کنید. برای DNSSEC فعال، ابتدا DS سرویس قبلی را با رعایت زمان انقضای کش حذف کنید.</p><div class="mt-4 flex flex-wrap gap-3" dir="ltr"><code class="select-all rounded-lg bg-slate-50 px-4 py-2 text-sm">ns1.aviato.ir</code><code class="select-all rounded-lg bg-slate-50 px-4 py-2 text-sm">ns2.aviato.ir</code></div> <form method="POST" class="mt-4"><button class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold">بررسی واگذاری نیم‌سرورها</button></form></section>
+    <section class="overflow-hidden rounded-2xl border border-slate-200" x-data="{ search: '' }">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5"><h2 class="font-black">رکوردهای DNS <span class="mr-2 text-xs font-normal text-slate-500">4 / 500 رکورد</span></h2><label><span class="sr-only">جستجوی رکورد</span><input x-model="search" placeholder="جستجوی نام یا نوع رکورد" class="rounded-lg border border-slate-200 px-3 py-2 text-sm"></label></div>
+        <div class="overflow-x-auto"><table class="w-full text-right text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="p-4">نوع / نام / TTL / مقدارها</th><th class="p-4">مدیریت</th></tr></thead><tbody class="divide-y divide-slate-100"><tr ><td class="p-4"><div class="flex flex-wrap items-center gap-3" dir="ltr"><span class="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-[#0069FF]">A</span><code class="break-all font-bold">example.ir.</code><span class="text-xs text-slate-400">300s</span></div><div class="mt-3 space-y-1" dir="ltr"><p class="break-all font-mono text-xs leading-6 text-slate-600">192.0.2.7</p></div>
+            <details class="mt-3"><summary class="cursor-pointer text-xs font-bold text-[#0069FF]">ویرایش مقدارها و TTL</summary><form method="POST" class="mt-3 space-y-3"><input type="hidden" name="name" value="example.ir."><input type="hidden" name="type" value="A"><label class="block text-xs font-bold">TTL (ثانیه)<input name="ttl" type="number" min="60" max="86400" value="300" required class="mt-2 block w-36 rounded-lg border border-slate-300 px-3 py-2" dir="ltr"></label><label class="block text-xs font-bold">هر مقدار در یک خط<textarea name="content" required rows="3" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm">192.0.2.7</textarea></label><button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-bold text-white">ذخیره مجموعه رکورد</button></form></details>        </td><td class="p-4 align-top"><form method="POST" onsubmit="return confirm('تمام مقدارهای این مجموعه رکورد حذف شود؟')"> <input type="hidden" name="_method" value="DELETE"><button class="text-xs font-bold text-red-600">حذف</button></form></td></tr><tr ><td class="p-4"><div class="flex flex-wrap items-center gap-3" dir="ltr"><span class="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-[#0069FF]">MX</span><code class="break-all font-bold">example.ir.</code><span class="text-xs text-slate-400">300s</span></div><div class="mt-3 space-y-1" dir="ltr"><p class="break-all font-mono text-xs leading-6 text-slate-600">10 mail.example.ir.</p></div>
+            <details class="mt-3"><summary class="cursor-pointer text-xs font-bold text-[#0069FF]">ویرایش مقدارها و TTL</summary><form method="POST" class="mt-3 space-y-3"><input type="hidden" name="name" value="example.ir."><input type="hidden" name="type" value="MX"><label class="block text-xs font-bold">TTL (ثانیه)<input name="ttl" type="number" min="60" max="86400" value="300" required class="mt-2 block w-36 rounded-lg border border-slate-300 px-3 py-2" dir="ltr"></label><label class="block text-xs font-bold">هر مقدار در یک خط<textarea name="content" required rows="3" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm">10 mail.example.ir.</textarea></label><button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-bold text-white">ذخیره مجموعه رکورد</button></form></details>        </td><td class="p-4 align-top"><form method="POST" onsubmit="return confirm('تمام مقدارهای این مجموعه رکورد حذف شود؟')"> <input type="hidden" name="_method" value="DELETE"><button class="text-xs font-bold text-red-600">حذف</button></form></td></tr><tr ><td class="p-4"><div class="flex flex-wrap items-center gap-3" dir="ltr"><span class="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-[#0069FF]">TXT</span><code class="break-all font-bold">example.ir.</code><span class="text-xs text-slate-400">300s</span></div><div class="mt-3 space-y-1" dir="ltr"><p class="break-all font-mono text-xs leading-6 text-slate-600">&quot;v=spf1 mx -all&quot;</p></div>
+            <details class="mt-3"><summary class="cursor-pointer text-xs font-bold text-[#0069FF]">ویرایش مقدارها و TTL</summary><form method="POST" class="mt-3 space-y-3"><input type="hidden" name="name" value="example.ir."><input type="hidden" name="type" value="TXT"><label class="block text-xs font-bold">TTL (ثانیه)<input name="ttl" type="number" min="60" max="86400" value="300" required class="mt-2 block w-36 rounded-lg border border-slate-300 px-3 py-2" dir="ltr"></label><label class="block text-xs font-bold">هر مقدار در یک خط<textarea name="content" required rows="3" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm">&quot;v=spf1 mx -all&quot;</textarea></label><button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-bold text-white">ذخیره مجموعه رکورد</button></form></details>        </td><td class="p-4 align-top"><form method="POST" onsubmit="return confirm('تمام مقدارهای این مجموعه رکورد حذف شود؟')"> <input type="hidden" name="_method" value="DELETE"><button class="text-xs font-bold text-red-600">حذف</button></form></td></tr><tr ><td class="p-4"><div class="flex flex-wrap items-center gap-3" dir="ltr"><span class="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-[#0069FF]">CNAME</span><code class="break-all font-bold">www.example.ir.</code><span class="text-xs text-slate-400">300s</span></div><div class="mt-3 space-y-1" dir="ltr"><p class="break-all font-mono text-xs leading-6 text-slate-600">example.ir.</p></div>
+            <details class="mt-3"><summary class="cursor-pointer text-xs font-bold text-[#0069FF]">ویرایش مقدارها و TTL</summary><form method="POST" class="mt-3 space-y-3"><input type="hidden" name="name" value="www.example.ir."><input type="hidden" name="type" value="CNAME"><label class="block text-xs font-bold">TTL (ثانیه)<input name="ttl" type="number" min="60" max="86400" value="300" required class="mt-2 block w-36 rounded-lg border border-slate-300 px-3 py-2" dir="ltr"></label><label class="block text-xs font-bold">هر مقدار در یک خط<textarea name="content" required rows="3" dir="ltr" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm">example.ir.</textarea></label><button class="rounded-lg bg-[#0069FF] px-4 py-2 text-xs font-bold text-white">ذخیره مجموعه رکورد</button></form></details>        </td><td class="p-4 align-top"><form method="POST" onsubmit="return confirm('تمام مقدارهای این مجموعه رکورد حذف شود؟')"> <input type="hidden" name="_method" value="DELETE"><button class="text-xs font-bold text-red-600">حذف</button></form></td></tr></tbody></table></div><p class="border-t border-slate-100 px-5 py-3 text-xs leading-6 text-slate-500">SOA و NS ریشه به‌صورت خودکار مدیریت می‌شوند. تغییرات این جدول، تنظیمات درخواستی شما هستند؛ وضعیت انتشار در بالای صفحه نمایش داده می‌شود.</p>
+    </section>
+        <section class="rounded-2xl border border-slate-200 p-5"><h2 class="font-black">افزودن مجموعه رکورد</h2><form method="POST" class="mt-4 space-y-4"><div class="grid gap-4 md:grid-cols-3"><label class="text-xs font-bold">نوع<select name="type" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3" dir="ltr"><option >A</option><option >AAAA</option><option >CNAME</option><option >MX</option><option >TXT</option><option >CAA</option><option >SRV</option><option >NS</option></select></label><label class="text-xs font-bold">نام (@ برای ریشه)<input name="name" value="@" required dir="ltr" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"></label><label class="text-xs font-bold">TTL (ثانیه)<input name="ttl" type="number" min="60" max="86400" value="300" required dir="ltr" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"></label></div><label class="block text-xs font-bold">مقدارها (هر مقدار در یک خط)<textarea name="content" required rows="3" dir="ltr" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 font-mono text-sm" placeholder="203.0.113.10"></textarea></label><p class="text-xs leading-6 text-slate-500">MX: عدد اولویت و مقصد · SRV: اولویت، وزن، پورت، مقصد · TXT: متن · CAA: مانند 0 issue "letsencrypt.org". مقصدهای دامنه‌ای کامل وارد شوند. ذخیره روی مجموعه موجود، همه مقدارهای همان نام و نوع را جایگزین می‌کند.</p><button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white">ذخیره رکورد</button></form></section>
+        <section class="rounded-2xl border border-slate-200 p-5"><div class="flex flex-wrap items-center justify-between gap-3"><h2 class="font-black">ورودی و خروجی Zone</h2><a id="dns-action-9" href="#dns-action-9" class="text-sm font-bold text-[#0069FF]">دریافت فایل Zone</a></div><details class="mt-4"><summary class="cursor-pointer text-sm font-bold">ورودی از فایل BIND / خروجی Cloudflare</summary><p class="mt-3 text-xs leading-7 text-slate-500">متن فایل را وارد کنید. مجموعه‌های موجود با همان نام و نوع جایگزین می‌شوند؛ سایر رکوردها باقی می‌مانند. SOA و NS ریشه نادیده گرفته می‌شوند. نوع یا ساختار پشتیبانی‌نشده باعث رد شدن کل ورودی می‌شود.</p><form method="POST" class="mt-3 space-y-3"><label><span class="sr-only">متن فایل Zone</span><textarea name="zone_file" required rows="7" dir="ltr" class="w-full rounded-xl border border-slate-300 px-4 py-3 font-mono text-xs" placeholder="$ORIGIN example.ir."></textarea></label><button class="rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold">بررسی و ثبت ورودی</button></form></details></section>
+    <section class="rounded-2xl border border-slate-200 p-5"><h2 class="font-black">تاریخچه تغییرات</h2><div class="mt-4 divide-y divide-slate-100"><details class="py-3"><summary class="cursor-pointer text-xs leading-7"><span dir="ltr">records.updated · customer #1</span> · نسخه 1 · 1405/07/30 19:41</summary><div class="mt-3 grid gap-3 md:grid-cols-2"><div class="min-w-0"><p class="text-xs font-bold">قبل</p><pre class="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-50 p-3 text-left text-xs" dir="ltr">{
+    &quot;name&quot;: &quot;example.ir&quot;,
+    &quot;status&quot;: &quot;unverified&quot;,
+    &quot;records&quot;: []
+}</pre></div><div class="min-w-0"><p class="text-xs font-bold">بعد</p><pre class="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-50 p-3 text-left text-xs" dir="ltr">{
+    &quot;name&quot;: &quot;example.ir&quot;,
+    &quot;status&quot;: &quot;unverified&quot;,
+    &quot;records&quot;: [
+        {
+            &quot;name&quot;: &quot;example.ir.&quot;,
+            &quot;type&quot;: &quot;A&quot;,
+            &quot;ttl&quot;: 300,
+            &quot;records&quot;: [
+                &quot;192.0.2.7&quot;
+            ]
+        },
+        {
+            &quot;name&quot;: &quot;example.ir.&quot;,
+            &quot;type&quot;: &quot;MX&quot;,
+            &quot;ttl&quot;: 300,
+            &quot;records&quot;: [
+                &quot;10 mail.example.ir.&quot;
+            ]
+        },
+        {
+            &quot;name&quot;: &quot;example.ir.&quot;,
+            &quot;type&quot;: &quot;TXT&quot;,
+            &quot;ttl&quot;: 300,
+            &quot;records&quot;: [
+                &quot;\&quot;v=spf1 mx -all\&quot;&quot;
+            ]
+        },
+        {
+            &quot;name&quot;: &quot;www.example.ir.&quot;,
+            &quot;type&quot;: &quot;CNAME&quot;,
+            &quot;ttl&quot;: 300,
+            &quot;records&quot;: [
+                &quot;example.ir.&quot;
+            ]
+        }
+    ]
+}</pre></div></div></details><details class="py-3"><summary class="cursor-pointer text-xs leading-7"><span dir="ltr">created · customer #1</span> · نسخه 0 · 1405/07/30 19:41</summary><div class="mt-3 grid gap-3 md:grid-cols-2"><div class="min-w-0"><p class="text-xs font-bold">قبل</p><pre class="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-50 p-3 text-left text-xs" dir="ltr">[]</pre></div><div class="min-w-0"><p class="text-xs font-bold">بعد</p><pre class="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-50 p-3 text-left text-xs" dir="ltr">{
+    &quot;name&quot;: &quot;example.ir&quot;
+}</pre></div></div></details></div></section>
+        <section class="rounded-2xl border border-red-100 p-5"><h2 class="font-black">مدیریت دامنه</h2><div class="mt-4 flex flex-wrap gap-3"> <form method="POST" onsubmit="return confirm('حذف دامنه از هر دو سرور، سرویس DNS آن را قطع می‌کند. ادامه می‌دهید؟')"> <input type="hidden" name="_method" value="DELETE"><button class="rounded-lg bg-red-50 px-4 py-2 text-xs font-bold text-red-700">حذف دامنه</button></form></div></section>
+    </div>
+            </div>
+
+            
+        </div></body></html>
