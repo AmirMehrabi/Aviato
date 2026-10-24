@@ -44,7 +44,7 @@ class NotificationEventSubscriber
             if ($payment->wasChanged('status') && $payment->status === Payment::STATUS_SUCCESSFUL) {
                 DB::afterCommit(function () use ($payment): void {
                     if ($payment->customer) {
-                        $this->notify($payment->customer, 'payment_received', ['amount' => number_format($payment->amount).' '.$payment->currency, 'receipt' => $payment->receiptNumber()], route('customer.wallet.show'));
+                        $this->notify($payment->customer, 'wallet_charged', ['amount' => number_format($payment->amount).' '.$payment->currency, 'receipt' => $payment->receiptNumber()], route('customer.wallet.show'));
                     }
                 });
             }
@@ -53,6 +53,11 @@ class NotificationEventSubscriber
             if ($vm->wasChanged('provisioning_status') && $vm->provisioning_status === 'ready') {
                 DB::afterCommit(function () use ($vm): void {
                     if ($vm->customer) {
+                        if ($vm->cloudImage?->os_family === 'router_os') {
+                            $this->notify($vm->customer, 'routeros_vm_created', ['server_name' => $vm->display_name], route('customer.tickets.index'));
+
+                            return;
+                        }
                         $variables = [
                             'server_name' => $vm->display_name,
                             'server_ip' => $vm->ip_address ?: 'در پنل بررسی کنید',

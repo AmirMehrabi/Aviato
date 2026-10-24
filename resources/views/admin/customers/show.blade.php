@@ -76,6 +76,18 @@
         @endforeach
     </section>
 
+@adminAbility('billing.read')
+    <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-xl font-black text-slate-950">آخرین پرداخت‌ها</h2>
+        <div class="mt-4 overflow-x-auto"><table class="w-full min-w-[640px] text-right text-sm"><thead class="text-xs text-slate-500"><tr><th class="py-3">مبلغ</th><th>وضعیت</th><th>روش پرداخت</th><th>تاریخ</th><th>رسید</th></tr></thead><tbody class="divide-y divide-slate-100">
+            @forelse($payments as $payment)
+                <tr><td class="py-3 font-black">{{ $wallets->format($payment->amount, $payment->currency) }}</td><td>{{ ['successful' => 'موفق', 'pending' => 'در انتظار', 'failed' => 'ناموفق', 'cancelled' => 'لغو شده'][$payment->status] ?? $payment->status }}</td><td>{{ $payment->provider ?: '—' }}</td><td>{{ $payment->paid_at?->format('Y/m/d H:i') ?: $payment->created_at?->format('Y/m/d H:i') }}</td><td dir="ltr">{{ $payment->receiptNumber() }}</td></tr>
+            @empty
+                <tr><td colspan="5" class="py-6 text-center text-slate-500">پرداختی ثبت نشده است.</td></tr>
+            @endforelse
+        </tbody></table></div>
+    </section>
+@endadminAbility
 
 @adminAbility('wallet.manage')
 
@@ -152,6 +164,12 @@
 
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">آخرین تراکنش‌های کیف پول</h2>
+            <form method="GET" action="{{ route('admin.customers.show', $customer) }}" class="mt-4 grid gap-3 sm:grid-cols-2">
+                <select name="transaction_type" class="rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">همه انواع</option>@foreach(['credit'=>'افزایش اعتبار','debit'=>'کسر اعتبار','charge'=>'هزینه','refund'=>'بازپرداخت','adjustment'=>'اصلاح'] as $type=>$label)<option value="{{ $type }}" @selected(($transactionFilters['transaction_type'] ?? '') === $type)>{{ $label }}</option>@endforeach</select>
+                <input type="date" name="transaction_from" value="{{ $transactionFilters['transaction_from'] ?? '' }}" aria-label="از تاریخ" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <input type="date" name="transaction_to" value="{{ $transactionFilters['transaction_to'] ?? '' }}" aria-label="تا تاریخ" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <div class="flex gap-2"><input name="transaction_search" value="{{ $transactionFilters['transaction_search'] ?? '' }}" placeholder="جست‌وجو در توضیحات" class="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"><button class="rounded-lg bg-[#031B4E] px-4 py-2 text-sm font-bold text-white">اعمال</button></div>
+            </form>
             <div class="mt-5 space-y-3">
                 @forelse($walletTransactions as $transaction)
                     <div class="rounded-xl border border-slate-200 p-4">
@@ -168,6 +186,9 @@
                     <div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">هنوز تراکنشی ثبت نشده است.</div>
                 @endforelse
             </div>
+            @if($walletTransactions instanceof \Illuminate\Contracts\Pagination\Paginator || $walletTransactions instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)
+                <div class="mt-4">{{ $walletTransactions->links() }}</div>
+            @endif
         </div>
     </section>
 

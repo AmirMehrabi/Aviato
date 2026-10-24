@@ -86,14 +86,26 @@ class CustomerController extends Controller
             ->with('status', 'مشتری با موفقیت ایجاد شد.');
     }
 
-    public function show(Customer $customer): View
+    public function show(Request $request, Customer $customer): View
     {
+        $filters = $request->validate([
+            'transaction_type' => ['nullable', 'in:credit,debit,charge,refund,adjustment'],
+            'transaction_from' => ['nullable', 'date_format:Y-m-d'],
+            'transaction_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:transaction_from'],
+            'transaction_search' => ['nullable', 'string', 'max:255'],
+        ]);
         $canReadBilling = auth('admin')->user()->allows('billing.read');
         $wallet = $canReadBilling ? $this->wallets->walletFor($customer) : null;
         $customer->load([
             'virtualMachines' => fn ($query) => $query->notDeleted()->with(['bundle', 'proxmoxServer']),
         ]);
-        $transactions = $canReadBilling ? $wallet->transactions()->with('createdBy')->limit(10)->get() : collect();
+        $transactions = $canReadBilling ? $wallet->transactions()->with('createdBy')
+            ->when($filters['transaction_type'] ?? null, fn ($query, $type) => $query->where('type', $type))
+            ->when($filters['transaction_from'] ?? null, fn ($query, $date) => $query->where('created_at', '>=', Carbon::parse($date)->startOfDay()))
+            ->when($filters['transaction_to'] ?? null, fn ($query, $date) => $query->where('created_at', '<', Carbon::parse($date)->addDay()->startOfDay()))
+            ->when($filters['transaction_search'] ?? null, fn ($query, $search) => $query->where('description', 'like', "%{$search}%"))
+            ->paginate(10, ['*'], 'transactions_page')->withQueryString() : collect();
+        $payments = $canReadBilling ? $wallet->payments()->latest('created_at')->limit(5)->get() : collect();
         $summary = $canReadBilling ? $this->billing->customerSummary($customer->id) : [];
 
         return view('admin.customers.show', [
@@ -109,6 +121,8 @@ class CustomerController extends Controller
             'billing' => $this->billing,
             'wallet' => $wallet,
             'walletTransactions' => $transactions,
+            'payments' => $payments,
+            'transactionFilters' => $filters,
             'wallets' => $this->wallets,
         ]);
     }
