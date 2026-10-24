@@ -267,7 +267,7 @@
             <h2 class="text-xl font-black text-slate-950">صورتحساب‌ها</h2>
             <p class="mt-1 text-sm text-slate-500">آخرین صورتحساب‌های مصرف ثبت‌شده برای این مشتری.</p>
             <div class="mt-5 space-y-3">
-                @foreach($invoices as $invoice)
+                @forelse($invoices as $invoice)
                     <div class="rounded-xl border border-slate-200 p-4">
                         <div class="flex items-start justify-between gap-4">
                             <div>
@@ -281,7 +281,7 @@
                     </div>
                 @empty
                     <div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">هنوز صورتحسابی برای این مشتری صادر نشده است.</div>
-                @endforeach
+                @endforelse
             </div>
         </section>
 
