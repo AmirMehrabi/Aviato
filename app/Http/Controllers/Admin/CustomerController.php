@@ -117,7 +117,7 @@ class CustomerController extends Controller
                 'status' => $summary['unbilled_accrued'] > 0 ? 'در حال مصرف' : 'بدون مصرف',
             ] : null,
             'virtualMachines' => $customer->virtualMachines,
-            'invoices' => $canReadBilling ? $this->dummyInvoices($customer) : [],
+            'invoices' => $canReadBilling ? $customer->invoices()->latest('period_start')->limit(4)->get() : collect(),
             'billing' => $this->billing,
             'wallet' => $wallet,
             'walletTransactions' => $transactions,
@@ -264,14 +264,4 @@ class CustomerController extends Controller
         ])->all();
     }
 
-    /** @return array<int, array<string, mixed>> */
-    private function dummyInvoices(Customer $customer): array
-    {
-        return collect(range(0, 3))->map(fn (int $index): array => [
-            'number' => 'INV-'.now()->subMonths($index)->format('Ym').'-'.str_pad((string) $customer->id, 4, '0', STR_PAD_LEFT),
-            'date' => now()->subMonths($index)->startOfMonth(),
-            'amount' => 890000 + ($index * 210000),
-            'status' => $index === 0 && $customer->id % 2 === 0 ? 'پرداخت نشده' : 'پرداخت شده',
-        ])->all();
-    }
 }

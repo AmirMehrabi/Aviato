@@ -265,19 +265,22 @@
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">صورتحساب‌ها</h2>
-            <p class="mt-1 text-sm text-slate-500">نمونه وضعیت مالی و فاکتورهای مشتری.</p>
+            <p class="mt-1 text-sm text-slate-500">آخرین صورتحساب‌های مصرف ثبت‌شده برای این مشتری.</p>
             <div class="mt-5 space-y-3">
                 @foreach($invoices as $invoice)
                     <div class="rounded-xl border border-slate-200 p-4">
                         <div class="flex items-start justify-between gap-4">
                             <div>
-                                <p class="font-black text-slate-950">{{ $invoice['number'] }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $invoice['date']->format('Y/m/d') }}</p>
+                                <p class="font-black text-slate-950">{{ $invoice->number }}</p>
+                                <p class="mt-1 text-xs text-slate-500">{{ $invoice->period_start?->format('Y/m/d') }}</p>
                             </div>
-                            <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $invoice['status'] === 'پرداخت شده' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-amber-50 text-amber-700' }}">{{ $invoice['status'] }}</span>
+                            @php($invoiceStatus = match ($invoice->status) { 'paid', 'issued' => 'پرداخت شده', 'cancelled' => 'لغو شده', default => 'در انتظار' })
+                            <span class="rounded-md px-2.5 py-1 text-xs font-black {{ $invoiceStatus === 'پرداخت شده' ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-amber-50 text-amber-700' }}">{{ $invoiceStatus }}</span>
                         </div>
-                        <p class="mt-3 text-left text-lg font-black text-slate-950">{{ $wallets->format($invoice['amount']) }}</p>
+                        <p class="mt-3 text-left text-lg font-black text-slate-950">{{ $wallets->format($invoice->total_amount, $invoice->currency) }}</p>
                     </div>
+                @empty
+                    <div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">هنوز صورتحسابی برای این مشتری صادر نشده است.</div>
                 @endforeach
             </div>
         </section>
