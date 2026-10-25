@@ -7,6 +7,8 @@ use App\Http\Requests\Admin\StoreCustomerRequest;
 use App\Http\Requests\Admin\UpdateCustomerRequest;
 use App\Jobs\ReconcileWalletRestrictions;
 use App\Models\Customer;
+use App\Models\DomainOrder;
+use App\Models\ManagedDomain;
 use App\Services\BillingService;
 use App\Services\WalletService;
 use App\Support\AdminTableSort;
@@ -145,6 +147,9 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer): RedirectResponse
     {
+        if (DomainOrder::where('customer_id', $customer->id)->exists() || ManagedDomain::where('customer_id', $customer->id)->exists()) {
+            return back()->withErrors(['customer' => 'این مشتری سوابق دامنه دارد و قابل حذف نیست. در صورت نیاز حساب را معلق کنید.']);
+        }
         $customer->delete();
 
         return redirect()->route('admin.customers.index')
@@ -263,5 +268,4 @@ class CustomerController extends Controller
             'monthly_price' => [490000, 890000, 290000][$index],
         ])->all();
     }
-
 }

@@ -11,6 +11,8 @@ use App\Models\HetznerAccount;
 use App\Models\NetworkIntegrationRun;
 use App\Models\VirtualMachine;
 use App\Models\VmUpgradeOrder;
+use App\Services\Domains\DomainLifecycleService;
+use App\Services\Domains\DomainPricingService;
 use App\Services\HetznerCatalogSyncService;
 use App\Services\InvoiceService;
 use App\Services\MeteringInventoryService;
@@ -497,3 +499,16 @@ Artisan::command('hesabro:callback-test {token? : Review an existing capture ses
 
     return 0;
 })->purpose('Create a private Hesabro test callback capture or review received requests');
+
+Artisan::command('domains:sync-prices', function (DomainPricingService $pricing): void {
+    $this->info('Synchronized '.$pricing->sync().' domain prices.');
+})->purpose('Refresh reseller costs; new domain products remain disabled until reviewed');
+Artisan::command('domains:reconcile', function (DomainLifecycleService $domains): void {
+    $domains->reconcile();
+})->purpose('Track pending domain orders without repeating uncertain registrations');
+Artisan::command('domains:lifecycle', function (DomainLifecycleService $domains): void {
+    $domains->daily();
+})->purpose('Synchronize expiry, send reminders and renew explicitly opted-in domains');
+Schedule::command('domains:reconcile')->everyMinute()->withoutOverlapping();
+Schedule::command('domains:sync-prices')->hourly()->withoutOverlapping();
+Schedule::command('domains:lifecycle')->dailyAt('08:30')->timezone('Asia/Tehran')->withoutOverlapping();

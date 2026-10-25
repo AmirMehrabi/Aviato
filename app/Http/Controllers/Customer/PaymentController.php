@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Customer;
+use App\Models\DomainOrder;
 use App\Models\Payment;
 use App\Models\Project;
 use App\Services\Payments\PaymentGatewayException;
@@ -103,8 +104,7 @@ class PaymentController extends Controller
         $this->ensureOwnership($request, $payment);
 
         if (! $payment->isPending()) {
-            return redirect()->route('customer.wallet.show')
-                ->with('status', 'وضعیت این پرداخت قبلا ثبت شده است.');
+            return $this->walletRedirect($payment);
         }
 
         $view = $payment->provider === 'mellat'
@@ -189,6 +189,11 @@ class PaymentController extends Controller
     private function ensureOwnership(Request $request, Payment $payment): void
     {
         $customer = $request->user('customer');
+        if ($payment->domain_order_id) {
+            abort_unless($payment->customer_id === $customer->id, 404);
+
+            return;
+        }
         $activeProject = $this->projects->activeProject($request, $customer);
 
         abort_unless(
@@ -205,6 +210,16 @@ class PaymentController extends Controller
 
     private function walletRedirect(Payment $payment): RedirectResponse
     {
+        if ($payment->domain_order_id) {
+            $order = DomainOrder::findOrFail($payment->domain_order_id);
+
+            $origin = data_get($payment->gateway_payload, '_aviato_domain_return_host');
+            $allowed = array_merge([config('portals.customer.domain')], config('portals.customer.aliases', []));
+            $origin = in_array($origin, $allowed, true) ? $origin : config('portals.customer.domain');
+
+            return redirect()->to('https://'.$origin.route('customer.domains.orders.show', ['order' => $order, 'step' => 'review'], false))->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
+        }
+
         return redirect()->route('customer.wallet.show', [
             'payment_id' => $payment->id,
         ])->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');

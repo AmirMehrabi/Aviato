@@ -11,6 +11,8 @@ class NotificationTemplates
     public function catalog(): array
     {
         $items = [
+            'domain_order' => ['سفارش دامنه', 'وضعیت سفارش دامنه | آویاتو', "{{name}} عزیز،\n{{body}}", false],
+            'domain_expiry' => ['تمدید و انقضای دامنه', 'تمدید دامنه | آویاتو', "{{name}} عزیز،\n{{body}}", false],
             'password_reset' => ['بازیابی رمز عبور', 'کد بازیابی رمز عبور آویاتو', "{{name}} عزیز،\nبرای انتخاب رمز عبور جدید، کد زیر را در پنل آویاتو وارد کنید.\nاین کد تا ۱۰ دقیقه معتبر است. اگر شما این درخواست را ثبت نکرده‌اید، این ایمیل را نادیده بگیرید. کد را با کسی به اشتراک نگذارید.", true],
             'login_code' => ['کد ورود', 'کد ورود به آویاتو', "{{name}} عزیز،\nبرای ورود امن به فضای ابری خود، کد زیر را وارد کنید.\nاین کد تا ۱۰ دقیقه معتبر است. کد ورود را در اختیار دیگران قرار ندهید.", true],
             'email_verification' => ['تأیید ایمیل', 'یک قدم تا شروع با آویاتو', "{{name}} عزیز، به آویاتو خوش آمدید!\nبرای تأیید ایمیل و شروع مسیر ابری خود، کد زیر را وارد کنید.\nاین کد تا ۱۰ دقیقه معتبر است.", true],
@@ -38,7 +40,7 @@ class NotificationTemplates
 
         return collect($items)->map(fn ($item, $event) => [
             'label' => $item[0], 'subject' => $item[1], 'body' => $item[2], 'required' => $item[3],
-            'email_enabled' => $item[3] || str_starts_with($event, 'ticket_'),
+            'email_enabled' => $item[3] || str_starts_with($event, 'ticket_') || str_starts_with($event, 'domain_'),
             'in_app_enabled' => true,
         ])->all();
     }

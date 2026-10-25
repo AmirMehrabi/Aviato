@@ -1,4 +1,5 @@
 @extends('customer.layout')
+@section('primary_actions_in_content', '1')
 
 @section('title', 'دامنه‌ها')
 @section('header_title', 'دامنه‌ها')
@@ -9,9 +10,10 @@
     <div class="mx-auto max-w-4xl space-y-6" x-data="domainSearch({ url: @js(route('customer.domains.check', [], false)), domain: @js(old('domain', request('domain', ''))), result: @js($result), error: @js(($lookupError ?? '') ?: $errors->first('domain')) })">
         <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 pb-4 text-sm">
             <span class="rounded-xl bg-blue-50 px-4 py-2 font-black text-[#0069FF]" aria-current="page">جستجوی دامنه</span>
-            <span class="px-2 text-slate-400">خرید و مدیریت دامنه <span class="mr-1 text-xs">به‌زودی</span></span>
+            <a href="#my-domains" class="px-2 text-slate-600">دامنه‌های من</a><a href="#domain-orders" class="px-2 text-slate-600">سفارش‌ها</a>
         </div>
 
+        @if($canSearch)
         <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-9">
             <div class="mb-6 flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-[#0069FF]" aria-hidden="true">
                 <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z"/></svg>
@@ -47,7 +49,13 @@
                     </div>
                     <span class="rounded-full px-4 py-2 text-sm font-black" :class="result?.available ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-700'" x-text="result?.available ? 'آزاد است' : 'آزاد نیست'"></span>
                 </div>
-                <p class="mt-5 text-sm leading-7 text-slate-600" x-text="result?.available ? 'این دامنه در حال حاضر برای ثبت آزاد است. خرید و مدیریت دامنه به‌زودی در آویاتو فعال می‌شود.' : 'این دامنه در حال حاضر برای ثبت آزاد نیست. می‌توانید پسوند دیگری را بررسی کنید یا نام تازه‌ای جستجو کنید.'"></p>
+                <p class="mt-5 text-sm leading-7 text-slate-600" x-text="result?.available ? (result?.premium ? 'این دامنه ویژه است. برای بررسی قیمت ثبت و تمدید با پشتیبانی تماس بگیرید.' : (result?.retail ? 'نام شما آماده است. مشخصات مالک و تنظیمات را تکمیل کنید؛ پرداخت در آخرین مرحله انجام می‌شود.' : 'این دامنه آزاد است. فروش این پسوند هنوز فعال نیست.')) : 'این دامنه در حال حاضر برای ثبت آزاد نیست. می‌توانید پسوند دیگری را بررسی کنید یا نام تازه‌ای جستجو کنید.'"></p>
+                <div x-show="result?.available && result?.retail && !result?.premium" x-cloak class="mt-6 rounded-xl bg-slate-50 p-5">
+                    <p class="text-lg font-black text-slate-950" x-text="result?.retail?.total"></p><p class="mt-2 text-xs text-slate-500">تمدید یک‌ساله با قیمت فعلی: <span x-text="result?.retail?.renewal"></span> · شامل مالیات اعلام‌شده</p>
+                    <form method="POST" action="{{ route('customer.domains.orders.store', [], false) }}" class="mt-4 flex flex-wrap items-center gap-3">@csrf<input type="hidden" name="domain" :value="result?.domain"><label class="text-xs font-bold" for="search-period">دوره ثبت</label><select name="period" id="search-period" class="domain-input w-auto"><template x-for="period in (result?.retail?.periods || [1])" :key="period"><option :value="period" x-text="period + ' سال'"></option></template></select><button class="domain-primary">انتخاب و ادامه ←</button></form>
+                    <p class="domain-help mt-3">قیمت بالا برای یک سال است. قیمت دوره انتخابی در مرحله بررسی سفارش نمایش داده می‌شود.</p>
+                </div>
+
                 <p x-show="result?.available && result?.premium" class="mt-3 text-xs leading-6 text-amber-800">این دامنه ویژه (Premium) است و قیمت‌گذاری متفاوتی دارد.</p>
                 <p class="mt-3 text-xs leading-6 text-slate-400">این نتیجه دامنه را رزرو نمی‌کند؛ وضعیت آزاد بودن ممکن است تغییر کند.</p>
                 <div class="mt-6 border-t border-slate-100 pt-5">
@@ -66,7 +74,9 @@
                 <section class="rounded-2xl border border-slate-200 p-6">
                     <h2 dir="ltr" class="break-all text-xl font-black">{{ $result['domain'] }}</h2>
                     <p class="mt-3 font-bold">{{ $result['available'] ? 'آزاد است' : 'آزاد نیست' }}</p>
-                    <p class="mt-3 text-sm text-slate-500">خرید و مدیریت دامنه به‌زودی فعال می‌شود. این بررسی دامنه را رزرو نمی‌کند.</p>
+                    @if(!empty($result['retail']))<p class="mt-4 font-bold">{{ $result['retail']['total'] }}</p><p class="domain-help">تمدید یک‌ساله: {{ $result['retail']['renewal'] }}</p><form class="mt-4" method="POST" action="{{ route('customer.domains.orders.store', [], false) }}">@csrf<input type="hidden" name="domain" value="{{ $result['domain'] }}"><input type="hidden" name="period" value="1"><button class="domain-primary">انتخاب و ادامه</button></form>@endif
+
+                    <p class="mt-3 text-sm text-slate-500">این بررسی دامنه را رزرو نمی‌کند. قیمت و شرایط در زمان سفارش بررسی می‌شود.</p>
                 </section>
             @endif
         </noscript>
@@ -75,9 +85,12 @@
             <h2 class="text-sm font-black text-slate-800">از یک نام تا خانه آنلاین شما</h2>
             <ol class="mt-4 grid gap-4 text-sm sm:grid-cols-3">
                 <li><span class="font-black text-[#0069FF]">۱. پیدا کردن نام</span><p class="mt-1 text-xs leading-6 text-slate-500">آزاد بودن دامنه دلخواهتان را بررسی کنید.</p></li>
-                <li><span class="font-bold text-slate-400">۲. ثبت دامنه · به‌زودی</span><p class="mt-1 text-xs leading-6 text-slate-500">خرید دامنه در کنار سرویس‌های ابری شما.</p></li>
-                <li><span class="font-bold text-slate-400">۳. مدیریت · به‌زودی</span><p class="mt-1 text-xs leading-6 text-slate-500">تمدید و تنظیمات دامنه در همین بخش.</p></li>
+                <li><span class="font-bold text-slate-400">۲. ثبت دامنه</span><p class="mt-1 text-xs leading-6 text-slate-500">خرید دامنه در کنار سرویس‌های ابری شما.</p></li>
+                <li><span class="font-bold text-slate-400">۳. مدیریت</span><p class="mt-1 text-xs leading-6 text-slate-500">تمدید و تنظیمات دامنه در همین بخش.</p></li>
             </ol>
         </aside>
+        @endif
+        <section id="my-domains" class="domain-card scroll-mt-6"><h2 class="domain-heading">دامنه‌های من</h2><div class="mt-4 divide-y divide-slate-100">@forelse($ownedDomains as $ownedDomain)<a href="{{ route('customer.domains.show', $ownedDomain, false) }}" class="flex flex-wrap items-center justify-between gap-3 py-4 text-sm"><span dir="ltr" class="break-all font-black">{{ $ownedDomain->name }}</span><span class="text-slate-500">انقضا: {{ \App\Support\Jalali::format($ownedDomain->expires_at, 'Y/m/d') }}</span><span class="font-bold text-blue-600">مدیریت ←</span></a>@empty<p class="py-5 text-sm leading-7 text-slate-500">هنوز دامنه‌ای در حساب شما ثبت نشده است.{{ $canSearch ? ' با جستجوی نام دلخواهتان شروع کنید.' : '' }}</p>@endforelse</div></section>
+        <section id="domain-orders" class="domain-card scroll-mt-6"><h2 class="domain-heading">سفارش‌های اخیر</h2><p class="domain-help mt-2">از همین‌جا خرید ناتمام را ادامه دهید یا نتیجه ثبت و تمدید را ببینید.</p><div class="mt-4 divide-y divide-slate-100">@forelse($domainOrders as $domainOrder)<a href="{{ route('customer.domains.orders.show', $domainOrder, false) }}" class="flex flex-wrap items-center justify-between gap-3 py-4 text-sm"><span dir="ltr" class="break-all font-bold">{{ $domainOrder->domain }}</span><span class="text-slate-500">{{ $domainOrder->label() }}</span><span class="font-bold text-blue-600">مشاهده ←</span></a>@empty<p class="py-5 text-sm text-slate-500">هنوز سفارشی ثبت نکرده‌اید.</p>@endforelse</div></section>
     </div>
 @endsection

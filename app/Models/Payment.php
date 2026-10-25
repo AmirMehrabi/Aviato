@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 #[Fillable([
     'customer_id',
     'wallet_id',
+    'domain_order_id',
     'promotion_code_id',
     'promotion_redeemer_customer_id',
     'promotion_project_id',

@@ -95,7 +95,7 @@
         ];
 
         if ($customer->canManageDomains()) {
-            $searchBaseItems[] = ['title' => 'دامنه‌ها', 'description' => 'جستجو و بررسی آزاد بودن دامنه', 'url' => route('customer.domains.index', [], false), 'type' => 'صفحه'];
+            $searchBaseItems[] = ['title' => 'دامنه‌ها', 'description' => 'جستجو، ثبت، تمدید و مدیریت دامنه‌ها', 'url' => route('customer.domains.index', [], false), 'type' => 'صفحه'];
         }
 
         if ($canViewBilling) {
@@ -615,11 +615,13 @@
                                 {{-- <p class="text-xs font-black text-[#0069FF]">{{ $customer->name }}</p> --}}
                                 <div class="flex flex-wrap items-center gap-2">
                                     <h1 class="truncate text-2xl font-black tracking-normal text-slate-950">@yield('header_title', 'پنل مشتریان')</h1>
+                                    @if(($activeNav ?? '') === 'domains')<span class="rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">حساب شخصی: {{ $customer->name }}</span>@else
                                     <a href="{{ route('customer.projects.show', $activeProject, false) }}" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-black text-slate-600 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF]">
                                         <span class="size-2 rounded-full bg-[#00A67E]"></span>
                                         <span class="truncate">فضای کاری: {{ $activeProject->name }}</span>
                                         <span class="hidden text-slate-400 sm:inline">{{ ['owner' => 'مالک', 'admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'][$activeMembership?->role ?? 'member'] ?? 'عضو' }}</span>
                                     </a>
+                                    @endif
                                 </div>
                                 <p class="mt-1 max-w-3xl text-sm leading-7 text-slate-500">@yield('header_subtitle', 'نمای کامل کیف پول، کارکرد و صورتحساب ها')</p>
                             </div>

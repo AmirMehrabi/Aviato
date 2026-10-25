@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AppSetting;
 use App\Models\Customer;
+use App\Models\DomainOrder;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -125,7 +126,7 @@ class WalletService
             $wallet = Wallet::query()->where('customer_id', $customer->id)->lockForUpdate()->first();
             $wallet ??= Wallet::create(['customer_id' => $customer->id, 'balance' => 0]);
 
-            if ($wallet->is_locked) {
+            if ($wallet->is_locked && ! ($type === WalletTransaction::TYPE_REFUND && $reference instanceof DomainOrder)) {
                 throw ValidationException::withMessages(['wallet' => $wallet->lock_reason ?: 'Wallet is locked.']);
             }
 

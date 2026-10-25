@@ -20,7 +20,8 @@ class PaymentReceiptController extends Controller
     public function show(Request $request, Payment $payment): View
     {
         $customer = $request->user('customer');
-        $activeProject = $this->projects->activeProject($request, $customer);
+        abort_if($payment->domain_order_id && $payment->customer_id !== $customer->id, 404);
+        $activeProject = $payment->domain_order_id ? $customer->ensureDefaultProject() : $this->projects->activeProject($request, $customer);
 
         abort_unless($this->projects->canViewBilling($activeProject, $customer), 404);
         abort_unless(

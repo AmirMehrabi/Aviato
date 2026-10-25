@@ -35,7 +35,7 @@ class DomainSettingsController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $data = $request->validate(['enabled' => ['required', 'boolean'], 'domain_reseller_token' => ['nullable', 'string', 'max:10000']]);
+        $data = $request->validate(['enabled' => ['required', 'boolean'], 'domain_reseller_token' => ['nullable', 'string', 'max:10000'], 'sales_enabled' => ['sometimes', 'boolean'], 'default_nameservers' => ['nullable', 'string', 'max:1500']]);
         $token = preg_replace('/^Bearer\s+/i', '', trim($data['domain_reseller_token'] ?? ''));
         if ($token !== '' && preg_match('/\s/', $token)) {
             return back()->withErrors(['domain_reseller_token' => 'توکن معتبر وارد کنید.']);
@@ -44,7 +44,17 @@ class DomainSettingsController extends Controller
             return back()->withErrors(['domain_reseller_token' => 'برای فعال‌سازی بخش دامنه، توکن سرویس را وارد کنید.']);
         }
 
-        DB::transaction(function () use ($data, $token): void {
+        $nameservers = preg_split('/[\s,]+/', strtolower(trim($data['default_nameservers'] ?? '')), -1, PREG_SPLIT_NO_EMPTY);
+        if ($nameservers && (count($nameservers) < 2 || count($nameservers) > 6 || count(array_unique($nameservers)) !== count($nameservers) || collect($nameservers)->contains(fn ($ns) => ! preg_match('/\A(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\z/', $ns)))) {
+            return back()->withErrors(['default_nameservers' => 'بین دو تا شش نیم‌سرور معتبر و متفاوت وارد کنید.']);
+        }
+        DB::transaction(function () use ($data, $token, $nameservers): void {
+            if (array_key_exists('sales_enabled', $data)) {
+                AppSetting::setValue('domains.sales_enabled', (bool) $data['sales_enabled'], 'boolean', 'domains');
+            }
+            if (array_key_exists('default_nameservers', $data)) {
+                AppSetting::setValue('domains.default_nameservers', $nameservers, 'json', 'domains');
+            }
             if ($token !== '') {
                 AppSetting::setValue(AppSetting::DOMAIN_RESELLER_TOKEN, $token, 'string', 'domains');
             }
@@ -59,6 +69,10 @@ class DomainSettingsController extends Controller
         $data = $request->validate(['enabled' => ['required', 'boolean']]);
         // This flag is intentionally excluded from public/customer mass assignment.
         $customer->forceFill(['domain_management_enabled' => (bool) $data['enabled']])->save();
+
+        if ($data['enabled'] && ! AppSetting::domainManagementEnabled()) {
+            return back()->with('status', 'مشتری انتخاب شد. برای نمایش منوی دامنه، کلید «فعال‌سازی بخش دامنه برای مشتریان منتخب» را هم روشن کنید.');
+        }
 
         return back()->with('status', $data['enabled'] ? 'دسترسی دامنه برای مشتری فعال شد.' : 'دسترسی دامنه برای مشتری لغو شد.');
     }

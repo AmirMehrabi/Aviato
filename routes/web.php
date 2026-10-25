@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DomainCommerceController;
 use App\Http\Controllers\Admin\DomainSettingsController;
 use App\Http\Controllers\Admin\HetznerAccountController;
 use App\Http\Controllers\Admin\IncidentController as AdminIncidentController;
@@ -45,9 +46,11 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Customer\ApiTokenController;
 use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
+use App\Http\Controllers\Customer\DomainCheckoutController;
 use App\Http\Controllers\Customer\DomainController;
 use App\Http\Controllers\Customer\GiftCardController;
 use App\Http\Controllers\Customer\InvoiceController;
+use App\Http\Controllers\Customer\ManagedDomainController;
 use App\Http\Controllers\Customer\MonitoringController;
 use App\Http\Controllers\Customer\NetworkUsageController;
 use App\Http\Controllers\Customer\NotificationController as CustomerNotificationController;
@@ -176,6 +179,17 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::get('settings/domains', [DomainSettingsController::class, 'edit'])->middleware('no-store')->name('admin.settings.domains.edit');
         Route::patch('settings/domains', [DomainSettingsController::class, 'update'])->name('admin.settings.domains.update');
         Route::patch('settings/domains/customers/{customer}', [DomainSettingsController::class, 'updateAccess'])->name('admin.settings.domains.access');
+        Route::prefix('settings/domains')->name('admin.settings.domains.')->middleware('no-store')->group(function (): void {
+            Route::get('commerce', [DomainCommerceController::class, 'index'])->name('commerce');
+            Route::post('prices/sync', [DomainCommerceController::class, 'sync'])->middleware('throttle:3,1')->name('prices.sync');
+            Route::patch('products/{product}', [DomainCommerceController::class, 'product'])->name('products.update');
+            Route::post('orders/{order:uuid}/reconcile', [DomainCommerceController::class, 'reconcile'])->name('orders.reconcile');
+            Route::post('operations/{operation}/reconcile', [DomainCommerceController::class, 'reconcileNameservers'])->name('operations.reconcile');
+            Route::post('orders/{order:uuid}/recheck', [DomainCommerceController::class, 'recheck'])->name('orders.recheck');
+            Route::post('orders/{order:uuid}/not-submitted', [DomainCommerceController::class, 'resolveNotSubmitted'])->middleware('admin.ability:wallet.manage')->name('orders.not-submitted');
+            Route::get('accounting/export', [DomainCommerceController::class, 'export'])->middleware('admin.ability:billing.export')->name('accounting.export');
+        });
+
         Route::get('settings/notifications', [NotificationTemplateController::class, 'index'])->name('admin.settings.notifications.index');
         Route::patch('settings/notifications/templates', [NotificationTemplateController::class, 'update'])->name('admin.settings.notifications.update');
         Route::patch('settings/notifications/branding', [NotificationTemplateController::class, 'branding'])->name('admin.settings.notifications.branding');
@@ -437,6 +451,18 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
     Route::middleware('auth:customer')->group(function () use ($customerHome) {
         Route::middleware([EnsureDomainManagementAccess::class, 'no-store'])->group(function (): void {
             Route::get('domains', [DomainController::class, 'index'])->name('customer.domains.index');
+            Route::post('domains/orders', [DomainCheckoutController::class, 'store'])->middleware('throttle:15,1')->name('customer.domains.orders.store');
+            Route::get('domains/orders/{order:uuid}', [DomainCheckoutController::class, 'show'])->name('customer.domains.orders.show');
+            Route::patch('domains/orders/{order:uuid}', [DomainCheckoutController::class, 'save'])->name('customer.domains.orders.save');
+            Route::post('domains/orders/{order:uuid}/pay', [DomainCheckoutController::class, 'pay'])->middleware('throttle:10,1')->name('customer.domains.orders.pay');
+            Route::post('domains/orders/{order:uuid}/refresh', [DomainCheckoutController::class, 'refresh'])->name('customer.domains.orders.refresh');
+            Route::post('domains/orders/{order:uuid}/cancel', [DomainCheckoutController::class, 'cancel'])->name('customer.domains.orders.cancel');
+            Route::get('domains/orders/{order:uuid}/invoice', [DomainCheckoutController::class, 'invoice'])->name('customer.domains.orders.invoice');
+            Route::get('domains/{domain:uuid}', [ManagedDomainController::class, 'show'])->name('customer.domains.show');
+            Route::patch('domains/{domain:uuid}/nameservers', [ManagedDomainController::class, 'nameservers'])->middleware('throttle:5,1')->name('customer.domains.nameservers');
+            Route::patch('domains/{domain:uuid}/auto-renew', [ManagedDomainController::class, 'autoRenew'])->name('customer.domains.auto-renew');
+            Route::post('domains/{domain:uuid}/renew', [DomainCheckoutController::class, 'renew'])->name('customer.domains.renew');
+
             Route::post('domains/check', [DomainController::class, 'check'])->middleware('throttle:15,1')->name('customer.domains.check');
         });
         Route::get($customerHome, DashboardController::class)->name('dashboard');

@@ -14,19 +14,22 @@
 
     <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <h2 class="text-lg font-black">اتصال سرویس دامنه</h2>
-        <p class="mt-2 text-sm leading-7 text-slate-500">در این مرحله فقط بررسی آزاد بودن دامنه فعال است. خرید، انتقال و تمدید انجام نمی‌شود.</p>
+        <p class="mt-2 text-sm leading-7 text-slate-500">فروش دامنه پس از تنظیم قیمت و روشن کردن کلید فروش برای مشتریان منتخب فعال می‌شود. دامنه‌های خریداری‌شده همچنان قابل مدیریت و تمدید هستند.</p>
         <form action="{{ route('admin.settings.domains.update') }}" method="POST" class="mt-5 space-y-5">
             @csrf @method('PATCH')
             <input type="hidden" name="enabled" value="0">
             <label class="flex items-start gap-3 rounded-xl bg-slate-50 p-4">
                 <input type="checkbox" name="enabled" value="1" @checked(old('enabled', $enabled)) class="mt-1 size-4 rounded border-slate-300 accent-blue-600">
-                <span><span class="block text-sm font-black">فعال‌سازی بخش دامنه برای مشتریان منتخب</span><span class="mt-1 block text-xs leading-6 text-slate-500">خاموش کردن این گزینه، دسترسی همه را موقتاً قطع می‌کند و فهرست انتخاب‌ها را نگه می‌دارد.</span></span>
+                <span><span class="block text-sm font-black">فعال‌سازی بخش دامنه برای مشتریان منتخب</span><span class="mt-1 block text-xs leading-6 text-slate-500">خاموش کردن این گزینه، جستجو و خرید تازه را متوقف می‌کند. مدیریت و تمدید دامنه‌های قبلی حفظ می‌شود.</span></span>
             </label>
             <div class="max-w-2xl">
                 <label for="domain-reseller-token" class="block text-sm font-bold text-slate-700">توکن Reseller World</label>
                 <input id="domain-reseller-token" type="password" name="domain_reseller_token" value="" autocomplete="new-password" spellcheck="false" dir="ltr" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" aria-describedby="domain-token-help" placeholder="{{ $tokenConfigured ? '•••••••• — configured' : 'Bearer token' }}">
                 <p id="domain-token-help" class="mt-2 text-xs leading-6 text-slate-500">{{ $tokenConfigured ? 'توکن ذخیره شده است. برای حفظ توکن فعلی، این فیلد را خالی بگذارید.' : 'توکن اتصال را وارد کنید.' }} توکن به‌صورت رمزنگاری‌شده در پایگاه داده نگهداری می‌شود.</p>
             </div>
+            <input type="hidden" name="sales_enabled" value="0"><label class="flex items-start gap-3 rounded-xl bg-slate-50 p-4"><input type="checkbox" name="sales_enabled" value="1" @checked(\App\Models\AppSetting::getValue('domains.sales_enabled', false)) class="mt-1 accent-blue-600"><span class="text-sm font-bold">فعال‌سازی خرید دامنه با قیمت‌های تأییدشده <span class="mt-1 block text-xs font-normal text-slate-500">فقط پسوندهایی که در کاتالوگ فعال کرده‌اید فروخته می‌شوند. تمدید دامنه‌های قبلی مستقل از این گزینه است.</span></span></label>
+            <div><label for="default-ns" class="block text-sm font-bold">نیم‌سرورهای پیش‌فرض (اختیاری، هر کدام در یک خط)</label><textarea id="default-ns" name="default_nameservers" dir="ltr" rows="3" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">{{ implode("\n", \App\Models\AppSetting::getValue('domains.default_nameservers', [])) }}</textarea><p class="mt-2 text-xs text-slate-500">فقط نیم‌سرورهایی را وارد کنید که سرویس DNS آن‌ها واقعاً برای دامنه مشتری آماده است.</p></div>
+            <a href="{{ route('admin.settings.domains.commerce') }}" class="inline-block text-sm font-black text-blue-600">مدیریت قیمت‌ها، سفارش‌ها و گزارش مالی ←</a>
             <button class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white hover:bg-[#0050D0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">ذخیره تنظیمات اتصال</button>
         </form>
     </section>

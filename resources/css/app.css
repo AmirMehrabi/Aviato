@@ -175,3 +175,16 @@
         .ticket-message-internal { max-width: 100%; }
     }
 }
+
+@layer components {
+    .domain-card { @apply rounded-2xl border border-slate-200 bg-white p-5 sm:p-7; }
+    .domain-heading { @apply text-lg font-black text-slate-950; }
+    .domain-label { @apply mb-2 block text-sm font-bold text-slate-700; }
+    .domain-input { @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50; }
+    .domain-help { @apply text-xs leading-7 text-slate-500; }
+    .domain-primary { @apply inline-flex min-h-12 items-center justify-center rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white hover:bg-[#0050D0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-wait disabled:opacity-60; }
+    .domain-secondary { @apply inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600; }
+    .domain-notice { @apply rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-7 text-blue-900; }
+    .domain-error { @apply rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-7 text-red-800; }
+    .domain-badge { @apply rounded-full bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700; }
+}

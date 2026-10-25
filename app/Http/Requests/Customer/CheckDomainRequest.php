@@ -8,7 +8,7 @@ class CheckDomainRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user('customer')?->canManageDomains() ?? false;
+        return $this->user('customer')?->canPurchaseDomains() ?? false;
     }
 
     protected function prepareForValidation(): void

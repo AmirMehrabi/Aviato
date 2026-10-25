@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\CheckDomainRequest;
+use App\Models\AppSetting;
+use App\Models\DomainOrder;
+use App\Models\ManagedDomain;
 use App\Services\Domains\DomainAvailabilityService;
+use App\Services\Domains\DomainPricingService;
 use App\Services\Domains\UnsupportedDomainExtension;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -35,6 +39,10 @@ class DomainController extends Controller
             return $this->page($request, null, $message);
         }
 
+        if ($result['available'] && ! $result['premium'] && AppSetting::domainSalesEnabled()) {
+            $result['retail'] = app(DomainPricingService::class)->customerPrice($result['domain']);
+        }
+
         return $request->expectsJson()
             ? response()->json(['data' => $result])
             : $this->page($request, $result);
@@ -42,6 +50,6 @@ class DomainController extends Controller
 
     private function page(Request $request, ?array $result = null, string $lookupError = ''): View
     {
-        return view('customer.domains.index', ['customer' => $request->user('customer'), 'wallets' => app(WalletService::class), 'result' => $result, 'lookupError' => $lookupError]);
+        return view('customer.domains.index', ['customer' => $request->user('customer'), 'wallets' => app(WalletService::class), 'result' => $result, 'lookupError' => $lookupError, 'ownedDomains' => ManagedDomain::where('customer_id', $request->user('customer')->id)->orderBy('expires_at')->get(), 'domainOrders' => DomainOrder::where('customer_id', $request->user('customer')->id)->latest()->limit(15)->get(), 'canSearch' => $request->user('customer')->canPurchaseDomains(), 'salesEnabled' => AppSetting::domainSalesEnabled()]);
     }
 }

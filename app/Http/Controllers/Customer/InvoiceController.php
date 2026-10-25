@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\DomainOrder;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\Payments\PaymentGatewayManager;
@@ -22,17 +23,20 @@ class InvoiceController extends Controller
     public function index(Request $request): View
     {
         $customer = $request->user('customer');
+        if ($request->query('tab') === 'domains') {
+            return view('customer.domains.invoices', ['customer' => $customer, 'wallets' => $this->wallets, 'invoices' => Invoice::where('customer_id', $customer->id)->where('kind', 'domain')->latest('issued_at')->paginate(12)->withQueryString()]);
+        }
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canViewBilling($activeProject, $customer), 404);
         $billingCustomer = $activeProject->owner;
         $wallet = $this->wallets->walletFor($billingCustomer);
         $activeTab = $request->query('tab') === 'receipts' ? 'receipts' : 'usage';
-        $invoiceQuery = $billingCustomer->invoices()
+        $invoiceQuery = $billingCustomer->invoices()->where('kind', 'usage')
             ->whereHas('items', function ($query) use ($activeProject): void {
                 $query->where('meta->project_id', $activeProject->id)
                     ->orWhereNull('meta->project_id');
             });
-        $receiptQuery = $billingCustomer->payments()
+        $receiptQuery = $billingCustomer->payments()->when($customer->id !== $billingCustomer->id, fn ($query) => $query->whereNull('domain_order_id'))
             ->where('type', Payment::TYPE_TOP_UP)
             ->where('status', Payment::STATUS_SUCCESSFUL)
             ->reorder('paid_at', 'desc');
@@ -64,6 +68,12 @@ class InvoiceController extends Controller
     public function show(Request $request, Invoice $invoice): View
     {
         $customer = $request->user('customer');
+        if ($invoice->kind === 'domain') {
+            abort_unless($invoice->customer_id === $customer->id, 404);
+            $order = DomainOrder::findOrFail($invoice->domain_order_id);
+
+            return view('customer.domains.invoice', ['customer' => $customer, 'order' => $order, 'invoice' => $invoice->load('items'), 'wallets' => $this->wallets]);
+        }
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canViewBilling($activeProject, $customer), 404);
         abort_unless($invoice->customer_id === $activeProject->owner_customer_id, 404);

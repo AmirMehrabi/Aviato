@@ -64,7 +64,7 @@ class InvoiceService
 
     public function generateForCustomer(Customer $customer, CarbonInterface $periodStart, CarbonInterface $periodEnd): ?Invoice
     {
-        $existing = Invoice::query()
+        $existing = Invoice::query()->where('kind', 'usage')
             ->where('customer_id', $customer->id)
             ->where('period_start', $periodStart)
             ->where('period_end', $periodEnd)

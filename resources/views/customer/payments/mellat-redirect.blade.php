@@ -5,11 +5,14 @@
 @section('header_subtitle', 'در حال اتصال امن به درگاه پرداخت ملت')
 
 @php
-    $activeNav = 'wallet';
+    $activeNav = $payment->domain_order_id ? 'domains' : 'wallet';
     $payload = $payment->gateway_payload ?? [];
 @endphp
 
+@if($payment->domain_order_id) @section('primary_actions_in_content', '1') @endif
+
 @section('content')
+    @if($payment->domain_order_id)<p class="mx-auto mb-5 max-w-xl rounded-xl bg-blue-50 p-4 text-sm leading-7 text-blue-900">{{ $payment->description }}. پس از پرداخت به سفارش دامنه برمی‌گردید؛ انجام ثبت یا تمدید در همان صفحه تأیید می‌شود.</p>@endif
     <section class="mx-auto max-w-3xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60 md:p-8">
         <div class="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
             <div>
@@ -26,7 +29,7 @@
         <div class="mt-8 grid gap-4 md:grid-cols-2">
             <div class="rounded-2xl border border-slate-200 p-5">
                 <p class="text-xs font-black text-slate-500">مبلغ</p>
-                <p class="mt-3 text-xl font-black text-slate-950">{{ $wallets->format($payment->amount) }}</p>
+                <p class="mt-3 text-xl font-black text-slate-950">{{ $wallets->format($payment->amount, $payment->currency) }}</p>
             </div>
             <div class="rounded-2xl border border-slate-200 p-5">
                 <p class="text-xs font-black text-slate-500">درگاه</p>

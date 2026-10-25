@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\AppSetting;
 use App\Models\Customer;
+use App\Models\DomainOrder;
 use App\Models\Payment;
 use App\Models\Project;
+use App\Services\Domains\DomainOrderService;
 use App\Services\Payments\PaymentGatewayException;
 use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Http\Request;
@@ -21,7 +23,7 @@ class PaymentService
         private readonly PromotionService $promotions,
     ) {}
 
-    public function createTopUp(Customer $customer, int $amount, ?string $description = null, ?string $provider = null, ?string $promotionCode = null, ?Customer $redeemer = null, ?Project $project = null, ?Request $request = null): Payment
+    public function createTopUp(Customer $customer, int $amount, ?string $description = null, ?string $provider = null, ?string $promotionCode = null, ?Customer $redeemer = null, ?Project $project = null, ?Request $request = null, ?DomainOrder $domainOrder = null): Payment
     {
         if ($amount <= 0) {
             throw ValidationException::withMessages(['amount' => 'Amount must be greater than zero.']);
@@ -40,11 +42,12 @@ class PaymentService
         $payment = Payment::create([
             'customer_id' => $customer->id,
             'wallet_id' => $wallet->id,
+            'domain_order_id' => $domainOrder?->id,
             'provider' => $provider,
             'type' => Payment::TYPE_TOP_UP,
             'status' => Payment::STATUS_PENDING,
-            'amount' => $amount,
-            'currency' => AppSetting::currency(),
+            'amount' => $domainOrder?->currency === 'IRT' ? $amount * 10 : $amount,
+            'currency' => $domainOrder ? 'IRR' : AppSetting::currency(),
             'authority' => $this->newAuthority(),
             'description' => $description ?: 'شارژ کیف پول مشتری',
         ]);
@@ -74,6 +77,10 @@ class PaymentService
             ]);
 
             throw $exception;
+        }
+
+        if ($domainOrder) {
+            $payload['_aviato_domain_return_host'] = request()->getHost();
         }
 
         $payment->forceFill([
@@ -108,9 +115,14 @@ class PaymentService
                 'failed_at' => null,
             ])->save();
 
+            if ($payment->domain_order_id) {
+                DomainOrder::lockForUpdate()->findOrFail($payment->domain_order_id);
+            }
+            $creditAmount = $payment->domain_order_id && AppSetting::currency() === 'IRT'
+                ? intdiv($payment->amount, 10) : $payment->amount;
             $this->wallets->credit(
                 $payment->customer,
-                $payment->amount,
+                $creditAmount,
                 'شارژ کیف پول از طریق '.$gateway->label(),
                 reference: $payment,
                 metadata: [
@@ -123,6 +135,7 @@ class PaymentService
             );
 
             $this->promotions->completePaymentBonus($payment);
+            app(DomainOrderService::class)->paymentCompleted($payment);
 
             return $payment->refresh();
         });

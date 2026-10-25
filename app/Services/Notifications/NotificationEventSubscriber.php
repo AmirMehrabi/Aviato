@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Models\Customer;
+use App\Models\DomainOrder;
 use App\Models\Payment;
 use App\Models\VirtualMachine;
 use App\Notifications\TemplatedNotification;
@@ -44,7 +45,11 @@ class NotificationEventSubscriber
             if ($payment->wasChanged('status') && $payment->status === Payment::STATUS_SUCCESSFUL) {
                 DB::afterCommit(function () use ($payment): void {
                     if ($payment->customer) {
-                        $this->notify($payment->customer, 'wallet_charged', ['amount' => number_format($payment->amount).' '.$payment->currency, 'receipt' => $payment->receiptNumber()], route('customer.wallet.show'));
+                        $event = $payment->domain_order_id ? 'payment_received' : 'wallet_charged';
+                        $url = $payment->domain_order_id
+                            ? route('customer.domains.orders.show', DomainOrder::findOrFail($payment->domain_order_id))
+                            : route('customer.wallet.show');
+                        $this->notify($payment->customer, $event, ['amount' => number_format($payment->amount).' '.$payment->currency, 'receipt' => $payment->receiptNumber()], $url);
                     }
                 });
             }

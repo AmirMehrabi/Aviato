@@ -15,6 +15,13 @@ class AppSetting extends Model
 
     public const DOMAIN_MANAGEMENT_ENABLED = 'domains.enabled';
 
+    public const DOMAIN_SALES_ENABLED = 'domains.sales_enabled';
+
+    public static function domainSalesEnabled(): bool
+    {
+        return filter_var(static::getValue(self::DOMAIN_SALES_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
     public static function domainManagementEnabled(): bool
     {
         return filter_var(static::getValue(self::DOMAIN_MANAGEMENT_ENABLED, false), FILTER_VALIDATE_BOOL);
