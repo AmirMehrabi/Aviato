@@ -1117,7 +1117,7 @@ class CustomerWalletBillingTest extends TestCase
 
     public function test_monthly_invoice_uses_accrual_service_date_and_purges_invoiced_detail(): void
     {
-        CarbonImmutable::setTestNow('2026-06-30 23:00:00');
+        CarbonImmutable::setTestNow('2026-07-22 23:00:00');
         $customer = Customer::factory()->create();
         $bundle = VmBundle::create([
             'name' => 'Month End',
@@ -1146,11 +1146,11 @@ class CustomerWalletBillingTest extends TestCase
 
         app(UsageBillingService::class)->accrueVm($vm);
 
-        CarbonImmutable::setTestNow('2026-07-01 00:05:00');
-        app(UsageBillingService::class)->settleDate('2026-06-30');
+        CarbonImmutable::setTestNow('2026-07-23 00:05:00');
+        app(UsageBillingService::class)->settleDate('2026-07-22');
         $this->assertDatabaseHas('usage_accruals', [
             'customer_id' => $customer->id,
-            'service_date' => '2026-06-30 00:00:00',
+            'service_date' => '2026-07-22 00:00:00',
             'amount' => 1000,
         ]);
         $this->assertDatabaseHas('wallet_transactions', [
@@ -1158,10 +1158,10 @@ class CustomerWalletBillingTest extends TestCase
             'amount' => -1000,
         ]);
 
-        CarbonImmutable::setTestNow('2026-07-03 10:00:00');
+        CarbonImmutable::setTestNow('2026-07-25 10:00:00');
         [$periodStart, $periodEnd] = app(InvoiceService::class)->previousMonthPeriod();
-        $this->assertSame('2026-06-01', $periodStart->toDateString());
-        $this->assertSame('2026-06-30', $periodEnd->toDateString());
+        $this->assertSame('2026-06-22', $periodStart->toDateString());
+        $this->assertSame('2026-07-22', $periodEnd->toDateString());
         $this->assertNotNull(DB::table('usage_accruals')->value('settled_at'));
         $invoice = app(InvoiceService::class)->generateForCustomer($customer, $periodStart, $periodEnd);
 
@@ -1305,7 +1305,7 @@ class CustomerWalletBillingTest extends TestCase
         $invoice = Invoice::query()->where('customer_id', $customer->id)->first();
 
         $this->assertNotNull($invoice);
-        $this->assertSame('INV-'.$periodStart->format('Ym').'-'.str_pad((string) $customer->id, 4, '0', STR_PAD_LEFT), $invoice->number);
+        $this->assertSame('INV-'.Jalali::format($periodStart, 'Ym').'-'.str_pad((string) $customer->id, 4, '0', STR_PAD_LEFT), $invoice->number);
         $this->assertSame(120000, $invoice->total_amount);
         $this->assertCount(1, $invoice->items);
         $this->assertSame('vm-invoice', $invoice->items->first()->label);

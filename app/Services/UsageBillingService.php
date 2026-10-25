@@ -288,10 +288,6 @@ class UsageBillingService
                     ]);
                     $settlement = UsageSettlement::query()->whereKey($settlement->id)->lockForUpdate()->firstOrFail();
 
-                    if ($settlement->settled_at) {
-                        return $settlement;
-                    }
-
                     $accruals = UsageAccrual::query()
                         ->where('customer_id', $scope->customer_id)
                         ->where('scope_key', $scope->scope_key)
@@ -299,6 +295,21 @@ class UsageBillingService
                         ->whereNull('settled_at')
                         ->lockForUpdate()
                         ->get();
+                    if ($accruals->isEmpty()) {
+                        return $settlement;
+                    }
+
+                    if ($settlement->settled_at) {
+                        // Keep the original daily charge immutable when metering arrives late.
+                        // The original settlement lock serializes these supplementary batches.
+                        $settlement = UsageSettlement::query()->create([
+                            'customer_id' => $scope->customer_id,
+                            'scope_key' => $scope->scope_key.':late:'.$accruals->first()->id,
+                            'service_date' => $serviceDate,
+                            'project_id' => $scope->project_id,
+                        ]);
+                    }
+
                     $amount = (int) $accruals->sum('amount');
                     $settledAt = now();
 

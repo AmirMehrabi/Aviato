@@ -6,28 +6,49 @@ use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\NetworkUsageBucket;
 use App\Models\UsageAccrual;
 use App\Models\WalletTransaction;
+use App\Support\Jalali;
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
+use Morilog\Jalali\Jalalian;
 
 class InvoiceService
 {
     public function previousMonthPeriod(?CarbonInterface $now = null): array
     {
-        $now = CarbonImmutable::instance(($now ?? now())->toImmutable());
-        $start = $now->startOfMonth()->subMonth();
-        $end = $start->endOfMonth();
+        $local = Carbon::instance($now ?? now())->setTimezone('Asia/Tehran');
+        $month = Jalalian::fromCarbon($local)->getFirstDayOfMonth();
+        $start = $month->subMonths()->toCarbon()->startOfDay()->toImmutable();
+        $end = $month->toCarbon()->startOfDay()->toImmutable()->subMicrosecond();
 
         return [$start, $end];
+    }
+
+    public function isFirstDayOfMonth(?CarbonInterface $now = null): bool
+    {
+        $local = Carbon::instance($now ?? now())->setTimezone('Asia/Tehran');
+
+        return Jalalian::fromCarbon($local)->getDay() === 1;
     }
 
     public function generateMonthlyInvoices(?CarbonInterface $forMonth = null): Collection
     {
         [$periodStart, $periodEnd] = $this->previousMonthPeriod($forMonth);
+        // Network buckets can finalize after the regular 00:05 daily settlement.
+        $billing = app(UsageBillingService::class);
+        UsageAccrual::query()
+            ->whereNull('settled_at')
+            ->whereDate('service_date', '>=', $periodStart->toDateString())
+            ->whereDate('service_date', '<=', $periodEnd->toDateString())
+            ->select('service_date')->distinct()->orderBy('service_date')->get()
+            ->each(fn (UsageAccrual $accrual) => $billing->settleDate($accrual->service_date));
+
         $invoices = new Collection;
 
         Customer::query()->orderBy('id')->chunk(100, function ($customers) use ($invoices, $periodStart, $periodEnd): void {
@@ -67,12 +88,23 @@ class InvoiceService
             ->filter(fn (WalletTransaction $transaction): bool => $transaction->isUsageCharge())
             ->values();
 
-        if ($accruals->isEmpty() && $legacyTransactions->isEmpty()) {
+        $networkUsage = NetworkUsageBucket::query()
+            ->with('virtualMachine')
+            ->where('status', 'final')
+            ->where('completeness', 'complete')
+            ->where('processing_status', 'rated')
+            ->where('interval_start', '>=', $periodStart->toImmutable()->utc())
+            ->where('interval_end', '<=', $periodEnd->toImmutable()->addMicrosecond()->utc())
+            ->whereHas('ratings.period', fn ($query) => $query->where('customer_id', $customer->id))
+            ->get()
+            ->groupBy('virtual_machine_id');
+
+        if ($accruals->isEmpty() && $legacyTransactions->isEmpty() && $networkUsage->isEmpty()) {
             return null;
         }
 
-        return DB::transaction(function () use ($customer, $periodStart, $periodEnd, $accruals, $legacyTransactions): Invoice {
-            $lines = $this->invoiceLines($accruals, $legacyTransactions);
+        return DB::transaction(function () use ($customer, $periodStart, $periodEnd, $accruals, $legacyTransactions, $networkUsage): Invoice {
+            $lines = $this->withNetworkUsage($this->invoiceLines($accruals, $legacyTransactions), $networkUsage);
             $subtotal = (int) $lines->sum('subtotal');
             $taxAmount = (int) $lines->sum('tax_amount');
             $taxRate = AppSetting::taxEnabled() ? AppSetting::taxRatePercentage() : 0;
@@ -95,6 +127,8 @@ class InvoiceService
                     'usage_accrual_ids' => $accruals->pluck('id')->all(),
                     'legacy_transaction_ids' => $legacyTransactions->pluck('id')->all(),
                     'generated_via' => 'billing:generate-monthly-invoices',
+                    'calendar' => 'jalali',
+                    'timezone' => 'Asia/Tehran',
                 ],
             ]);
 
@@ -110,6 +144,35 @@ class InvoiceService
 
             return $invoice->load('items');
         });
+    }
+
+    private function withNetworkUsage(SupportCollection $lines, SupportCollection $networkUsage): SupportCollection
+    {
+        foreach ($networkUsage as $vmId => $buckets) {
+            $index = $lines->search(fn (array $line): bool => $line['category'] === UsageAccrual::CATEGORY_NETWORK
+                && (int) $line['virtual_machine_id'] === (int) $vmId);
+            $line = $index === false ? [
+                'category' => UsageAccrual::CATEGORY_NETWORK,
+                'virtual_machine_id' => $vmId,
+                'resource_name' => $buckets->first()->virtualMachine?->name ?? 'VM',
+                'hours' => 0, 'unit_price' => 0, 'subtotal' => 0,
+                'pre_tax_subtotal' => 0, 'tax_amount' => 0, 'tax_rate' => 0, 'tax_exempt' => true,
+                'period_start' => $buckets->min('interval_start'),
+                'period_end' => $buckets->max('interval_end'),
+                'snapshot' => [], 'segments' => [], 'source_ids' => [],
+            ] : $lines[$index];
+            $line['snapshot']['ingress_bytes'] = (int) $buckets->sum('ingress_bytes');
+            $line['snapshot']['egress_bytes'] = (int) $buckets->sum('egress_bytes');
+            $line['source_ids']['network_usage_bucket'] = $buckets->modelKeys();
+
+            if ($index === false) {
+                $lines->push($line);
+            } else {
+                $lines[$index] = $line;
+            }
+        }
+
+        return $lines;
     }
 
     private function invoiceLines(Collection $accruals, SupportCollection $legacyTransactions): SupportCollection
@@ -191,7 +254,7 @@ class InvoiceService
                 'virtual_machine_id' => $first['virtual_machine_id'],
                 'resource_name' => $first['resource_name'],
                 'hours' => $seconds / 3600,
-                'unit_price' => $seconds > 0 ? $preTaxSubtotal / ($seconds / 3600) : 0,
+                'unit_price' => $first['category'] === UsageAccrual::CATEGORY_NETWORK ? $preTaxSubtotal : ($seconds > 0 ? $preTaxSubtotal / ($seconds / 3600) : 0),
                 'subtotal' => $subtotal,
                 'pre_tax_subtotal' => $preTaxSubtotal,
                 'tax_amount' => $taxAmount,
@@ -216,8 +279,8 @@ class InvoiceService
             UsageAccrual::CATEGORY_NETWORK => ' - Network',
             default => '',
         };
-        $start = $line['period_start'] ? CarbonImmutable::parse($line['period_start'])->format('Y/m/d H:i') : '—';
-        $end = $line['period_end'] ? CarbonImmutable::parse($line['period_end'])->format('Y/m/d H:i') : '—';
+        $start = $line['period_start'] ? Jalali::format(CarbonImmutable::parse($line['period_start'])) : '—';
+        $end = $line['period_end'] ? Jalali::format(CarbonImmutable::parse($line['period_end'])) : '—';
         $description = match ($category) {
             UsageAccrual::CATEGORY_BACKUP => sprintf(
                 'بازه مصرف بکاپ: %s تا %s | فضای بکاپ: %sGB | Storage: %s',
@@ -235,13 +298,11 @@ class InvoiceService
                 $snapshot['storage'] ?? '—',
             ),
             UsageAccrual::CATEGORY_NETWORK => sprintf(
-                'مصرف شبکه از %s تا %s | جهت: %s | سهمیه: %s bytes | نرخ: %s IRR / %s bytes',
+                'مصرف شبکه از %s تا %s | دریافت: %s GiB | ارسال: %s GiB',
                 $start,
                 $end,
-                $snapshot['direction'] ?? '—',
-                number_format((int) ($snapshot['included_bytes'] ?? 0)),
-                number_format((int) ($snapshot['price_per_unit'] ?? 0)),
-                number_format((int) ($snapshot['price_unit_bytes'] ?? 0)),
+                isset($snapshot['ingress_bytes']) ? number_format($snapshot['ingress_bytes'] / 1073741824, 4) : '—',
+                isset($snapshot['egress_bytes']) ? number_format($snapshot['egress_bytes'] / 1073741824, 4) : '—',
             ),
             default => sprintf(
                 'بازه مصرف: %s تا %s | منابع: %s vCPU / %sGB RAM / %sGB Disk / %s IP',
@@ -299,6 +360,6 @@ class InvoiceService
 
     private function numberFor(Customer $customer, CarbonInterface $periodStart): string
     {
-        return sprintf('INV-%s-%04d', $periodStart->format('Ym'), $customer->id);
+        return sprintf('INV-%s-%04d', Jalalian::fromCarbon(Carbon::instance($periodStart)->setTimezone('Asia/Tehran'))->format('Ym'), $customer->id);
     }
 }

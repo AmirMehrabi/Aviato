@@ -456,7 +456,11 @@ Schedule::command('metering-inventory:refresh')->everyMinute()->withoutOverlappi
 Schedule::command('api:prune-logs')->dailyAt('00:30');
 Schedule::command('billing:settle-usage')->dailyAt('00:05');
 Schedule::command('hetzner:sync-catalog')->hourlyAt(5);
-Schedule::command('billing:generate-monthly-invoices')->monthlyOn(1, '00:15');
+Schedule::command('billing:generate-monthly-invoices')
+    ->timezone('Asia/Tehran')
+    ->dailyAt('00:15')
+    ->when(fn (): bool => app(InvoiceService::class)->isFirstDayOfMonth())
+    ->withoutOverlapping();
 Schedule::command('backup:run-due')->everyFifteenMinutes();
 Schedule::command('backup:sync')->hourlyAt(10);
 Schedule::command('virtual-machines:reconcile-pending')->everyTenMinutes();

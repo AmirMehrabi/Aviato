@@ -47,8 +47,8 @@
                     <tr>
                         <th class="px-5 py-4">ماشین مجازی</th>
                         <th class="px-5 py-4">شرح</th>
-                        <th class="px-5 py-4">ساعت کارکرد</th>
-                        <th class="px-5 py-4">نرخ ساعتی</th>
+                        <th class="px-5 py-4">مقدار کارکرد</th>
+                        <th class="px-5 py-4">نرخ واحد</th>
                         <th class="px-5 py-4">جمع</th>
                     </tr>
                 </thead>
@@ -57,7 +57,7 @@
                         <tr>
                             <td class="px-5 py-4 font-black text-slate-950">{{ $item->label }}</td>
                             <td class="px-5 py-4 text-sm leading-7 text-slate-600">{{ \App\Support\PersianDigits::convert($item->description) }}</td>
-                            <td class="px-5 py-4 font-bold text-slate-700">{{ \App\Support\PersianDigits::format((float) $item->quantity, 2) }} ساعت</td>
+                            <td class="px-5 py-4 font-bold text-slate-700">{{ \App\Support\PersianDigits::format((float) $item->quantity, 2) }} {{ $item->unit === 'period' ? 'دوره' : 'ساعت' }}</td>
                             <td class="px-5 py-4 font-bold text-slate-700">{{ \App\Support\PersianDigits::format((float) $item->unit_price, 2) }}</td>
                             <td class="px-5 py-4 font-black text-slate-950">{{ $wallets->format($item->subtotal) }}</td>
                         </tr>
