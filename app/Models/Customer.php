@@ -196,6 +196,11 @@ class Customer extends Authenticatable
         return $this->status === self::STATUS_SUSPENDED;
     }
 
+    public function canManageDomains(): bool
+    {
+        return (bool) $this->domain_management_enabled && ! $this->isSuspended() && AppSetting::domainManagementEnabled();
+    }
+
     public function hasVerifiedNationalCode(): bool
     {
         return $this->national_code_verified_at !== null;
@@ -209,6 +214,7 @@ class Customer extends Authenticatable
     protected function casts(): array
     {
         return [
+            'domain_management_enabled' => 'boolean',
             'email_verified_at' => 'datetime',
             'email_verification_expires_at' => 'datetime',
             'national_code_verified_at' => 'datetime',

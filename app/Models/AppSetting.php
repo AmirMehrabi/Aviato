@@ -11,6 +11,22 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable(['key', 'value', 'type', 'group'])]
 class AppSetting extends Model
 {
+    public const DOMAIN_RESELLER_TOKEN = 'domains.reseller_token';
+
+    public const DOMAIN_MANAGEMENT_ENABLED = 'domains.enabled';
+
+    public static function domainManagementEnabled(): bool
+    {
+        return filter_var(static::getValue(self::DOMAIN_MANAGEMENT_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function domainResellerToken(): string
+    {
+        $value = (string) static::getValue(self::DOMAIN_RESELLER_TOKEN, '');
+
+        return str_starts_with($value, 'encrypted:') ? Crypt::decryptString(substr($value, 10)) : '';
+    }
+
     public const BILLING_CURRENCY = 'billing.currency';
 
     public const COMPANY_NAME = 'company.name';
@@ -185,7 +201,7 @@ class AppSetting extends Model
 
     public static function setValue(string $key, mixed $value, string $type = 'string', string $group = 'general'): self
     {
-        if ($key === self::SMTP_PASSWORD && filled($value)) {
+        if (in_array($key, [self::SMTP_PASSWORD, self::DOMAIN_RESELLER_TOKEN], true) && filled($value)) {
             $value = 'encrypted:'.Crypt::encryptString($value);
         }
 

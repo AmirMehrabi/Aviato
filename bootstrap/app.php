@@ -68,10 +68,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'code',
             'promotion_code',
             'smtp_password',
+            'domain_reseller_token',
             'login_password',
             'login_password_confirmation',
         ]);
-        $exceptions->shouldRenderJsonWhen(fn (Request $request): bool => $request->is('api/*'));
+        $exceptions->shouldRenderJsonWhen(fn (Request $request): bool => $request->is('api/*')
+            || ($request->routeIs('customer.domains.*', 'customer.alias.*.customer.domains.*') && $request->expectsJson()));
         $exceptions->render(function (AuthenticationException $exception, Request $request) {
             if (! $request->is('api/*')) {
                 return null;

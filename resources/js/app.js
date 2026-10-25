@@ -1,9 +1,11 @@
 import Alpine from 'alpinejs';
 import { customerFormSubmission } from './form-submission';
 import { walletTopUp } from './wallet-top-up';
+import { domainSearch } from './domain-search';
 
 window.customerFormSubmission = customerFormSubmission;
 window.walletTopUp = walletTopUp;
+window.domainSearch = domainSearch;
 import './auth-validation.js';
 
 document.addEventListener('click', async (event) => {

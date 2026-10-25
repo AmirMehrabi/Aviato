@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DomainSettingsController;
 use App\Http\Controllers\Admin\HetznerAccountController;
 use App\Http\Controllers\Admin\IncidentController as AdminIncidentController;
 use App\Http\Controllers\Admin\IncidentTimelineEventController;
@@ -44,6 +45,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Customer\ApiTokenController;
 use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
+use App\Http\Controllers\Customer\DomainController;
 use App\Http\Controllers\Customer\GiftCardController;
 use App\Http\Controllers\Customer\InvoiceController;
 use App\Http\Controllers\Customer\MonitoringController;
@@ -67,6 +69,7 @@ use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StatusController;
+use App\Http\Middleware\EnsureDomainManagementAccess;
 use App\Models\VmBundle;
 use App\Services\MarketingPosts;
 use App\Services\WalletService;
@@ -170,6 +173,9 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.table-preferences.destroy');
 
         Route::get('settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
+        Route::get('settings/domains', [DomainSettingsController::class, 'edit'])->middleware('no-store')->name('admin.settings.domains.edit');
+        Route::patch('settings/domains', [DomainSettingsController::class, 'update'])->name('admin.settings.domains.update');
+        Route::patch('settings/domains/customers/{customer}', [DomainSettingsController::class, 'updateAccess'])->name('admin.settings.domains.access');
         Route::get('settings/notifications', [NotificationTemplateController::class, 'index'])->name('admin.settings.notifications.index');
         Route::patch('settings/notifications/templates', [NotificationTemplateController::class, 'update'])->name('admin.settings.notifications.update');
         Route::patch('settings/notifications/branding', [NotificationTemplateController::class, 'branding'])->name('admin.settings.notifications.branding');
@@ -429,6 +435,10 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         ->name('customer.wallet.payments.callback');
 
     Route::middleware('auth:customer')->group(function () use ($customerHome) {
+        Route::middleware([EnsureDomainManagementAccess::class, 'no-store'])->group(function (): void {
+            Route::get('domains', [DomainController::class, 'index'])->name('customer.domains.index');
+            Route::post('domains/check', [DomainController::class, 'check'])->middleware('throttle:15,1')->name('customer.domains.check');
+        });
         Route::get($customerHome, DashboardController::class)->name('dashboard');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
         Route::get('profile/notifications', [NotificationPreferenceController::class, 'edit'])->name('customer.notification-preferences.edit');
