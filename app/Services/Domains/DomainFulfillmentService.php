@@ -24,6 +24,11 @@ class DomainFulfillmentService
         if (! $order->isProcessing() || $order->status === 'needs_review') {
             return;
         }
+        if ($order->provider === 'irpower') {
+            $this->processIrpower($order);
+
+            return;
+        }
         if ($order->status === 'funded') {
             try {
                 $this->orders->assertPurchasableForFulfillment($order);
@@ -157,10 +162,67 @@ class DomainFulfillmentService
         return $operation->fresh();
     }
 
-    private function complete(DomainOrder $order): void
+    private function processIrpower(DomainOrder $order): void
+    {
+        $operation = $order->operations()->where('kind', $order->operation)->first();
+        if ($operation) {
+            // There is no documented IRPOWER order inquiry API. Never repeat an existing submission.
+            $order->update(['status' => 'needs_review']);
+
+            return;
+        }
+        try {
+            $this->orders->assertPurchasableForFulfillment($order);
+            $this->orders->validateSupplier($order);
+        } catch (Throwable $exception) {
+            $this->orders->fail($order, $exception instanceof ValidationException ? $exception->validator->errors()->first() : 'امکان تأیید سفارش نبود. مبلغ رزرو به کیف پول شما بازگشت.');
+
+            return;
+        }
+        $operation = $order->operations()->create(['kind' => $order->operation, 'status' => 'submitting']);
+        $order->update(['status' => 'processing']);
+        try {
+            app(IrpowerProvider::class)->submit($order);
+            $operation->update(['status' => 'done', 'result_code' => 'provider_accepted', 'checked_at' => now()]);
+            $order->update(['status' => 'needs_review', 'customer_message' => str_ends_with($order->domain, '.ir')
+                ? 'درخواست دامنه ثبت شد. تأیید نهایی ثبت و تاریخ اعتبار در حال پیگیری است. مبلغ سفارش محفوظ است؛ نیازی به پرداخت یا سفارش دوباره نیست.'
+                : 'درخواست شما با موفقیت دریافت شد. تأیید نهایی دامنه و تاریخ اعتبار در حال انجام است؛ نیازی به پرداخت دوباره نیست.']);
+        } catch (ProviderRejected $exception) {
+            $operation->update(['status' => 'failed', 'result_code' => (string) $exception->getCode(), 'checked_at' => now()]);
+            $this->orders->fail($order, 'سرویس‌دهنده انجام سفارش را تأیید نکرد. مبلغ رزرو به کیف پول شما بازگشت. برای بررسی شرایط دامنه با پشتیبانی تماس بگیرید.');
+        } catch (Throwable) {
+            $operation->update(['status' => 'uncertain']);
+            $order->update(['status' => 'needs_review', 'customer_message' => 'نتیجه درخواست در حال پیگیری است. مبلغ محفوظ است؛ دوباره پرداخت یا سفارش ندهید. پس از تأیید، نتیجه همین‌جا نمایش داده می‌شود.']);
+        }
+    }
+
+    public function confirmIrpower(DomainOrder $order, string $expiry, string $reference, int $actor): void
+    {
+        abort_unless($order->provider === 'irpower' && in_array($order->status, ['needs_review', 'confirming'], true), 409);
+        $operation = $order->operations()->where('kind', $order->operation)->firstOrFail();
+        abort_unless(in_array($operation->status, ['done', 'uncertain'], true), 409);
+        $end = Carbon::parse($expiry)->endOfDay();
+        $start = $order->operation === 'renew' ? $order->expiry_before : $order->funded_at;
+        if (! $start || $end->isPast() || $end->lt($start->copy()->addYearsNoOverflow($order->period)->subDays(2))) {
+            throw ValidationException::withMessages(['expires_at' => 'تاریخ انقضای تأییدشده باید تمام دوره خریداری‌شده را پوشش دهد.']);
+        }
+        $provider = app(IrpowerProvider::class);
+        // Confirm the domain is accessible through this provider account, independently of public WHOIS.
+        $provider->request('GetDomainWhoisInfo', ['domain' => $order->domain]);
+        $provider->nameservers($order->domain);
+        DB::transaction(function () use ($order, $operation, $end, $reference, $actor): void {
+            $locked = DomainOrder::lockForUpdate()->findOrFail($order->id);
+            abort_unless(in_array($locked->status, ['needs_review', 'confirming'], true), 409);
+            $locked->operations()->create(['kind' => 'operator_confirmation', 'status' => 'done', 'payload' => ['reference' => $reference, 'expires_at' => $end->toIso8601String(), 'actor_id' => $actor], 'checked_at' => now()]);
+            $operation->update(['status' => 'done', 'result_code' => 'operator_verified', 'checked_at' => now()]);
+            $this->complete($locked, ['id' => $locked->managedDomain?->provider_id ?: $locked->domain, 'domain' => $locked->domain, 'expire_at' => $end->toIso8601String()]);
+        });
+    }
+
+    private function complete(DomainOrder $order, ?array $confirmedInfo = null): void
     {
         try {
-            $info = $this->provider->info($order->domain);
+            $info = $confirmedInfo ?? $this->provider->info($order->domain);
             $expiry = Carbon::parse($info['expire_at']);
             $start = $order->operation === 'renew' ? $order->expiry_before : $order->funded_at;
             if (! $start || $expiry->isPast() || $expiry->lt($start->copy()->addYearsNoOverflow($order->period)->subDays(2))
@@ -179,12 +241,12 @@ class DomainFulfillmentService
             }
             $domain = $order->managedDomain;
             if (! $domain) {
-                $domain = ManagedDomain::create(['uuid' => (string) Str::uuid(), 'customer_id' => $order->customer_id, 'name' => $order->domain, 'extension' => $order->product->extension, 'registered_at' => now(), 'registrant' => $order->registrant, 'nameservers' => $order->nameservers]);
+                $domain = ManagedDomain::create(['uuid' => (string) Str::uuid(), 'customer_id' => $order->customer_id, 'name' => $order->domain, 'extension' => $order->product->extension, 'provider' => $order->provider, 'registered_at' => now(), 'registrant' => $order->registrant, 'nameservers' => $order->nameservers]);
             }
             $domain->update(['provider_id' => (string) $info['id'], 'expires_at' => $expiry, 'synced_at' => now(), 'status' => 'active']);
             $transaction = WalletTransaction::lockForUpdate()->findOrFail($order->wallet_transaction_id);
-            $transaction->update(['type' => WalletTransaction::TYPE_CHARGE, 'description' => ($order->operation === 'renew' ? 'تمدید دامنه ' : 'ثبت دامنه ').$order->domain, 'metadata' => ['category' => 'domain_'.$order->operation, 'domain_order_id' => $order->id, 'tax_amount' => $order->tax_amount]]);
-            $invoice = Invoice::create(['customer_id' => $order->customer_id, 'kind' => 'domain', 'billing_key' => null, 'domain_order_id' => $order->id, 'number' => 'DOM-'.str_pad((string) $order->id, 8, '0', STR_PAD_LEFT), 'status' => Invoice::STATUS_ISSUED, 'period_start' => $order->created_at, 'period_end' => $expiry, 'issued_at' => now(), 'currency' => $order->currency, 'subtotal_amount' => $order->subtotal, 'tax_amount' => $order->tax_amount, 'tax_rate_percentage' => $order->tax_rate, 'wallet_charged_amount' => $order->total, 'adjustment_amount' => 0, 'total_amount' => $order->total, 'meta' => ['domain_order_id' => $order->id, 'operation' => $order->operation]]);
+            $transaction->update(['type' => WalletTransaction::TYPE_CHARGE, 'description' => ($order->operation === 'renew' ? 'تمدید دامنه ' : 'ثبت دامنه ').$order->domain, 'metadata' => ['category' => 'domain_'.$order->operation, 'provider' => $order->provider, 'domain_order_id' => $order->id, 'tax_amount' => $order->tax_amount]]);
+            $invoice = Invoice::create(['customer_id' => $order->customer_id, 'kind' => 'domain', 'billing_key' => null, 'domain_order_id' => $order->id, 'number' => 'DOM-'.str_pad((string) $order->id, 8, '0', STR_PAD_LEFT), 'status' => Invoice::STATUS_ISSUED, 'period_start' => $order->created_at, 'period_end' => $expiry, 'issued_at' => now(), 'currency' => $order->currency, 'subtotal_amount' => $order->subtotal, 'tax_amount' => $order->tax_amount, 'tax_rate_percentage' => $order->tax_rate, 'wallet_charged_amount' => $order->total, 'adjustment_amount' => 0, 'total_amount' => $order->total, 'meta' => ['provider' => $order->provider, 'domain_order_id' => $order->id, 'operation' => $order->operation]]);
             $invoice->items()->create(['type' => 'domain_'.$order->operation, 'label' => $transaction->description, 'description' => $order->period.' سال', 'quantity' => 1, 'unit' => 'سفارش', 'unit_price' => $order->subtotal, 'subtotal' => $order->subtotal, 'meta' => ['domain' => $order->domain, 'period' => $order->period]]);
             if ($order->tax_amount) {
                 $invoice->items()->create(['type' => 'tax', 'label' => 'مالیات و عوارض', 'quantity' => 1, 'unit' => 'سفارش', 'unit_price' => $order->tax_amount, 'subtotal' => $order->tax_amount]);

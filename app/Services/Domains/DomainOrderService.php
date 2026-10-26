@@ -30,9 +30,9 @@ class DomainOrderService
         if ($owned && $owned->name !== $domain) {
             abort(404);
         }
-        $quote = $this->pricing->quote($domain, $operation, $period);
+        $quote = $this->pricing->quote($domain, $operation, $period, $owned?->provider);
         // Reuse an unfinished checkout, including saved contact/setup details.
-        $existing = DomainOrder::where('customer_id', $customer->id)->where('domain', $domain)->where('operation', $operation)->where('period', $period)->whereIn('status', ['draft', 'awaiting_payment'])->latest('id')->first();
+        $existing = DomainOrder::where('customer_id', $customer->id)->where('domain', $domain)->where('operation', $operation)->where('period', $period)->where('provider', $quote['provider'])->whereIn('status', ['draft', 'awaiting_payment'])->latest('id')->first();
         if ($existing) {
             return $existing;
         }
@@ -40,21 +40,21 @@ class DomainOrderService
             throw ValidationException::withMessages(['domain' => 'این دامنه قبلاً ثبت شده است.']);
         }
 
-        $previous = DomainOrder::where('customer_id', $customer->id)->where('domain', $domain)->where('contact_mode', $quote['contact_mode'])->latest('id')->first();
+        $previous = DomainOrder::where('customer_id', $customer->id)->where('domain', $domain)->where('contact_mode', $quote['contact_mode'])->where('provider', $quote['provider'])->latest('id')->first();
 
         return DomainOrder::create($quote + ['uuid' => (string) Str::uuid(), 'customer_id' => $customer->id, 'domain' => $domain, 'operation' => $operation, 'period' => $period, 'managed_domain_id' => $owned?->id, 'expiry_before' => $owned?->expires_at, 'registrant' => $owned?->registrant ?? $previous?->registrant, 'nameservers' => $owned?->nameservers ?? $previous?->nameservers]);
     }
 
     public function refreshQuote(DomainOrder $order): void
     {
-        $quote = $this->pricing->quote($order->domain, $order->operation, $order->period);
+        $quote = $this->pricing->quote($order->domain, $order->operation, $order->period, $order->provider);
         DB::transaction(function () use ($order, $quote): void {
             $order = DomainOrder::lockForUpdate()->findOrFail($order->id);
             abort_unless(in_array($order->status, ['draft', 'awaiting_payment'], true), 409);
             if ($order->contact_mode !== $quote['contact_mode']) {
                 $quote['registrant'] = null;
             }
-            $order->update($quote + ['consented_at' => null, 'status' => 'draft', 'customer_message' => null]);
+            $order->update($quote + ['expiry_before' => $order->operation === 'renew' ? $order->managedDomain?->expires_at : null, 'consented_at' => null, 'status' => 'draft', 'customer_message' => null]);
         });
     }
 
@@ -98,9 +98,28 @@ class DomainOrderService
 
     public function validateSupplier(DomainOrder $order): void
     {
-        $quote = $this->pricing->quote($order->domain, $order->operation, $order->period);
+        $quote = $this->pricing->quote($order->domain, $order->operation, $order->period, $order->provider);
         if ($quote['total'] !== $order->total || $quote['currency'] !== $order->currency) {
             throw ValidationException::withMessages(['payment' => 'قیمت فروش تغییر کرده است. قیمت جدید را بررسی و تأیید کنید.']);
+        }
+        if ($order->provider === 'irpower') {
+            if ($quote['supplier_price'] > $order->supplier_price) {
+                throw ValidationException::withMessages(['payment' => 'هزینه سرویس‌دهنده تغییر کرده است. قیمت سفارش را به‌روز کنید.']);
+            }
+            app(IrpowerProvider::class)->nameserverPayload($order->nameservers ?? []);
+            if ($order->operation === 'register') {
+                $check = app(DomainAvailabilityService::class)->check($order->domain);
+                if (! $check['available'] || $check['premium'] !== false) {
+                    throw ValidationException::withMessages(['payment' => 'آزاد بودن یا قیمت عادی این دامنه قابل تأیید نیست. نام دیگری انتخاب کنید یا با پشتیبانی تماس بگیرید.']);
+                }
+                if ($order->contact_mode === 'registry_handle') {
+                    app(IrpowerProvider::class)->validateHandles($order->registrant ?? []);
+                }
+            } else {
+                app(IrpowerProvider::class)->request('GetDomainWhoisInfo', ['domain' => $order->domain]);
+            }
+
+            return;
         }
         $check = $this->provider->check($order->domain, $order->period, $order->operation);
         $price = $check['price'] ?? null;
@@ -202,7 +221,7 @@ class DomainOrderService
         if (! $claimed) {
             return;
         }
-        $transaction = $this->wallets->debit($order->customer, $order->total, 'رزرو مبلغ سفارش دامنه '.$order->domain, reference: $order, metadata: ['category' => 'domain_reservation', 'domain_order_id' => $order->id]);
+        $transaction = $this->wallets->debit($order->customer, $order->total, 'رزرو مبلغ سفارش دامنه '.$order->domain, reference: $order, metadata: ['category' => 'domain_reservation', 'provider' => $order->provider, 'domain_order_id' => $order->id]);
         $order->update(['wallet_transaction_id' => $transaction->id, 'funded_at' => now(), 'status' => 'funded', 'customer_message' => null]);
         DB::afterCommit(function () use ($order): void {
             try {
@@ -221,7 +240,7 @@ class DomainOrderService
                 return;
             }
             if ($order->wallet_transaction_id && ! $order->refund_transaction_id) {
-                $refund = $this->wallets->refund($order->customer, $order->total, 'بازگشت مبلغ رزرو دامنه '.$order->domain, reference: $order, metadata: ['category' => 'domain_reservation_released', 'original_transaction_id' => $order->wallet_transaction_id]);
+                $refund = $this->wallets->refund($order->customer, $order->total, 'بازگشت مبلغ رزرو دامنه '.$order->domain, reference: $order, metadata: ['category' => 'domain_reservation_released', 'provider' => $order->provider, 'original_transaction_id' => $order->wallet_transaction_id]);
                 $order->refund_transaction_id = $refund->id;
             }
             $order->status = 'failed';

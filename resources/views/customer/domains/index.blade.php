@@ -49,7 +49,7 @@
                     </div>
                     <span class="rounded-full px-4 py-2 text-sm font-black" :class="result?.available ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-700'" x-text="result?.available ? 'آزاد است' : 'آزاد نیست'"></span>
                 </div>
-                <p class="mt-5 text-sm leading-7 text-slate-600" x-text="result?.available ? (result?.premium ? 'این دامنه ویژه است. برای بررسی قیمت ثبت و تمدید با پشتیبانی تماس بگیرید.' : (result?.retail ? 'نام شما آماده است. مشخصات مالک و تنظیمات را تکمیل کنید؛ پرداخت در آخرین مرحله انجام می‌شود.' : 'این دامنه آزاد است. فروش این پسوند هنوز فعال نیست.')) : 'این دامنه در حال حاضر برای ثبت آزاد نیست. می‌توانید پسوند دیگری را بررسی کنید یا نام تازه‌ای جستجو کنید.'"></p>
+                <p class="mt-5 text-sm leading-7 text-slate-600" x-text="result?.available ? (result?.premium === null ? 'قیمت عادی یا ویژه این نام هنوز قابل تأیید نیست. کمی بعد دوباره بررسی کنید یا با پشتیبانی تماس بگیرید.' : (result?.premium ? 'این دامنه ویژه است. برای بررسی قیمت ثبت و تمدید با پشتیبانی تماس بگیرید.' : (result?.retail ? 'نام شما آماده است. مشخصات مالک و تنظیمات را تکمیل کنید؛ پرداخت در آخرین مرحله انجام می‌شود.' : 'این دامنه آزاد است. فروش این پسوند هنوز فعال نیست.'))) : 'این دامنه در حال حاضر برای ثبت آزاد نیست. می‌توانید پسوند دیگری را بررسی کنید یا نام تازه‌ای جستجو کنید.'"></p>
                 <div x-show="result?.available && result?.retail && !result?.premium" x-cloak class="mt-6 rounded-xl bg-slate-50 p-5">
                     <p class="text-lg font-black text-slate-950" x-text="result?.retail?.total"></p><p class="mt-2 text-xs text-slate-500">تمدید یک‌ساله با قیمت فعلی: <span x-text="result?.retail?.renewal"></span> · شامل مالیات اعلام‌شده</p>
                     <form method="POST" action="{{ route('customer.domains.orders.store', [], false) }}" class="mt-4 flex flex-wrap items-center gap-3">@csrf<input type="hidden" name="domain" :value="result?.domain"><label class="text-xs font-bold" for="search-period">دوره ثبت</label><select name="period" id="search-period" class="domain-input w-auto"><template x-for="period in (result?.retail?.periods || [1])" :key="period"><option :value="period" x-text="period + ' سال'"></option></template></select><button class="domain-primary">انتخاب و ادامه ←</button></form>
@@ -57,6 +57,7 @@
                 </div>
 
                 <p x-show="result?.available && result?.premium" class="mt-3 text-xs leading-6 text-amber-800">این دامنه ویژه (Premium) است و قیمت‌گذاری متفاوتی دارد.</p>
+                <p x-show="result?.preliminary" x-cloak class="domain-notice mt-4">این نام در اطلاعات عمومی ایرنیک ثبت‌شده دیده نشد. ثبت نهایی به مجاز بودن نام، دسترسی شناسه و تأیید ایرنیک بستگی دارد.</p>
                 <p class="mt-3 text-xs leading-6 text-slate-400">این نتیجه دامنه را رزرو نمی‌کند؛ وضعیت آزاد بودن ممکن است تغییر کند.</p>
                 <div class="mt-6 border-t border-slate-100 pt-5">
                     <h3 class="text-sm font-bold text-slate-700">پسوندهای دیگر را هم بررسی کنید</h3>

@@ -11,6 +11,7 @@ use App\Models\ManagedDomain;
 use App\Services\Domains\DomainOrderService;
 use App\Services\Domains\DomainPricingService;
 use App\Services\Domains\DomainRegistrant;
+use App\Services\Domains\IrpowerProvider;
 use App\Services\Payments\PaymentGatewayException;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\WalletService;
@@ -20,6 +21,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class DomainCheckoutController extends Controller
@@ -52,13 +54,13 @@ class DomainCheckoutController extends Controller
         if ($step === 'review' && ! $order->nameservers) {
             $step = 'setup';
         }
-        $contacts = DomainContact::where('customer_id', $order->customer_id)->latest()->limit(20)->get();
+        $contacts = DomainContact::where('customer_id', $order->customer_id)->latest()->limit(20)->get()->filter(fn ($contact) => $order->contact_mode === 'registry_handle' ? isset($contact->details['holder']) : isset($contact->details['name']));
         $available = $orders->available($order->customer);
 
         return view('customer.domains.checkout', [
             'customer' => $request->user('customer'), 'order' => $order->load(['product', 'payment', 'managedDomain']), 'wallets' => app(WalletService::class), 'step' => $step,
             'contacts' => $contacts, 'countries' => DomainRegistrant::countries(), 'available' => $available, 'shortfall' => max(0, $order->total - $available), 'gateways' => $gateways->available(),
-            'renewalPrice' => $pricing->customerPrice($order->domain)['renewal'] ?? null,
+            'renewalPrice' => $pricing->renewalPrice($order->domain, $order->provider),
         ]);
     }
 
@@ -84,6 +86,9 @@ class DomainCheckoutController extends Controller
                 }
             }
             if ($order->contact_mode === 'registry_handle') {
+                if ($order->provider === 'irpower' && ! isset($contact) && $request->boolean('use_holder_for_all', ! $request->has('admin'))) {
+                    $request->merge(array_fill_keys(['admin', 'tech', 'billing'], $request->input('holder')));
+                }
                 $rules = array_fill_keys(['holder', 'admin', 'tech', 'billing'], ['required', 'string', 'max:150', 'regex:/^[a-zA-Z0-9@._-]+$/']);
             } else {
                 $rules = [
@@ -94,16 +99,26 @@ class DomainCheckoutController extends Controller
                 ];
             }
             $details = $request->validate($rules, ['required' => 'تکمیل :attribute لازم است.', 'email' => 'ایمیل معتبر وارد کنید.', 'phone.regex' => 'شماره تماس معتبر وارد کنید؛ مانند 09121234567 برای ایران یا ‎+98.9121234567.'], ['name' => 'نام مالک', 'email' => 'ایمیل مالک', 'country' => 'کشور', 'state' => 'استان', 'city' => 'شهر', 'address' => 'نشانی', 'postCode' => 'کد پستی', 'phone' => 'شماره تماس', 'holder' => 'شناسه صاحب امتیاز', 'admin' => 'شناسه رابط اداری', 'tech' => 'شناسه رابط فنی', 'billing' => 'شناسه رابط مالی']);
+            if ($order->provider === 'irpower' && $order->contact_mode === 'registry_handle') {
+                try {
+                    app(IrpowerProvider::class)->validateHandles($details);
+                } catch (RuntimeException $exception) {
+                    throw ValidationException::withMessages(['holder' => 'ارتباط با سامانه تأیید شناسه برقرار نشد. مشخصات را نگه دارید و کمی بعد دوباره ادامه دهید.']);
+                }
+            }
+            if ($order->provider === 'irpower' && $order->contact_mode === 'contact' && count(preg_split('/\s+/u', trim($details['name']))) < 2) {
+                throw ValidationException::withMessages(['name' => 'نام و نام خانوادگی کامل مالک را وارد کنید.']);
+            }
             if ($order->contact_mode === 'contact') {
                 $details['fax'] = $details['phone'];
                 $details['organization'] = ($details['organization'] ?? '') ?: $details['name'];
             }
-            if (isset($contact) && $order->contact_mode === 'contact' && ! empty($contact->details['provider_handles'][$order->product->extension])) {
+            if (isset($contact) && $order->provider === 'reseller_world' && $order->contact_mode === 'contact' && ! empty($contact->details['provider_handles'][$order->product->extension])) {
                 $details['provider_handle'] = $contact->details['provider_handles'][$order->product->extension];
             }
             $attributes['registrant'] = $details;
         } else {
-            $data = $request->validate(['nameservers' => ['required', 'array', 'list', 'min:2', 'max:6'], 'nameservers.*' => ['required', 'string', 'max:253', 'distinct:ignore_case', 'regex:/\A(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\z/i']]);
+            $data = $request->validate(['nameservers' => ['required', 'array', 'list', 'min:2', 'max:'.($order->provider === 'irpower' ? 5 : 6)], 'nameservers.*' => ['required', 'string', 'max:253', 'distinct:ignore_case', 'regex:/\A(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\z/i']]);
             $attributes['nameservers'] = array_map('strtolower', $data['nameservers']);
         }
         DB::transaction(function () use ($order, $attributes, $request, $stage): void {

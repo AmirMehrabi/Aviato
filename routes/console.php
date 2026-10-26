@@ -13,6 +13,7 @@ use App\Models\VirtualMachine;
 use App\Models\VmUpgradeOrder;
 use App\Services\Domains\DomainLifecycleService;
 use App\Services\Domains\DomainPricingService;
+use App\Services\Domains\IrpowerCatalogService;
 use App\Services\HetznerCatalogSyncService;
 use App\Services\InvoiceService;
 use App\Services\MeteringInventoryService;
@@ -512,3 +513,7 @@ Artisan::command('domains:lifecycle', function (DomainLifecycleService $domains)
 Schedule::command('domains:reconcile')->everyMinute()->withoutOverlapping();
 Schedule::command('domains:sync-prices')->hourly()->withoutOverlapping();
 Schedule::command('domains:lifecycle')->dailyAt('08:30')->timezone('Asia/Tehran')->withoutOverlapping();
+
+Artisan::command('domains:import-irpower-prices {--activate-existing : Enable new IRPOWER offers for extensions already approved for sale, plus .ir}', function (IrpowerCatalogService $catalog): void {
+    $this->info('Imported '.$catalog->import((bool) $this->option('activate-existing')).' new IRPOWER price entries. Existing entries were preserved.');
+})->purpose('Import owner-supplied IRPOWER prices as manual offers with 30-day review validity');

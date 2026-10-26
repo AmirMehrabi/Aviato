@@ -69,6 +69,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'promotion_code',
             'smtp_password',
             'domain_reseller_token',
+            'irpower_api_key',
             'login_password',
             'login_password_confirmation',
         ]);

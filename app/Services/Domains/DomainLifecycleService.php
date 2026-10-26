@@ -27,7 +27,7 @@ class DomainLifecycleService
             $operation->update(['status' => 'uncertain']);
             $operation->order?->update(['status' => 'needs_review']);
         });
-        DomainOperation::where('kind', 'nameservers')->where('status', 'pending')->get()->each(fn ($operation) => $this->management->reconcile($operation));
+        DomainOperation::where('kind', 'nameservers')->whereIn('status', ['pending', 'uncertain'])->get()->each(fn ($operation) => $this->management->reconcile($operation));
     }
 
     public function daily(): void

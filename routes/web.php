@@ -180,6 +180,10 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::patch('settings/domains', [DomainSettingsController::class, 'update'])->name('admin.settings.domains.update');
         Route::patch('settings/domains/customers/{customer}', [DomainSettingsController::class, 'updateAccess'])->name('admin.settings.domains.access');
         Route::prefix('settings/domains')->name('admin.settings.domains.')->middleware('no-store')->group(function (): void {
+            Route::post('irpower/import', [DomainCommerceController::class, 'importIrpower'])->name('irpower.import');
+            Route::post('routing', [DomainCommerceController::class, 'routing'])->name('routing');
+            Route::post('orders/{order:uuid}/irpower-confirm', [DomainCommerceController::class, 'confirmIrpower'])->middleware('admin.ability:wallet.manage')->name('orders.irpower-confirm');
+            Route::post('domains/{domain:uuid}/expiry', [DomainCommerceController::class, 'confirmExpiry'])->middleware('admin.ability:wallet.manage')->name('expiry');
             Route::get('commerce', [DomainCommerceController::class, 'index'])->name('commerce');
             Route::post('prices/sync', [DomainCommerceController::class, 'sync'])->middleware('throttle:3,1')->name('prices.sync');
             Route::patch('products/{product}', [DomainCommerceController::class, 'product'])->name('products.update');
@@ -453,7 +457,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::get('domains', [DomainController::class, 'index'])->name('customer.domains.index');
             Route::post('domains/orders', [DomainCheckoutController::class, 'store'])->middleware('throttle:15,1')->name('customer.domains.orders.store');
             Route::get('domains/orders/{order:uuid}', [DomainCheckoutController::class, 'show'])->name('customer.domains.orders.show');
-            Route::patch('domains/orders/{order:uuid}', [DomainCheckoutController::class, 'save'])->name('customer.domains.orders.save');
+            Route::patch('domains/orders/{order:uuid}', [DomainCheckoutController::class, 'save'])->middleware('throttle:15,1')->name('customer.domains.orders.save');
             Route::post('domains/orders/{order:uuid}/pay', [DomainCheckoutController::class, 'pay'])->middleware('throttle:10,1')->name('customer.domains.orders.pay');
             Route::post('domains/orders/{order:uuid}/refresh', [DomainCheckoutController::class, 'refresh'])->name('customer.domains.orders.refresh');
             Route::post('domains/orders/{order:uuid}/cancel', [DomainCheckoutController::class, 'cancel'])->name('customer.domains.orders.cancel');

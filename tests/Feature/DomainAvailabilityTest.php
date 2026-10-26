@@ -141,7 +141,7 @@ class DomainAvailabilityTest extends TestCase
             Http::response(['error' => ['details' => ['Tld is not supported for this reseller.']]], 422),
         ] as $response) {
             Http::fake(['*' => $response]);
-            $this->postJson('https://cp.localhost/domains/check', ['domain' => 'example.ir'])
+            $this->postJson('https://cp.localhost/domains/check', ['domain' => 'example.unsupported'])
                 ->assertUnprocessable()->assertJsonValidationErrors('domain')->assertJsonMissingPath('data.available');
         }
     }

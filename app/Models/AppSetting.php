@@ -11,6 +11,15 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable(['key', 'value', 'type', 'group'])]
 class AppSetting extends Model
 {
+    public const IRPOWER_API_KEY = 'domains.irpower_api_key';
+
+    public static function irpowerKey(): string
+    {
+        $value = (string) static::getValue(self::IRPOWER_API_KEY, '');
+
+        return str_starts_with($value, 'encrypted:') ? Crypt::decryptString(substr($value, 10)) : '';
+    }
+
     public const DOMAIN_RESELLER_TOKEN = 'domains.reseller_token';
 
     public const DOMAIN_MANAGEMENT_ENABLED = 'domains.enabled';
@@ -208,7 +217,7 @@ class AppSetting extends Model
 
     public static function setValue(string $key, mixed $value, string $type = 'string', string $group = 'general'): self
     {
-        if (in_array($key, [self::SMTP_PASSWORD, self::DOMAIN_RESELLER_TOKEN], true) && filled($value)) {
+        if (in_array($key, [self::SMTP_PASSWORD, self::DOMAIN_RESELLER_TOKEN, self::IRPOWER_API_KEY], true) && filled($value)) {
             $value = 'encrypted:'.Crypt::encryptString($value);
         }
 

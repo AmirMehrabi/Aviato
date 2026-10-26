@@ -18,14 +18,14 @@ class ManagedDomainController extends Controller
     {
         $this->own($request, $domain);
 
-        return view('customer.domains.show', ['customer' => $request->user('customer'), 'domain' => $domain, 'wallets' => app(WalletService::class), 'renewals' => DomainProduct::where('extension', $domain->extension)->where('operation', 'renew')->where('enabled', true)->orderBy('period')->get(), 'orders' => $domain->orders()->latest()->get(), 'operations' => DomainOperation::where('managed_domain_id', $domain->id)->latest()->limit(10)->get()]);
+        return view('customer.domains.show', ['customer' => $request->user('customer'), 'domain' => $domain, 'wallets' => app(WalletService::class), 'renewals' => DomainProduct::where('provider', $domain->provider)->where('extension', $domain->extension)->where('operation', 'renew')->where('enabled', true)->orderBy('period')->get(), 'orders' => $domain->orders()->latest()->get(), 'operations' => DomainOperation::where('managed_domain_id', $domain->id)->latest()->limit(10)->get()]);
     }
 
     public function nameservers(Request $request, ManagedDomain $domain, DomainManagementService $management): RedirectResponse
     {
         $this->own($request, $domain);
         abort_unless($domain->status === 'active', 422);
-        $data = $request->validate(['nameservers' => ['required', 'array', 'list', 'min:2', 'max:6'], 'nameservers.*' => ['required', 'string', 'max:253', 'distinct:ignore_case', 'regex:/\A(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\z/i']]);
+        $data = $request->validate(['nameservers' => ['required', 'array', 'list', 'min:2', 'max:'.($domain->provider === 'irpower' ? 5 : 6)], 'nameservers.*' => ['required', 'string', 'max:253', 'distinct:ignore_case', 'regex:/\A(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\z/i']]);
         $management->nameservers($domain, array_map('strtolower', $data['nameservers']));
 
         return back()->with('status', 'درخواست تغییر نیم‌سرورها ثبت شد. نتیجه پس از تأیید سرویس‌دهنده نمایش داده می‌شود؛ انتشار تغییر ممکن است زمان ببرد.');

@@ -13,7 +13,7 @@ class AdminAuditService
 {
     private const SENSITIVE = [
         'password', 'password_confirmation', 'current_password', 'token', 'secret',
-        'authorization', 'cookie', 'api_token', 'private_key', 'merchant_password',
+        'authorization', 'cookie', 'api_token', 'api_key', 'private_key', 'merchant_password',
     ];
 
     public function record(Request $request, string $event, string $result, ?int $statusCode = null, array $metadata = [], array $changes = []): AdminAuditLog

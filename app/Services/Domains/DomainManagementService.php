@@ -23,6 +23,19 @@ class DomainManagementService
 
             return DomainOperation::create(['managed_domain_id' => $domain->id, 'kind' => 'nameservers', 'payload' => $nameservers]);
         });
+        if ($domain->provider === 'irpower') {
+            try {
+                app(IrpowerProvider::class)->request('UpdateDomainNameServers', ['domain' => $domain->name] + app(IrpowerProvider::class)->nameserverPayload($nameservers));
+                $operation->update(['status' => 'pending']);
+                $this->reconcile($operation->fresh());
+            } catch (ProviderRejected $exception) {
+                $operation->update(['status' => 'failed', 'result_code' => (string) $exception->getCode()]);
+            } catch (Throwable) {
+                $operation->update(['status' => 'uncertain']);
+            }
+
+            return;
+        }
         try {
             $result = $this->provider->request('PUT', '/domain/'.$domain->name.'/dns', ['dnsList' => $nameservers]);
             if (! isset($result['trackId']) || ! preg_match('/^[0-9]+$/', (string) $result['trackId'])) {
@@ -36,6 +49,26 @@ class DomainManagementService
 
     public function reconcile(DomainOperation $operation): void
     {
+        if ($operation->domain?->provider === 'irpower' && $operation->kind === 'nameservers' && in_array($operation->status, ['pending', 'uncertain', 'submitting'], true)) {
+            try {
+                $actual = app(IrpowerProvider::class)->nameservers($operation->domain->name);
+                $wanted = $operation->payload;
+                sort($actual);
+                sort($wanted);
+                if ($actual === $wanted) {
+                    DB::transaction(function () use ($operation): void {
+                        $locked = DomainOperation::lockForUpdate()->findOrFail($operation->id);
+                        if (in_array($locked->status, ['pending', 'uncertain', 'submitting'], true)) {
+                            $locked->domain->update(['nameservers' => $locked->payload]);
+                            $locked->update(['status' => 'done', 'checked_at' => now()]);
+                        }
+                    });
+                }
+            } catch (Throwable) { /* Only read back desired state; never repeat the mutation. */
+            }
+
+            return;
+        }
         if (! $operation->track_id || $operation->kind !== 'nameservers' || $operation->status !== 'pending') {
             return;
         }
@@ -65,6 +98,12 @@ class DomainManagementService
 
     public function sync(ManagedDomain $domain): void
     {
+        if ($domain->provider === 'irpower') {
+            $nameservers = app(IrpowerProvider::class)->nameservers($domain->name);
+            $domain->update(['nameservers' => $nameservers, 'status' => $domain->expires_at?->isPast() ? 'expired' : 'active', 'synced_at' => now()]);
+
+            return;
+        }
         $info = $this->provider->info($domain->name);
         // An unexpected provider identity needs operator review, never reassignment.
         if ((string) $info['id'] !== (string) $domain->provider_id) {

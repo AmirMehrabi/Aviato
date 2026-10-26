@@ -39,7 +39,7 @@ class DomainController extends Controller
             return $this->page($request, null, $message);
         }
 
-        if ($result['available'] && ! $result['premium'] && AppSetting::domainSalesEnabled()) {
+        if ($result['available'] && $result['premium'] === false && AppSetting::domainSalesEnabled()) {
             $result['retail'] = app(DomainPricingService::class)->customerPrice($result['domain']);
         }
 
