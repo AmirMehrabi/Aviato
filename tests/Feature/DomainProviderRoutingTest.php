@@ -346,6 +346,20 @@ class DomainProviderRoutingTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_initial_import_inherits_existing_automatic_pricing_rules(): void
+    {
+        DomainProduct::where('provider', 'irpower')->delete();
+        DomainProduct::where('provider', 'reseller_world')->where('operation', 'register')->update(['automatic_pricing' => true, 'markup_percent' => 5, 'minimum_margin' => 100000]);
+
+        app(IrpowerCatalogService::class)->import();
+
+        $offer = DomainProduct::where('provider', 'irpower')->where('extension', 'com')->where('operation', 'register')->firstOrFail();
+        $this->assertEquals(5, $offer->markup_percent);
+        $this->assertSame(100000, $offer->minimum_margin);
+        $this->assertSame(31970000, $offer->supplier_price);
+        $this->assertSame(33570000, $offer->retail_price);
+    }
+
     public function test_initial_price_import_is_idempotent_and_existing_prices_are_not_overwritten(): void
     {
         $catalog = app(IrpowerCatalogService::class);

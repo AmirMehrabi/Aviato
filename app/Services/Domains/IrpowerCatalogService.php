@@ -34,9 +34,12 @@ class IrpowerCatalogService
                 foreach ($operations as $operation => $toman) {
                     $cost = $toman * 10;
                     $previous = DomainProduct::where('provider', 'reseller_world')->where('extension', $extension)->where('operation', $operation)->where('period', 1)->first();
+                    $markup = $previous?->automatic_pricing ? $previous->markup_percent : 25;
+                    $margin = $previous?->automatic_pricing ? $previous->minimum_margin : 0;
+                    $retail = max((int) ceil($cost * (100 + $markup) / 100), $cost + $margin);
                     $product = DomainProduct::firstOrCreate(['provider' => 'irpower', 'extension' => $extension, 'operation' => $operation, 'period' => 1], [
-                        'supplier_price' => $cost, 'retail_price' => (int) (ceil($cost * 1.25 / 10000) * 10000),
-                        'minimum_margin' => 0, 'markup_percent' => 25, 'automatic_pricing' => true,
+                        'supplier_price' => $cost, 'retail_price' => (int) (ceil($retail / 10000) * 10000),
+                        'minimum_margin' => $margin, 'markup_percent' => $markup, 'automatic_pricing' => true,
                         'contact_mode' => $extension === 'ir' ? 'registry_handle' : 'contact',
                         'enabled' => $activateExisting && $validUntil->isFuture() && in_array($operation, ['register', 'renew'], true) && ($extension === 'ir' || ($previous?->enabled ?? false)),
                         'synced_at' => now(), 'price_valid_until' => $validUntil,
