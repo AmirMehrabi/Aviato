@@ -27,7 +27,7 @@
             رسیدهای پرداخت
             <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{{ $receiptTotal }}</span>
         </a>
-        @if($customer->canManageDomains())<a href="{{ route('customer.invoices.index', ['tab'=>'domains'], false) }}" class="inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-black text-slate-600 hover:bg-white">فاکتورهای دامنه (حساب شخصی)</a>@endif
+        @if($customer->canManageDomains())<a href="{{ route('customer.invoices.index', ['tab'=>'domains'], false) }}" class="inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-black text-slate-600 hover:bg-white">فاکتورهای دامنه</a>@endif
     </nav>
 
     @if ($activeTab === 'usage')

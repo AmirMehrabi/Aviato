@@ -29,6 +29,10 @@ class ProjectLifecycleService
             $blockers['virtual_machines'] = 'این فضای کاری هنوز ماشین مجازی فعال یا در حال حذف دارد.';
         }
 
+        if ($project->domains()->exists() || $project->domainOrders()->exists()) {
+            $blockers['domains'] = 'این فضای کاری دامنه یا سفارش دامنه دارد و قابل حذف نیست.';
+        }
+
         if ($project->storageBuckets()->exists() || $project->storageAccessKeys()->exists()) {
             $blockers['storage'] = 'ابتدا باکت‌ها و کلیدهای فضای ذخیره‌سازی این فضای کاری را حذف کنید.';
         }

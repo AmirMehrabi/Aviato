@@ -2,11 +2,12 @@
 @section('primary_actions_in_content', '1')
 @section('title', 'سفارش دامنه')
 @section('header_title', $order->operation === 'renew' ? 'تمدید دامنه' : 'ثبت دامنه')
-@section('header_subtitle', 'از انتخاب نام تا مدیریت دامنه، همراه شما هستیم')
+@section('header_subtitle', 'فضای کاری: '.$activeProject->name)
 @php($activeNav = 'domains')
 @section('content')
 <div class="mx-auto max-w-5xl space-y-6">
     <a href="{{ route('customer.domains.index', [], false) }}" class="text-sm font-bold text-blue-600">→ بازگشت به دامنه‌ها</a>
+    <p class="rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-600">فضای کاری: <strong>{{ $activeProject->name }}</strong> · پرداخت‌کننده: <strong>{{ $order->customer->name }}</strong><br>هزینه این سفارش از کیف پول شخصی پرداخت‌کننده پرداخت می‌شود.</p>
     @if(session('status'))<p role="status" class="domain-notice">{{ session('status') }}</p>@endif
     @if($errors->any())<div role="alert" class="domain-error"><p class="font-black">لطفاً موارد زیر را بررسی کنید</p><ul class="mt-2 list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <div class="flex flex-wrap items-center justify-between gap-3"><h1 dir="ltr" class="break-all text-2xl font-black text-slate-950">{{ $order->domain }}</h1><span class="domain-badge">{{ $order->operation === 'renew' ? 'تمدید' : 'ثبت' }} · {{ $order->period }} سال</span></div>
@@ -38,7 +39,7 @@
                 @if($step === 'owner')
                     <h2 class="domain-heading">دامنه به نام چه کسی ثبت شود؟</h2><p class="domain-help mt-2">اطلاعات واقعی مالک دامنه را وارد کنید. این مشخصات با اطلاعات پرداخت متفاوت است.</p>
                     <form method="POST" action="{{ route('customer.domains.orders.save', $order, false) }}" class="mt-6 space-y-5" x-data="{ saved: '', sameHandle: @js((bool) old('use_holder_for_all', true)) }">
-                        @csrf @method('PATCH')<input type="hidden" name="stage" value="owner">
+                        @csrf<input type="hidden" name="workspace" value="{{ $activeProject->uuid }}"> @method('PATCH')<input type="hidden" name="stage" value="owner">
                         @if($contacts->isNotEmpty())
                             <div><label for="contact_id" class="domain-label">استفاده از مشخصات ذخیره‌شده</label><select id="contact_id" name="contact_id" x-model="saved" class="domain-input"><option value="">ورود یا ویرایش مشخصات</option>@foreach($contacts as $contact)<option value="{{ $contact->id }}">{{ $contact->label }}</option>@endforeach</select><p class="domain-help">با انتخاب یک پروفایل، مشخصات ذخیره‌شده در مرحله بعد نمایش داده می‌شود.</p></div>
                         @endif
@@ -67,7 +68,7 @@
                 @elseif($step === 'setup')
                     <h2 class="domain-heading">دامنه را به کجا متصل کنیم؟</h2><p class="domain-help mt-2">حداقل دو نیم‌سرور ارائه‌شده توسط میزبان یا سرویس DNS خود را وارد کنید. بعد از ثبت هم می‌توانید آن‌ها را تغییر دهید.</p>
                     <form method="POST" action="{{ route('customer.domains.orders.save', $order, false) }}" class="mt-6 space-y-5">
-                        @csrf @method('PATCH')<input type="hidden" name="stage" value="setup">
+                        @csrf<input type="hidden" name="workspace" value="{{ $activeProject->uuid }}"> @method('PATCH')<input type="hidden" name="stage" value="setup">
                         @include('customer.domains._nameservers', ['initialNameservers' => $order->nameservers ?: \App\Models\AppSetting::getValue('domains.default_nameservers', []), 'maxNameservers' => $order->provider === 'irpower' ? 5 : 6])
                         <button class="domain-primary w-full">ذخیره و بررسی سفارش</button><a class="block text-center text-sm font-bold text-blue-600" href="{{ route('customer.domains.orders.show', ['order'=>$order,'step'=>'owner'], false) }}">بازگشت به مشخصات مالک</a>
                     </form>
@@ -79,17 +80,17 @@
                         <div class="rounded-xl bg-slate-50 p-4"><div class="flex justify-between"><h3 class="font-black">نیم‌سرورها</h3>@if($order->operation === 'register')<a href="{{ route('customer.domains.orders.show', ['order'=>$order,'step'=>'setup'], false) }}" class="text-blue-600">ویرایش</a>@endif</div>@foreach($order->nameservers ?? [] as $ns)<p dir="ltr" class="mt-2 break-all text-right text-slate-500">{{ $ns }}</p>@endforeach</div>
                     </div>
                     @if($order->quoted_until->isPast())
-                        <div class="domain-notice mt-5">اعتبار قیمت تمام شده است. مشخصات شما محفوظ است؛ برای ادامه قیمت را به‌روز کنید.</div><form method="POST" action="{{ route('customer.domains.orders.refresh', $order, false) }}" class="mt-4">@csrf<button class="domain-primary w-full">دریافت قیمت جدید</button></form>
+                        <div class="domain-notice mt-5">اعتبار قیمت تمام شده است. مشخصات شما محفوظ است؛ برای ادامه قیمت را به‌روز کنید.</div><form method="POST" action="{{ route('customer.domains.orders.refresh', $order, false) }}" class="mt-4">@csrf<input type="hidden" name="workspace" value="{{ $activeProject->uuid }}"><button class="domain-primary w-full">دریافت قیمت جدید</button></form>
                     @else
                         <form method="POST" action="{{ route('customer.domains.orders.pay', $order, false) }}" class="mt-6 space-y-5" x-data="{ submitting: false }" @submit="submitting = true">
-                            @csrf
+                            @csrf<input type="hidden" name="workspace" value="{{ $activeProject->uuid }}">
                             <div class="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-7"><p>موجودی قابل استفاده کیف پول شخصی: <strong>{{ $wallets->format($available, $order->currency) }}</strong></p><p class="mt-2">{{ $shortfall ? 'مبلغ باقی‌مانده برای پرداخت:' : 'مبلغ سفارش از کیف پول رزرو می‌شود:' }} <strong>{{ $wallets->format($shortfall ?: $order->total, $order->currency) }}</strong></p>@if($shortfall)<p class="mt-2 text-xs text-slate-500">پرداخت به کیف پول شخصی شما اضافه می‌شود و پس از تأیید، برای همین سفارش رزرو خواهد شد.</p>@endif</div>
                             @if($shortfall && $gateways)<div><label for="gateway" class="domain-label">درگاه پرداخت</label><select id="gateway" name="gateway" class="domain-input" required>@foreach($gateways as $key=>$label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select></div>@endif
                             <label class="flex items-start gap-3 text-sm leading-7"><input class="mt-2 shrink-0 accent-blue-600" type="checkbox" name="terms" value="1" required><span>نام دامنه، اطلاعات مالک، دوره و مبلغ را بررسی کردم و انجام سفارش را تأیید می‌کنم. آزاد بودن دامنه تا تأیید نهایی تضمین نمی‌شود. تمدید خودکار اکنون فعال نمی‌شود.</span></label>
                             @if(!$shortfall || $gateways || $order->payment?->isPending())<button :disabled="submitting" class="domain-primary w-full" x-text="submitting ? 'در حال ادامه…' : @js($order->payment?->isPending() ? 'ادامه پرداخت جاری' : ($shortfall ? 'پرداخت باقی‌مانده و ادامه سفارش' : 'تأیید و پرداخت از کیف پول'))">{{ $shortfall ? 'پرداخت و ادامه سفارش' : 'پرداخت از کیف پول' }}</button>@else<p role="alert" class="domain-error">درگاه پرداخت فعلاً در دسترس نیست. سفارش شما محفوظ است؛ بعداً دوباره تلاش کنید.</p>@endif
                             <p class="domain-help">اگر ثبت یا تمدید انجام نشود، مبلغ رزرو به کیف پول برمی‌گردد. بازپرداخت بانکی فرایند جداگانه دارد.</p>
                         </form>
-                        <form method="POST" action="{{ route('customer.domains.orders.refresh', $order, false) }}" class="mt-4">@csrf<button class="text-xs font-bold text-blue-600">بررسی دوباره قیمت</button></form>
+                        <form method="POST" action="{{ route('customer.domains.orders.refresh', $order, false) }}" class="mt-4">@csrf<input type="hidden" name="workspace" value="{{ $activeProject->uuid }}"><button class="text-xs font-bold text-blue-600">بررسی دوباره قیمت</button></form>
                     @endif
                 @endif
             </section>
@@ -97,7 +98,7 @@
                 <h2 class="domain-heading">خلاصه سفارش</h2><dl class="mt-5 space-y-4 text-sm"><div class="flex justify-between gap-2"><dt class="text-slate-500">دوره</dt><dd class="font-bold">{{ $order->period }} سال</dd></div><div class="flex justify-between gap-2"><dt class="text-slate-500">مبلغ پایه</dt><dd class="font-bold">{{ $wallets->format($order->subtotal, $order->currency) }}</dd></div><div class="flex justify-between gap-2"><dt class="text-slate-500">مالیات و عوارض</dt><dd>{{ $wallets->format($order->tax_amount, $order->currency) }}</dd></div><div class="flex justify-between gap-2 border-t border-slate-100 pt-4"><dt class="font-black">جمع کل</dt><dd class="font-black text-blue-600">{{ $wallets->format($order->total, $order->currency) }}</dd></div></dl>
                 @if($renewalPrice)<p class="domain-help mt-5">قیمت فعلی تمدید یک‌ساله: {{ $renewalPrice }}. قیمت تمدید در زمان تمدید محاسبه می‌شود.</p>@endif
                 <p class="domain-help mt-3">قیمت تا {{ \App\Support\Jalali::format($order->quoted_until, 'H:i') }} معتبر است. پیشرفت شما با هر مرحله ذخیره می‌شود.</p>
-                <form method="POST" action="{{ route('customer.domains.orders.cancel', $order, false) }}" class="mt-5">@csrf<button class="text-xs text-slate-500 underline">لغو این سفارش</button></form>
+                <form method="POST" action="{{ route('customer.domains.orders.cancel', $order, false) }}" class="mt-5">@csrf<input type="hidden" name="workspace" value="{{ $activeProject->uuid }}"><button class="text-xs text-slate-500 underline">لغو این سفارش</button></form>
             </aside>
         </div>
     @endif

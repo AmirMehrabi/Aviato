@@ -198,7 +198,7 @@ class Customer extends Authenticatable
 
     public function canManageDomains(): bool
     {
-        return ! $this->isSuspended() && ($this->canPurchaseDomains() || ManagedDomain::where('customer_id', $this->id)->exists() || DomainOrder::where('customer_id', $this->id)->exists());
+        return ! $this->isSuspended() && ($this->canPurchaseDomains() || ManagedDomain::where('customer_id', $this->id)->exists() || DomainOrder::where('customer_id', $this->id)->exists() || Project::visibleTo($this)->where(fn ($query) => $query->whereHas('domains')->orWhereHas('domainOrders'))->exists());
     }
 
     public function canPurchaseDomains(): bool

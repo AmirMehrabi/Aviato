@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DomainOrder;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Services\Domains\DomainWorkspaceService;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
@@ -24,7 +25,10 @@ class InvoiceController extends Controller
     {
         $customer = $request->user('customer');
         if ($request->query('tab') === 'domains') {
-            return view('customer.domains.invoices', ['customer' => $customer, 'wallets' => $this->wallets, 'invoices' => Invoice::where('customer_id', $customer->id)->where('kind', 'domain')->latest('issued_at')->paginate(12)->withQueryString()]);
+            $activeProject = $this->projects->activeProject($request, $customer);
+            abort_unless($this->projects->canViewBilling($activeProject, $customer), 404);
+
+            return view('customer.domains.invoices', ['customer' => $customer, 'activeProject' => $activeProject, 'wallets' => $this->wallets, 'invoices' => Invoice::whereHas('domainOrder', fn ($query) => $query->where('project_id', $activeProject->id))->where('kind', 'domain')->latest('issued_at')->paginate(12)->withQueryString()]);
         }
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canViewBilling($activeProject, $customer), 404);
@@ -69,10 +73,10 @@ class InvoiceController extends Controller
     {
         $customer = $request->user('customer');
         if ($invoice->kind === 'domain') {
-            abort_unless($invoice->customer_id === $customer->id, 404);
             $order = DomainOrder::findOrFail($invoice->domain_order_id);
+            $activeProject = app(DomainWorkspaceService::class)->order($request, $order, invoice: true);
 
-            return view('customer.domains.invoice', ['customer' => $customer, 'order' => $order, 'invoice' => $invoice->load('items'), 'wallets' => $this->wallets]);
+            return view('customer.domains.invoice', ['customer' => $customer, 'activeProject' => $activeProject, 'order' => $order, 'invoice' => $invoice->load('items'), 'wallets' => $this->wallets]);
         }
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canViewBilling($activeProject, $customer), 404);

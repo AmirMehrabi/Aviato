@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\DomainOrder;
 use App\Models\ManagedDomain;
 use App\Models\Payment;
+use App\Models\Project;
 use App\Services\Notifications\NotificationEventSubscriber;
 use App\Services\PaymentService;
 use App\Services\UsageBalanceService;
@@ -21,10 +22,12 @@ class DomainOrderService
 {
     public function __construct(private readonly DomainPricingService $pricing, private readonly DomainProvider $provider, private readonly WalletService $wallets) {}
 
-    public function create(Customer $customer, string $domain, int $period, ?ManagedDomain $owned = null): DomainOrder
+    public function create(Customer $customer, string $domain, int $period, ?ManagedDomain $owned = null, ?Project $project = null): DomainOrder
     {
         abort_if($customer->isSuspended(), 403);
         abort_unless($owned ? $owned->customer_id === $customer->id : $customer->canPurchaseDomains(), 403);
+        $project = $owned?->project ?? $project ?? app(DomainWorkspaceService::class)->firstOwned($customer);
+        abort_unless((int) $project->owner_customer_id === (int) $customer->id, 403);
         $operation = $owned ? 'renew' : 'register';
         abort_unless($owned || AppSetting::domainSalesEnabled(), 403);
         if ($owned && $owned->name !== $domain) {
@@ -32,7 +35,7 @@ class DomainOrderService
         }
         $quote = $this->pricing->quote($domain, $operation, $period, $owned?->provider);
         // Reuse an unfinished checkout, including saved contact/setup details.
-        $existing = DomainOrder::where('customer_id', $customer->id)->where('domain', $domain)->where('operation', $operation)->where('period', $period)->where('provider', $quote['provider'])->whereIn('status', ['draft', 'awaiting_payment'])->latest('id')->first();
+        $existing = DomainOrder::where('project_id', $project->id)->where('customer_id', $customer->id)->where('domain', $domain)->where('operation', $operation)->where('period', $period)->where('provider', $quote['provider'])->whereIn('status', ['draft', 'awaiting_payment'])->latest('id')->first();
         if ($existing) {
             return $existing;
         }
@@ -40,9 +43,9 @@ class DomainOrderService
             throw ValidationException::withMessages(['domain' => 'این دامنه قبلاً ثبت شده است.']);
         }
 
-        $previous = DomainOrder::where('customer_id', $customer->id)->where('domain', $domain)->where('contact_mode', $quote['contact_mode'])->where('provider', $quote['provider'])->latest('id')->first();
+        $previous = DomainOrder::where('project_id', $project->id)->where('customer_id', $customer->id)->where('domain', $domain)->where('contact_mode', $quote['contact_mode'])->where('provider', $quote['provider'])->latest('id')->first();
 
-        return DomainOrder::create($quote + ['uuid' => (string) Str::uuid(), 'customer_id' => $customer->id, 'domain' => $domain, 'operation' => $operation, 'period' => $period, 'managed_domain_id' => $owned?->id, 'expiry_before' => $owned?->expires_at, 'registrant' => $owned?->registrant ?? $previous?->registrant, 'nameservers' => $owned?->nameservers ?? $previous?->nameservers]);
+        return DomainOrder::create($quote + ['uuid' => (string) Str::uuid(), 'customer_id' => $customer->id, 'project_id' => $project->id, 'domain' => $domain, 'operation' => $operation, 'period' => $period, 'managed_domain_id' => $owned?->id, 'expiry_before' => $owned?->expires_at, 'registrant' => $owned?->registrant ?? $previous?->registrant, 'nameservers' => $owned?->nameservers ?? $previous?->nameservers]);
     }
 
     public function refreshQuote(DomainOrder $order): void
@@ -81,7 +84,7 @@ class DomainOrderService
         if ($order->operation === 'register' && ManagedDomain::where('name', $order->domain)->exists()) {
             throw ValidationException::withMessages(['payment' => 'این دامنه قبلاً ثبت شده است. سفارش‌های خود را بررسی کنید.']);
         }
-        if ($order->operation === 'renew' && (! $order->managedDomain || ! $order->expiry_before || ! $order->managedDomain->expires_at?->equalTo($order->expiry_before))) {
+        if ($order->operation === 'renew' && (! $order->managedDomain || $order->managedDomain->project_id !== $order->project_id || ! $order->expiry_before || ! $order->managedDomain->expires_at?->equalTo($order->expiry_before))) {
             throw ValidationException::withMessages(['payment' => 'تاریخ انقضای دامنه تغییر کرده است. از صفحه دامنه سفارش تمدید تازه بسازید.']);
         }
     }

@@ -37,6 +37,11 @@ class Invoice extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function domainOrder(): BelongsTo
+    {
+        return $this->belongsTo(DomainOrder::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(InvoiceItem::class);

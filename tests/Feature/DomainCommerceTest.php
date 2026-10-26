@@ -57,6 +57,56 @@ class DomainCommerceTest extends TestCase
         $this->fakeProvider();
     }
 
+    public function test_commerce_defaults_to_enabled_extensions_and_searches_the_full_catalog(): void
+    {
+        DomainProduct::create(['extension' => 'academy', 'operation' => 'register', 'period' => 1, 'enabled' => false]);
+        $this->actingAs(User::factory()->create(), 'admin');
+
+        $this->get('https://admin.localhost/settings/domains/commerce')
+            ->assertOk()->assertViewHas('catalogTab', 'mine')
+            ->assertViewHas('extensions', fn ($extensions) => $extensions->pluck('extension')->all() === ['com']);
+        $this->get('https://admin.localhost/settings/domains/commerce?extension=%20.ACA%20')
+            ->assertOk()->assertViewHas('catalogTab', 'all')
+            ->assertViewHas('extensions', fn ($extensions) => $extensions->pluck('extension')->all() === ['academy']);
+    }
+
+    public function test_commerce_groups_durations_and_prioritizes_enabled_extensions(): void
+    {
+        DomainProduct::create(['extension' => 'academy', 'operation' => 'register', 'period' => 1, 'enabled' => false]);
+        foreach (range(2, 10) as $period) {
+            foreach (['register', 'renew'] as $operation) {
+                DomainProduct::create(['extension' => 'com', 'operation' => $operation, 'period' => $period, 'enabled' => false]);
+            }
+        }
+        $this->actingAs(User::factory()->create(), 'admin')
+            ->get('https://admin.localhost/settings/domains/commerce?catalog=all')
+            ->assertOk()->assertViewHas('extensions', fn ($extensions) => $extensions->total() === 2
+                && $extensions->first()['extension'] === 'com' && $extensions->first()['products']->count() === 20);
+    }
+
+    public function test_commerce_attention_detects_missing_renewal_and_provider_routing_blocks(): void
+    {
+        $this->actingAs(User::factory()->create(), 'admin');
+        $this->get('https://admin.localhost/settings/domains/commerce?catalog=attention')
+            ->assertOk()->assertViewHas('extensions', fn ($extensions) => $extensions->isEmpty());
+        DomainProduct::where('operation', 'renew')->update(['enabled' => false]);
+        $this->get('https://admin.localhost/settings/domains/commerce?catalog=attention')
+            ->assertOk()->assertSee('قیمت تمدید یک‌ساله معتبر نیست')
+            ->assertViewHas('extensions', fn ($extensions) => $extensions->total() === 1);
+        DomainProduct::where('operation', 'renew')->update(['enabled' => true]);
+        AppSetting::setValue('domains.provider_routes', ['com' => 'irpower'], 'json', 'domains');
+        $this->get('https://admin.localhost/settings/domains/commerce?catalog=attention')
+            ->assertOk()->assertSee('مسیر سرویس‌دهنده نیازمند بررسی است');
+    }
+
+    public function test_commerce_separates_pricing_from_order_management(): void
+    {
+        $this->actingAs(User::factory()->create(), 'admin');
+        $this->get('https://admin.localhost/settings/domains/commerce')->assertOk()->assertDontSee('id="order-status"', false);
+        $this->get('https://admin.localhost/settings/domains/commerce?section=orders')->assertOk()
+            ->assertSee('id="order-status"', false)->assertDontSee('id="extension-com"', false);
+    }
+
     protected function tearDown(): void
     {
         $this->travelBack();
@@ -171,6 +221,21 @@ class DomainCommerceTest extends TestCase
         $this->assertSame(1, collect(Http::recorded())->filter(fn ($pair) => str_ends_with($pair[0]->url(), '/domain/register'))->count());
     }
 
+    public function test_fulfillment_and_renewal_keep_the_purchase_workspace_after_switching(): void
+    {
+        $project = $this->customer->ownedProjects()->create(['name' => 'Store']);
+        $project->members()->create(['customer_id' => $this->customer->id, 'role' => 'owner']);
+        $order = $this->order(true);
+        $order->update(['project_id' => $project->id]);
+        app(DomainOrderService::class)->pay($order->fresh(), null);
+        app(DomainFulfillmentService::class)->process($order->fresh());
+        $domain = $order->fresh()->managedDomain;
+        $this->assertSame($project->id, $domain->project_id);
+        $this->assertSame($this->customer->id, $domain->customer_id);
+        $renewal = app(DomainOrderService::class)->create($this->customer, $domain->name, 1, $domain);
+        $this->assertSame($project->id, $renewal->project_id);
+    }
+
     public function test_timeout_after_submission_keeps_money_reserved_and_never_registers_twice(): void
     {
         $order = $this->order(true);
@@ -245,7 +310,7 @@ class DomainCommerceTest extends TestCase
         $this->customer->forceFill(['domain_management_enabled' => false])->save();
         AppSetting::setValue(AppSetting::DOMAIN_MANAGEMENT_ENABLED, false, 'boolean', 'domains');
         AppSetting::setValue('domains.sales_enabled', false, 'boolean', 'domains');
-        $this->actingAs($this->customer, 'customer')->get('https://cp.localhost/domains')->assertOk()->assertSee('دامنه‌های من');
+        $this->actingAs($this->customer, 'customer')->get('https://cp.localhost/domains')->assertOk()->assertSee('دامنه‌های فضای کاری');
         $this->get('https://cp.localhost/domains/'.$domain->uuid)->assertOk();
         $this->post('https://cp.localhost/domains/'.$domain->uuid.'/renew', ['period' => 1])->assertRedirect()->assertSessionHasNoErrors();
         $this->post('https://cp.localhost/domains/orders', ['domain' => 'other.com', 'period' => 1])->assertForbidden();

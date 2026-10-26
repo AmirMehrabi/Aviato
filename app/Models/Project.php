@@ -35,6 +35,16 @@ class Project extends Model
         return $this->hasMany(ProjectMember::class);
     }
 
+    public function domains(): HasMany
+    {
+        return $this->hasMany(ManagedDomain::class);
+    }
+
+    public function domainOrders(): HasMany
+    {
+        return $this->hasMany(DomainOrder::class);
+    }
+
     public function virtualMachines(): HasMany
     {
         return $this->hasMany(VirtualMachine::class);

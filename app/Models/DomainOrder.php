@@ -2,15 +2,28 @@
 
 namespace App\Models;
 
+use App\Services\Domains\DomainWorkspaceService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['provider', 'uuid', 'customer_id', 'managed_domain_id', 'domain_product_id', 'contact_mode', 'domain', 'operation', 'period', 'status', 'currency', 'supplier_price', 'subtotal', 'tax_amount', 'tax_rate', 'total', 'quoted_until', 'registrant', 'nameservers', 'consented_at', 'payment_id', 'wallet_transaction_id', 'refund_transaction_id', 'invoice_id', 'funded_at', 'completed_at', 'expiry_before', 'customer_message'])]
+#[Fillable(['provider', 'uuid', 'customer_id', 'project_id', 'managed_domain_id', 'domain_product_id', 'contact_mode', 'domain', 'operation', 'period', 'status', 'currency', 'supplier_price', 'subtotal', 'tax_amount', 'tax_rate', 'total', 'quoted_until', 'registrant', 'nameservers', 'consented_at', 'payment_id', 'wallet_transaction_id', 'refund_transaction_id', 'invoice_id', 'funded_at', 'completed_at', 'expiry_before', 'customer_message'])]
 class DomainOrder extends Model
 {
     protected $attributes = ['provider' => 'reseller_world'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (DomainOrder $model): void {
+            $model->project_id ??= $model->managedDomain?->project_id ?? app(DomainWorkspaceService::class)->firstOwned($model->customer)->id;
+        });
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
 
     protected function casts(): array
     {

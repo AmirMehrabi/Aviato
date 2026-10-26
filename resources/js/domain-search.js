@@ -32,7 +32,7 @@ export function domainSearch(config) {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                     },
-                    body: JSON.stringify({ domain: this.domain }),
+                    body: JSON.stringify({ domain: this.domain, workspace: config.workspace }),
                 });
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
@@ -40,6 +40,7 @@ export function domainSearch(config) {
                         401: 'نشست شما پایان یافته است. دوباره وارد حساب شوید.',
                         403: 'دسترسی دامنه برای حساب شما فعال نیست.',
                         419: 'نشست شما پایان یافته است. صفحه را تازه کنید و دوباره تلاش کنید.',
+                        409: 'فضای کاری تغییر کرده است. صفحه را تازه کنید و دوباره ادامه دهید.',
                         429: 'تعداد جستجوها زیاد است. کمی صبر کنید و دوباره تلاش کنید.',
                     };
                     this.error = messages[response.status] || data.errors?.domain?.[0] || 'در حال حاضر بررسی دامنه امکان‌پذیر نیست. کمی بعد دوباره تلاش کنید.';

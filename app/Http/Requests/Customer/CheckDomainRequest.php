@@ -2,13 +2,20 @@
 
 namespace App\Http\Requests\Customer;
 
+use App\Services\Domains\DomainWorkspaceService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CheckDomainRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user('customer')?->canPurchaseDomains() ?? false;
+        $customer = $this->user('customer');
+        if (! $customer || ! $customer->canPurchaseDomains()) {
+            return false;
+        }
+        $workspaces = app(DomainWorkspaceService::class);
+
+        return $workspaces->canPurchase($workspaces->active($this), $customer);
     }
 
     protected function prepareForValidation(): void

@@ -9,6 +9,7 @@ use App\Models\DomainOperation;
 use App\Models\DomainOrder;
 use App\Models\DomainProduct;
 use App\Models\ManagedDomain;
+use App\Services\Domains\DomainCommerceCatalog;
 use App\Services\Domains\DomainFulfillmentService;
 use App\Services\Domains\DomainOrderService;
 use App\Services\Domains\DomainPricingService;
@@ -19,6 +20,7 @@ use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -30,14 +32,26 @@ class DomainCommerceController extends Controller
 {
     public function index(Request $request): View
     {
-        $filters = $request->validate(['extension' => ['nullable', 'string', 'max:80'], 'provider' => ['nullable', 'in:reseller_world,irpower'], 'status' => ['nullable', 'in:needs_review,confirming,funded,processing,failed,completed,draft,awaiting_payment,cancelled']]);
+        $filters = $request->validate(['extension' => ['nullable', 'string', 'max:80'], 'provider' => ['nullable', 'in:reseller_world,irpower'], 'catalog' => ['nullable', 'in:mine,attention,all'], 'status' => ['nullable', 'in:needs_review,confirming,funded,processing,failed,completed,draft,awaiting_payment,cancelled']]);
+
+        $catalog = app(DomainCommerceCatalog::class)->extensions();
+        $catalogCounts = ['mine' => $catalog->where('enabled', true)->count(), 'attention' => $catalog->where('enabled', true)->where('ready', false)->count(), 'all' => $catalog->count()];
+        $catalogTab = $filters['catalog'] ?? (! empty($filters['extension']) ? 'all' : 'mine');
+        $extension = strtolower(ltrim(trim($filters['extension'] ?? ''), '.'));
+        $filtered = $catalog->filter(fn ($row) => ($catalogTab === 'all' || ($row['enabled'] && ($catalogTab !== 'attention' || ! $row['ready'])))
+            && ($extension === '' || str_contains($row['extension'], $extension))
+            && (empty($filters['provider']) || $row['products']->contains('provider', $filters['provider'])))->values();
+        $page = LengthAwarePaginator::resolveCurrentPage('prices_page');
+        $extensions = new LengthAwarePaginator($filtered->forPage($page, 15)->values(), $filtered->count(), 15, $page, ['path' => $request->url(), 'pageName' => 'prices_page', 'query' => $request->query()]);
 
         return view('admin.settings.domain-commerce', [
             'irpowerDomains' => ManagedDomain::where('provider', 'irpower')->orderBy('expires_at')->paginate(15, ['*'], 'domains_page')->withQueryString(),
             'providerLabels' => DomainPricingService::providerLabels(),
             'providerReadiness' => collect(DomainPricingService::providerLabels())->mapWithKeys(fn ($label, $provider) => [$provider => app(DomainPricingService::class)->providerEnabled($provider)])->all(),
             'providerRoutes' => AppSetting::getValue('domains.provider_routes', []),
-            'products' => DomainProduct::when($filters['provider'] ?? null, fn ($query, $provider) => $query->where('provider', $provider))->when($filters['extension'] ?? null, fn ($query, $extension) => $query->where('extension', ltrim($extension, '.')))->orderBy('extension')->orderBy('provider')->orderBy('operation')->orderBy('period')->paginate(24, ['*'], 'prices_page')->withQueryString(),
+            'extensions' => $extensions,
+            'catalogCounts' => $catalogCounts,
+            'catalogTab' => $catalogTab,
             'orders' => DomainOrder::with(['customer', 'operations'])->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))->latest()->paginate(15, ['*'], 'orders_page')->withQueryString(),
             'uncertainOperations' => DomainOperation::with('domain')->whereHas('domain', fn ($query) => $query->where('provider', 'reseller_world'))->whereNull('domain_order_id')->whereIn('status', ['submitting', 'uncertain'])->latest()->limit(30)->get(),
             'wallets' => app(WalletService::class),

@@ -11,6 +11,7 @@ use App\Models\ManagedDomain;
 use App\Services\Domains\DomainOrderService;
 use App\Services\Domains\DomainPricingService;
 use App\Services\Domains\DomainRegistrant;
+use App\Services\Domains\DomainWorkspaceService;
 use App\Services\Domains\IrpowerProvider;
 use App\Services\Payments\PaymentGatewayException;
 use App\Services\Payments\PaymentGatewayManager;
@@ -26,20 +27,28 @@ use RuntimeException;
 
 class DomainCheckoutController extends Controller
 {
+    public function __construct(private readonly DomainWorkspaceService $workspaces) {}
+
     public function store(CheckDomainRequest $request, DomainOrderService $orders): RedirectResponse
     {
         $request->validate(['period' => ['required', 'integer', 'between:1,10']]);
         abort_unless(AppSetting::domainSalesEnabled(), 403);
-        $order = $orders->create($request->user('customer'), $request->validated('domain'), (int) $request->input('period'));
+        $order = $orders->create($request->user('customer'), $request->validated('domain'), (int) $request->input('period'), project: $this->workspaces->active($request));
 
         return $this->redirectTo('customer.domains.orders.show', $order);
     }
 
     public function show(Request $request, DomainOrder $order, DomainOrderService $orders, DomainPricingService $pricing, PaymentGatewayManager $gateways): View|JsonResponse
     {
-        $this->own($request, $order);
+        $project = $this->workspaces->order($request, $order);
         if ($request->expectsJson()) {
             return response()->json(['status' => $order->status, 'label' => $order->label(), 'message' => $order->customer_message]);
+        }
+        if ((int) $order->customer_id !== (int) $request->user('customer')->id) {
+            return view('customer.domains.order-status', [
+                'customer' => $request->user('customer'), 'activeProject' => $project, 'order' => $order,
+                'canViewDomainBilling' => $this->workspaces->canBill($project, $request->user('customer')),
+            ]);
         }
         $step = $request->query('step', 'owner');
         if (! in_array($step, ['owner', 'setup', 'review'], true)) {
@@ -58,7 +67,7 @@ class DomainCheckoutController extends Controller
         $available = $orders->available($order->customer);
 
         return view('customer.domains.checkout', [
-            'customer' => $request->user('customer'), 'order' => $order->load(['product', 'payment', 'managedDomain']), 'wallets' => app(WalletService::class), 'step' => $step,
+            'customer' => $request->user('customer'), 'activeProject' => $project, 'order' => $order->load(['product', 'payment', 'managedDomain']), 'wallets' => app(WalletService::class), 'step' => $step,
             'contacts' => $contacts, 'countries' => DomainRegistrant::countries(), 'available' => $available, 'shortfall' => max(0, $order->total - $available), 'gateways' => $gateways->available(),
             'renewalPrice' => $pricing->renewalPrice($order->domain, $order->provider),
         ]);
@@ -178,7 +187,8 @@ class DomainCheckoutController extends Controller
 
     public function renew(Request $request, ManagedDomain $domain, DomainOrderService $orders): RedirectResponse
     {
-        abort_unless($domain->customer_id === $request->user('customer')->id, 404);
+        $this->workspaces->domain($request, $domain, billing: true);
+        abort_unless((int) $domain->customer_id === (int) $request->user('customer')->id, 403, 'تمدید این دامنه بر عهده پرداخت‌کننده آن است.');
         $data = $request->validate(['period' => ['required', 'integer', 'between:1,10']]);
         abort_unless($domain->status === 'active' && $domain->expires_at?->isFuture(), 422, 'برای تمدید دامنه منقضی‌شده با پشتیبانی تماس بگیرید.');
         $order = $orders->create($request->user('customer'), $domain->name, (int) $data['period'], $domain);
@@ -188,10 +198,10 @@ class DomainCheckoutController extends Controller
 
     public function invoice(Request $request, DomainOrder $order): View
     {
-        $this->own($request, $order);
+        $project = $this->workspaces->order($request, $order, invoice: true);
         abort_unless($order->invoice_id, 404);
 
-        return view('customer.domains.invoice', ['customer' => $request->user('customer'), 'order' => $order, 'invoice' => $order->invoice->load('items'), 'wallets' => app(WalletService::class)]);
+        return view('customer.domains.invoice', ['customer' => $request->user('customer'), 'activeProject' => $project, 'order' => $order, 'invoice' => $order->invoice->load('items'), 'wallets' => app(WalletService::class)]);
     }
 
     private function redirectTo(string $name, mixed $parameters = []): RedirectResponse
@@ -201,6 +211,6 @@ class DomainCheckoutController extends Controller
 
     private function own(Request $request, DomainOrder $order): void
     {
-        abort_unless($order->customer_id === $request->user('customer')->id, 404);
+        $this->workspaces->order($request, $order, mutate: true);
     }
 }

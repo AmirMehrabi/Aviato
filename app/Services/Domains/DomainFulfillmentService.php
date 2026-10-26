@@ -241,7 +241,7 @@ class DomainFulfillmentService
             }
             $domain = $order->managedDomain;
             if (! $domain) {
-                $domain = ManagedDomain::create(['uuid' => (string) Str::uuid(), 'customer_id' => $order->customer_id, 'name' => $order->domain, 'extension' => $order->product->extension, 'provider' => $order->provider, 'registered_at' => now(), 'registrant' => $order->registrant, 'nameservers' => $order->nameservers]);
+                $domain = ManagedDomain::create(['uuid' => (string) Str::uuid(), 'customer_id' => $order->customer_id, 'project_id' => $order->project_id, 'name' => $order->domain, 'extension' => $order->product->extension, 'provider' => $order->provider, 'registered_at' => now(), 'registrant' => $order->registrant, 'nameservers' => $order->nameservers]);
             }
             $domain->update(['provider_id' => (string) $info['id'], 'expires_at' => $expiry, 'synced_at' => now(), 'status' => 'active']);
             $transaction = WalletTransaction::lockForUpdate()->findOrFail($order->wallet_transaction_id);
