@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\DeliverCorporateNotification;
 use App\Models\AppSetting;
+use App\Models\BillingIdentity;
 use App\Models\CorporateDelivery;
 use App\Models\CorporateProfile;
 use App\Models\CorporateRequest;
@@ -13,6 +14,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Services\Corporate\BillingIdentityService;
 use App\Services\Corporate\CorporateVerificationService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\UploadedFile;
@@ -248,6 +250,7 @@ class CorporateVerificationTest extends TestCase
         $this->artisan('billing:backfill-identities')->assertSuccessful();
         $this->assertSame($identity, $payment->fresh()->billingRecipient());
         $this->assertDatabaseCount('billing_identities', 1);
+        $this->assertTrue(BillingIdentity::firstOrFail()->effective_at->copy()->utc()->greaterThan(Carbon::createFromTimestampUTC(0)));
     }
 
     public function test_duplicate_open_request_and_claimed_company_are_rejected(): void

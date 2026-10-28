@@ -24,7 +24,8 @@ class BillingIdentityService
     public function ensureBaseline(Customer $customer): void
     {
         if (! BillingIdentity::where('customer_id', $customer->id)->exists()) {
-            BillingIdentity::create(['customer_id' => $customer->id, 'effective_at' => '1970-01-01 00:00:00', 'identity' => $this->individual($customer)]);
+            // Stay inside MySQL TIMESTAMP range even with a positive session timezone.
+            BillingIdentity::create(['customer_id' => $customer->id, 'effective_at' => '1971-01-01 00:00:00', 'identity' => $this->individual($customer)]);
         }
     }
 }
