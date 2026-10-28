@@ -292,7 +292,7 @@ class CorporateVerificationTest extends TestCase
             'api.kavenegar.com/*/verify/gettemplate.json' => Http::response(['return' => ['status' => 200], 'entries' => ['name' => 'LoginOtp', 'smsmessage' => 'کد ورود %token', 'approvalstatus' => 'Approved']]),
             'api.kavenegar.com/*/verify/addtemplate.json' => Http::response(['return' => ['status' => 200]]),
             'api.kavenegar.com/*/verify/updatetemplate.json' => Http::response(['return' => ['status' => 200]])]);
-        $this->artisan('corporate:configure-sms --apply --include-existing')->assertSuccessful();
+        $this->artisan('corporate:configure-sms --apply --include-existing --include-authentication')->assertSuccessful();
         Http::assertSent(fn ($request) => str_ends_with($request->url(), '/verify/updatetemplate.json') && $request['name'] === 'LoginOtp' && $request['textMessage'] === 'کد ورود %token' && $request['primaryLineNumber'] === '200000171');
     }
 
@@ -306,5 +306,18 @@ class CorporateVerificationTest extends TestCase
         }]);
         $this->artisan('corporate:configure-sms', ['--apply' => true, '--template-id' => $mappings])->assertFailed();
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'templatelist') || str_contains($request->url(), 'updatetemplate') || str_contains($request->url(), 'addtemplate'));
+    }
+
+    public function test_bulk_sender_updates_leave_authentication_template_untouched(): void
+    {
+        AppSetting::setValue(AppSetting::KAVENEGAR_API_KEY, 'test-key', 'string', 'kavenegar');
+        AppSetting::setValue(AppSetting::KAVENEGAR_TEMPLATE, 'aviato-otp', 'string', 'kavenegar');
+        Http::fake([
+            'api.kavenegar.com/*/verify/templatelist.json' => Http::response(['return' => ['status' => 200], 'entries' => [['id' => 42, 'name' => 'aviato-otp']]]),
+            'api.kavenegar.com/*/verify/addtemplate.json' => Http::response(['return' => ['status' => 200]]),
+        ]);
+        $this->artisan('corporate:configure-sms --apply --include-existing')->assertSuccessful();
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'gettemplate') || str_contains($request->url(), 'updatetemplate'));
+        $this->assertSame('aviato-otp', AppSetting::getValue(AppSetting::KAVENEGAR_TEMPLATE));
     }
 }

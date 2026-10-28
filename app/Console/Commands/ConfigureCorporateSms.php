@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 
 class ConfigureCorporateSms extends Command
 {
-    protected $signature = 'corporate:configure-sms {--apply : Create or update provider templates} {--sender=200000171 : Required primary sending line} {--include-existing : Also update the sending line of configured login, ticket and wallet templates} {--template-id=* : Known Name=ID mappings when provider listing is unavailable}';
+    protected $signature = 'corporate:configure-sms {--apply : Create or update provider templates} {--sender=200000171 : Required primary sending line} {--include-existing : Also update configured ticket and wallet templates} {--include-authentication : Explicitly opt in to OTP changes that can interrupt login pending provider approval} {--template-id=* : Known Name=ID mappings when provider listing is unavailable}';
 
     protected $description = 'Preview or configure corporate Kavenegar Lookup templates and their primary line';
 
@@ -96,10 +96,13 @@ class ConfigureCorporateSms extends Command
                 $this->info($name.': configured; provider approval must be checked before enabling SMS.');
             }
             if ($this->option('include-existing')) {
-                $keys = [AppSetting::KAVENEGAR_TEMPLATE, AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE,
+                $keys = [AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE,
                     AppSetting::TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE, AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE,
                     AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE, AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE,
                     AppSetting::TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE];
+                if ($this->option('include-authentication')) {
+                    $keys[] = AppSetting::KAVENEGAR_TEMPLATE;
+                }
                 $names = collect($keys)->map(fn ($key) => AppSetting::getValue($key, ''))->filter()->unique();
                 foreach ($names as $name) {
                     $found = $existing->first(fn ($item) => strcasecmp($item['name'] ?? '', $name) === 0);

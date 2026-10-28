@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Throwable;
@@ -56,6 +57,7 @@ class CustomerPasswordResetController extends Controller
         try {
             $this->sendResetCode($customer, $channel, $code);
         } catch (Throwable $e) {
+            Log::warning('Authentication code delivery failed.', ['flow' => 'password_reset', 'channel' => $channel, 'customer_id' => $customer->id, 'exception_type' => $e::class, 'error_code' => $e->getCode()]);
             DB::table('customer_password_reset_tokens')->where('email', $identifier)->delete();
 
             return back()

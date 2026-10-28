@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -92,6 +93,7 @@ class CustomerOtpLoginController extends Controller
         try {
             $this->sendCodeToCustomer($customer, $channel, $code);
         } catch (Throwable $e) {
+            Log::warning('Authentication code delivery failed.', ['flow' => 'login_otp', 'channel' => $channel, 'customer_id' => $customer->id, 'exception_type' => $e::class, 'error_code' => $e->getCode()]);
             DB::table('customer_login_otp_challenges')->where('id', $challenge)->delete();
 
             return back()->withInput()->withErrors(['login' => 'ثبت درخواست ارسال کد انجام نشد. کمی بعد دوباره تلاش کنید.']);
@@ -178,6 +180,8 @@ class CustomerOtpLoginController extends Controller
                 $this->sendCodeToCustomer($customer, $challenge->channel, $code);
             });
         } catch (Throwable $e) {
+            Log::warning('Authentication code delivery failed.', ['flow' => 'login_otp_resend', 'channel' => $challenge->channel, 'customer_id' => $customer->id, 'exception_type' => $e::class, 'error_code' => $e->getCode()]);
+
             return back()->withErrors(['code' => 'ثبت درخواست ارسال کد انجام نشد. کمی بعد دوباره تلاش کنید.']);
         }
 
