@@ -5,6 +5,7 @@ namespace App\Services\Notifications;
 use App\Enums\AdminRole;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Notifications\CorporateDatabaseNotification;
 use App\Notifications\TicketDatabaseNotification;
 use App\Notifications\VmNodeMoveNotification;
 use Illuminate\Database\Eloquent\Builder;
@@ -114,6 +115,9 @@ class NotificationInboxService
         $query = $notifiable->notifications()->getQuery();
         if ($notifiable instanceof User && $notifiable->role !== AdminRole::Admin) {
             $types = [];
+            if ($notifiable->allows('corporate.read')) {
+                $types[] = CorporateDatabaseNotification::class;
+            }
             if ($notifiable->allows('tickets.read')) {
                 $types[] = TicketDatabaseNotification::class;
             }

@@ -111,6 +111,9 @@ class AdminAccess
             return [AdminAbility::BillingRead, ...($name === 'admin.billing.exports'
                 ? [AdminAbility::BillingExport] : ($read ? [] : [AdminAbility::BillingManage]))];
         }
+        if (str_starts_with($name, 'admin.corporate.')) {
+            return [AdminAbility::CorporateRead, ...($read ? [] : [AdminAbility::CorporateReview])];
+        }
         if (str_starts_with($name, 'admin.customers.')) {
             $special = match ($name) {
                 'admin.customers.wallet-transactions.store', 'admin.customers.wallet-lock.update',
@@ -180,6 +183,7 @@ class AdminAccess
         $dependencies = [
             'billing.export' => ['billing.read'], 'billing.manage' => ['billing.read'],
             'wallet.manage' => ['billing.read'],
+            'corporate.review' => ['corporate.read'],
             'customers.manage' => ['customers.read'],
             'customers.delete' => ['customers.read'],
             'customers.credentials' => ['customers.read', 'customers.manage'], 'customers.suspend' => ['customers.read'],
@@ -237,7 +241,7 @@ class AdminAccess
                 AdminRole::Infrastructure => 'admin.virtual-machines.index',
             };
         }
-        foreach (['admin.dashboard', 'admin.tickets.index', 'admin.incidents.index', 'admin.customers.index',
+        foreach (['admin.dashboard', 'admin.corporate.index', 'admin.tickets.index', 'admin.incidents.index', 'admin.customers.index',
             'admin.projects.index', 'admin.virtual-machines.index', 'admin.billing.overview', 'admin.proxmox-servers.index',
             'admin.ip-pools.index', 'admin.billing.network.index', 'admin.hetzner-accounts.index', 'admin.infrastructure-locations.index', 'admin.cloud-images.index', 'admin.resellers.index', 'admin.promotions.index', 'admin.billing.rates.index',
             'admin.billing.bundles.index', 'admin.settings.edit', 'admin.audit.index', 'admin.api-activity.index'] as $route) {

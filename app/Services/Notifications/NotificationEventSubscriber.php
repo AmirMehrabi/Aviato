@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\DomainOrder;
 use App\Models\Payment;
 use App\Models\VirtualMachine;
+use App\Notifications\CorporateDatabaseNotification;
 use App\Notifications\TemplatedNotification;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Notifications\Events\NotificationSending;
@@ -25,6 +26,10 @@ class NotificationEventSubscriber
             $data = $event->notification->toArray($event->notifiable);
             $key = $data['event'] ?? '';
             if (! isset(app(NotificationTemplates::class)->all()[$key])) {
+                return;
+            }
+            // Corporate deliveries have their own durable per-channel outbox.
+            if ($event->notification instanceof CorporateDatabaseNotification) {
                 return;
             }
             // Email is independent of the in-app preference.

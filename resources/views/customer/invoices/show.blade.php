@@ -9,6 +9,7 @@
 @endphp
 
 @section('content')
+    @include('customer.corporate.billing-recipient', ['recipient' => $invoice->billingRecipient()])
     <section class="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60 md:p-8">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div>

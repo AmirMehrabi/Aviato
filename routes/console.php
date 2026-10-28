@@ -517,3 +517,5 @@ Schedule::command('domains:lifecycle')->dailyAt('08:30')->timezone('Asia/Tehran'
 Artisan::command('domains:import-irpower-prices {--activate-existing : Enable new IRPOWER offers for extensions already approved for sale, plus .ir}', function (IrpowerCatalogService $catalog): void {
     $this->info('Imported '.$catalog->import((bool) $this->option('activate-existing')).' new IRPOWER price entries. Existing entries were preserved.');
 })->purpose('Import owner-supplied IRPOWER prices as manual offers with 30-day review validity');
+
+Schedule::command('corporate:recover-notifications')->everyFiveMinutes()->withoutOverlapping();

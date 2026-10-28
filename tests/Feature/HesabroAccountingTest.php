@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\HesabroAccountingService;
+use App\Services\HesabroSubmissionException;
 use App\Services\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -106,6 +107,23 @@ class HesabroAccountingTest extends TestCase
 
         $this->assertSame(Payment::STATUS_SUCCESSFUL, $completed->fresh()->status);
         $this->assertSame($payment->amount, $payment->customer->wallet->fresh()->balance);
+    }
+
+    public function test_corporate_export_is_held_without_changing_payment_or_credit(): void
+    {
+        $this->configureAccounting();
+        $payment = $this->payment();
+        $payment->forceFill(['billing_identity' => ['type' => 'corporate', 'name' => 'شرکت نمونه', 'national_id' => '10123456789']])->save();
+        Http::fake();
+        try {
+            app(HesabroAccountingService::class)->submit($payment);
+            $this->fail('Corporate export used the individual schema.');
+        } catch (HesabroSubmissionException $exception) {
+            $this->assertFalse($exception->retryable);
+            $this->assertStringContainsString('Corporate billing recipient', $exception->getMessage());
+        }
+        Http::assertNothingSent();
+        $this->assertTrue($payment->fresh()->isSuccessful());
     }
 
     private function configureAccounting(): void

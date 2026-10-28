@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasBillingIdentity;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +29,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Invoice extends Model
 {
+    use HasBillingIdentity;
+
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_ISSUED = 'issued';
@@ -50,6 +53,7 @@ class Invoice extends Model
     protected function casts(): array
     {
         return [
+            'billing_identity' => 'encrypted:array',
             'period_start' => 'datetime',
             'period_end' => 'datetime',
             'issued_at' => 'datetime',

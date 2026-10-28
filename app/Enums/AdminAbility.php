@@ -11,6 +11,8 @@ enum AdminAbility: string
     case BillingExport = 'billing.export';
     case BillingManage = 'billing.manage';
     case WalletManage = 'wallet.manage';
+    case CorporateRead = 'corporate.read';
+    case CorporateReview = 'corporate.review';
     case CustomersRead = 'customers.read';
     case CustomersManage = 'customers.manage';
     case CustomersDelete = 'customers.delete';
@@ -60,6 +62,8 @@ enum AdminAbility: string
             self::BillingExport => 'خروجی سوابق مالی',
             self::BillingManage => 'عملیات حسابداری پرداخت‌ها',
             self::WalletManage => 'تغییر موجودی، قفل و هشدار کیف پول',
+            self::CorporateRead => 'مشاهده درخواست‌های حقوقی',
+            self::CorporateReview => 'بررسی درخواست‌های حقوقی',
             self::CustomersRead => 'مشاهده مشتریان',
             self::CustomersManage => 'ایجاد و ویرایش مشتریان',
             self::CustomersDelete => 'حذف مشتریان',
@@ -111,6 +115,7 @@ enum AdminAbility: string
             self::BillingExport => 'مالی',
             self::BillingManage => 'مالی',
             self::WalletManage => 'مالی',
+            self::CorporateRead, self::CorporateReview => 'احراز هویت حقوقی',
             self::CustomersRead => 'مشتریان',
             self::CustomersManage => 'مشتریان',
             self::CustomersDelete => 'مشتریان',

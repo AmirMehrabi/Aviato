@@ -69,10 +69,13 @@
                 <section aria-labelledby="customer-heading" class="border-t border-slate-300 p-4 sm:border-t-0 sm:p-5">
                     <h2 id="customer-heading" class="border-b border-slate-200 pb-2 text-sm font-black text-[#0069FF]">مشخصات دارنده کیف پول</h2>
                     <dl class="mt-3 space-y-2 text-sm leading-6">
-                        <div class="flex gap-2"><dt class="shrink-0 font-bold text-slate-500">نام:</dt><dd class="font-black text-slate-950">{{ $payment->customer->name }}</dd></div>
-                        @if ($payment->customer->national_code)<div class="flex gap-2"><dt class="shrink-0 font-bold text-slate-500">کد ملی:</dt><dd class="font-bold text-slate-800" dir="ltr">{{ $payment->customer->national_code }}</dd></div>@endif
-                        @if ($payment->customer->phone)<div class="flex gap-2"><dt class="shrink-0 font-bold text-slate-500">شماره همراه:</dt><dd class="font-bold text-slate-800" dir="ltr">{{ $payment->customer->phone }}</dd></div>@endif
-                        @if ($payment->customer->email)<div class="flex gap-2"><dt class="shrink-0 font-bold text-slate-500">ایمیل:</dt><dd class="break-all font-bold text-slate-800" dir="ltr">{{ $payment->customer->email }}</dd></div>@endif
+                        <div class="flex gap-2"><dt class="shrink-0 font-bold text-slate-500">نام:</dt><dd class="font-black text-slate-950">{{ ($payment->billingRecipient()['name'] ?? '') }}</dd></div>
+                        @if (($payment->billingRecipient()['national_id'] ?? $payment->billingRecipient()['national_code'] ?? ''))<div class="flex gap-2"><dt class="shrink-0 font-bold text-slate-500">{{ ($payment->billingRecipient()['type'] ?? '') === 'corporate' ? 'شناسه ملی:' : 'کد ملی:' }}</dt><dd class="font-bold text-slate-800" dir="ltr">{{ ($payment->billingRecipient()['national_id'] ?? $payment->billingRecipient()['national_code'] ?? '') }}</dd></div>@endif
+                        @if (($payment->billingRecipient()['phone'] ?? ''))<div class="flex gap-2"><dt class="shrink-0 font-bold text-slate-500">شماره همراه:</dt><dd class="font-bold text-slate-800" dir="ltr">{{ ($payment->billingRecipient()['phone'] ?? '') }}</dd></div>@endif
+                        @if (($payment->billingRecipient()['email'] ?? ''))<div class="flex gap-2"><dt class="shrink-0 font-bold text-slate-500">ایمیل:</dt><dd class="break-all font-bold text-slate-800" dir="ltr">{{ ($payment->billingRecipient()['email'] ?? '') }}</dd></div>@endif
+                        @foreach(['register_number' => 'شماره ثبت', 'address' => 'نشانی', 'postal_code' => 'کد پستی', 'tax_number' => 'شماره اقتصادی'] as $field => $label)
+                            @if(filled($payment->billingRecipient()[$field] ?? null))<div class="flex gap-2"><dt>{{ $label }}:</dt><dd>{{ $payment->billingRecipient()[$field] }}</dd></div>@endif
+                        @endforeach
                     </dl>
                 </section>
             </div>

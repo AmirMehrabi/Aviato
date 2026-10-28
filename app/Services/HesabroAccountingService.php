@@ -60,6 +60,10 @@ class HesabroAccountingService
         if (! $customer || ! $customer->phone || ! $customer->first_name) {
             throw new HesabroSubmissionException('Customer mobile and first name are required for Hesabro.', false);
         }
+        $identity = $payment->billingRecipient();
+        if (($identity['type'] ?? 'individual') === 'corporate') {
+            throw new HesabroSubmissionException('Corporate billing recipient requires a confirmed Hesabro legal-entity API mapping; export held for accounting review.', false);
+        }
         if ($payment->currency !== 'IRR') {
             throw new HesabroSubmissionException('Only IRR payments can be submitted to Hesabro.', false);
         }
@@ -70,10 +74,10 @@ class HesabroAccountingService
         $setting = fn (string $key): int => (int) AppSetting::getValue($key, 0);
         $document = [
             'customer' => [
-                'mobile' => $customer->phone,
-                'first_name' => $customer->first_name,
-                'last_name' => $customer->last_name ?: '',
-                'national_code' => $customer->national_code ?: '',
+                'mobile' => $identity['phone'] ?? $customer->phone,
+                'first_name' => $identity['first_name'] ?? $customer->first_name,
+                'last_name' => $identity['last_name'] ?? '',
+                'national_code' => $identity['national_code'] ?? '',
             ],
             'factor' => [
                 'branch_id' => $setting(AppSetting::HESABRO_ACCOUNTING_BRANCH_ID),

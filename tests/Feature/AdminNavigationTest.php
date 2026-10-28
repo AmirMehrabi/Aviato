@@ -22,10 +22,10 @@ class AdminNavigationTest extends TestCase
         $document = new \DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
         $xpath = new \DOMXPath($document);
-        $this->assertSame(12, $xpath->query('//*[@id="admin-nav-main"]//a')->length);
+        $this->assertSame(13, $xpath->query('//*[@id="admin-nav-main"]//a')->length);
         $this->assertSame(5, $xpath->query('//*[@id="admin-nav-main"]//button[@aria-controls]')->length);
         $main = $document->saveHTML($document->getElementById('admin-nav-main'));
-        foreach (['admin.customers.index', 'admin.projects.index', 'admin.resellers.index',
+        foreach (['admin.corporate.index', 'admin.customers.index', 'admin.projects.index', 'admin.resellers.index',
             'admin.virtual-machines.index', 'admin.tickets.index', 'admin.incidents.index',
             'admin.billing.overview', 'admin.billing.invoices.index', 'admin.billing.payments.index',
             'admin.billing.wallets.index', 'admin.billing.transactions.index'] as $route) {

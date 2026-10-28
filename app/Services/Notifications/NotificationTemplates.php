@@ -27,6 +27,9 @@ class NotificationTemplates
             'routeros_vm_created' => ['ساخت ماشین RouterOS', 'ماشین RouterOS شما آماده پیگیری است', "{{name}} عزیز،\nماشین RouterOS «{{server_name}}» ساخته شد. اطلاعات ورود شما حداکثر تا یک ساعت آینده از طریق تیکت برایتان ارسال می‌شود.", false],
             'vm_node_move_finished' => ['انتقال Node (مدیر)', 'انتقال ماشین‌ها پایان یافت | آویاتو', "{{name}} عزیز،\n{{body}}", false],
         ];
+        foreach (['corporate_admin_review' => 'درخواست حقوقی آماده بررسی', 'corporate_submitted' => 'ثبت درخواست حقوقی', 'corporate_needs_correction' => 'اصلاح درخواست حقوقی', 'corporate_approved' => 'تأیید هویت حقوقی', 'corporate_rejected' => 'رد درخواست حقوقی'] as $event => $label) {
+            $items[$event] = [$label, '{{title}} | آویاتو', "{{name}} عزیز،\n{{body}}", false];
+        }
         foreach ([
             'ticket_created' => 'تیکت جدید (مدیر)',
             'ticket_created_for_customer' => 'تیکت ثبت‌شده برای مشتری',
@@ -40,7 +43,7 @@ class NotificationTemplates
 
         return collect($items)->map(fn ($item, $event) => [
             'label' => $item[0], 'subject' => $item[1], 'body' => $item[2], 'required' => $item[3],
-            'email_enabled' => $item[3] || str_starts_with($event, 'ticket_') || str_starts_with($event, 'domain_'),
+            'email_enabled' => $item[3] || str_starts_with($event, 'ticket_') || str_starts_with($event, 'domain_') || str_starts_with($event, 'corporate_'),
             'in_app_enabled' => true,
         ])->all();
     }
@@ -54,7 +57,7 @@ class NotificationTemplates
 
     public function customerEvents(): array
     {
-        return array_filter($this->all(), fn ($item, $key) => ! $item['required'] && ! in_array($key, ['vm_node_move_finished', 'ticket_created', 'ticket_customer_reply', 'ticket_assigned']), ARRAY_FILTER_USE_BOTH);
+        return array_filter($this->all(), fn ($item, $key) => ! $item['required'] && ! in_array($key, ['corporate_admin_review', 'vm_node_move_finished', 'ticket_created', 'ticket_customer_reply', 'ticket_assigned']), ARRAY_FILTER_USE_BOTH);
     }
 
     public function enabled(string $event, string $channel, ?object $recipient = null): bool

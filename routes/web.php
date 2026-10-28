@@ -43,6 +43,9 @@ use App\Http\Controllers\Auth\CustomerPasswordResetController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\Corporate\AdminCorporateController;
+use App\Http\Controllers\Corporate\CorporateSettingsController;
+use App\Http\Controllers\Corporate\CustomerCorporateController;
 use App\Http\Controllers\Customer\ApiTokenController;
 use App\Http\Controllers\Customer\BackupController;
 use App\Http\Controllers\Customer\DashboardController;
@@ -130,6 +133,13 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
     Route::middleware(['auth:admin', 'admin.active', 'admin.audit', 'admin.route-access'])->group(function () use ($adminHome) {
         Route::get($adminHome, AdminDashboardController::class)->name('admin.dashboard');
+        Route::get('corporate-requests', [AdminCorporateController::class, 'index'])->name('admin.corporate.index');
+        Route::get('corporate-requests/{corporate}', [AdminCorporateController::class, 'show'])->name('admin.corporate.show');
+        Route::patch('corporate-requests/{corporate}', [AdminCorporateController::class, 'review'])->name('admin.corporate.review');
+        Route::post('corporate-deliveries/{delivery}/retry', [AdminCorporateController::class, 'retry'])->name('admin.corporate.retry');
+        Route::get('corporate-documents/{document}', [AdminCorporateController::class, 'document'])->middleware('no-store')->name('admin.corporate.document');
+        Route::get('settings/corporate', [CorporateSettingsController::class, 'edit'])->name('admin.settings.corporate.edit');
+        Route::patch('settings/corporate', [CorporateSettingsController::class, 'update'])->name('admin.settings.corporate.update');
         Route::get('profile', [AdminProfileController::class, 'edit'])->name('admin.profile.edit');
         Route::patch('profile/password', [AdminProfileController::class, 'updatePassword'])->name('admin.profile.password.update');
         Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('admin.users.reset-password');
@@ -470,6 +480,10 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::post('domains/check', [DomainController::class, 'check'])->middleware('throttle:15,1')->name('customer.domains.check');
         });
         Route::get($customerHome, DashboardController::class)->name('dashboard');
+        Route::post('profile/corporate', [CustomerCorporateController::class, 'start'])->middleware('throttle:5,60')->name('customer.corporate.start');
+        Route::get('profile/corporate/{corporate}', [CustomerCorporateController::class, 'show'])->middleware('no-store')->name('customer.corporate.show');
+        Route::post('profile/corporate/{corporate}', [CustomerCorporateController::class, 'submit'])->middleware('throttle:10,60')->name('customer.corporate.submit');
+        Route::get('profile/corporate-documents/{document}', [CustomerCorporateController::class, 'document'])->middleware('no-store')->name('customer.corporate.document');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
         Route::get('profile/notifications', [NotificationPreferenceController::class, 'edit'])->name('customer.notification-preferences.edit');
         Route::patch('profile/notifications', [NotificationPreferenceController::class, 'update'])->name('customer.notification-preferences.update');

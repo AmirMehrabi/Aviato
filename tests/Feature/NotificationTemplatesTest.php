@@ -125,7 +125,7 @@ class NotificationTemplatesTest extends TestCase
         $this->assertTrue($templates->enabled('ticket_admin_reply', 'email', $customer));
     }
 
-    public function test_payment_notification_fires_once_after_successful_transition(): void
+    public function test_wallet_charge_notification_fires_once_after_successful_transition(): void
     {
         Queue::fake();
         $customer = Customer::factory()->create();
@@ -135,7 +135,7 @@ class NotificationTemplatesTest extends TestCase
         ]);
         DB::transaction(fn () => $payment->update(['status' => 'successful']));
         $payment->update(['description' => 'Updated description']);
-        $this->assertSame(1, $customer->notifications()->where('data->event', 'payment_received')->count());
+        $this->assertSame(1, $customer->notifications()->where('data->event', 'wallet_charged')->count());
     }
 
     public function test_failed_email_is_marked_failed_after_queue_retries(): void

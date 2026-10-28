@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasBillingIdentity;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,6 +36,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 ])]
 class Payment extends Model
 {
+    use HasBillingIdentity;
+
     public const TYPE_TOP_UP = 'top_up';
 
     public const STATUS_PENDING = 'pending';
@@ -83,6 +86,7 @@ class Payment extends Model
     protected function casts(): array
     {
         return [
+            'billing_identity' => 'encrypted:array',
             'amount' => 'integer',
             'promotion_bonus_amount' => 'integer',
             'gateway_payload' => 'array',

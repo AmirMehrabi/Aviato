@@ -85,6 +85,8 @@
         </aside>
     </div>
 
+    @include('customer.corporate.profile-section')
+
     <section class="mt-5 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm shadow-slate-200/60" id="api-access">
         <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
