@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 
 class ConfigureCorporateSms extends Command
 {
-    protected $signature = 'corporate:configure-sms {--apply : Create or update provider templates} {--sender=200000171 : Required primary sending line} {--include-existing : Also update the sending line of configured login, ticket and wallet templates}';
+    protected $signature = 'corporate:configure-sms {--apply : Create or update provider templates} {--sender=200000171 : Required primary sending line} {--include-existing : Also update the sending line of configured login, ticket and wallet templates} {--template-id=* : Known Name=ID mappings when provider listing is unavailable}';
 
     protected $description = 'Preview or configure corporate Kavenegar Lookup templates and their primary line';
 
@@ -38,9 +38,17 @@ class ConfigureCorporateSms extends Command
         }
         $base = 'https://api.kavenegar.com/v1/'.rawurlencode($apiKey).'/verify/';
         try {
-            $existing = collect();
+            $mappings = AppSetting::getValue('kavenegar.template_ids', []);
+            foreach ($this->option('template-id') as $mapping) {
+                if (! preg_match('/^([A-Za-z][A-Za-z0-9-]*)=([1-9][0-9]*)$/', $mapping, $matches)) {
+                    throw new \RuntimeException('Invalid template mapping.');
+                }
+                $mappings[$matches[1]] = (int) $matches[2];
+            }
+            $existing = collect($mappings)->map(fn ($id, $name) => ['id' => $id, 'name' => $name])->values();
+            $blocked = false;
             $page = 1;
-            do {
+            while ($mappings === []) {
                 $response = Http::asForm()->timeout(20)->post($base.'templatelist.json', ['page' => $page]);
                 if (! $response->successful() || (int) $response->json('return.status') !== 200) {
                     throw new \RuntimeException('Template list failed.');
@@ -48,10 +56,16 @@ class ConfigureCorporateSms extends Command
                 $existing = $existing->merge($response->json('entries', []));
                 $pages = (int) $response->json('metadata.TotalPages', 1);
                 $page++;
-            } while ($page <= min($pages, 100));
+                if ($page > min($pages, 100)) {
+                    break;
+                }
+            }
             foreach ($templates as $event => $template) {
                 $name = AppSetting::getValue('corporate.template.'.$event, $template['name']);
                 $found = $existing->first(fn ($item) => strcasecmp($item['name'] ?? '', $name) === 0);
+                if ($mappings !== [] && ! $found) {
+                    throw new \RuntimeException('Missing known template ID.');
+                }
                 $payload = ['name' => $name, 'sourceType' => 0, 'sendMethod' => 1, 'fallBackMethod' => 3,
                     'primaryLineNumber' => $sender, 'sourceName' => 'Aviato', 'sourceUrl' => 'https://'.config('portals.customer.domain'), 'textMessage' => $template['text']];
                 if ($found) {
@@ -59,6 +73,21 @@ class ConfigureCorporateSms extends Command
                 }
                 if ($found && ! $payload['templateId']) {
                     throw new \RuntimeException('Provider template ID missing.');
+                }
+                if ($found) {
+                    $entry = $this->details($base, $payload['templateId'], $name);
+                    if (($entry['primarylinenumber'] ?? $entry['primaryLineNumber'] ?? '') === $sender
+                        && ($entry['smsmessage'] ?? $entry['smsMessage'] ?? '') === $template['text']) {
+                        $this->info($name.': sending line already configured; approval remains unchanged.');
+
+                        continue;
+                    }
+                    if (($entry['approvalstatus'] ?? $entry['approvalStatus'] ?? '') === 'PendingReview') {
+                        $this->warn($name.': awaiting approval; Kavenegar rejects sender changes until approved.');
+                        $blocked = true;
+
+                        continue;
+                    }
                 }
                 $response = Http::asForm()->timeout(20)->post($base.($found ? 'updatetemplate' : 'addtemplate').'.json', $payload);
                 if (! $response->successful() || (int) $response->json('return.status') !== 200) {
@@ -83,8 +112,22 @@ class ConfigureCorporateSms extends Command
                     if (! $detail->successful() || (int) $detail->json('return.status') !== 200 || ! is_array($entry)) {
                         throw new \RuntimeException('Template details missing.');
                     }
+                    if (isset($entry['name']) && $entry['name'] !== $name) {
+                        throw new \RuntimeException('Template ID does not match configured name.');
+                    }
+                    if (($entry['primarylinenumber'] ?? $entry['primaryLineNumber'] ?? '') === $sender) {
+                        $this->info($name.': sending line already configured; approval remains unchanged.');
+
+                        continue;
+                    }
+                    if (($entry['approvalstatus'] ?? $entry['approvalStatus'] ?? '') === 'PendingReview') {
+                        $this->warn($name.': awaiting approval; sender update deferred.');
+                        $blocked = true;
+
+                        continue;
+                    }
                     $payload = ['templateId' => $id, 'sourceType' => 0, 'sendMethod' => 1, 'fallBackMethod' => 3,
-                        'name' => $name, 'primaryLineNumber' => $sender, 'textMessage' => $entry['smsMessage'] ?? '',
+                        'name' => $name, 'primaryLineNumber' => $sender, 'textMessage' => $entry['smsmessage'] ?? $entry['smsMessage'] ?? '',
                         'sourceUrl' => 'https://'.config('portals.customer.domain'), 'sourceName' => 'Aviato'];
                     if ($payload['textMessage'] === '') {
                         throw new \RuntimeException('SMS template text missing.');
@@ -103,6 +146,17 @@ class ConfigureCorporateSms extends Command
             return self::FAILURE;
         }
 
-        return self::SUCCESS;
+        return $blocked ? self::FAILURE : self::SUCCESS;
+    }
+
+    private function details(string $base, int|string $id, string $name): array
+    {
+        $response = Http::asForm()->timeout(20)->post($base.'gettemplate.json', ['id' => $id]);
+        $entry = $response->json('entries');
+        if (! $response->successful() || (int) $response->json('return.status') !== 200 || ! is_array($entry) || ($entry['name'] ?? '') !== $name) {
+            throw new \RuntimeException('Template details do not match the configured name.');
+        }
+
+        return $entry;
     }
 }

@@ -289,10 +289,22 @@ class CorporateVerificationTest extends TestCase
         AppSetting::setValue(AppSetting::KAVENEGAR_API_KEY, 'test-key', 'string', 'kavenegar');
         AppSetting::setValue(AppSetting::KAVENEGAR_TEMPLATE, 'LoginOtp', 'string', 'kavenegar');
         Http::fake(['api.kavenegar.com/*/verify/templatelist.json' => Http::response(['return' => ['status' => 200], 'entries' => [['id' => 42, 'name' => 'LoginOtp']]]),
-            'api.kavenegar.com/*/verify/gettemplate.json' => Http::response(['return' => ['status' => 200], 'entries' => ['smsMessage' => 'کد ورود %token']]),
+            'api.kavenegar.com/*/verify/gettemplate.json' => Http::response(['return' => ['status' => 200], 'entries' => ['name' => 'LoginOtp', 'smsmessage' => 'کد ورود %token', 'approvalstatus' => 'Approved']]),
             'api.kavenegar.com/*/verify/addtemplate.json' => Http::response(['return' => ['status' => 200]]),
             'api.kavenegar.com/*/verify/updatetemplate.json' => Http::response(['return' => ['status' => 200]])]);
         $this->artisan('corporate:configure-sms --apply --include-existing')->assertSuccessful();
         Http::assertSent(fn ($request) => str_ends_with($request->url(), '/verify/updatetemplate.json') && $request['name'] === 'LoginOtp' && $request['textMessage'] === 'کد ورود %token' && $request['primaryLineNumber'] === '200000171');
+    }
+
+    public function test_sender_setup_uses_known_ids_and_defers_unapproved_templates(): void
+    {
+        AppSetting::setValue(AppSetting::KAVENEGAR_API_KEY, 'test-key', 'string', 'kavenegar');
+        $names = collect(DeliverCorporateNotification::smsTemplates())->pluck('name')->values();
+        $mappings = $names->map(fn ($name, $index) => $name.'='.($index + 1))->all();
+        Http::fake(['api.kavenegar.com/*/verify/gettemplate.json' => function ($request) use ($names) {
+            return Http::response(['return' => ['status' => 200], 'entries' => ['id' => $request['id'], 'name' => $names[(int) $request['id'] - 1], 'smsmessage' => 'آویاتو %token', 'primarylinenumber' => '10004347', 'approvalstatus' => 'PendingReview']]);
+        }]);
+        $this->artisan('corporate:configure-sms', ['--apply' => true, '--template-id' => $mappings])->assertFailed();
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'templatelist') || str_contains($request->url(), 'updatetemplate') || str_contains($request->url(), 'addtemplate'));
     }
 }
