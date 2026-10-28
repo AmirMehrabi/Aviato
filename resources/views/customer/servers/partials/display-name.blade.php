@@ -3,7 +3,7 @@
         $displayNameInput = old('display_name', $server->display_name);
         $displayNameInput = is_string($displayNameInput) ? $displayNameInput : ($displayNameInput === null ? '' : $server->display_name);
     @endphp
-    <div class="min-w-0 flex-1" x-data="{
+    <div class="min-w-0" :class="{ 'flex-1': editing }" x-data="{
         editing: @js($errors->renameVm->has('display_name')),
         saving: false,
         name: @js($displayNameInput),
