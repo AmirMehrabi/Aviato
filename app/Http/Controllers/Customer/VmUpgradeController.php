@@ -35,7 +35,7 @@ class VmUpgradeController extends Controller
             $order = $this->upgrades->requestBundleUpgrade($customer, $virtualMachine, $bundle);
             $this->activities->record($virtualMachine, 'upgrade', 'requested', 'درخواست ارتقای پلن ثبت شد', 'پلن مقصد: '.$bundle->name, $customer, ['order_id' => $order->id]);
 
-            return back()->with('status', 'درخواست ارتقای باندل ثبت شد. سرور برای اعمال ارتقا کامل خاموش می شود و بعد از چند ثانیه دوباره روشن خواهد شد.');
+            return back()->with('upgrade_requested_vm_id', $virtualMachine->id)->with('status', 'درخواست ارتقای باندل ثبت شد. سرور برای اعمال ارتقا کامل خاموش می شود و بعد از چند ثانیه دوباره روشن خواهد شد.');
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
@@ -58,7 +58,7 @@ class VmUpgradeController extends Controller
             $order = $this->upgrades->requestExtraDisk($customer, $virtualMachine, (int) $data['size_gb']);
             $this->activities->record($virtualMachine, 'upgrade', 'requested', 'درخواست دیسک اضافه ثبت شد', $data['size_gb'].' گیگابایت', $customer, ['order_id' => $order->id]);
 
-            return back()->with('status', 'درخواست اتصال دیسک اضافه ثبت شد. بعد از آماده شدن، دیسک باید داخل سیستم عامل mount شود.');
+            return back()->with('upgrade_requested_vm_id', $virtualMachine->id)->with('status', 'درخواست اتصال دیسک اضافه ثبت شد. بعد از آماده شدن، دیسک باید داخل سیستم عامل mount شود.');
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {

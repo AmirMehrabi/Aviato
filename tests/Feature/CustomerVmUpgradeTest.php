@@ -58,6 +58,31 @@ class CustomerVmUpgradeTest extends TestCase
         CarbonImmutable::setTestNow();
     }
 
+    public function test_upgrade_confirmation_replaces_pending_notice_only_for_the_redirect(): void
+    {
+        Bus::fake();
+        [$customer, $vm, $targetBundle] = $this->upgradeCatalog();
+        $customer->wallet()->update(['balance' => 50000]);
+        $url = $this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrade';
+
+        $this->actingAs($customer, 'customer')->from($url)
+            ->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/upgrades/bundle', [
+                'vm_bundle_id' => $targetBundle->id,
+            ])->assertRedirect($url)->assertSessionHasNoErrors();
+
+        $this->get($url)->assertOk()
+            ->assertSee('درخواست ارتقای باندل ثبت شد.')
+            ->assertDontSee('یک ارتقا در حال انجام است. بعد از پایان آن دوباره تلاش کنید.')
+            ->assertSee('name="vm_bundle_id" required disabled', false);
+
+        $this->get($url)->assertOk()
+            ->assertDontSee('درخواست ارتقای باندل ثبت شد.')
+            ->assertSee('یک ارتقا در حال انجام است. بعد از پایان آن دوباره تلاش کنید.')
+            ->assertSee('name="vm_bundle_id" required disabled', false);
+
+        $this->assertDatabaseCount('vm_upgrade_orders', 1);
+    }
+
     public function test_customer_cannot_downgrade_bundle_through_upgrade_flow(): void
     {
         Bus::fake();

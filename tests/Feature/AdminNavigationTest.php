@@ -6,6 +6,7 @@ use App\Enums\AdminRole;
 use App\Models\Customer;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Support\AdminNavigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,7 +16,11 @@ class AdminNavigationTest extends TestCase
 
     public function test_main_sidebar_keeps_daily_destinations_visible_and_moves_tools_to_secondary_panels(): void
     {
-        $this->actingAs(User::factory()->create(), 'admin');
+        $admin = User::factory()->create();
+        $this->actingAs($admin, 'admin');
+        $groups = collect(AdminNavigation::groups($admin))->keyBy('id');
+        $this->assertContains('admin.corporate.index', array_column($groups['support']['items'], 'route'));
+        $this->assertNotContains('admin.corporate.index', array_column($groups['customers']['items'], 'route'));
 
         $response = $this->get('https://admin.localhost/profile')->assertOk()
             ->assertSee('data-initial-panel="main"', false);

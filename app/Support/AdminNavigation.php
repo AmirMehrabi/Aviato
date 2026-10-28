@@ -13,7 +13,6 @@ class AdminNavigation
                 ['label' => 'داشبورد', 'route' => 'admin.dashboard', 'active' => request()->routeIs('admin.dashboard'), 'icon' => 'layout-dashboard', 'keywords' => 'dashboard overview'],
             ]],
             ['id' => 'customers', 'label' => 'مشتریان و همکاران', 'secondary' => false, 'icon' => null, 'items' => [
-                ['label' => 'احراز هویت حقوقی', 'route' => 'admin.corporate.index', 'active' => request()->routeIs('admin.corporate.*'), 'icon' => 'shield-check', 'keywords' => 'corporate verification company'],
                 ['label' => 'مشتریان', 'route' => 'admin.customers.index', 'active' => request()->routeIs('admin.customers.*'), 'icon' => 'users-round', 'keywords' => 'customers clients'],
                 ['label' => 'فضاهای کاری', 'route' => 'admin.projects.index', 'active' => request()->routeIs('admin.projects.*'), 'icon' => 'folder-kanban', 'keywords' => 'projects workspaces'],
                 ['label' => 'فروشندگان', 'route' => 'admin.resellers.index', 'active' => request()->routeIs('admin.resellers.*'), 'icon' => 'handshake', 'keywords' => 'resellers partners'],
@@ -23,6 +22,7 @@ class AdminNavigation
             ]],
             ['id' => 'support', 'label' => 'پشتیبانی و رخدادها', 'secondary' => false, 'icon' => null, 'items' => [
                 ['label' => 'تیکت‌ها', 'route' => 'admin.tickets.index', 'active' => request()->routeIs('admin.tickets.*'), 'icon' => 'messages-square', 'keywords' => 'tickets support'],
+                ['label' => 'احراز هویت حقوقی', 'route' => 'admin.corporate.index', 'active' => request()->routeIs('admin.corporate.*'), 'icon' => 'shield-check', 'keywords' => 'corporate verification company'],
                 ['label' => 'رخدادهای سرویس', 'route' => 'admin.incidents.index', 'active' => request()->routeIs('admin.incidents.*'), 'icon' => 'triangle-alert', 'keywords' => 'incidents service status'],
             ]],
             ['id' => 'finance', 'label' => 'امور مالی', 'secondary' => false, 'icon' => null, 'items' => [
