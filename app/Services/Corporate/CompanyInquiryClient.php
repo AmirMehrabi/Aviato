@@ -23,6 +23,10 @@ class CompanyInquiryClient
             throw ValidationException::withMessages(['national_id' => 'سرویس استعلام در دسترس نیست؛ دوباره تلاش کنید.']);
         }
         $company = $response->json('response_body.data');
+        if (is_array($company)) {
+            // Zohal can represent missing fields as the literal string "null".
+            $company = array_map(fn ($value) => is_string($value) && strtolower(trim($value)) === 'null' ? null : $value, $company);
+        }
         if (! $response->successful() || (int) $response->json('result') !== 1 || ! is_array($company)
             || ($company['national_id'] ?? '') !== $nationalId || blank($company['name'] ?? null)) {
             throw ValidationException::withMessages(['national_id' => 'استعلام معتبر شرکت دریافت نشد؛ شناسه را بررسی و دوباره تلاش کنید.']);

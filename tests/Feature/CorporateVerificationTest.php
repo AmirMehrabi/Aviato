@@ -13,6 +13,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\Corporate\BillingIdentityService;
+use App\Services\Corporate\CompanyInquiryClient;
 use App\Services\Corporate\CorporateVerificationService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -77,6 +78,35 @@ class CorporateVerificationTest extends TestCase
         $this->assertSame('pending', $draft->fresh()->status);
         $this->assertDatabaseCount('corporate_documents', 3);
         Queue::assertPushed(DeliverCorporateNotification::class);
+    }
+
+    public function test_customer_can_start_corporate_conversion_with_string_null_fields(): void
+    {
+        Http::swap(new Factory);
+        Http::fake(['service.zohal.io/*' => Http::response(['result' => 1, 'response_body' => ['data' => array_replace($this->company(), [
+            'activity_end_date' => 'null', 'phone_number' => 'null', 'email_address' => 'null',
+        ])]])]);
+
+        $company = app(CompanyInquiryClient::class)->lookup('10123456789');
+        $this->assertNull($company['activity_end_date']);
+        $this->assertNull($company['phone_number']);
+        $this->assertNull($company['email_address']);
+
+        $this->actingAs($this->customer(), 'customer')->post('https://cp.localhost/profile/corporate', ['national_id' => '10123456789'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('corporate_requests', 1);
+    }
+
+    public function test_company_with_activity_end_date_cannot_start_corporate_conversion(): void
+    {
+        Http::swap(new Factory);
+        Http::fake(['service.zohal.io/*' => Http::response(['result' => 1, 'response_body' => ['data' => array_replace($this->company(), [
+            'activity_end_date' => '1404/03/17',
+        ])]])]);
+
+        $this->actingAs($this->customer(), 'customer')->post('https://cp.localhost/profile/corporate', ['national_id' => '10123456789'])
+            ->assertSessionHasErrors(['national_id' => 'برای این شرکت تاریخ پایان فعالیت ثبت شده است؛ با پشتیبانی تماس بگیرید.']);
+        $this->assertDatabaseCount('corporate_requests', 0);
     }
 
     public function test_documents_and_requests_are_private_to_the_customer(): void
