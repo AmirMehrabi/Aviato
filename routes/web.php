@@ -480,9 +480,9 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::post('domains/check', [DomainController::class, 'check'])->middleware('throttle:15,1')->name('customer.domains.check');
         });
         Route::get($customerHome, DashboardController::class)->name('dashboard');
-        Route::post('profile/corporate', [CustomerCorporateController::class, 'start'])->middleware('throttle:5,60')->name('customer.corporate.start');
+        Route::post('profile/corporate', [CustomerCorporateController::class, 'start'])->middleware('throttle:corporate-start')->name('customer.corporate.start');
         Route::get('profile/corporate/{corporate}', [CustomerCorporateController::class, 'show'])->middleware('no-store')->name('customer.corporate.show');
-        Route::post('profile/corporate/{corporate}', [CustomerCorporateController::class, 'submit'])->middleware('throttle:10,60')->name('customer.corporate.submit');
+        Route::post('profile/corporate/{corporate}', [CustomerCorporateController::class, 'submit'])->middleware('throttle:corporate-submit')->name('customer.corporate.submit');
         Route::get('profile/corporate-documents/{document}', [CustomerCorporateController::class, 'document'])->middleware('no-store')->name('customer.corporate.document');
         Route::get('profile', [ProfileController::class, 'show'])->name('customer.profile.show');
         Route::get('profile/notifications', [NotificationPreferenceController::class, 'edit'])->name('customer.notification-preferences.edit');

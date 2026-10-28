@@ -31,8 +31,11 @@ use App\Services\Payments\ZibalPaymentGateway;
 use App\Services\PortalCache;
 use App\Services\SettingsMailManager;
 use App\Support\AdminAccess;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
@@ -60,6 +63,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('corporate-start', fn (Request $request) => Limit::perHour(5)->by($request->user('customer')->id));
+        RateLimiter::for('corporate-submit', fn (Request $request) => Limit::perHour(10)->by($request->user('customer')->id));
+
         app(NotificationEventSubscriber::class)->register();
         // Rotate immediately for this process and again after commit, so a reader
         // cannot retain a snapshot built before the transaction became visible.

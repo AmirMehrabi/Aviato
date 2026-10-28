@@ -109,6 +109,25 @@ class CorporateVerificationTest extends TestCase
         $this->assertDatabaseCount('corporate_requests', 0);
     }
 
+    public function test_corporate_rate_limits_are_isolated_by_action_and_customer(): void
+    {
+        $customer = $this->customer();
+        $draft = $this->draft($customer);
+        $this->actingAs($customer, 'customer');
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->post('https://cp.localhost/profile/corporate', [])->assertSessionHasErrors('national_id');
+        }
+        $this->post('https://cp.localhost/profile/corporate', [])->assertStatus(429);
+
+        // Exhausting lookup attempts must not block submitting existing documents.
+        $this->post('https://cp.localhost/profile/corporate/'.$draft->id, [])->assertSessionHasErrors('version');
+
+        $this->actingAs($this->customer(), 'customer')
+            ->post('https://cp.localhost/profile/corporate', ['national_id' => '10123456789'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+    }
+
     public function test_documents_and_requests_are_private_to_the_customer(): void
     {
         $draft = $this->draft();
