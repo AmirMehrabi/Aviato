@@ -53,9 +53,18 @@ class DomainProvider
 
     public function info(string $domain): array
     {
-        $data = $this->request('GET', '/domain/'.$domain.'/info');
-        if (($data['domain'] ?? null) !== $domain || empty($data['expire_at']) || empty($data['id'])) {
+        $response = $this->request('GET', '/domain/'.$domain.'/info');
+        $data = $response['data'] ?? null;
+        if (! is_array($data) || ($data['domain'] ?? null) !== $domain
+            || ! is_string($data['expire_at'] ?? null)
+            || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['expire_at'])
+            || ! is_numeric($data['id'] ?? null) || (int) $data['id'] <= 0) {
             throw new RuntimeException('Domain ownership or expiry could not be confirmed.');
+        }
+
+        [$year, $month, $day] = array_map('intval', explode('-', $data['expire_at']));
+        if (! checkdate($month, $day, $year)) {
+            throw new RuntimeException('Invalid domain expiry date.');
         }
 
         return $data;

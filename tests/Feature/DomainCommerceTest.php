@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessDomainOrder;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\DomainContact;
@@ -17,6 +18,7 @@ use App\Services\Domains\DomainLifecycleService;
 use App\Services\Domains\DomainManagementService;
 use App\Services\Domains\DomainOrderService;
 use App\Services\Domains\DomainPricingService;
+use App\Services\Domains\DomainProvider;
 use App\Services\Payments\PaymentGatewayInterface;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\PaymentService;
@@ -113,11 +115,11 @@ class DomainCommerceTest extends TestCase
         parent::tearDown();
     }
 
-    private function fakeProvider(string $state = 'done', bool $registrationTimeout = false, int $cost = 8000000, string $expiry = '2027-10-25', ?string $contactHandle = 'CCOM-123'): void
+    private function fakeProvider(string $state = 'done', bool $registrationTimeout = false, int $cost = 8000000, string $expiry = '2027-10-25', ?string $contactHandle = 'CCOM-123', bool $infoUnavailable = false): void
     {
         Http::swap(new Factory);
         Http::preventStrayRequests();
-        Http::fake(function ($request) use ($state, $registrationTimeout, $cost, $expiry, $contactHandle) {
+        Http::fake(function ($request) use ($state, $registrationTimeout, $cost, $expiry, $contactHandle, $infoUnavailable) {
             $url = $request->url();
             if (str_ends_with($url, '/check')) {
                 return Http::response(['domain' => 'example.com', 'available' => true, 'premium' => false, 'price' => $cost]);
@@ -148,7 +150,11 @@ class DomainCommerceTest extends TestCase
                 }, 'item' => $track === '10' ? 'owner@example.org' : 'example.com', 'status' => $track === '10' ? 'done' : $state, 'data' => $track === '10' ? ['contactId' => $contactHandle] : []]]]);
             }
             if (str_ends_with($url, '/info')) {
-                return Http::response(['id' => 123, 'domain' => 'example.com', 'expire_at' => $expiry, 'dns' => ['ns1.example.net', 'ns2.example.net']]);
+                if ($infoUnavailable) {
+                    return Http::failedConnection();
+                }
+
+                return Http::response(['data' => ['id' => 123, 'domain' => 'example.com', 'expire_at' => $expiry, 'dns' => ['ns1.example.net', 'ns2.example.net']]]);
             }
             throw new \RuntimeException('Unexpected HTTP request: '.$url);
         });
@@ -607,6 +613,53 @@ class DomainCommerceTest extends TestCase
         app(DomainFulfillmentService::class)->process($order->fresh());
         $this->assertSame('completed', $order->fresh()->status);
         Http::assertNotSent(fn ($r) => str_ends_with($r->url(), '/domain/register'));
+    }
+
+    public function test_scheduler_recovers_completed_registration_after_info_outage_without_duplicate_billing(): void
+    {
+        $order = $this->order(true);
+        app(DomainOrderService::class)->pay($order, null);
+        $this->fakeProvider(infoUnavailable: true);
+        app(DomainFulfillmentService::class)->process($order->fresh());
+        $this->assertSame('done', $order->operations()->where('kind', 'register')->firstOrFail()->status);
+        $this->assertSame('confirming', $order->fresh()->status);
+        $this->assertDatabaseCount('invoices', 0);
+
+        $this->fakeProvider();
+        $this->artisan('domains:reconcile')->assertSuccessful();
+        Queue::assertPushed(ProcessDomainOrder::class, fn ($job) => $job->orderId === $order->id);
+        $job = new ProcessDomainOrder($order->id);
+        $job->handle(app(DomainFulfillmentService::class));
+        $job->handle(app(DomainFulfillmentService::class));
+
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame('2027-10-25', $order->fresh()->managedDomain->expires_at->toDateString());
+        $this->assertDatabaseCount('managed_domains', 1);
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertSame(1, WalletTransaction::where('type', 'charge')->count());
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/domain/register')
+            || str_ends_with($request->url(), '/contact/create'));
+    }
+
+    public function test_domain_info_rejects_mismatched_domain_and_invalid_expiry(): void
+    {
+        foreach ([
+            ['id' => 123, 'domain' => 'other.com', 'expire_at' => '2027-10-25'],
+            ['id' => 123, 'domain' => 'example.com', 'expire_at' => '2027-02-30'],
+            ['domain' => 'example.com', 'expire_at' => '2027-10-25'],
+        ] as $data) {
+            Http::swap(new Factory);
+            Http::preventStrayRequests();
+            Http::fake(['*' => Http::response(['data' => $data])]);
+            try {
+                app(DomainProvider::class)->info('example.com');
+                $this->fail('Invalid domain information was accepted.');
+            } catch (\RuntimeException $exception) {
+                $this->assertContains($exception->getMessage(), [
+                    'Domain ownership or expiry could not be confirmed.', 'Invalid domain expiry date.',
+                ]);
+            }
+        }
     }
 
     public function test_malformed_owner_fields_return_validation_errors(): void

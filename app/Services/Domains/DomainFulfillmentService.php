@@ -11,6 +11,7 @@ use App\Models\WalletTransaction;
 use App\Services\Notifications\NotificationEventSubscriber;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -233,7 +234,19 @@ class DomainFulfillmentService
                 || ($order->operation === 'renew' && ($expiry->lte($order->expiry_before) || (string) $info['id'] !== (string) $order->managedDomain->provider_id))) {
                 throw new \RuntimeException('The full purchased period is not yet confirmed.');
             }
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            Log::warning('Domain order completion awaiting provider verification.', [
+                'domain_order_id' => $order->id,
+                'provider' => $order->provider,
+                'reason' => match ($exception->getMessage()) {
+                    'Domain provider connection could not be confirmed.' => 'provider_connection',
+                    'Domain provider response could not be confirmed.' => 'provider_response',
+                    'Domain ownership or expiry could not be confirmed.' => 'invalid_domain_info',
+                    'Invalid domain expiry date.' => 'invalid_expiry',
+                    'The full purchased period is not yet confirmed.' => 'unconfirmed_purchased_period',
+                    default => 'verification_failed',
+                },
+            ]);
             $order->update(['status' => 'confirming']);
 
             return;
