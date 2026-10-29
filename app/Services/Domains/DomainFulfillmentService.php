@@ -47,11 +47,15 @@ class DomainFulfillmentService
                 return;
             }
             try {
-                $details = $this->provider->request('POST', '/contact/info', ['tld' => $order->product->extension, 'object' => $order->registrant['email']]);
-                $handle = $details['contact'] ?? null;
-                if (isset($details['email']) && strcasecmp((string) $details['email'], $order->registrant['email']) !== 0) {
-                    throw new \RuntimeException('Contact identity mismatch.');
+                // The completed creation inquiry supplies the registrar-assigned handle.
+                // /contact/info expects that handle, rather than the contact email.
+                $details = $this->provider->inquiry($contact->track_id);
+                if (($details['job'] ?? null) !== 'CreateContactJob'
+                    || ($details['item'] ?? null) !== $order->registrant['email']
+                    || ! in_array($details['status'] ?? null, ['done', 'completed', 'successful', 'success'], true)) {
+                    throw new \RuntimeException('Contact creation result mismatch.');
                 }
+                $handle = $details['data']['contactId'] ?? null;
                 if (! is_string($handle) || ! preg_match('/^[a-zA-Z0-9@._-]{1,150}$/', $handle)) {
                     $order->update(['status' => 'needs_review', 'customer_message' => 'اطلاعات مالک در حال بررسی است. نیازی به پرداخت دوباره نیست.']);
 

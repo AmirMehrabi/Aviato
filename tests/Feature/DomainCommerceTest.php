@@ -113,11 +113,11 @@ class DomainCommerceTest extends TestCase
         parent::tearDown();
     }
 
-    private function fakeProvider(string $state = 'done', bool $registrationTimeout = false, int $cost = 8000000, string $expiry = '2027-10-25'): void
+    private function fakeProvider(string $state = 'done', bool $registrationTimeout = false, int $cost = 8000000, string $expiry = '2027-10-25', ?string $contactHandle = 'CCOM-123'): void
     {
         Http::swap(new Factory);
         Http::preventStrayRequests();
-        Http::fake(function ($request) use ($state, $registrationTimeout, $cost, $expiry) {
+        Http::fake(function ($request) use ($state, $registrationTimeout, $cost, $expiry, $contactHandle) {
             $url = $request->url();
             if (str_ends_with($url, '/check')) {
                 return Http::response(['domain' => 'example.com', 'available' => true, 'premium' => false, 'price' => $cost]);
@@ -129,7 +129,7 @@ class DomainCommerceTest extends TestCase
                 return Http::response(['trackId' => 10, 'status' => 'pending']);
             }
             if (str_ends_with($url, '/contact/info')) {
-                return Http::response(['contact' => 'CCOM-123', 'email' => 'owner@example.org']);
+                throw new \RuntimeException('Contact lookup must not be called with an email.');
             }
             if (str_ends_with($url, '/domain/register')) {
                 return $registrationTimeout ? Http::failedConnection() : Http::response(['trackId' => 20]);
@@ -145,7 +145,7 @@ class DomainCommerceTest extends TestCase
 
                 return Http::response(['data' => [['trackId' => (int) $track, 'job' => match ($track) {
                     '10' => 'CreateContactJob', '30' => 'RenewJob', '40' => 'UpdateDnsJob', default => 'RegisterJob'
-                }, 'item' => $track === '10' ? 'owner@example.org' : 'example.com', 'status' => $track === '10' ? 'done' : $state]]]);
+                }, 'item' => $track === '10' ? 'owner@example.org' : 'example.com', 'status' => $track === '10' ? 'done' : $state, 'data' => $track === '10' ? ['contactId' => $contactHandle] : []]]]);
             }
             if (str_ends_with($url, '/info')) {
                 return Http::response(['id' => 123, 'domain' => 'example.com', 'expire_at' => $expiry, 'dns' => ['ns1.example.net', 'ns2.example.net']]);
@@ -212,6 +212,12 @@ class DomainCommerceTest extends TestCase
         app(DomainFulfillmentService::class)->process($order->fresh());
         app(DomainFulfillmentService::class)->process($order->fresh());
         $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame('CCOM-123', $order->fresh()->registrant['provider_handle']);
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/contact/info'));
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/domain/register')
+            && $request['holder'] === 'CCOM-123' && $request['billing'] === 'CCOM-123'
+            && $request['admin'] === 'CCOM-123' && $request['tech'] === 'CCOM-123');
+
         $this->assertDatabaseCount('managed_domains', 1);
         $this->assertDatabaseCount('invoices', 1);
         $this->assertDatabaseCount('domain_claims', 0);
@@ -219,6 +225,19 @@ class DomainCommerceTest extends TestCase
         $this->actingAs($this->customer, 'customer')->get('https://cp.localhost/domains/orders/'.$order->uuid)->assertOk()->assertSee('مدیریت دامنه');
         $this->get('https://cp.localhost/domains/orders/'.$order->uuid.'/invoice')->assertOk()->assertSee('DOM-00000001')->assertSee('ثبت دامنه example.com');
         $this->assertSame(1, collect(Http::recorded())->filter(fn ($pair) => str_ends_with($pair[0]->url(), '/domain/register'))->count());
+    }
+
+    public function test_completed_contact_without_handle_does_not_submit_registration(): void
+    {
+        $this->fakeProvider(contactHandle: null);
+        $order = $this->order(true);
+        app(DomainOrderService::class)->pay($order, null);
+        app(DomainFulfillmentService::class)->process($order->fresh());
+
+        $this->assertSame('needs_review', $order->fresh()->status);
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/domain/register')
+            || str_ends_with($request->url(), '/contact/info'));
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_fulfillment_and_renewal_keep_the_purchase_workspace_after_switching(): void
