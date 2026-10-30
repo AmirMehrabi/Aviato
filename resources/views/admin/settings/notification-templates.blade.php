@@ -18,6 +18,23 @@
         <button class="rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white">ذخیره هویت ایمیل</button>
     </form>
     <p class="rounded-lg bg-slate-100 p-4 text-sm leading-7">متغیرهای مجاز: <span dir="ltr">@{{machine_id}}, @{{creator_name}}, @{{name}}, @{{title}}, @{{body}}, @{{ticket_number}}, @{{server_name}}, @{{server_ip}}, @{{username}}, @{{amount}}, @{{receipt}}, @{{time}}, @{{ip}}</span>. متن ساده بنویسید؛ HTML و کد اجرا نمی‌شوند. کد امنیتی و اطلاعات ورود اولیه سرور به‌طور خودکار و جدا از متن ایمیل درج می‌شوند. رمز سرور در اعلان داخل پنل نمایش داده نمی‌شود. متغیرهای هر رویداد را در متن پیشنهادی آن ببینید.</p>
+    <section class="rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 class="text-lg font-black">فهرست پیامک‌های Kavenegar</h2>
+        <p class="mt-1 text-sm leading-6 text-slate-500">نام فعلی قالب و وضعیت کانال پیامکی هر اعلان. تنظیم نام و فعال‌سازی برای هر گروه از تنظیمات مربوطه انجام می‌شود.</p>
+        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            @foreach($smsNotifications as $sms)
+                <article class="rounded-xl border border-slate-200 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <h3 class="font-bold">{{ $sms['name'] }}</h3>
+                        <span class="rounded-full px-2 py-1 text-xs font-bold {{ $sms['active'] ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">{{ $sms['active'] ? 'فعال' : 'غیرفعال' }}</span>
+                    </div>
+                    <p class="mt-3 text-xs text-slate-500">نام قالب Kavenegar</p>
+                    <code dir="ltr" class="mt-1 block break-all text-sm">{{ $sms['template'] ?: 'تنظیم نشده' }}</code>
+                    <p class="mt-2 text-xs leading-5 text-slate-500">{{ $sms['note'] }}</p>
+                </article>
+            @endforeach
+        </div>
+    </section>
     @foreach($templates as $event => $template)
         <details id="{{ $event }}" class="rounded-2xl border border-slate-200 bg-white p-5" @if(old('event') === $event) open @endif>
             <summary class="cursor-pointer font-black">{{ $template['label'] }} <span class="text-xs font-normal text-slate-500">{{ $template['required'] ? 'پیام ضروری' : ($template['email_enabled'] ? 'ایمیل فعال' : 'ایمیل غیرفعال') }}</span></summary>

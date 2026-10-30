@@ -87,7 +87,7 @@ class DeliverCorporateNotification implements ShouldQueue
                 Mail::mailer('settings_smtp')->to($recipient->email)->send(new BrandedNotificationMail($key, ['name' => $recipient->name, 'title' => $title, 'body' => $body], $url));
             } else {
                 if (blank($recipient->phone) || AppSetting::smsGateway() !== 'kavenegar' || (! $admin && ! $recipient->smsNotificationsEnabled())
-                    || (! $admin && $event->event === 'submitted' && ! AppSetting::getValue('corporate.submission_sms_enabled', false))) {
+                    || (! $admin && $event->event === 'submitted' && ! AppSetting::getValue('corporate.submission_sms_enabled', true))) {
                     $delivery->update(['status' => 'suppressed']);
 
                     return;

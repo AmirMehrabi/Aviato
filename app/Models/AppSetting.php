@@ -462,7 +462,7 @@ class AppSetting extends Model
 
     public static function ticketSmsNotificationsEnabled(): bool
     {
-        return filter_var(static::getValue(self::TICKET_SMS_NOTIFICATIONS_ENABLED, false), FILTER_VALIDATE_BOOL);
+        return filter_var(static::getValue(self::TICKET_SMS_NOTIFICATIONS_ENABLED, true), FILTER_VALIDATE_BOOL);
     }
 
     public static function vmCreationChargeEnabled(): bool

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\DeliverCorporateNotification;
 use App\Mail\BrandedNotificationMail;
 use App\Models\AppSetting;
 use App\Services\Notifications\NotificationTemplates;
@@ -18,7 +19,45 @@ class NotificationTemplateController extends Controller
         return view('admin.settings.notification-templates', [
             'templates' => $templates->all(), 'defaults' => $templates->catalog(), 'branding' => $templates->branding(),
             'deliveries' => DB::table('notification_deliveries')->latest('id')->paginate(20),
+            'smsNotifications' => $this->smsNotifications(),
         ]);
+    }
+
+    private function smsNotifications(): array
+    {
+        $machineTemplates = AppSetting::getValue('notifications.templates', []);
+        $ticketEvents = [
+            ['name' => 'تیکت جدید برای مشتری', 'key' => AppSetting::TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE],
+            ['name' => 'تیکت جدید برای مدیر', 'key' => AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE],
+            ['name' => 'پاسخ مشتری برای مدیر', 'key' => AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE],
+            ['name' => 'پاسخ مدیر برای مشتری', 'key' => AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE],
+            ['name' => 'واگذاری تیکت', 'key' => AppSetting::TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE],
+        ];
+        $rows = [[
+            'name' => 'کد ورود / تأیید شماره', 'template' => AppSetting::getValue(AppSetting::KAVENEGAR_TEMPLATE, ''),
+            'active' => true, 'note' => 'ضروری؛ در صورت انتخاب Kavenegar و تنظیم نام قالب.',
+        ]];
+        foreach ($ticketEvents as $event) {
+            $rows[] = ['name' => $event['name'], 'template' => AppSetting::getValue($event['key'], ''),
+                'active' => AppSetting::ticketSmsNotificationsEnabled(), 'note' => 'کنترل گروهی پیامک تیکت'];
+        }
+        foreach (DeliverCorporateNotification::smsTemplates() as $event => $definition) {
+            $key = 'corporate.template.'.$event;
+            $rows[] = ['name' => $event, 'template' => AppSetting::getValue($key, $definition['name']),
+                'active' => (bool) AppSetting::getValue('corporate.sms_enabled', true)
+                    && ($event !== 'corporate_submitted' || (bool) AppSetting::getValue('corporate.submission_sms_enabled', true)),
+                'note' => 'کنترل تنظیمات پیامک حقوقی'];
+        }
+        $rows[] = ['name' => 'هشدار موجودی منفی فضای کاری', 'template' => AppSetting::customerWalletNegativeSmsTemplate(),
+            'active' => AppSetting::customerWalletNegativeSmsEnabled(), 'note' => 'وابسته به تنظیم پیامک مشتری فضای کاری.'];
+        foreach (['vm_created_customer' => 'ساخت ماشین برای مشتری', 'vm_created_admin' => 'ساخت ماشین برای مدیر'] as $event => $label) {
+            $defaults = app(NotificationTemplates::class)->catalog()[$event];
+            $saved = $machineTemplates[$event] ?? [];
+            $rows[] = ['name' => $label, 'template' => $saved['sms_template'] ?? $defaults['sms_template'],
+                'active' => (bool) ($saved['sms_enabled'] ?? $defaults['sms_enabled']), 'note' => 'Kavenegar Lookup'];
+        }
+
+        return $rows;
     }
 
     public function update(Request $request, NotificationTemplates $templates)
