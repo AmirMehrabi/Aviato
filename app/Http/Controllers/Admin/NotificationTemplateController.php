@@ -28,11 +28,13 @@ class NotificationTemplateController extends Controller
             'subject' => ['required', 'string', 'max:200', 'not_regex:/[\r\n]/'],
             'body' => ['required', 'string', 'max:10000'],
             'email_enabled' => ['required', 'boolean'], 'in_app_enabled' => ['required', 'boolean'],
+            'sms_enabled' => ['sometimes', 'boolean'],
+            'sms_template' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z0-9_-]+$/'],
             'restore' => ['nullable', 'boolean'],
         ]);
         foreach (['subject', 'body'] as $field) {
             preg_match_all('/\{\{(.*?)\}\}/', $data[$field], $matches);
-            if (array_diff($matches[1], ['name', 'title', 'body', 'ticket_number', 'server_name', 'server_ip', 'username', 'amount', 'receipt', 'time', 'ip'])) {
+            if (array_diff($matches[1], ['machine_id', 'creator_name', 'name', 'title', 'body', 'ticket_number', 'server_name', 'server_ip', 'username', 'amount', 'receipt', 'time', 'ip'])) {
                 return back()->withErrors([$field => 'متغیر ناشناخته است. از متغیرهای معرفی‌شده استفاده کنید.'])->withInput();
             }
         }
@@ -46,6 +48,10 @@ class NotificationTemplateController extends Controller
                 'email_enabled' => $templates->catalog()[$event]['required'] || $request->boolean('email_enabled'),
                 'in_app_enabled' => $request->boolean('in_app_enabled'),
             ];
+        }
+        if (! $request->boolean('restore') && str_starts_with($event, 'vm_created_')) {
+            $saved[$event]['sms_enabled'] = $request->boolean('sms_enabled');
+            $saved[$event]['sms_template'] = $data['sms_template'] ?? $templates->catalog()[$event]['sms_template'];
         }
         AppSetting::setValue('notifications.templates', $saved, 'json', 'notifications');
 
@@ -89,6 +95,6 @@ class NotificationTemplateController extends Controller
 
     private function samples(): array
     {
-        return ['name' => 'همراه آویاتو', 'title' => 'یک خبر از آویاتو', 'body' => 'این یک پیام نمونه برای بررسی قالب است.', 'ticket_number' => 'T-1001', 'server_name' => 'my-cloud', 'server_ip' => '192.0.2.10', 'username' => 'ubuntu', 'initial_password' => 'Example-Only-Change-Me!', 'amount' => '۱۰۰٬۰۰۰ ریال', 'receipt' => 'RCP-00000001', 'time' => now('Asia/Tehran')->format('Y-m-d H:i'), 'ip' => '192.0.2.1'];
+        return ['machine_id' => '123', 'creator_name' => 'مشتری نمونه', 'name' => 'همراه آویاتو', 'title' => 'یک خبر از آویاتو', 'body' => 'این یک پیام نمونه برای بررسی قالب است.', 'ticket_number' => 'T-1001', 'server_name' => 'my-cloud', 'server_ip' => '192.0.2.10', 'username' => 'ubuntu', 'initial_password' => 'Example-Only-Change-Me!', 'amount' => '۱۰۰٬۰۰۰ ریال', 'receipt' => 'RCP-00000001', 'time' => now('Asia/Tehran')->format('Y-m-d H:i'), 'ip' => '192.0.2.1'];
     }
 }

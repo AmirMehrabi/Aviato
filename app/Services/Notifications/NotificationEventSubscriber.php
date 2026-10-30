@@ -59,6 +59,9 @@ class NotificationEventSubscriber
                 });
             }
         });
+        VirtualMachine::created(function (VirtualMachine $vm): void {
+            DB::afterCommit(fn () => app(MachineCreatedNotificationService::class)->send($vm));
+        });
         VirtualMachine::updated(function (VirtualMachine $vm): void {
             if ($vm->wasChanged('provisioning_status') && $vm->provisioning_status === 'ready') {
                 DB::afterCommit(function () use ($vm): void {

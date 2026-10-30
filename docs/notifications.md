@@ -34,3 +34,29 @@ Local automated tests cover the complete recovery flow using the generated code,
 When server-ready email is enabled, newly provisioned servers include name, IP address, username, and the initial password in a dedicated email section. This section and the instruction to change the password on first login remain present even with custom message copy. Server name, IP, and username are also available as `{{server_name}}`, `{{server_ip}}`, and `{{username}}` placeholders. Passwords are deliberately not template placeholders or in-app notification data.
 
 The initial password travels through encrypted provisioning and email queue payloads; it is not saved back to the VM record, notification inbox, or delivery history. This works for servers created after deployment. Already-hashed passwords cannot be recovered for older servers or manually requeued provisioning jobs. If no password is available, the email explains how to use the configured SSH key or check/reset credentials in the panel. The email requests a password change; it does not force an operating-system password change.
+
+## Machine creation notifications
+
+`vm_created_customer` confirms creation to `created_by_customer_id` (the creator, including when different from the workspace owner). `vm_created_admin` goes to active admins allowed to read virtual machines. Both fire after the new machine record commits, including machines created through the API/admin flows, and do not fire on updates or transaction rollback. This confirms registration, not successful provisioning; the existing server-ready event remains separate. Records without a customer creator do not send these notifications.
+
+Email and in-app channels default to enabled for these two events. Configure them under **Admin → Settings → Templates and notifications**. Customer email/in-app preferences apply to the customer event. SMS has its own checkbox and editable Kavenegar template name on each event. SMS requires the Kavenegar gateway and API key in SMS settings and a recipient phone number; it is queued on the existing `mail` worker and rechecks the SMS switch before sending. SMS delivery retries can produce duplicates if the provider accepts a request before a connection failure.
+
+Create and approve these two Kavenegar lookup templates, using the exact names below (or update their names in notification settings). `%token` is the internal machine ID; no credentials are sent by SMS.
+
+**Name: `aviato-vm-created-customer`**
+
+```text
+درخواست ساخت ماشین شما با شناسه %token در آویاتو ثبت شد.
+وضعیت آماده‌سازی را در پنل کاربری بررسی کنید.
+آویاتو
+```
+
+**Name: `aviato-vm-created-admin`**
+
+```text
+ماشین جدید با شناسه %token در آویاتو ثبت شد.
+جزئیات مشتری و وضعیت ماشین را در پنل مدیریت بررسی کنید.
+آویاتو
+```
+
+No database migration is required for these events. Restart queue workers after deploying the code.

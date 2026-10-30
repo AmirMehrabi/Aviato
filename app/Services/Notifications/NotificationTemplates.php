@@ -21,6 +21,8 @@ class NotificationTemplates
             'workspace_added' => ['دعوت به فضای کاری', 'فضای کاری تازه در آویاتو', "{{name}} عزیز،\n{{body}}\nهمراه تیم خود، مسیر ابری تازه‌ای بسازید.", false],
             'workspace_wallet_balance' => ['موجودی کیف پول', 'موجودی کیف پول آویاتو', "{{name}} عزیز،\n{{body}}\nبا شارژ به‌موقع کیف پول، سرویس‌های خود را بدون وقفه نگه دارید.", false],
             'vm_wallet_retention' => ['نگهداری و حذف سرور', '{{title}} | آویاتو', "{{name}} عزیز،\n{{body}}\nبرای بررسی وضعیت سرویس و پرداخت، به پنل خود مراجعه کنید.", false],
+            'vm_created_customer' => ['ساخت ماشین (مشتری)', 'ماشین شما در آویاتو ثبت شد', "{{name}} عزیز،\nماشین «{{server_name}}» با شناسه {{machine_id}} به درخواست شما ثبت شد. وضعیت آماده‌سازی را در پنل بررسی کنید.", false],
+            'vm_created_admin' => ['ساخت ماشین (مدیر)', 'ماشین جدید در آویاتو ثبت شد', "{{name}} عزیز،\n{{creator_name}} ماشین «{{server_name}}» با شناسه {{machine_id}} را ثبت کرد. وضعیت ماشین را در پنل بررسی کنید.", false],
             'server_ready' => ['آماده شدن سرور', 'سرور شما در آویاتو آماده است', "{{name}} عزیز،\nسرور «{{server_name}}» آماده استفاده است.\nنشانی IP: {{server_ip}}\nنام کاربری: {{username}}\nلطفاً برای امنیت حساب سرور، پس از اولین ورود رمز عبور را تغییر دهید.", false],
             'payment_received' => ['پرداخت موفق', 'پرداخت شما در آویاتو ثبت شد', "{{name}} عزیز،\nپرداخت شما به مبلغ {{amount}} ثبت شد.\nشماره رسید: {{receipt}}\nاز همراهی شما با آویاتو سپاسگزاریم.", false],
             'wallet_charged' => ['شارژ کیف پول و بازگشت سرویس', 'کیف پول شما در آویاتو شارژ شد', "{{name}} عزیز،\nکیف پول شما به مبلغ {{amount}} شارژ شد. از همراهی شما سپاسگزاریم.\nسرویس‌های متوقف‌شده شما در حال بازگشت هستند و پس از تکمیل فرایند در دسترس خواهند بود.", false],
@@ -43,8 +45,9 @@ class NotificationTemplates
 
         return collect($items)->map(fn ($item, $event) => [
             'label' => $item[0], 'subject' => $item[1], 'body' => $item[2], 'required' => $item[3],
-            'email_enabled' => $item[3] || str_starts_with($event, 'ticket_') || str_starts_with($event, 'domain_') || str_starts_with($event, 'corporate_'),
+            'email_enabled' => $item[3] || str_starts_with($event, 'vm_created_') || str_starts_with($event, 'ticket_') || str_starts_with($event, 'domain_') || str_starts_with($event, 'corporate_'),
             'in_app_enabled' => true,
+            ...(str_starts_with($event, 'vm_created_') ? ['sms_enabled' => true, 'sms_template' => $event === 'vm_created_admin' ? 'aviato-vm-created-admin' : 'aviato-vm-created-customer'] : []),
         ])->all();
     }
 
@@ -57,7 +60,7 @@ class NotificationTemplates
 
     public function customerEvents(): array
     {
-        return array_filter($this->all(), fn ($item, $key) => ! $item['required'] && ! in_array($key, ['corporate_admin_review', 'vm_node_move_finished', 'ticket_created', 'ticket_customer_reply', 'ticket_assigned']), ARRAY_FILTER_USE_BOTH);
+        return array_filter($this->all(), fn ($item, $key) => ! $item['required'] && ! in_array($key, ['vm_created_admin', 'corporate_admin_review', 'vm_node_move_finished', 'ticket_created', 'ticket_customer_reply', 'ticket_assigned']), ARRAY_FILTER_USE_BOTH);
     }
 
     public function enabled(string $event, string $channel, ?object $recipient = null): bool
@@ -69,13 +72,13 @@ class NotificationTemplates
         if ($template['required']) {
             return $channel === 'email';
         }
-        if (! $template[$channel.'_enabled']) {
+        if (! ($template[$channel.'_enabled'] ?? false)) {
             return false;
         }
         if ($channel === 'email' && str_starts_with($event, 'ticket_') && ! AppSetting::ticketEmailNotificationsEnabled()) {
             return false;
         }
-        if ($recipient instanceof Customer) {
+        if ($recipient instanceof Customer && $channel !== 'sms') {
             return (bool) (DB::table('customer_notification_preferences')->where('customer_id', $recipient->id)->where('event', $event)->value($channel.'_enabled') ?? true);
         }
 
@@ -85,7 +88,7 @@ class NotificationTemplates
     public function render(string $event, array $variables = []): array
     {
         $template = $this->all()[$event];
-        $variables += ['name' => 'همراه آویاتو', 'title' => $template['label'], 'body' => '', 'ticket_number' => '', 'server_name' => '', 'server_ip' => '', 'username' => '', 'amount' => '', 'receipt' => '', 'time' => '', 'ip' => ''];
+        $variables += ['name' => 'همراه آویاتو', 'title' => $template['label'], 'body' => '', 'ticket_number' => '', 'machine_id' => '', 'creator_name' => '', 'server_name' => '', 'server_ip' => '', 'username' => '', 'amount' => '', 'receipt' => '', 'time' => '', 'ip' => ''];
         $replace = collect($variables)->mapWithKeys(fn ($value, $key) => ['{{'.$key.'}}' => is_scalar($value) ? (string) $value : ''])->all();
 
         return ['subject' => strtr($template['subject'], $replace), 'body' => strtr($template['body'], $replace)];

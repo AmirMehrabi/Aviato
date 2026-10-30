@@ -17,7 +17,7 @@
         </div>
         <button class="rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white">ذخیره هویت ایمیل</button>
     </form>
-    <p class="rounded-lg bg-slate-100 p-4 text-sm leading-7">متغیرهای مجاز: <span dir="ltr">@{{name}}, @{{title}}, @{{body}}, @{{ticket_number}}, @{{server_name}}, @{{server_ip}}, @{{username}}, @{{amount}}, @{{receipt}}, @{{time}}, @{{ip}}</span>. متن ساده بنویسید؛ HTML و کد اجرا نمی‌شوند. کد امنیتی و اطلاعات ورود اولیه سرور به‌طور خودکار و جدا از متن ایمیل درج می‌شوند. رمز سرور در اعلان داخل پنل نمایش داده نمی‌شود. متغیرهای هر رویداد را در متن پیشنهادی آن ببینید.</p>
+    <p class="rounded-lg bg-slate-100 p-4 text-sm leading-7">متغیرهای مجاز: <span dir="ltr">@{{machine_id}}, @{{creator_name}}, @{{name}}, @{{title}}, @{{body}}, @{{ticket_number}}, @{{server_name}}, @{{server_ip}}, @{{username}}, @{{amount}}, @{{receipt}}, @{{time}}, @{{ip}}</span>. متن ساده بنویسید؛ HTML و کد اجرا نمی‌شوند. کد امنیتی و اطلاعات ورود اولیه سرور به‌طور خودکار و جدا از متن ایمیل درج می‌شوند. رمز سرور در اعلان داخل پنل نمایش داده نمی‌شود. متغیرهای هر رویداد را در متن پیشنهادی آن ببینید.</p>
     @foreach($templates as $event => $template)
         <details id="{{ $event }}" class="rounded-2xl border border-slate-200 bg-white p-5" @if(old('event') === $event) open @endif>
             <summary class="cursor-pointer font-black">{{ $template['label'] }} <span class="text-xs font-normal text-slate-500">{{ $template['required'] ? 'پیام ضروری' : ($template['email_enabled'] ? 'ایمیل فعال' : 'ایمیل غیرفعال') }}</span></summary>
@@ -33,6 +33,12 @@
                     <input type="hidden" name="in_app_enabled" value="0">
                     @unless($template['required'])<label><input type="checkbox" name="in_app_enabled" value="1" @checked($template['in_app_enabled'])> اعلان داخل پنل</label>@endunless
                 </div>
+                @if(isset($template['sms_template']))
+                    <input type="hidden" name="sms_enabled" value="0">
+                    <label><input type="checkbox" name="sms_enabled" value="1" @checked($template['sms_enabled'])> پیامک Kavenegar</label>
+                    <x-form.input name="sms_template" label="نام قالب Kavenegar" :value="$template['sms_template']" dir-ltr required />
+                    <p class="text-sm text-slate-500">متغیر %token شناسه ماشین است. ابتدا قالب را در Kavenegar ایجاد و تأیید کنید.</p>
+                @endif
                 <div class="flex flex-wrap gap-3">
                     <button class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white">ذخیره قالب</button>
                     <button name="restore" value="1" class="rounded-lg border border-slate-200 px-4 py-2 text-sm">بازگردانی متن و تنظیمات پیشنهادی</button>
