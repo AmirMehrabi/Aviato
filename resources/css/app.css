@@ -9,32 +9,32 @@
 @import './base.css';
 
 @layer components {
-    .admin-sidebar-scroll {
+    :is(.admin-sidebar-scroll, .customer-sidebar-scroll) {
         scrollbar-width: thin;
         scrollbar-color: rgb(255 255 255 / 25%) transparent;
         scrollbar-gutter: stable;
     }
 
-    .admin-sidebar-scroll:hover,
-    .admin-sidebar-scroll:focus-within {
+    :is(.admin-sidebar-scroll, .customer-sidebar-scroll):hover,
+    :is(.admin-sidebar-scroll, .customer-sidebar-scroll):focus-within {
         scrollbar-color: rgb(255 255 255 / 45%) transparent;
     }
 
-    .admin-sidebar-scroll::-webkit-scrollbar {
+    :is(.admin-sidebar-scroll, .customer-sidebar-scroll)::-webkit-scrollbar {
         width: 6px;
     }
 
-    .admin-sidebar-scroll::-webkit-scrollbar-track {
+    :is(.admin-sidebar-scroll, .customer-sidebar-scroll)::-webkit-scrollbar-track {
         background: transparent;
     }
 
-    .admin-sidebar-scroll::-webkit-scrollbar-thumb {
+    :is(.admin-sidebar-scroll, .customer-sidebar-scroll)::-webkit-scrollbar-thumb {
         border-radius: 999px;
         background: rgb(255 255 255 / 25%);
     }
 
-    .admin-sidebar-scroll:hover::-webkit-scrollbar-thumb,
-    .admin-sidebar-scroll:focus-within::-webkit-scrollbar-thumb {
+    :is(.admin-sidebar-scroll, .customer-sidebar-scroll):hover::-webkit-scrollbar-thumb,
+    :is(.admin-sidebar-scroll, .customer-sidebar-scroll):focus-within::-webkit-scrollbar-thumb {
         background: rgb(255 255 255 / 45%);
     }
 

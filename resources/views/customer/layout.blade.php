@@ -67,10 +67,10 @@
             ],
             'دامنه و DNS' => [
                 ...($customer->canManageDomains() ? [
-                    ['key' => 'domains', 'label' => 'دامنه‌ها', 'description' => 'ثبت، تمدید و تغییر نیم‌سرورها', 'route' => route('customer.domains.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z'],
+                    ['key' => 'domains', 'label' => 'دامنه‌ها', 'route' => route('customer.domains.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z'],
                 ] : []),
                 ...($activeMembership?->canReadDns() && app(\App\Services\CloudDns\CloudDnsRollout::class)->allows($customer, $activeProject) ? [
-                    ['key' => 'cloud-dns', 'label' => 'مدیریت DNS', 'description' => 'مدیریت رکوردهای A، MX، TXT و سایر رکوردها', 'route' => route('customer.cloud-dns.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z'],
+                    ['key' => 'cloud-dns', 'label' => 'مدیریت DNS', 'route' => route('customer.cloud-dns.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z'],
                 ] : []),
             ],
             'امور مالی' => [
@@ -330,7 +330,7 @@
                 </div>
             </div>
 
-            <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div class="customer-sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
                 <nav class="mt-4 space-y-6 text-sm font-bold" aria-label="بخش‌های پنل مشتری">
                     @foreach ($navGroups as $group => $items)
                         <div>
@@ -349,12 +349,7 @@
                                         <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                             <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
-                                        <span class="min-w-0">
-                                            <span class="block">{{ $item['label'] }}</span>
-                                            @if (isset($item['description']))
-                                                <span class="mt-1 block text-[10px] font-medium leading-5 {{ $isActive ? 'text-slate-600' : 'text-[#9DB4DC]' }}">{{ $item['description'] }}</span>
-                                            @endif
-                                        </span>
+                                        <span>{{ $item['label'] }}</span>
                                         @if ($item['key'] === 'invoices' && ($invoiceCount ?? null))
                                             <span class="mr-auto rounded px-1.5 py-0.5 text-[10px] font-black {{ $isActive ? 'bg-[#E5F0FF] text-[#0069FF]' : 'bg-white/10 text-[#C7D4EA]' }}">{{ $invoiceCount }}</span>
                                         @endif
@@ -400,62 +395,62 @@
                 <!-- <div class="mt-5 border-t border-white/10 px-1 py-4 text-xs leading-6 text-[#8FA6D2]">
                     مصرف PAYG از کیف پول کسر می شود و صورتحساب ماهانه برای بایگانی صادر می گردد.
                 </div> -->
-            </div>
 
-            <div class="relative max-h-[50vh] shrink-0 overflow-y-auto border-t border-white/10 px-3 pt-3 lg:max-h-none lg:overflow-visible lg:pb-1" @click.outside="profileOpen = false" @focusout="if (!$el.contains($event.relatedTarget)) profileOpen = false">
-                <button
-                    type="button"
-                    class="hidden w-full items-center gap-3 rounded-xl px-2 py-2.5 text-right transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:flex {{ $activeNav === 'profile' ? 'bg-white/10' : '' }}"
-                    @click="profileOpen = !profileOpen; walletOpen = false; workspaceOpen = false; searchOpen = false"
-                    :aria-expanded="profileOpen.toString()"
-                    aria-controls="customer-account-menu"
-                    aria-label="حساب کاربری {{ $customer->name }}"
-                >
-                    <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
-                    <span class="min-w-0 flex-1">
-                        <span class="block text-[10px] font-bold text-[#9DB4DC]">حساب کاربری</span>
-                        <span class="block truncate text-sm font-black text-white">{{ $customer->name }}</span>
-                    </span>
-                    <svg class="size-4 shrink-0 text-[#9DB4DC] transition-transform" :class="profileOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
-                </button>
-
-                <div id="customer-account-menu" x-cloak x-show="profileOpen" x-transition class="absolute inset-x-3 bottom-full z-50 mb-2 hidden max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl shadow-slate-950/20 lg:block">
-                    <div class="border-b border-slate-100 px-2 py-2">
-                        <p class="truncate text-sm font-black text-slate-950">{{ $customer->name }}</p>
-                        <p class="truncate text-xs text-slate-500" dir="ltr">{{ $customer->email ?? $customer->phone ?? 'حساب مشتری' }}</p>
-                    </div>
-                    <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="mt-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF]">
-                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
-                        پروفایل
-                    </a>
-                    <form method="POST" action="{{ route('customer.logout', [], false) }}" class="mt-1 border-t border-slate-100 pt-1">
-                        @csrf
-                        <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-600 transition hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
-                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
-                            خروج از حساب
-                        </button>
-                    </form>
-                </div>
-
-                <div class="lg:hidden">
-                    <div class="flex items-center gap-3 px-2 pb-3">
+                <div class="relative mt-5 border-t border-white/10 px-3 pt-3" @click.outside="profileOpen = false" @focusout="if (!$el.contains($event.relatedTarget)) profileOpen = false">
+                    <button
+                        type="button"
+                        class="hidden w-full items-center gap-3 rounded-xl px-2 py-2.5 text-right transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:flex {{ $activeNav === 'profile' ? 'bg-white/10' : '' }}"
+                        @click="profileOpen = !profileOpen; walletOpen = false; workspaceOpen = false; searchOpen = false"
+                        :aria-expanded="profileOpen.toString()"
+                        aria-controls="customer-account-menu"
+                        aria-label="حساب کاربری {{ $customer->name }}"
+                    >
                         <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
-                        <span class="min-w-0">
+                        <span class="min-w-0 flex-1">
                             <span class="block text-[10px] font-bold text-[#9DB4DC]">حساب کاربری</span>
                             <span class="block truncate text-sm font-black text-white">{{ $customer->name }}</span>
                         </span>
+                        <svg class="size-4 shrink-0 text-[#9DB4DC] transition-transform" :class="profileOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+
+                    <div id="customer-account-menu" x-cloak x-show="profileOpen" x-transition class="mt-2 hidden rounded-xl border border-slate-200 bg-white p-2 text-right lg:block">
+                        <div class="border-b border-slate-100 px-2 py-2">
+                            <p class="truncate text-sm font-black text-slate-950">{{ $customer->name }}</p>
+                            <p class="truncate text-xs text-slate-500" dir="ltr">{{ $customer->email ?? $customer->phone ?? 'حساب مشتری' }}</p>
+                        </div>
+                        <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="mt-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF]">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                            پروفایل
+                        </a>
+                        <form method="POST" action="{{ route('customer.logout', [], false) }}" class="mt-1 border-t border-slate-100 pt-1">
+                            @csrf
+                            <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-600 transition hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
+                                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
+                                خروج از حساب
+                            </button>
+                        </form>
                     </div>
-                    <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
-                        پروفایل
-                    </a>
-                    <form method="POST" action="{{ route('customer.logout', [], false) }}">
-                        @csrf
-                        <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-200 transition hover:bg-red-400/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-200">
-                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
-                            خروج از حساب
-                        </button>
-                    </form>
+
+                    <div class="lg:hidden">
+                        <div class="flex items-center gap-3 px-2 pb-3">
+                            <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
+                            <span class="min-w-0">
+                                <span class="block text-[10px] font-bold text-[#9DB4DC]">حساب کاربری</span>
+                                <span class="block truncate text-sm font-black text-white">{{ $customer->name }}</span>
+                            </span>
+                        </div>
+                        <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                            پروفایل
+                        </a>
+                        <form method="POST" action="{{ route('customer.logout', [], false) }}">
+                            @csrf
+                            <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-200 transition hover:bg-red-400/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-200">
+                                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
+                                خروج از حساب
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </aside>
