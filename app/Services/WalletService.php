@@ -133,7 +133,7 @@ class WalletService
             $balanceBefore = $wallet->balance;
             $balanceAfter = $balanceBefore + $signedAmount;
 
-            if (! $allowNegative && $balanceAfter < 0) {
+            if ($signedAmount < 0 && ! $allowNegative && $balanceAfter < 0) {
                 throw ValidationException::withMessages(['amount' => 'Insufficient wallet balance.']);
             }
 

@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class CustomerWalletBillingTest extends TestCase
@@ -89,6 +90,55 @@ class CustomerWalletBillingTest extends TestCase
         ]);
 
         $this->assertSame(200000, $customer->wallet()->firstOrFail()->balance);
+    }
+
+    public function test_mellat_partial_debt_repayment_completes_and_credits_wallet_only_once(): void
+    {
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => -8520367]);
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+        $payment = app(PaymentService::class)->createTopUp($customer, 1089000)->refresh();
+        $callback = [
+            'RefId' => $payment->authority,
+            'ResCode' => '0',
+            'SaleOrderId' => $payment->id,
+            'SaleReferenceId' => '127926981246',
+        ];
+
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', $callback)
+                ->assertRedirect($this->customerBaseUrl.'/wallet?payment_id='.$payment->id);
+        }
+
+        $this->assertSame(Payment::STATUS_SUCCESSFUL, $payment->fresh()->status);
+        $this->assertNotNull($payment->fresh()->paid_at);
+        $this->assertSame(-7431367, $customer->wallet()->firstOrFail()->balance);
+        $this->assertSame(1, $payment->walletTransactions()->count());
+        $this->assertDatabaseHas('wallet_transactions', [
+            'customer_id' => $customer->id,
+            'type' => WalletTransaction::TYPE_CREDIT,
+            'amount' => 1089000,
+            'balance_before' => -8520367,
+            'balance_after' => -7431367,
+            'reference_id' => $payment->id,
+        ]);
+    }
+
+    public function test_wallet_debit_cannot_increase_debt_without_allow_negative(): void
+    {
+        $customer = Customer::factory()->create();
+        $customer->wallet()->update(['balance' => -200000]);
+
+        try {
+            app(WalletService::class)->debit($customer, 100000, 'Purchase');
+            $this->fail('A debit must not increase debt without explicit permission.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(['amount' => ['Insufficient wallet balance.']], $exception->errors());
+        }
+
+        $this->assertSame(-200000, $customer->wallet()->firstOrFail()->balance);
+        $this->assertDatabaseCount('wallet_transactions', 0);
     }
 
     public function test_mellat_callback_mismatch_fails_without_crediting_wallet(): void
