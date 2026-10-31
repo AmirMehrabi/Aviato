@@ -62,7 +62,6 @@
                     ['key' => 'servers', 'label' => 'ماشین‌های مجازی', 'route' => route('customer.servers.index', [], false), 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
                     ['key' => 'backups', 'label' => 'پشتیبان‌گیری', 'route' => route('customer.backups.index', [], false), 'icon' => 'M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 6.5 19H8'],
                     ['key' => 'monitoring', 'label' => 'پایش', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M3 12h4l3-8 4 16 3-8h4'],
-                    ['key' => 'network', 'label' => 'مصرف شبکه', 'route' => route('customer.network.index', [], false), 'icon' => 'M4 17h16M6 13l4-4 3 3 5-6M5 21h14'],
                 ] : []),
             ],
             'دامنه و DNS' => [
