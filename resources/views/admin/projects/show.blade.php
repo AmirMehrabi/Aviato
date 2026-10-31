@@ -214,6 +214,7 @@
                                 </select>
                                 @error('customer_ids') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
                             </label>
+                            <div class="flex flex-wrap gap-3 text-xs"><label><input type="checkbox" name="dns_read" value="1"> مشاهده DNS</label><label><input type="checkbox" name="dns_manage" value="1"> مدیریت DNS</label></div>
                             <x-form.select name="role" label="نقش" :selected="$defaultMemberRole" :options="$roleLabels" x-model="role" @change="syncScope()" />
                             <x-form.select name="vm_access_scope" label="دسترسی VM" :selected="$defaultMemberScope" :options="$scopeLabels" x-model="scope" @change="scopeTouched = true" />
                         </div>
@@ -317,6 +318,8 @@
                                             @endforeach
                                         </select>
                                         <p class="mt-2 text-xs leading-6 text-slate-500">{{ $scopeDescriptions[$member->vm_access_scope] ?? '' }}</p>
+                                        <div class="mt-3 flex flex-wrap gap-3 text-xs"><label><input @disabled(! auth('admin')->user()->allows('projects.manage')) form="{{ $updateFormId }}" type="checkbox" name="dns_read" value="1" @checked($member->dns_read)> مشاهده DNS</label><label><input @disabled(! auth('admin')->user()->allows('projects.manage')) form="{{ $updateFormId }}" type="checkbox" name="dns_manage" value="1" @checked($member->dns_manage)> مدیریت DNS</label></div>
+
                                     </td>
                                     <td class="px-4 py-4">
                                         <div x-cloak x-show="scope === 'specific'" class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3">

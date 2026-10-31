@@ -1,0 +1,70 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Customer;
+use App\Services\CloudDns\CloudDnsRollout;
+use App\Services\CloudDns\CloudDnsService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Tests\TestCase;
+
+class CloudDnsUiTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_setup_distinguishes_verification_publication_and_nameserver_connection(): void
+    {
+        config(['cloud-dns.enabled' => true]);
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        app(CloudDnsRollout::class)->update('add', null, $customer->id);
+        $zone = app(CloudDnsService::class)->create($customer->ensureDefaultProject(), 'example.ir', $customer);
+        $this->actingAs($customer, 'customer');
+        $url = 'https://cp.localhost/cloud-dns/'.$zone->uuid;
+        $this->get($url)->assertOk()->assertSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('اتصال هنوز بررسی نشده')->assertSee('دی‌ان‌اس ابری');
+        $zone->update(['verified_at' => now(), 'status' => 'ready', 'synced_revision' => $zone->revision, 'delegation_status' => 'pending', 'checked_at' => now()]);
+        $this->get($url)->assertOk()->assertDontSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('نیم‌سرورها هنوز متصل نیستند')->assertDontSee('دامنه به آویاتو متصل است');
+        $zone->update(['delegation_status' => 'active']);
+        $html = $this->get($url)->assertOk()->assertSee('دامنه به آویاتو متصل است')->getContent();
+        $this->assertLessThan(strpos($html, 'مشاهده تنظیمات اتصال'), strpos($html, 'id="dns-records"'));
+        $zone->update(['status' => 'pending', 'revision' => $zone->revision + 1]);
+        $this->get($url)->assertOk()->assertDontSee('دامنه به آویاتو متصل است')->assertSee('تغییرات در انتظار انتشار هستند');
+    }
+
+    public function test_management_page_contains_history_and_enforces_zone_ownership(): void
+    {
+        config(['cloud-dns.enabled' => true]);
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        app(CloudDnsRollout::class)->update('add', null, $customer->id);
+        $zone = app(CloudDnsService::class)->create($customer->ensureDefaultProject(), 'example.ir', $customer);
+        $url = 'https://cp.localhost/cloud-dns/'.$zone->uuid;
+        $this->actingAs($customer, 'customer')->get($url)->assertOk()
+            ->assertDontSee('تاریخچه تغییرات')->assertDontSee('حذف دامنه از هر دو سرور')
+            ->assertSee('/cloud-dns/'.$zone->uuid.'/management', false)->assertViewHas('changes', null);
+        $this->get($url.'/management')->assertOk()->assertSee('تاریخچه تغییرات')
+            ->assertSee('حذف دامنه از هر دو سرور')->assertDontSee('id="dns-records"', false);
+        $other = Customer::factory()->create();
+        app(CloudDnsRollout::class)->update('add', null, $other->id);
+        $other->ensureDefaultProject();
+        $this->actingAs($other, 'customer')->get($url.'/management')->assertNotFound();
+    }
+
+    public function test_record_validation_retains_editor_values_for_correction(): void
+    {
+        config(['cloud-dns.enabled' => true]);
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        app(CloudDnsRollout::class)->update('add', null, $customer->id);
+        $zone = app(CloudDnsService::class)->create($customer->ensureDefaultProject(), 'example.ir', $customer);
+        $url = 'https://cp.localhost/cloud-dns/'.$zone->uuid;
+        $this->actingAs($customer, 'customer')->from($url)->post($url.'/records', [
+            'name' => '@', 'type' => 'MX', 'ttl' => 300, 'content' => '10 invalid host', 'editor_mode' => 'edit',
+        ])->assertRedirect($url)->assertSessionHasErrors('content')->assertSessionHasInput('content', '10 invalid host')->assertSessionHasInput('editor_mode', 'edit');
+        $response = $this->get($url)->assertOk()->assertSee('dns-editor-title')->assertSee('10 invalid host');
+        $this->assertStringNotContainsString('<li>مقدار رکورد MX معتبر نیست.</li>', $response->getContent());
+        $this->assertStringNotContainsString('text-red-800">مقدار رکورد MX معتبر نیست.</div>', $response->getContent());
+        $this->assertDatabaseCount('dns_record_sets', 0);
+    }
+}

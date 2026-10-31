@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminTablePreferenceController;
 use App\Http\Controllers\Admin\ApiActivityController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BillingController;
+use App\Http\Controllers\Admin\CloudDnsController;
 use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -161,6 +162,21 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.notifications.index');
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])
             ->name('admin.notifications.read');
+
+        Route::prefix('cloud-dns')->name('admin.cloud-dns.')->middleware('no-store')->group(function (): void {
+            $controller = CloudDnsController::class;
+            Route::get('/', [$controller, 'index'])->name('index');
+            Route::post('rollout', [$controller, 'updateRollout'])->name('rollout.update');
+            Route::get('{zone}', [$controller, 'show'])->name('show');
+            Route::get('{zone}/management', [$controller, 'management'])->name('management');
+            Route::get('{zone}/export', [$controller, 'export'])->name('export');
+            Route::post('{zone}/records', [$controller, 'records'])->middleware('throttle:60,1')->name('records');
+            Route::delete('{zone}/records/{record}', [$controller, 'deleteRecord'])->name('records.destroy');
+            Route::post('{zone}/import', [$controller, 'import'])->middleware('throttle:10,1')->name('import');
+            Route::post('{zone}/retry', [$controller, 'retry'])->middleware('throttle:10,1')->name('retry');
+            Route::post('{zone}/suspension', [$controller, 'suspension'])->name('suspension');
+            Route::delete('{zone}', [$controller, 'destroy'])->name('destroy');
+        });
 
         Route::get('search', [SearchController::class, '__invoke'])->name('admin.search');
 
@@ -493,6 +509,21 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::post('profile/api-tokens', [ApiTokenController::class, 'store'])->name('customer.profile.api-tokens.store');
         Route::delete('profile/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('customer.profile.api-tokens.destroy');
         Route::patch('profile/national-code', [ProfileController::class, 'updateNationalCode'])->name('customer.profile.national-code.update');
+        Route::prefix('cloud-dns')->name('customer.cloud-dns.')->middleware('no-store')->group(function (): void {
+            $controller = App\Http\Controllers\Customer\CloudDnsController::class;
+            Route::get('/', [$controller, 'index'])->name('index');
+            Route::post('/', [$controller, 'store'])->middleware('throttle:10,1')->name('store');
+            Route::get('{zone}', [$controller, 'show'])->name('show');
+            Route::get('{zone}/management', [$controller, 'management'])->name('management');
+            Route::post('{zone}/verify', [$controller, 'verify'])->middleware('throttle:5,1')->name('verify');
+            Route::post('{zone}/check', [$controller, 'check'])->middleware('throttle:5,1')->name('check');
+            Route::post('{zone}/records', [$controller, 'records'])->middleware('throttle:60,1')->name('records');
+            Route::delete('{zone}/records/{record}', [$controller, 'deleteRecord'])->name('records.destroy');
+            Route::post('{zone}/import', [$controller, 'import'])->middleware('throttle:10,1')->name('import');
+            Route::get('{zone}/export', [$controller, 'export'])->name('export');
+            Route::delete('{zone}', [$controller, 'destroy'])->name('destroy');
+        });
+
         Route::get('storage', [StorageController::class, 'index'])->name('customer.storage.index');
         Route::post('storage/buckets', [StorageController::class, 'storeBucket'])->name('customer.storage.buckets.store');
         Route::delete('storage/buckets/{bucket}', [StorageController::class, 'destroyBucket'])->name('customer.storage.buckets.destroy');

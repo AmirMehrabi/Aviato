@@ -91,6 +91,8 @@
                                                 <option value="{{ $role }}" @selected($member->role === $role)>{{ $label }}</option>
                                             @endforeach
                                         </select>
+                                        <label class="inline-flex items-center gap-1 text-xs"><input type="checkbox" name="dns_read" value="1" @checked($member->dns_read)>مشاهده DNS</label>
+                                        <label class="inline-flex items-center gap-1 text-xs"><input type="checkbox" name="dns_manage" value="1" @checked($member->dns_manage)>مدیریت DNS</label>
                                         <button class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white">ذخیره</button>
                                     </form>
                                     <form method="POST" action="{{ route('customer.projects.members.destroy', [$project, $member], false) }}" onsubmit="return confirm('این عضو حذف شود؟')">
@@ -237,6 +239,8 @@
                 <p class="mt-2 text-sm font-bold leading-7 text-slate-500">مشتری فوراً عضو می‌شود و اعلانی با لینک ورود به این فضای کاری دریافت می‌کند.</p>
                 <form method="POST" action="{{ route('customer.projects.members.store', $project, false) }}" class="mt-4 space-y-4" x-data="{ role: '{{ old('role', 'member') }}' }">
                     @csrf
+                    <div class="flex flex-wrap gap-4 text-xs"><label><input type="checkbox" name="dns_read" value="1"> مشاهده DNS</label><label><input type="checkbox" name="dns_manage" value="1"> مدیریت DNS</label><p class="text-slate-500">مالک و مدیر فضای کاری همیشه دسترسی DNS دارند.</p></div>
+
                     <label class="block">
                         <span class="text-sm font-black text-slate-700">ایمیل یا موبایل مشتری</span>
                         <input name="identifier" value="{{ old('identifier') }}" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">

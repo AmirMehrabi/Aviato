@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreCustomerRequest;
 use App\Http\Requests\Admin\UpdateCustomerRequest;
 use App\Jobs\ReconcileWalletRestrictions;
 use App\Models\Customer;
+use App\Models\DnsZone;
 use App\Models\DomainOrder;
 use App\Models\ManagedDomain;
 use App\Services\BillingService;
@@ -150,6 +151,7 @@ class CustomerController extends Controller
         if (DomainOrder::where('customer_id', $customer->id)->exists() || ManagedDomain::where('customer_id', $customer->id)->exists()) {
             return back()->withErrors(['customer' => 'این مشتری سوابق دامنه دارد و قابل حذف نیست. در صورت نیاز حساب را معلق کنید.']);
         }
+        abort_if(DnsZone::whereHas('project', fn ($q) => $q->where('owner_customer_id', $customer->id))->where('status', '!=', 'deleted')->exists(), 409, 'ابتدا دامنه‌های Cloud DNS مشتری را حذف کنید.');
         $customer->delete();
 
         return redirect()->route('admin.customers.index')

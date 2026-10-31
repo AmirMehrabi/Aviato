@@ -33,6 +33,10 @@ class ProjectLifecycleService
             $blockers['domains'] = 'این فضای کاری دامنه یا سفارش دامنه دارد و قابل حذف نیست.';
         }
 
+        if ($project->dnsZones()->where('status', '!=', 'deleted')->exists()) {
+            $blockers['dns'] = 'ابتدا دامنه‌های Cloud DNS را حذف کنید و منتظر تکمیل حذف بمانید.';
+        }
+
         if ($project->storageBuckets()->exists() || $project->storageAccessKeys()->exists()) {
             $blockers['storage'] = 'ابتدا باکت‌ها و کلیدهای فضای ذخیره‌سازی این فضای کاری را حذف کنید.';
         }

@@ -25,6 +25,7 @@ class AdminAccess
                 AdminAbility::CustomersRead, AdminAbility::ProjectsRead, AdminAbility::VmRead,
             ],
             AdminRole::Infrastructure => [
+                AdminAbility::DnsRead, AdminAbility::DnsManage,
                 AdminAbility::InfrastructureRead, AdminAbility::InfrastructureManage,
                 AdminAbility::NetworkRead, AdminAbility::NetworkManage,
                 AdminAbility::HetznerRead, AdminAbility::HetznerManage,
@@ -125,6 +126,12 @@ class AdminAccess
             };
 
             return [AdminAbility::CustomersRead, ...$special];
+        }
+        if ($name === 'admin.cloud-dns.rollout.update') {
+            return [AdminAbility::DnsRead, AdminAbility::DnsRolloutManage];
+        }
+        if (str_starts_with($name, 'admin.cloud-dns.')) {
+            return [AdminAbility::DnsRead, ...($read ? [] : [AdminAbility::DnsManage])];
         }
         if (str_starts_with($name, 'admin.projects.')) {
             return [AdminAbility::ProjectsRead, ...match (true) {
