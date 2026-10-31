@@ -1,6 +1,6 @@
 <section id="cloud-dns-rollout" class="rounded-2xl border border-blue-100 bg-blue-50/30 p-5">
     <div class="flex flex-wrap items-start justify-between gap-3">
-        <div><h2 class="font-black">انتشار تدریجی Cloud DNS</h2><p class="mt-2 text-sm leading-7 text-slate-600">دسترسی مشتریان را در دوره آزمایشی کنترل کنید. محدود کردن دسترسی، پاسخ‌دهی DNS دامنه‌های موجود یا همگام‌سازی آن‌ها را متوقف نمی‌کند.</p></div>
+        <div><h2 class="font-black">انتشار تدریجی مدیریت DNS</h2><p class="mt-2 text-sm leading-7 text-slate-600">دسترسی مشتریان را در دوره آزمایشی کنترل کنید. محدود کردن دسترسی، پاسخ‌دهی DNS دامنه‌های موجود یا همگام‌سازی آن‌ها را متوقف نمی‌کند.</p></div>
         <span class="shrink-0 rounded-full bg-white px-3 py-2 text-xs font-bold text-[#0069FF]">{{ ['disabled' => 'دسترسی مشتریان متوقف است', 'selected' => 'فقط مشتریان منتخب'][$rollout['mode']] }}</span>
     </div>
     @if($canManageRollout)

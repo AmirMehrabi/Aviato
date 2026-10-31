@@ -111,7 +111,7 @@ class CloudDnsRolloutTest extends TestCase
         $url = 'https://admin.localhost/cloud-dns/rollout';
         $this->post($url, ['action' => 'add', 'identifier' => $pilot->phone])->assertSessionHasNoErrors()->assertSessionHas('status');
         $this->assertSame(['mode' => 'selected', 'customer_ids' => [$pilot->id]], app(CloudDnsRollout::class)->configuration());
-        $response = $this->get('https://admin.localhost/cloud-dns')->assertOk()->assertSee($pilot->phone)->assertSee('انتشار تدریجی Cloud DNS');
+        $response = $this->get('https://admin.localhost/cloud-dns')->assertOk()->assertSee($pilot->phone)->assertSee('انتشار تدریجی مدیریت DNS');
         if ($path = getenv('CLOUD_DNS_ROLLOUT_RENDER_PATH')) {
             file_put_contents($path, $response->getContent());
         }

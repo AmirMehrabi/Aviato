@@ -22,7 +22,7 @@ class CloudDnsUiTest extends TestCase
         $zone = app(CloudDnsService::class)->create($customer->ensureDefaultProject(), 'example.ir', $customer);
         $this->actingAs($customer, 'customer');
         $url = 'https://cp.localhost/cloud-dns/'.$zone->uuid;
-        $this->get($url)->assertOk()->assertSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('اتصال هنوز بررسی نشده')->assertSee('دی‌ان‌اس ابری');
+        $this->get($url)->assertOk()->assertSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('اتصال هنوز بررسی نشده')->assertSee('مدیریت DNS');
         $zone->update(['verified_at' => now(), 'status' => 'ready', 'synced_revision' => $zone->revision, 'delegation_status' => 'pending', 'checked_at' => now()]);
         $this->get($url)->assertOk()->assertDontSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('نیم‌سرورها هنوز متصل نیستند')->assertDontSee('دامنه به آویاتو متصل است');
         $zone->update(['delegation_status' => 'active']);

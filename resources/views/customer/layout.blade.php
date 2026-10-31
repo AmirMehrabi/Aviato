@@ -54,30 +54,33 @@
         $customerUnreadNotificationsCount = $customer->unreadNotifications()->count();
         $customerUnreadTicketNotificationsCount = app(\App\Services\Notifications\NotificationInboxService::class)->ticketUnreadCount($customer);
         $navGroups = [
-            'فضای کاری' => [
-                ['key' => 'projects', 'label' => 'فضاهای کاری', 'route' => route('customer.projects.index', [], false), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
+            'نمای کلی' => [
                 ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z'],
             ],
-            'مدیریت' => [
-                ...($customer->canManageDomains() ? [
-                    ['key' => 'domains', 'label' => 'دامنه‌ها', 'route' => route('customer.domains.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z'],
-                ] : []),
-                ...($activeMembership?->canReadDns() && app(\App\Services\CloudDns\CloudDnsRollout::class)->allows($customer, $activeProject) ? [
-                    ['key' => 'cloud-dns', 'label' => 'دی‌ان‌اس ابری', 'route' => route('customer.cloud-dns.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z'],
-                ] : []),
+            'زیرساخت' => [
                 ...($canViewVms ? [
-                    ['key' => 'servers', 'label' => 'ماشین ها', 'route' => route('customer.servers.index', [], false), 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
-                    ['key' => 'backups', 'label' => 'بکاپ ها', 'route' => route('customer.backups.index', [], false), 'icon' => 'M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 6.5 19H8'],
-                    ['key' => 'monitoring', 'label' => 'مانیتورینگ', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M3 12h4l3-8 4 16 3-8h4'],
+                    ['key' => 'servers', 'label' => 'ماشین‌های مجازی', 'route' => route('customer.servers.index', [], false), 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
+                    ['key' => 'backups', 'label' => 'پشتیبان‌گیری', 'route' => route('customer.backups.index', [], false), 'icon' => 'M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 6.5 19H8'],
+                    ['key' => 'monitoring', 'label' => 'پایش', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M3 12h4l3-8 4 16 3-8h4'],
                     ['key' => 'network', 'label' => 'مصرف شبکه', 'route' => route('customer.network.index', [], false), 'icon' => 'M4 17h16M6 13l4-4 3 3 5-6M5 21h14'],
                 ] : []),
             ],
-            'حساب' => [
-                ['key' => 'tickets', 'label' => 'تیکت‌ها', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
+            'دامنه و DNS' => [
+                ...($customer->canManageDomains() ? [
+                    ['key' => 'domains', 'label' => 'دامنه‌ها', 'description' => 'ثبت، تمدید و تغییر نیم‌سرورها', 'route' => route('customer.domains.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z'],
+                ] : []),
+                ...($activeMembership?->canReadDns() && app(\App\Services\CloudDns\CloudDnsRollout::class)->allows($customer, $activeProject) ? [
+                    ['key' => 'cloud-dns', 'label' => 'مدیریت DNS', 'description' => 'مدیریت رکوردهای A، MX، TXT و سایر رکوردها', 'route' => route('customer.cloud-dns.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z'],
+                ] : []),
+            ],
+            'امور مالی' => [
                 ...($canViewBilling ? [
                     ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M19 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6M16 13h5v4h-5a2 2 0 0 1 0-4Z'],
                     ['key' => 'invoices', 'label' => 'صورتحساب‌ها و پرداخت‌ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
                 ] : []),
+            ],
+            'پشتیبانی' => [
+                ['key' => 'tickets', 'label' => 'درخواست‌های پشتیبانی', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
             ],
             ...(auth('customer')->check() && auth('customer')->user()->isReseller() ? [
                 'فروشندگی' => [
@@ -89,16 +92,21 @@
                 ],
             ] : []),
         ];
+        $navGroups = array_filter($navGroups, fn (array $items): bool => $items !== []);
         $searchBaseItems = [
             ['title' => 'داشبورد', 'description' => 'نمای کلی ماشین ها، کیف پول و مصرف', 'url' => route('dashboard', [], false), 'type' => 'صفحه'],
             ['title' => 'فضاهای کاری', 'description' => 'انتخاب فضای کاری فعال، ساخت فضای کاری و مدیریت اعضا', 'url' => route('customer.projects.index', [], false), 'type' => 'صفحه'],
-            ['title' => 'تیکت‌ها', 'description' => 'درخواست‌های پشتیبانی و پاسخ‌ها', 'url' => route('customer.tickets.index', [], false), 'type' => 'صفحه'],
+            ['title' => 'درخواست‌های پشتیبانی', 'description' => 'درخواست‌های پشتیبانی و پاسخ‌ها', 'url' => route('customer.tickets.index', [], false), 'type' => 'صفحه'],
             ['title' => 'تیکت جدید', 'description' => 'ثبت درخواست جدید برای پشتیبانی', 'url' => route('customer.tickets.create', [], false), 'type' => 'عملیات'],
             ['title' => 'پروفایل', 'description' => 'کد ملی، سطح حساب و سهمیه ساخت', 'url' => route('customer.profile.show', [], false), 'type' => 'صفحه'],
         ];
 
         if ($customer->canManageDomains()) {
             $searchBaseItems[] = ['title' => 'دامنه‌ها', 'description' => 'جستجو، ثبت، تمدید و مدیریت دامنه‌ها', 'url' => route('customer.domains.index', [], false), 'type' => 'صفحه'];
+        }
+
+        if ($activeMembership?->canReadDns() && app(\App\Services\CloudDns\CloudDnsRollout::class)->allows($customer, $activeProject)) {
+            $searchBaseItems[] = ['title' => 'مدیریت DNS', 'description' => 'مدیریت رکوردهای A، MX، TXT و سایر رکوردها', 'url' => route('customer.cloud-dns.index', [], false), 'type' => 'صفحه'];
         }
 
         if ($canViewBilling) {
@@ -108,14 +116,14 @@
         }
 
         if ($canViewVms) {
-            $searchBaseItems[] = ['title' => 'سرورها', 'description' => 'فهرست ماشین های ابری و وضعیت آنها', 'url' => route('customer.servers.index', [], false), 'type' => 'صفحه'];
+            $searchBaseItems[] = ['title' => 'ماشین‌های مجازی', 'description' => 'فهرست ماشین های ابری و وضعیت آنها', 'url' => route('customer.servers.index', [], false), 'type' => 'صفحه'];
 
             if ($canManageVms) {
                 $searchBaseItems[] = ['title' => 'ساخت ماشین', 'description' => 'انتخاب پلن، سیستم عامل و دیتاسنتر', 'url' => route('customer.servers.create', [], false), 'type' => 'عملیات'];
             }
 
-            $searchBaseItems[] = ['title' => 'بکاپ ها', 'description' => 'بکاپ دستی، برنامه بکاپ خودکار و نگهداری نسخه ها', 'url' => route('customer.backups.index', [], false), 'type' => 'صفحه'];
-            $searchBaseItems[] = ['title' => 'مانیتورینگ', 'description' => 'نمودار مصرف CPU، RAM، شبکه و وضعیت بکاپ', 'url' => route('customer.monitoring.index', [], false), 'type' => 'صفحه'];
+            $searchBaseItems[] = ['title' => 'پشتیبان‌گیری', 'description' => 'بکاپ دستی، برنامه بکاپ خودکار و نگهداری نسخه ها', 'url' => route('customer.backups.index', [], false), 'type' => 'صفحه'];
+            $searchBaseItems[] = ['title' => 'پایش', 'description' => 'نمودار مصرف CPU، RAM، شبکه و وضعیت بکاپ', 'url' => route('customer.monitoring.index', [], false), 'type' => 'صفحه'];
         }
     @endphp
 
@@ -341,7 +349,12 @@
                                         <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                             <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
-                                        <span>{{ $item['label'] }}</span>
+                                        <span class="min-w-0">
+                                            <span class="block">{{ $item['label'] }}</span>
+                                            @if (isset($item['description']))
+                                                <span class="mt-1 block text-[10px] font-medium leading-5 {{ $isActive ? 'text-slate-600' : 'text-[#9DB4DC]' }}">{{ $item['description'] }}</span>
+                                            @endif
+                                        </span>
                                         @if ($item['key'] === 'invoices' && ($invoiceCount ?? null))
                                             <span class="mr-auto rounded px-1.5 py-0.5 text-[10px] font-black {{ $isActive ? 'bg-[#E5F0FF] text-[#0069FF]' : 'bg-white/10 text-[#C7D4EA]' }}">{{ $invoiceCount }}</span>
                                         @endif
