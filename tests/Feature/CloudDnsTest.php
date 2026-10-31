@@ -150,6 +150,41 @@ class CloudDnsTest extends TestCase
         $this->assertSame(2, count($zone->recordSets()->where('type', 'A')->first()->records));
     }
 
+    public function test_customer_can_import_cloudflare_export_with_automatic_ttls(): void
+    {
+        $owner = Customer::factory()->create();
+        $zone = $this->zone($owner);
+        $url = 'https://cp.localhost/cloud-dns/'.$zone->uuid;
+        $text = <<<'ZONE'
+;; SOA Record
+example.ir 3600 IN SOA ada.ns.cloudflare.com. dns.cloudflare.com. 2054511539 10000 2400 604800 3600
+;; NS Records
+example.ir. 86400 IN NS ada.ns.cloudflare.com.
+example.ir. 86400 IN NS ricardo.ns.cloudflare.com.
+;; A Records
+admin.example.ir. 1 IN A 192.0.2.1 ; cf_tags=cf-proxied:true
+example.ir. 1 IN A 192.0.2.1 ; cf_tags=cf-proxied:false
+hub.example.ir. 1 IN A 192.0.2.1 ; cf_tags=cf-proxied:true
+my.example.ir. 1 IN A 192.0.2.1 ; cf_tags=cf-proxied:false
+phone.example.ir. 1 IN A 192.0.2.1 ; cf_tags=cf-proxied:false
+;; TXT Records
+_acme-challenge.example.ir. 1 IN TXT "test-challenge"
+_aviato-verification.example.ir. 1 IN TXT "aviato-verification=test-token"
+ZONE;
+
+        $this->actingAs($owner, 'customer')->from($url)->post($url.'/import', ['zone_file' => $text])
+            ->assertRedirect($url)->assertSessionHasNoErrors()
+            ->assertSessionHas('dns_import', ['imported' => 7, 'duplicates' => 0, 'warnings' => []]);
+        $this->assertSame(7, $zone->recordSets()->count());
+        $this->assertSame([300], $zone->recordSets()->distinct()->pluck('ttl')->all());
+        $this->assertSame(['"test-challenge"'], $zone->recordSets()->where('name', '_acme-challenge.example.ir.')->first()->records);
+        $this->assertSame(['192.0.2.1'], $zone->recordSets()->where('name', 'example.ir.')->first()->records);
+
+        $this->post($url.'/import', ['zone_file' => $text])->assertSessionHas('dns_import', [
+            'imported' => 0, 'duplicates' => 7, 'warnings' => [],
+        ]);
+    }
+
     public function test_import_rejects_unsupported_types_without_partial_changes(): void
     {
         $this->expectException(ValidationException::class);

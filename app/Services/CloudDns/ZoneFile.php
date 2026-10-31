@@ -56,7 +56,10 @@ class ZoneFile
                     }
                 }
                 $type = strtoupper(array_shift($tokens) ?? '');
-                $name = $this->absolute($owner, $zone);
+                // Cloudflare exports the apex SOA owner without a trailing dot.
+                $name = $type === 'SOA' && strtolower($owner) === $zone
+                    ? $zone.'.'
+                    : $this->absolute($owner, $zone);
                 if ($type === 'SOA' || ($type === 'NS' && $name === $zone.'.')) {
                     if ($name !== $zone.'.') {
                         $this->error('رکورد SOA فقط در ریشه مجاز است.');
@@ -69,6 +72,10 @@ class ZoneFile
                 }
                 if (in_array($type, ['CNAME', 'NS', 'MX', 'SRV'], true)) {
                     $tokens[count($tokens) - 1] = $this->absolute(end($tokens), $zone);
+                }
+                // Cloudflare uses 1 as its automatic TTL sentinel; use our default.
+                if ($recordTtl === 1) {
+                    $recordTtl = 300;
                 }
                 $content = implode(' ', $tokens);
                 if ($tolerant) {
