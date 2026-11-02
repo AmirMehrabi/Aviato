@@ -31,7 +31,7 @@
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-5 py-3 text-xs leading-6 text-slate-500"><span>SOA و نیم‌سرورهای اصلی به‌صورت خودکار مدیریت می‌شوند.</span><span>سقف طرح: {{ config('cloud-dns.plans.'.$zone->plan.'.record_limit') }} رکورد</span></div>
 </section>
 @if($editable)
-<dialog x-ref="editor" aria-labelledby="dns-editor-title" class="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl backdrop:bg-slate-900/40" :class="['TXT', 'SRV', 'CAA'].includes(type) ? 'sm:max-w-3xl' : 'sm:max-w-xl'" @click="if ($event.target === $refs.editor) $refs.editor.close()">
+<dialog x-ref="editor" aria-labelledby="dns-editor-title" class="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl backdrop:bg-slate-900/40" @click="if ($event.target === $refs.editor) $refs.editor.close()">
     <form method="POST" action="{{ route($prefix.'records', $zone, false) }}" @submit.prevent="save($event)" class="p-5 sm:p-6">
         @csrf<input type="hidden" name="content" x-ref="content"><input type="hidden" name="editor_mode" :value="editing ? 'edit' : 'create'">
         <div class="flex items-center justify-between gap-3"><h2 id="dns-editor-title" class="text-lg font-black" x-text="type === 'NS' ? 'واگذاری زیردامنه به نیم‌سرور دیگر' : (editing ? 'ویرایش رکورد ' + type : 'افزودن رکورد DNS')"></h2><button type="button" @click="$refs.editor.close()" class="rounded-lg px-3 py-2 text-xl text-slate-500" aria-label="بستن">×</button></div>
