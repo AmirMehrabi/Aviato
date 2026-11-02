@@ -13,7 +13,7 @@ class CloudDnsRollout
 {
     public const KEY = 'cloud-dns.rollout';
 
-    public const MODES = ['disabled', 'selected'];
+    public const MODES = ['disabled', 'selected', 'all'];
 
     /** Read authorization directly so grants/revocations take effect on the next request. */
     public function configuration(): array
@@ -28,9 +28,10 @@ class CloudDnsRollout
         }
         $rollout = $this->configuration();
 
-        return $rollout['mode'] === 'selected'
-            && in_array((int) $customer->id, $rollout['customer_ids'], true)
-            && in_array((int) $project->owner_customer_id, $rollout['customer_ids'], true);
+        return $rollout['mode'] === 'all'
+            || ($rollout['mode'] === 'selected'
+                && in_array((int) $customer->id, $rollout['customer_ids'], true)
+                && in_array((int) $project->owner_customer_id, $rollout['customer_ids'], true));
     }
 
     public function update(string $action, ?string $mode, ?int $customerId): void

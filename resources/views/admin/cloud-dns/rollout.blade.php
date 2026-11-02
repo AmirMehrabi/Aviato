@@ -1,7 +1,7 @@
 <section id="cloud-dns-rollout" class="rounded-2xl border border-blue-100 bg-blue-50/30 p-5">
     <div class="flex flex-wrap items-start justify-between gap-3">
-        <div><h2 class="font-black">انتشار تدریجی مدیریت DNS</h2><p class="mt-2 text-sm leading-7 text-slate-600">دسترسی مشتریان را در دوره آزمایشی کنترل کنید. محدود کردن دسترسی، پاسخ‌دهی DNS دامنه‌های موجود یا همگام‌سازی آن‌ها را متوقف نمی‌کند.</p></div>
-        <span class="shrink-0 rounded-full bg-white px-3 py-2 text-xs font-bold text-[#0069FF]">{{ ['disabled' => 'دسترسی مشتریان متوقف است', 'selected' => 'فقط مشتریان منتخب'][$rollout['mode']] }}</span>
+        <div><h2 class="font-black">انتشار تدریجی مدیریت DNS</h2><p class="mt-2 text-sm leading-7 text-slate-600">دسترسی را برای همه مشتریان یا فقط مشتریان منتخب فعال کنید. حالت همه مشتریان شامل ثبت‌نام‌های جدید نیز می‌شود. محدود کردن دسترسی، پاسخ‌دهی DNS دامنه‌های موجود یا همگام‌سازی آن‌ها را متوقف نمی‌کند.</p></div>
+        <span class="shrink-0 rounded-full bg-white px-3 py-2 text-xs font-bold text-[#0069FF]">{{ ['disabled' => 'دسترسی مشتریان متوقف است', 'selected' => 'فقط مشتریان منتخب', 'all' => 'فعال برای همه مشتریان'][$rollout['mode']] }}</span>
     </div>
     @if($canManageRollout)
         <form method="POST" action="{{ route('admin.cloud-dns.rollout.update') }}" class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -9,7 +9,7 @@
             <input type="hidden" name="action" value="mode">
             <label class="flex-1 text-xs font-bold">حالت انتشار
                 <select name="mode" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm">
-                    @foreach(['selected' => 'فقط مشتریان منتخب (آزمایشی)', 'disabled' => 'توقف دسترسی مشتریان'] as $value => $label)
+                    @foreach(['all' => 'همه مشتریان (فعلی و جدید)', 'selected' => 'فقط مشتریان منتخب (آزمایشی)', 'disabled' => 'توقف دسترسی مشتریان'] as $value => $label)
                         <option value="{{ $value }}" @selected($rollout['mode'] === $value)>{{ $label }}</option>
                     @endforeach
                 </select>

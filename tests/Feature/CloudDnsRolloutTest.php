@@ -132,13 +132,50 @@ class CloudDnsRolloutTest extends TestCase
             ->post('https://admin.localhost/cloud-dns/rollout', ['action' => 'mode', 'mode' => 'disabled'])->assertSessionHasNoErrors();
     }
 
+    public function test_admin_can_enable_all_current_and_future_customers_and_restore_selected_access(): void
+    {
+        $pilot = Customer::factory()->create();
+        $other = Customer::factory()->create();
+        $this->rollout('selected', [$pilot->id]);
+        $this->actingAs(User::factory()->create(['role' => AdminRole::Admin]), 'admin');
+        $this->get('https://admin.localhost/cloud-dns')->assertOk()->assertSee('value="all"', false);
+        $url = 'https://admin.localhost/cloud-dns/rollout';
+        $this->post($url, ['action' => 'mode', 'mode' => 'all'])->assertSessionHasNoErrors();
+        $this->assertSame(['mode' => 'all', 'customer_ids' => [$pilot->id]], app(CloudDnsRollout::class)->configuration());
+        $this->get('https://admin.localhost/cloud-dns')->assertOk()->assertSee('فعال برای همه مشتریان');
+        foreach ([$pilot, $other, Customer::factory()->create()] as $customer) {
+            $this->actingAs($customer, 'customer')->get('https://cp.localhost/cloud-dns')->assertOk();
+            $this->get('https://cp.localhost/profile')->assertOk()->assertSee('href="/cloud-dns"', false);
+        }
+        $this->actingAs($other, 'customer')->post('https://cp.localhost/cloud-dns', ['name' => 'example.ir'])->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertDatabaseHas('dns_zones', ['name' => 'example.ir']);
+        $this->post($url, ['action' => 'mode', 'mode' => 'selected'])->assertSessionHasNoErrors();
+        $this->get('https://cp.localhost/cloud-dns')->assertNotFound();
+        $this->actingAs($pilot, 'customer')->get('https://cp.localhost/cloud-dns')->assertOk();
+    }
+
+    public function test_all_mode_preserves_project_permissions_and_global_switch(): void
+    {
+        $owner = Customer::factory()->create();
+        $member = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $membership = $project->members()->create(['customer_id' => $member->id, 'role' => 'member']);
+        $this->rollout('all');
+        $this->actingAs($member, 'customer')->withSession(['customer.active_project_id' => $project->id])
+            ->get('https://cp.localhost/cloud-dns')->assertNotFound();
+        $membership->update(['role' => 'admin']);
+        $this->get('https://cp.localhost/cloud-dns')->assertOk();
+        config(['cloud-dns.enabled' => false]);
+        $this->get('https://cp.localhost/cloud-dns')->assertNotFound();
+        $this->get('https://cp.localhost/profile')->assertOk()->assertDontSee('href="/cloud-dns"', false);
+    }
+
     public function test_invalid_rollout_updates_do_not_change_access(): void
     {
         $this->actingAs(User::factory()->create(['role' => AdminRole::Admin]), 'admin');
         $url = 'https://admin.localhost/cloud-dns/rollout';
         $this->post($url, ['action' => 'mode', 'mode' => 'typo'])->assertSessionHasErrors('mode');
-        $this->post($url, ['action' => 'mode', 'mode' => 'all'])->assertSessionHasErrors('mode');
-        $this->rollout('all');
+        $this->rollout('typo');
         $this->assertSame('selected', app(CloudDnsRollout::class)->configuration()['mode']);
         $this->post($url, ['action' => 'add', 'identifier' => 'missing@example.ir'])->assertSessionHasErrors('identifier');
         $this->assertSame(['mode' => 'selected', 'customer_ids' => []], app(CloudDnsRollout::class)->configuration());
