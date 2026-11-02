@@ -1,7 +1,7 @@
 @extends('customer.layout')
 @section('primary_actions_in_content', '1')
 @section('own_messages', '1')
-@section('title', 'سفارش هم‌مکانی')
+@section('title', 'سفارش کولوکیشن')
 @section('header_title', 'انتخاب دوره و بررسی سفارش')
 @section('header_subtitle', 'قبل از پرداخت، مبلغ و شرایط سرویس را بررسی کنید')
 @php

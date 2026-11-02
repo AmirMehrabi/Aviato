@@ -149,7 +149,7 @@ class CustomerController extends Controller
     public function destroy(Customer $customer): RedirectResponse
     {
         if ($customer->colocationPlans()->exists() || $customer->colocationServices()->exists()) {
-            return back()->withErrors(['customer' => 'این مشتری پلن یا سوابق هم‌مکانی دارد و قابل حذف نیست. در صورت نیاز خرید جدید را غیرفعال کنید.']);
+            return back()->withErrors(['customer' => 'این مشتری پلن یا سوابق کولوکیشن دارد و قابل حذف نیست. در صورت نیاز خرید جدید را غیرفعال کنید.']);
         }
         if (DomainOrder::where('customer_id', $customer->id)->exists() || ManagedDomain::where('customer_id', $customer->id)->exists()) {
             return back()->withErrors(['customer' => 'این مشتری سوابق دامنه دارد و قابل حذف نیست. در صورت نیاز حساب را معلق کنید.']);

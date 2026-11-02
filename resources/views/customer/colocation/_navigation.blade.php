@@ -11,9 +11,9 @@
         .colo-card { break-inside: avoid; }
     }
 </style>
-<nav aria-label="هم‌مکانی" class="colo-no-print mb-6 flex flex-wrap items-center gap-3 border-b border-slate-200 pb-4 text-sm">
+<nav aria-label="کولوکیشن" class="colo-no-print mb-6 flex flex-wrap items-center gap-3 border-b border-slate-200 pb-4 text-sm">
     <a class="rounded-xl px-4 py-3 font-bold {{ request()->routeIs('*customer.colocation.index') ? 'bg-blue-50 text-blue-700' : 'text-slate-600' }}" href="{{ route('customer.colocation.index', [], false) }}">سرویس‌ها و پلن‌ها</a>
-    <a class="rounded-xl px-4 py-3 font-bold {{ request()->routeIs('*customer.colocation.invoices.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600' }}" href="{{ route('customer.colocation.invoices.index', [], false) }}">صورتحساب‌های هم‌مکانی</a>
+    <a class="rounded-xl px-4 py-3 font-bold {{ request()->routeIs('*customer.colocation.invoices.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600' }}" href="{{ route('customer.colocation.invoices.index', [], false) }}">صورتحساب‌های کولوکیشن</a>
     <span class="text-xs text-slate-500">فضای کاری: {{ $activeProject->name }}</span>
 </nav>
 @if(session('status'))<p role="status" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-7 text-emerald-900">{{ session('status') }}</p>@endif

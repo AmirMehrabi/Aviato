@@ -34,7 +34,7 @@ class ProjectLifecycleService
         }
 
         if ($project->colocationServices()->exists()) {
-            $blockers['colocation'] = 'این فضای کاری سوابق هم‌مکانی دارد و برای حفظ سرویس‌ها و صورتحساب‌ها قابل حذف نیست.';
+            $blockers['colocation'] = 'این فضای کاری سوابق کولوکیشن دارد و برای حفظ سرویس‌ها و صورتحساب‌ها قابل حذف نیست.';
         }
 
         if ($project->dnsZones()->where('status', '!=', 'deleted')->exists()) {

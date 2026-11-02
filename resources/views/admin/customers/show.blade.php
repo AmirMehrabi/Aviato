@@ -26,7 +26,7 @@
             @if(auth('admin')->user()->is_active)
             <div class="flex flex-wrap gap-2">
                 @adminRoute('admin.colocation.customer')
-                    <a href="{{ route('admin.colocation.customer', $customer) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E]">پلن‌ها و سرویس‌های هم‌مکانی</a>
+                    <a href="{{ route('admin.colocation.customer', $customer) }}" class="rounded-lg bg-white px-5 py-3 text-sm font-black text-[#031B4E]">پلن‌ها و سرویس‌های کولوکیشن</a>
                 @endadminRoute
 
 @adminRoute('admin.customers.edit')

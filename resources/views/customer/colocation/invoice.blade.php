@@ -2,7 +2,7 @@
 @section('primary_actions_in_content', '1')
 @section('own_messages', '1')
 @section('title', 'صورتحساب '.$invoice->number)
-@section('header_title', 'صورتحساب هم‌مکانی')
+@section('header_title', 'صورتحساب کولوکیشن')
 @section('header_subtitle', $service->name)
 @php($activeNav = 'colocation')
 @section('content')

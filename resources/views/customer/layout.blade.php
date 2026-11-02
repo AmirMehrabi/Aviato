@@ -60,7 +60,7 @@
             ],
             'زیرساخت' => [
                 ...($canViewColocation ? [
-                    ['key' => 'colocation', 'label' => 'هم‌مکانی', 'route' => route('customer.colocation.index', [], false), 'icon' => 'M4 3h16v18H4V3Zm0 6h16M4 15h16M8 6h.01M8 12h.01M8 18h.01'],
+                    ['key' => 'colocation', 'label' => 'کولوکیشن', 'route' => route('customer.colocation.index', [], false), 'icon' => 'M4 3h16v18H4V3Zm0 6h16M4 15h16M8 6h.01M8 12h.01M8 18h.01'],
                 ] : []),
                 ...($canViewVms ? [
                     ['key' => 'servers', 'label' => 'ماشین‌های مجازی', 'route' => route('customer.servers.index', [], false), 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
@@ -109,7 +109,7 @@
         }
 
         if ($canViewColocation) {
-            $searchBaseItems[] = ['title' => 'هم‌مکانی', 'description' => 'Co-location، پلن‌های اختصاصی، پیگیری نصب و صورتحساب', 'url' => route('customer.colocation.index', [], false), 'type' => 'صفحه'];
+            $searchBaseItems[] = ['title' => 'کولوکیشن', 'description' => 'Co-location، پلن‌های اختصاصی، پیگیری نصب و صورتحساب', 'url' => route('customer.colocation.index', [], false), 'type' => 'صفحه'];
         }
 
         if ($activeMembership?->canReadDns() && app(\App\Services\CloudDns\CloudDnsRollout::class)->allows($customer, $activeProject)) {

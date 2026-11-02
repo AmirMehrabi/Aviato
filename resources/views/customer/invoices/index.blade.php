@@ -12,7 +12,7 @@
 @section('content')
     <nav aria-label="نوع سند مالی" class="inline-flex w-full rounded-2xl border border-slate-200 bg-slate-100 p-1 sm:w-auto">
         @if($activeProject->owner->colocation_enabled || \App\Models\ColocationService::where('project_id', $activeProject->id)->exists())
-            <a href="{{ route('customer.colocation.invoices.index', [], false) }}" class="inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-black text-slate-600 hover:bg-white">صورتحساب‌های هم‌مکانی</a>
+            <a href="{{ route('customer.colocation.invoices.index', [], false) }}" class="inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-black text-slate-600 hover:bg-white">صورتحساب‌های کولوکیشن</a>
         @endif
         <a
             href="{{ route('customer.invoices.index', ['tab' => 'usage'], false) }}"

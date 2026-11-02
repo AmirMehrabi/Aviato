@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-@section('title', 'هم‌مکانی — '.$service->name)
+@section('title', 'کولوکیشن — '.$service->name)
 @section('content')
 <div class="mx-auto max-w-6xl px-4 py-8 md:px-8">
     @include('admin.colocation._navigation', ['customer' => $service->customer])

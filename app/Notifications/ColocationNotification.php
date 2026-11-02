@@ -16,7 +16,7 @@ class ColocationNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        return ['event' => 'colocation', 'project_id' => $this->service->project_id, 'title' => 'هم‌مکانی — '.$this->service->name, 'body' => $this->message, 'url' => $this->path()];
+        return ['event' => 'colocation', 'project_id' => $this->service->project_id, 'title' => 'کولوکیشن — '.$this->service->name, 'body' => $this->message, 'url' => $this->path()];
     }
 
     private function path(): string

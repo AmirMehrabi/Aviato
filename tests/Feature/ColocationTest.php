@@ -86,7 +86,7 @@ class ColocationTest extends TestCase
         $this->actingAs($other, 'customer')->get('https://cp.localhost/colocation')->assertNotFound();
         $this->get('https://cp.localhost/colocation/plans/'.$this->plan->uuid)->assertNotFound();
         $this->get('https://cp.localhost/dashboard')->assertOk()->assertDontSee('href="/colocation"', false);
-        $this->actingAs($this->customer, 'customer')->get('https://cp.localhost/colocation')->assertOk()->assertSee('Private 2U')->assertSee('هم‌مکانی');
+        $this->actingAs($this->customer, 'customer')->get('https://cp.localhost/colocation')->assertOk()->assertSee('Private 2U')->assertSee('کولوکیشن');
         $this->get('https://cp.localhost/colocation/plans/'.$this->plan->uuid)->assertOk()->assertSee('اولین پرداخت')->assertSee('سه‌ماهه');
         $this->get('https://my.aviato.ir/colocation')->assertOk()->assertSee('Private 2U')->assertDontSee('کیف پول شما خالی است');
     }
@@ -131,7 +131,7 @@ class ColocationTest extends TestCase
         $this->actingAs($this->customer, 'customer')->post('https://cp.localhost/colocation/invoices/'.$invoice->id.'/pay', ['gateway' => 'mellat'])->assertRedirect();
         $payment = Payment::firstOrFail();
         $this->assertSame(Payment::TYPE_INVOICE, $payment->type);
-        $this->get('https://cp.localhost/wallet/payments/'.$payment->id.'/gateway')->assertOk()->assertSee('مستقیماً صورتحساب هم‌مکانی')->assertDontSee('کیف پول شما به مبلغ پرداخت شده شارژ می‌شود');
+        $this->get('https://cp.localhost/wallet/payments/'.$payment->id.'/gateway')->assertOk()->assertSee('مستقیماً صورتحساب کولوکیشن')->assertDontSee('کیف پول شما به مبلغ پرداخت شده شارژ می‌شود');
         $this->complete($payment);
         $this->complete($payment->fresh());
         $this->assertSame('paid', $invoice->fresh()->status);
@@ -299,7 +299,7 @@ class ColocationTest extends TestCase
         $this->assertSame(50000000, $other->colocationPlans()->firstOrFail()->monthly_price);
         $this->patch('https://admin.localhost/colocation/customers/'.$other->id.'/access', ['enabled' => '1'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertTrue((bool) $other->fresh()->colocation_enabled);
-        $this->get('https://admin.localhost/colocation')->assertOk()->assertSee('هم‌مکانی و صف نصب');
+        $this->get('https://admin.localhost/colocation')->assertOk()->assertSee('کولوکیشن و صف نصب');
         $this->get('https://admin.localhost/colocation/customers/'.$other->id)->assertOk()->assertSee('Agreed 4U');
         $service = $this->paid();
         $this->get('https://admin.localhost/colocation/services/'.$service->uuid)->assertOk()->assertSee('تکمیل نصب و شروع صورتحساب');
@@ -436,7 +436,7 @@ class ColocationTest extends TestCase
         $payment = $invoice->payments()->firstOrFail();
         $this->actingAs($this->customer, 'customer')->get('https://cp.localhost/invoices/'.$invoice->id)->assertRedirect('/colocation/invoices/'.$invoice->id);
         $this->get('https://cp.localhost/payments/'.$payment->id.'/receipt')->assertRedirect('/colocation/invoices/'.$invoice->id);
-        $this->actingAs($this->admin, 'admin')->get('https://admin.localhost/billing/payments/'.$payment->id)->assertOk()->assertSee('پرداخت مستقیم صورتحساب هم‌مکانی')->assertDontSee('ارسال به حسابرو');
+        $this->actingAs($this->admin, 'admin')->get('https://admin.localhost/billing/payments/'.$payment->id)->assertOk()->assertSee('پرداخت مستقیم صورتحساب کولوکیشن')->assertDontSee('ارسال به حسابرو');
         $this->get('https://admin.localhost/billing/invoices/'.$invoice->id)->assertOk()->assertSee('پس از نصب تعیین می‌شود');
     }
 

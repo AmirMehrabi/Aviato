@@ -176,7 +176,7 @@ class PaymentService
             'customer_id' => $invoice->customer_id, 'wallet_id' => $invoice->customer->wallet->id,
             'invoice_id' => $invoice->id, 'provider' => $provider, 'type' => Payment::TYPE_INVOICE,
             'status' => Payment::STATUS_PENDING, 'amount' => $invoice->total_amount * ($invoice->currency === 'IRT' ? 10 : 1),
-            'currency' => 'IRR', 'authority' => $this->newAuthority(), 'description' => 'پرداخت هم‌مکانی — '.$invoice->number,
+            'currency' => 'IRR', 'authority' => $this->newAuthority(), 'description' => 'پرداخت کولوکیشن — '.$invoice->number,
         ]);
         try {
             $payload = $this->gateways->gateway($provider)->initiate($payment);

@@ -39,7 +39,7 @@ class ColocationController extends Controller
         }
         $customer->forceFill(['colocation_enabled' => (bool) $data['enabled']])->save();
 
-        return back()->with('status', 'دسترسی هم‌مکانی ذخیره شد. سرویس‌ها و صورتحساب‌های قبلی حفظ می‌شوند.');
+        return back()->with('status', 'دسترسی کولوکیشن ذخیره شد. سرویس‌ها و صورتحساب‌های قبلی حفظ می‌شوند.');
     }
 
     public function plan(Request $request, Customer $customer, ?ColocationPlan $plan = null)

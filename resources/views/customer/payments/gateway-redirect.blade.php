@@ -12,7 +12,7 @@
 @if($payment->domain_order_id || $payment->invoice_id) @section('primary_actions_in_content', '1') @endif
 
 @section('content')
-    @if($payment->invoice_id)<p class="mx-auto mb-5 max-w-3xl rounded-xl bg-blue-50 p-4 text-sm leading-7 text-blue-900">این پرداخت مستقیماً صورتحساب هم‌مکانی را تسویه می‌کند. پس از تأیید بانک به صورتحساب برمی‌گردید.</p>@endif
+    @if($payment->invoice_id)<p class="mx-auto mb-5 max-w-3xl rounded-xl bg-blue-50 p-4 text-sm leading-7 text-blue-900">این پرداخت مستقیماً صورتحساب کولوکیشن را تسویه می‌کند. پس از تأیید بانک به صورتحساب برمی‌گردید.</p>@endif
     @if($payment->domain_order_id)<p class="mx-auto mb-5 max-w-xl rounded-xl bg-blue-50 p-4 text-sm leading-7 text-blue-900">{{ $payment->description }}. پس از پرداخت به سفارش دامنه برمی‌گردید؛ انجام ثبت یا تمدید در همان صفحه تأیید می‌شود.</p>@endif
     <section class="mx-auto max-w-xl rounded-[28px] border border-slate-200 bg-white p-7 text-center shadow-sm shadow-slate-200/60">
         <span class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#2563EB]">{{ $gatewayLabel }}</span>
