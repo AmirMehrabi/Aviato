@@ -52,6 +52,21 @@ class CloudDnsController extends Controller
         ]);
     }
 
+    public function status(Request $request, DnsZone $zone)
+    {
+        $this->access($request, false, $zone);
+
+        return response()->json($zone->connectionState());
+    }
+
+    public function previewImport(Request $request, DnsZone $zone)
+    {
+        $this->access($request, true, $zone);
+        $data = $request->validate(['zone_file' => ['required', 'string', 'max:250000']]);
+
+        return response()->json($this->dns->previewImport($zone, $data['zone_file']));
+    }
+
     public function management(Request $request, DnsZone $zone)
     {
         return $this->show($request, $zone);
@@ -65,13 +80,21 @@ class CloudDnsController extends Controller
         return back()->with('status', 'مالکیت تأیید شد؛ آماده‌سازی DNS در صف قرار گرفت.');
     }
 
+    public function renewVerification(Request $request, DnsZone $zone)
+    {
+        $this->access($request, true, $zone);
+        $this->dns->renewVerification($zone, $request->user('customer'));
+
+        return back()->with('status', 'کد تازه صادر شد؛ رکورد TXT قبلی را با مقدار تازه جایگزین کنید. رکوردهای دامنه حفظ شده‌اند.');
+    }
+
     public function check(Request $request, DnsZone $zone)
     {
         $this->access($request, true, $zone);
         try {
             $this->dns->check($zone);
         } catch (\RuntimeException $e) {
-            return back()->withErrors(['dns' => 'بررسی NS والد کامل نشد؛ دوباره تلاش کنید.']);
+            return back()->withErrors(['dns' => 'بررسی اتصال انجام نشد؛ نتیجه قبلی حفظ شده است. کمی بعد دوباره تلاش کنید.']);
         }
 
         return back()->with('status', 'وضعیت واگذاری دامنه بررسی شد.');

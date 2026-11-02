@@ -33,6 +33,8 @@ class RecordValidator
         $name = strtolower(trim($data['name']));
         if ($name === '@') {
             $name = $zone.'.';
+        } elseif ($name === $zone || str_ends_with($name, '.'.$zone)) {
+            $name .= '.';
         } elseif (! str_ends_with($name, '.')) {
             $name .= '.'.$zone.'.';
         }
@@ -47,8 +49,11 @@ class RecordValidator
         if (strlen($bare) > 253 || ($bare !== $zone && ! str_ends_with($bare, '.'.$zone))) {
             $this->invalid('name', 'رکورد باید داخل همین دامنه باشد.');
         }
-        if ($bare === $zone && in_array($data['type'], ['CNAME', 'NS'], true)) {
-            $this->invalid('type', 'NS اصلی توسط سامانه مدیریت می‌شود و CNAME در ریشه مجاز نیست.');
+        if ($bare === $zone && $data['type'] === 'NS') {
+            $this->invalid('name', 'برای تغییر نیم‌سرورهای دامنه از بخش نیم‌سرورهای دامنه استفاده کنید. رکورد NS فقط برای واگذاری زیردامنه است.');
+        }
+        if ($bare === $zone && $data['type'] === 'CNAME') {
+            $this->invalid('type', 'CNAME در ریشه دامنه مجاز نیست.');
         }
         $contents = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/', $data['content'])), fn ($v) => $v !== '')));
         if (count($contents) > 100 || $contents === [] || ($data['type'] === 'CNAME' && count($contents) !== 1)) {

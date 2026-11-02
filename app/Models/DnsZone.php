@@ -43,6 +43,25 @@ class DnsZone extends Model
         return $this->name.'.';
     }
 
+    public function connectionState(): array
+    {
+        $published = $this->verified_at && $this->status === 'ready' && $this->synced_revision === $this->revision && ! $this->last_error;
+        $connected = $this->delegation_status === 'active';
+        $label = match (true) {
+            in_array($this->status, ['suspended', 'deleting', 'deleted'], true) => 'سرویس این دامنه فعال نیست',
+            (bool) $this->last_error => 'اتصال نیازمند بررسی',
+            ! $this->verified_at => 'نیازمند تأیید مالکیت',
+            ! $published => 'تغییرات در انتظار انتشار هستند',
+            $connected => 'دامنه به آویاتو متصل است',
+            default => 'رکوردها منتشر شده‌اند؛ اتصال نیم‌سرورها در انتظار بررسی است',
+        };
+
+        return ['label' => $label, 'published' => (bool) $published, 'connected' => $connected,
+            'healthy' => (bool) ($published && $connected), 'observed' => $this->observed_nameservers ?? [],
+            'checked' => $this->checked_at?->diffForHumans() ?? 'هنوز بررسی نشده',
+            'synced' => $this->synced_at?->diffForHumans() ?? 'هنوز منتشر نشده', 'revision' => $this->revision];
+    }
+
     protected function casts(): array
     {
         return [

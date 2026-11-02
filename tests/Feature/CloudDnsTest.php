@@ -174,15 +174,13 @@ ZONE;
 
         $this->actingAs($owner, 'customer')->from($url)->post($url.'/import', ['zone_file' => $text])
             ->assertRedirect($url)->assertSessionHasNoErrors()
-            ->assertSessionHas('dns_import', ['imported' => 7, 'duplicates' => 0, 'warnings' => []]);
+            ->assertSessionHas('dns_import', fn ($report) => $report['imported'] === 7 && $report['duplicates'] === 0 && count($report['warnings']) === 1 && str_contains($report['warnings'][0], 'Cloudflare'));
         $this->assertSame(7, $zone->recordSets()->count());
         $this->assertSame([300], $zone->recordSets()->distinct()->pluck('ttl')->all());
         $this->assertSame(['"test-challenge"'], $zone->recordSets()->where('name', '_acme-challenge.example.ir.')->first()->records);
         $this->assertSame(['192.0.2.1'], $zone->recordSets()->where('name', 'example.ir.')->first()->records);
 
-        $this->post($url.'/import', ['zone_file' => $text])->assertSessionHas('dns_import', [
-            'imported' => 0, 'duplicates' => 7, 'warnings' => [],
-        ]);
+        $this->post($url.'/import', ['zone_file' => $text])->assertSessionHas('dns_import', fn ($report) => $report['imported'] === 0 && $report['duplicates'] === 7 && count($report['warnings']) === 1);
     }
 
     public function test_import_rejects_unsupported_types_without_partial_changes(): void

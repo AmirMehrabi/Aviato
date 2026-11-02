@@ -183,6 +183,8 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             Route::post('rollout', [$controller, 'updateRollout'])->name('rollout.update');
             Route::get('{zone}', [$controller, 'show'])->name('show');
             Route::get('{zone}/management', [$controller, 'management'])->name('management');
+            Route::get('{zone}/status', [$controller, 'status'])->middleware('throttle:60,1')->name('status');
+            Route::post('{zone}/import/preview', [$controller, 'previewImport'])->middleware('throttle:10,1')->name('import.preview');
             Route::get('{zone}/export', [$controller, 'export'])->name('export');
             Route::post('{zone}/records', [$controller, 'records'])->middleware('throttle:60,1')->name('records');
             Route::delete('{zone}/records/{record}', [$controller, 'deleteRecord'])->name('records.destroy');
@@ -542,6 +544,9 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::post('/', [$controller, 'store'])->middleware('throttle:10,1')->name('store');
             Route::get('{zone}', [$controller, 'show'])->name('show');
             Route::get('{zone}/management', [$controller, 'management'])->name('management');
+            Route::get('{zone}/status', [$controller, 'status'])->middleware('throttle:60,1')->name('status');
+            Route::post('{zone}/import/preview', [$controller, 'previewImport'])->middleware('throttle:10,1')->name('import.preview');
+            Route::post('{zone}/verification/renew', [$controller, 'renewVerification'])->middleware('throttle:5,1')->name('verification.renew');
             Route::post('{zone}/verify', [$controller, 'verify'])->middleware('throttle:5,1')->name('verify');
             Route::post('{zone}/check', [$controller, 'check'])->middleware('throttle:5,1')->name('check');
             Route::post('{zone}/records', [$controller, 'records'])->middleware('throttle:60,1')->name('records');

@@ -82,6 +82,21 @@ class CloudDnsController extends Controller
         ]);
     }
 
+    public function status(Request $request, DnsZone $zone)
+    {
+        abort_if($zone->status === 'deleted', 404);
+
+        return response()->json($zone->connectionState());
+    }
+
+    public function previewImport(Request $request, DnsZone $zone)
+    {
+        abort_if($zone->status === 'deleted', 404);
+        $data = $request->validate(['zone_file' => ['required', 'string', 'max:250000']]);
+
+        return response()->json($this->dns->previewImport($zone, $data['zone_file']));
+    }
+
     public function management(Request $request, DnsZone $zone)
     {
         return $this->show($request, $zone);

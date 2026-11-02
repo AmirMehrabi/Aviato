@@ -1,53 +1,67 @@
-@php
-    $published = $zone->verified_at && $zone->status === 'ready' && $zone->synced_revision === $zone->revision && ! $zone->last_error;
-    $connected = $zone->delegation_status === 'active';
-    $expired = ! $zone->verified_at && $zone->verification_expires_at?->isPast();
-@endphp
-<section class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
-        <div><h2 class="font-black">{{ $connected && $published ? 'دامنه به آویاتو متصل است' : 'راه‌اندازی دامنه، قدم‌به‌قدم' }}</h2><p class="mt-2 text-xs leading-6 text-slate-500">{{ $connected && $published ? 'مالکیت تأیید شده و آخرین رکوردها در هر دو نیم‌سرور منتشر شده‌اند.' : 'ابتدا مالکیت را تأیید کنید؛ سپس رکوردها را آماده کنید و نیم‌سرورها را تغییر دهید.' }}</p></div>
-        <span class="rounded-full px-3 py-1.5 text-xs font-bold {{ $connected ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800' }}">{{ $connected ? 'نیم‌سرورها متصل‌اند' : ($zone->checked_at ? 'نیم‌سرورها هنوز متصل نیستند' : 'اتصال هنوز بررسی نشده') }}</span>
+<section id="domain-nameservers" class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div class="space-y-4 p-5 sm:p-6">
+        <div><h2 class="font-black">نیم‌سرورهای دامنه</h2><p class="mt-2 text-sm font-bold" x-text="connection.label" aria-live="polite">{{ $zone->connectionState()['label'] }}</p></div>
+        <p class="text-xs leading-7 text-slate-600">برای اتصال کل دامنه، این دو نام را در پنل ثبت‌کننده دامنه (رجیسترار) جایگزین کنید. این NSهای ریشه به‌صورت خودکار مدیریت می‌شوند و قابل ویرایش نیستند. رکورد NS در جدول پایین فقط برای واگذاری زیردامنه است.</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+            @foreach(config('cloud-dns.nameservers') as $ns)
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4"><code dir="ltr" class="select-all text-sm">{{ $ns }}</code><button type="button" @click="copy({{ \Illuminate\Support\Js::from($ns) }})" class="text-xs font-bold text-[#0069FF]" aria-label="کپی {{ $ns }}">کپی</button></div>
+            @endforeach
+        </div>
+        <div class="rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-bold text-slate-500">نیم‌سرورهای مشاهده‌شده در آخرین بررسی</p>
+            <p class="mt-2 break-all font-mono text-sm" dir="ltr" x-text="connection.observed.length ? connection.observed.join(' · ') : '—'"></p>
+            <p class="mt-2 text-xs text-slate-500"><span x-text="connection.checked"></span> · <span x-show="!connection.connected">{{ $zone->checked_at ? 'نیم‌سرورها هنوز متصل نیستند' : 'اتصال هنوز بررسی نشده' }}</span></p>
+            @if($editable && ! $admin)
+                <form method="POST" action="{{ route($prefix.'check', $zone, false) }}" x-data="{ checking: false }" @submit="checking = true" class="mt-3">@csrf<button :disabled="checking" class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold disabled:opacity-50" x-text="checking ? 'در حال بررسی اتصال…' : 'بررسی دوباره نیم‌سرورها'">بررسی دوباره نیم‌سرورها</button></form>
+            @endif
+        </div>
+        <div class="text-xs leading-7 text-slate-500" aria-live="polite">
+            <p>انتشار روی هر دو سرور: <span x-text="connection.published ? 'انجام شده' : 'در انتظار یا نیازمند بررسی'"></span> · آخرین انتشار: <span x-text="connection.synced"></span></p>
+            <button type="button" @click="refreshStatus()" :disabled="refreshing" class="font-bold text-[#0069FF]">به‌روزرسانی وضعیت</button>
+<p x-show="recordsStale" class="text-amber-900">رکوردها در صفحه دیگری تغییر کرده‌اند. پیش از مرور انتقال، <button type="button" @click="window.location.reload()" class="font-bold underline">رکوردهای تازه را بارگذاری کنید</button>.</p>
+            <p x-show="statusError" x-text="statusError" class="text-amber-900"></p>
+        </div>
     </div>
-    <ol class="grid divide-y divide-slate-100 md:grid-cols-3 md:divide-y-0">
-        @foreach([
-            ['تأیید مالکیت', (bool) $zone->verified_at, $zone->verified_at ? 'مالکیت دامنه تأیید شده' : 'یک رکورد TXT در DNS فعلی بسازید'],
-            ['آماده‌سازی رکوردها', (bool) $published, $published ? 'آخرین تغییرات در هر دو سرور منتشر شده' : ($zone->verified_at ? 'رکوردها را وارد کنید و منتظر انتشار بمانید' : 'رکوردها را می‌توانید از همین حالا وارد کنید')],
-            ['اتصال نیم‌سرورها', $connected, $connected ? 'هر دو نام در رجیسترار تنظیم شده‌اند' : 'پس از آماده‌سازی، در رجیسترار تغییر دهید'],
-        ] as [$label, $done, $description])
-            <li class="flex gap-3 p-5"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold {{ $done ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-[#0069FF]' }}">{{ $done ? '✓' : $loop->iteration }}</span><div><p class="text-sm font-bold">{{ $label }}</p><p class="mt-2 text-xs leading-6 text-slate-500">{{ $description }}</p></div></li>
-        @endforeach
-    </ol>
     @unless($zone->verified_at)
-        <div class="border-t border-blue-100 bg-blue-50/40 p-5 sm:p-6">
-            <h3 class="font-bold">{{ $expired ? 'مهلت تأیید این دامنه تمام شده است' : 'این رکورد را در سرویس DNS فعلی دامنه اضافه کنید' }}</h3>
+        @php($expired = $zone->verification_expires_at?->isPast())
+        <details open class="border-t border-blue-100 bg-blue-50/30 p-5 sm:p-6">
+            <summary class="cursor-pointer text-sm font-bold">۱. تأیید مالکیت دامنه</summary>
             @if($expired)
-                <p class="mt-2 text-sm leading-7 text-amber-900">برای دریافت کد تازه، دامنه تأییدنشده را از پایین صفحه حذف و دوباره اضافه کنید.</p>
+                <p class="mt-3 text-sm leading-7 text-amber-900">مهلت تأیید این دامنه تمام شده است. کد تازه دریافت کنید و مقدار TXT قبلی را جایگزین کنید؛ رکوردهای واردشده حفظ می‌شوند.</p>
+                @if($editable && ! $admin)<form method="POST" action="{{ route($prefix.'verification.renew', $zone, false) }}" class="mt-3">@csrf<button class="rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-bold text-white">دریافت کد تأیید جدید</button></form>@endif
             @else
-                <p class="mt-2 text-sm leading-7 text-slate-600">اگر از Cloudflare استفاده می‌کنید، به بخش DNS → Records بروید و Add record را بزنید. نوع را TXT و TTL را Auto بگذارید. فعلاً نیم‌سرورها را تغییر ندهید.</p>
+                <p class="mt-3 text-sm leading-7 text-slate-600">این رکورد را در سرویس DNS فعلی دامنه اضافه کنید. فعلاً نیم‌سرورها را تغییر ندهید.</p>
                 <div class="mt-4 overflow-hidden rounded-xl border border-blue-100 bg-white">
                     @foreach(['نوع رکورد' => 'TXT', 'نام (Name)' => '_aviato-verification', 'مقدار (Content)' => $zone->verification_token] as $label => $value)
                         <div class="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-0"><span class="w-full text-xs font-bold text-slate-500 sm:w-28">{{ $label }}</span><code dir="ltr" class="min-w-0 flex-1 select-all break-all text-left text-sm">{{ $value }}</code><button type="button" @click="copy({{ \Illuminate\Support\Js::from($value) }})" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-[#0069FF]" aria-label="کپی {{ $label }}">کپی</button></div>
                     @endforeach
                 </div>
-                <p class="mt-3 text-xs leading-6 text-slate-500">نام کامل رکورد: <bdi class="select-all font-mono">_aviato-verification.{{ $zone->name }}</bdi>. در سرویس‌هایی که دامنه را خودکار اضافه می‌کنند فقط نام کوتاه بالا را وارد کنید.</p>
                 @if($editable && ! $admin)
                     <form method="POST" action="{{ route($prefix.'verify', $zone, false) }}" class="mt-4 flex flex-wrap items-center gap-3" x-data="{ checking: false }" @submit="checking = true">@csrf<button :disabled="checking" class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white disabled:opacity-50" x-text="checking ? 'در حال بررسی رکورد…' : 'رکورد را اضافه کردم؛ بررسی مالکیت'">رکورد را اضافه کردم؛ بررسی مالکیت</button><span class="text-xs text-slate-500">اعتبار کد تا {{ \App\Support\Jalali::format($zone->verification_expires_at) }}</span></form>
                 @endif
-                <details class="mt-4 text-xs leading-7 text-slate-600"><summary class="cursor-pointer font-bold">رکورد پیدا نشد؟</summary><p class="mt-2">نام و مقدار را بدون فاصله اضافی کپی کنید. رکورد باید در سرویس فعلی DNS ذخیره شده باشد. انتشار تغییر ممکن است چند دقیقه طول بکشد؛ کمی بعد دوباره بررسی کنید.</p></details>
+                <details class="mt-4 text-xs leading-7 text-slate-600"><summary class="cursor-pointer font-bold">راهنمای Cloudflare و رفع مشکل تأیید</summary><p class="mt-2">در Cloudflare به DNS → Records بروید و Add record را بزنید. نوع را TXT و TTL را Auto بگذارید. نام کامل رکورد <bdi class="font-mono">_aviato-verification.{{ $zone->name }}</bdi> است. اگر سرویس دامنه را خودکار اضافه می‌کند فقط نام کوتاه را وارد کنید. اگر رکورد پیدا نشد، نام و مقدار را بدون فاصله اضافی کپی کنید و چند دقیقه بعد دوباره بررسی کنید.</p></details>
             @endif
-        </div>
+        </details>
     @endunless
-    <details class="border-t border-slate-100 p-5 sm:p-6" @if($zone->verified_at && ! $connected) open @endif>
-        <summary class="cursor-pointer text-sm font-bold">{{ $connected ? 'مشاهده نیم‌سرورها و بررسی مجدد اتصال' : 'نیم‌سرورهای آویاتو و راهنمای اتصال' }}</summary>
-        <div class="mt-4 space-y-4">
-            @unless($connected)
-                <p class="text-sm leading-7 text-slate-600">ابتدا همه رکوردهای وب‌سایت و ایمیل (MX، SPF و DKIM) را در جدول پایین وارد یا از فایل سرویس قبلی وارد کنید. پس از انتشار، در پنل <strong>ثبت‌کننده دامنه (رجیسترار)</strong>، نیم‌سرورهای قبلی را با این دو نام جایگزین کنید. برای دامنه‌های .ir این کار در ایرنیک انجام می‌شود؛ افزودن رکورد NS در Cloudflare کافی نیست.</p>
-                @unless($published)<p class="rounded-xl bg-amber-50 p-3 text-xs leading-7 text-amber-900">هنوز آماده تغییر نیم‌سرورها نیستید: {{ ! $zone->verified_at ? 'ابتدا مالکیت را تأیید کنید.' : 'منتظر انتشار آخرین تغییرات در هر دو سرور بمانید.' }}</p>@endunless
-            @endunless
-            <div class="grid gap-3 sm:grid-cols-2">@foreach(config('cloud-dns.nameservers') as $ns)<div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4"><code dir="ltr" class="select-all text-sm">{{ $ns }}</code><button type="button" @click="copy({{ \Illuminate\Support\Js::from($ns) }})" class="text-xs font-bold text-[#0069FF]" aria-label="کپی {{ $ns }}">کپی</button></div>@endforeach</div>
-            <div class="rounded-xl border border-slate-200 p-4"><p class="text-xs font-bold text-slate-500">نیم‌سرورهای مشاهده‌شده در آخرین بررسی</p><p class="mt-2 break-all font-mono text-sm" dir="ltr">{{ $zone->observed_nameservers ? implode(' · ', $zone->observed_nameservers) : '—' }}</p><p class="mt-2 text-xs text-slate-500">{{ $zone->checked_at?->diffForHumans() ?? 'هنوز بررسی نشده' }}</p></div>
-            @if($editable && ! $admin)<form method="POST" action="{{ route($prefix.'check', $zone, false) }}" x-data="{ checking: false }" @submit="checking = true">@csrf<button :disabled="checking" class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold disabled:opacity-50" x-text="checking ? 'در حال بررسی اتصال…' : 'بررسی دوباره نیم‌سرورها'">بررسی دوباره نیم‌سرورها</button></form>@endif
-            <p class="text-xs leading-7 text-slate-500">تغییر در رجیسترار ممکن است با تأخیر دیده شود. اگر DNSSEC فعال دارید، پیش از انتقال، DS سرویس قبلی را با رعایت زمان انقضای کش از رجیسترار حذف کنید.</p>
+    <details x-show="!connection.connected" @if($zone->verified_at && $zone->delegation_status !== 'active') open @endif class="border-t border-slate-100 p-5 sm:p-6">
+        <summary class="cursor-pointer text-sm font-bold">۲. مرور رکوردها و آمادگی انتقال</summary>
+        <div class="mt-4 space-y-3 text-sm leading-7 text-slate-600">
+            <p class="text-xs">انتشار موفق به معنی کامل بودن رکوردهای شما نیست. این چک‌لیست فقط تأیید شما در همین صفحه است و اتصال دامنه را تغییر نمی‌دهد.</p>
+            <p class="text-xs text-amber-900" x-show="!records.some(r => ['A', 'AAAA', 'CNAME'].includes(r.type))">رکورد اتصال وب‌سایت پیدا نشد؛ اگر وب‌سایت دارید، رکوردهای آن را وارد کنید.</p>
+            <p class="text-xs text-amber-900" x-show="!records.some(r => r.type === 'MX')">رکورد MX پیدا نشد؛ اگر ایمیل روی دامنه دارید، MX و رکوردهای SPF و DKIM را بررسی کنید.</p>
+            <label class="flex gap-2"><input type="checkbox" x-model="recordsReviewed" class="mt-2 shrink-0">رکوردهای وب‌سایت و ایمیل را با سرویس قبلی مقایسه کردم.</label>
+            <label class="flex gap-2"><input type="checkbox" x-model="emptyDomain" class="mt-2 shrink-0">این دامنه هنوز سرویس فعالی ندارد.</label>
+            <label class="flex gap-2"><input type="checkbox" x-model="dnssecReviewed" class="mt-2 shrink-0">DNSSEC غیرفعال است یا DS سرویس قبلی را از رجیسترار حذف کرده‌ام و زمان انقضای کش آن گذشته است.</label>
+            <p class="text-xs text-amber-900">Aviato در این مرحله وضعیت DS را خودکار تأیید نمی‌کند. اگر از وضعیت DNSSEC مطمئن نیستید، پیش از جابه‌جایی با پشتیبانی هماهنگ کنید.</p>
+            <p class="text-sm font-bold text-slate-900" x-text="!connection.published ? 'ابتدا مالکیت و انتشار رکوردها را تکمیل کنید.' : (migrationReviewed ? 'مرور شما تکمیل است؛ اکنون نیم‌سرورها را در رجیسترار تغییر دهید.' : 'رکوردها منتشر شده‌اند؛ پیش از تغییر نیم‌سرورها چک‌لیست را کامل کنید.')"></p>
+        </div>
+    </details>
+    <details class="border-t border-slate-100 p-5 sm:p-6">
+        <summary class="cursor-pointer text-sm font-bold">۳. راهنمای تغییر نیم‌سرورها و پیگیری اتصال</summary>
+        <div class="mt-4 space-y-3 text-xs leading-7 text-slate-600">
+            <p>ابتدا همه رکوردهای وب‌سایت و ایمیل را در جدول پایین وارد یا از فایل سرویس قبلی وارد کنید. پس از تأیید مالکیت، انتشار و مرور رکوردها، در پنل ثبت‌کننده دامنه، نیم‌سرورهای قبلی را با دو نام بالا جایگزین کنید. برای دامنه‌های .ir این کار در ایرنیک انجام می‌شود؛ افزودن رکورد NS در Cloudflare کافی نیست.</p>
+            <p>تنظیمات پروکسی و CNAME flattening در Cloudflare به آویاتو منتقل نمی‌شوند. اتصال مستقیم وب‌سایت و گواهی HTTPS سرور را پیش از جابه‌جایی بررسی کنید.</p>
+            <p>وضعیت صفحه خودکار به‌روز می‌شود؛ بررسی پس‌زمینه نیم‌سرورها حدود هر ۳۰ دقیقه انجام می‌شود. برای بررسی فوری دکمه بررسی دوباره را بزنید. تغییر در رجیسترار و انقضای کش ممکن است با تأخیر دیده شود.</p>
         </div>
     </details>
 </section>

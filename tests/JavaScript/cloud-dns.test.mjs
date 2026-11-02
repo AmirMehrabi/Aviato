@@ -41,3 +41,51 @@ test('record sorting changes direction without changing source records', () => {
     state.sortBy('name'); assert.equal(state.filtered[0].name, 'a.example.com.');
     assert.equal(state.records[0].type, 'TXT');
 });
+
+
+test('short and full names normalize to the same preview', () => {
+    const state = cloudDns({ zone: 'example.com', records: [] });
+    for (const name of ['blog', 'blog.example.com', ' BLOG.EXAMPLE.COM ']) {
+        state.name = name; assert.equal(state.fqdn, 'blog.example.com');
+    }
+    state.name = 'blog.example.com.'; assert.equal(state.fqdn, 'blog.example.com.');
+    state.name = '@'; assert.equal(state.fqdn, 'example.com');
+});
+test('root NS is rejected before submitting', () => {
+    const state = cloudDns({ zone: 'example.com', records: [] });
+    state.type = 'NS'; state.name = 'example.com'; state.values = [{ value: 'ns1.example.net' }];
+    state.save({ target: { submit() { assert.fail('Must reject root NS'); } } });
+    assert.match(state.error, /NS/);
+});
+test('adding another NS opens existing set and preserves nameservers', () => {
+    const state = cloudDns({ zone: 'example.com', records: [{ name: 'blog.example.com.', type: 'NS', ttl: 600, records: ['ns1.example.net.'] }] });
+    state.$refs = { editor: { showModal() {} } };
+    state.type = 'NS'; state.name = 'blog.example.com'; state.values = [{ value: 'ns2.example.net' }];
+    state.save({ target: { submit() { assert.fail('Must review merged set'); } } });
+    assert.equal(state.editing, true); assert.equal(state.ttl, 600);
+    assert.deepEqual(state.values.map(v => v.value), ['ns1.example.net.', 'ns2.example.net']);
+});
+test('DNS publication alone cannot complete migration checklist', () => {
+    const state = cloudDns({ records: [], connection: { published: true } });
+    assert.equal(state.migrationReviewed, false);
+    state.emptyDomain = true; assert.equal(state.migrationReviewed, false);
+    state.dnssecReviewed = true; assert.equal(state.migrationReviewed, true);
+});
+
+test('status polling flags changed records and preserves last state on failure', async () => {
+    const originalFetch = globalThis.fetch;
+    const state = cloudDns({ zone: 'example.com', records: [], statusUrl: '/status', connection: { revision: 1, healthy: false } });
+    state.recordsReviewed = true;
+    try {
+        globalThis.fetch = async () => ({ ok: true, json: async () => ({ revision: 2, healthy: true }) });
+        await state.refreshStatus();
+        assert.equal(state.recordsStale, true);
+        assert.equal(state.recordsReviewed, false);
+        assert.equal(state.connection.healthy, true);
+        globalThis.fetch = async () => { throw new Error('offline'); };
+        await state.refreshStatus();
+        assert.equal(state.connection.healthy, true);
+        assert.equal(state.refreshing, false);
+        assert.ok(state.statusError);
+    } finally { globalThis.fetch = originalFetch; }
+});

@@ -51,7 +51,7 @@ class CloudDnsService
             return;
         }
         if ($zone->verification_expires_at->isPast()) {
-            throw ValidationException::withMessages(['verification' => 'مهلت تأیید تمام شده است؛ دامنه را حذف و دوباره اضافه کنید.']);
+            throw ValidationException::withMessages(['verification' => 'مهلت تأیید تمام شده است؛ از بخش راه‌اندازی کد تأیید جدید دریافت کنید.']);
         }
         if (! in_array($zone->verification_token, $this->lookup->txt('_aviato-verification.'.$zone->name), true)) {
             throw ValidationException::withMessages(['verification' => 'رکورد TXT تأیید هنوز در DNS فعلی دامنه پیدا نشد.']);
@@ -94,49 +94,89 @@ class CloudDnsService
         });
     }
 
+    public function previewImport(DnsZone $zone, string $text): array
+    {
+        $this->editable($zone);
+
+        return $this->planImport($zone, $text)['report'];
+    }
+
     public function importRecords(DnsZone $zone, string $text, Model $actor): array
     {
-        $file = new ZoneFile;
-        $inputs = $file->parse($zone->name, $text, true);
-        $report = ['imported' => 0, 'duplicates' => 0, 'warnings' => $file->warnings];
-        $this->mutate($zone, $actor, 'records.imported', function ($locked) use ($inputs, &$report): bool {
+        $report = [];
+        $this->mutate($zone, $actor, 'records.imported', function ($locked) use ($text, &$report): bool {
             $this->editable($locked);
-            $count = $locked->recordSets()->get()->sum(fn ($record) => count($record->records));
-            $limit = config('cloud-dns.plans.'.$locked->plan.'.record_limit');
-            foreach ($inputs as $input) {
-                foreach (explode("\n", $input['content']) as $content) {
-                    try {
-                        $record = $this->validator->rrset($locked->name, [...$input, 'content' => $content]);
-                        $existing = $locked->recordSets()->where('name', $record['name'])->where('type', $record['type'])->first();
-                        $value = $record['records'][0];
-                        if ($existing && in_array($value, $existing->records, true)) {
-                            $report['duplicates']++;
-
-                            continue;
-                        }
-                        $conflict = $locked->recordSets()->where('name', $record['name'])
-                            ->where('type', $record['type'] === 'CNAME' ? '!=' : '=', 'CNAME')->exists();
-                        if ($conflict || ($record['type'] === 'CNAME' && $existing)) {
-                            throw ValidationException::withMessages(['content' => 'مقصد CNAME با رکورد موجود تداخل دارد.']);
-                        }
-                        if ($count >= $limit || ($existing && count($existing->records) >= 100)) {
-                            throw ValidationException::withMessages(['content' => 'سقف تعداد رکوردها تکمیل است.']);
-                        }
-                        $record['records'] = [...($existing?->records ?? []), $value];
-                        $record['ttl'] = $existing?->ttl ?? $record['ttl'];
-                        $locked->recordSets()->updateOrCreate(['name' => $record['name'], 'type' => $record['type']], $record);
-                        $count++;
-                        $report['imported']++;
-                    } catch (ValidationException $exception) {
-                        $report['warnings'][] = $input['name'].' '.$input['type'].': '.implode(' ', $exception->validator->errors()->all());
-                    }
-                }
+            $plan = $this->planImport($locked, $text);
+            $report = $plan['report'];
+            foreach ($plan['changes'] as $record) {
+                $locked->recordSets()->updateOrCreate(['name' => $record['name'], 'type' => $record['type']], $record);
             }
 
             return $report['imported'] > 0;
         });
 
         return $report;
+    }
+
+    /** Plan and apply share validation; a preview never writes or queues DNS work. */
+    private function planImport(DnsZone $zone, string $text): array
+    {
+        $file = new ZoneFile;
+        $inputs = $file->parse($zone->name, $text, true);
+        $report = ['imported' => 0, 'duplicates' => 0, 'warnings' => $file->warnings, 'records' => []];
+        if (preg_match('/cf-proxied\s*:\s*true|cf-flatten-cname/i', $text)) {
+            $report['warnings'][] = 'این فایل تنظیمات پروکسی یا CNAME flattening در Cloudflare دارد. این قابلیت‌ها منتقل نمی‌شوند؛ اتصال مستقیم سرور و گواهی HTTPS را پیش از تغییر نیم‌سرورها بررسی کنید.';
+        }
+        $sets = $zone->recordSets()->get()->mapWithKeys(fn ($record) => [$record->name.'|'.$record->type => $record->only(['name', 'type', 'ttl', 'records'])])->all();
+        $count = array_sum(array_map(fn ($set) => count($set['records']), $sets));
+        $changes = [];
+        foreach ($inputs as $input) {
+            foreach (explode("\n", $input['content']) as $content) {
+                $item = ['name' => $input['name'], 'type' => $input['type'], 'content' => $content];
+                try {
+                    $record = $this->validator->rrset($zone->name, [...$input, 'content' => $content]);
+                    $key = $record['name'].'|'.$record['type'];
+                    $existing = $sets[$key] ?? null;
+                    $value = $record['records'][0];
+                    if ($existing && in_array($value, $existing['records'], true)) {
+                        $report['duplicates']++;
+                        $report['records'][] = [...$item, 'action' => 'تکراری؛ بدون تغییر'];
+
+                        continue;
+                    }
+                    $conflict = collect($sets)->contains(fn ($set) => $set['name'] === $record['name'] && ($record['type'] === 'CNAME' ? $set['type'] !== 'CNAME' : $set['type'] === 'CNAME'));
+                    if ($conflict || ($record['type'] === 'CNAME' && $existing)) {
+                        throw ValidationException::withMessages(['content' => 'مقصد CNAME با رکورد موجود تداخل دارد.']);
+                    }
+                    if ($count >= config('cloud-dns.plans.'.$zone->plan.'.record_limit') || ($existing && count($existing['records']) >= 100)) {
+                        throw ValidationException::withMessages(['content' => 'سقف تعداد رکوردها تکمیل است.']);
+                    }
+                    $record['records'] = [...($existing['records'] ?? []), $value];
+                    $record['ttl'] = $existing['ttl'] ?? $record['ttl'];
+                    $sets[$key] = $changes[$key] = $record;
+                    $count++;
+                    $report['imported']++;
+                    $report['records'][] = [...$item, 'action' => $existing ? 'افزودن مقدار؛ حفظ TTL فعلی' : 'افزودن رکورد'];
+                } catch (ValidationException $exception) {
+                    $reason = implode(' ', $exception->validator->errors()->all());
+                    $report['warnings'][] = $input['name'].' '.$input['type'].': '.$reason;
+                    $report['records'][] = [...$item, 'action' => 'رد شده: '.$reason];
+                }
+            }
+        }
+
+        return ['report' => $report, 'changes' => $changes];
+    }
+
+    public function renewVerification(DnsZone $zone, Model $actor): void
+    {
+        DB::transaction(function () use ($zone, $actor): void {
+            $locked = DnsZone::whereKey($zone->id)->lockForUpdate()->firstOrFail();
+            $this->editable($locked);
+            abort_if($locked->verified_at || ! $locked->verification_expires_at?->isPast(), 409);
+            $locked->update(['verification_token' => 'aviato-verification='.Str::random(48), 'verification_expires_at' => now()->addHours(config('cloud-dns.verification_hours'))]);
+            $this->audit($locked, $actor, 'verification.renewed', [], []);
+        });
     }
 
     public function deleteRecord(DnsZone $zone, int $recordId, Model $actor): void

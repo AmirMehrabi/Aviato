@@ -32,13 +32,14 @@ export function serializeValues(type, values) {
 export function cloudDns(options) {
     return {
         ...options, types: recordTypes, search: '', filter: '', type: 'A', name: '@', ttl: 300, sort: 'type', ascending: true, previousType: 'A',
-        values: [{ value: '' }], editing: false, busy: false, notice: '', error: '', deleting: null,
+        connection: options.connection || {}, recordsStale: false, pollTimer: null, statusError: '', refreshing: false, recordsReviewed: false, emptyDomain: false, dnssecReviewed: false, importText: '', importPreview: null, previewBusy: false, importError: '', fileError: '', values: [{ value: '' }], editing: false, busy: false, notice: '', error: '', deleting: null,
         get meta() { return this.types[this.type] || this.types.A; },
         get filtered() {
             const query = this.search.trim().toLowerCase();
             return this.records.filter(r => (!this.filter || r.type === this.filter) && `${r.name} ${r.type} ${r.records.join(' ')}`.toLowerCase().includes(query)).sort((a, b) => (this.ascending ? 1 : -1) * a[this.sort].localeCompare(b[this.sort]));
         },
-        get fqdn() { return this.name === '@' ? this.zone : this.name.endsWith('.') ? this.name : `${this.name}.${this.zone}`; },
+        get fqdn() { const name = this.name.trim().toLowerCase(); return name === '@' ? this.zone : name.endsWith('.') || name === this.zone || name.endsWith(`.${this.zone}`) ? name : `${name}.${this.zone}`; },
+        get migrationReviewed() { return !this.recordsStale && (this.recordsReviewed || this.emptyDomain) && this.dnssecReviewed; },
         shortName(name) { return name === `${this.zone}.` ? '@' : name.endsWith(`.${this.zone}.`) ? name.slice(0, -this.zone.length - 2) : name; },
         blank() { return { value: '', priority: '10', weight: '0', port: '', flags: '0', tag: 'issue' }; },
         defaultName(type) { return { A: '@', AAAA: '@', CNAME: 'www', MX: '@', TXT: '@', CAA: '@', SRV: '_sip._tcp', NS: 'sub' }[type]; },
@@ -58,7 +59,41 @@ export function cloudDns(options) {
             this.values = record ? record.records.map(v => parseValue(record.type, v)) : [this.blank()];
             this.$refs.editor.showModal();
         },
+        async refreshStatus() {
+            if (!this.statusUrl || this.refreshing) return;
+            this.refreshing = true;
+            try {
+                const response = await fetch(this.statusUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                if (!response.ok) throw new Error();
+                const connection = await response.json();
+                if (connection.revision !== this.connection.revision) { this.recordsStale = true; this.recordsReviewed = false; this.emptyDomain = false; }
+                this.connection = connection; this.statusError = '';
+            } catch { this.statusError = 'دریافت وضعیت تازه ممکن نشد؛ وضعیت نمایش‌داده‌شده مربوط به آخرین دریافت است.'; }
+            finally { this.refreshing = false; }
+        },
+        async previewImport() {
+            this.previewBusy = true; this.importPreview = null; this.importError = '';
+            const text = this.importText;
+            try {
+                const response = await fetch(this.previewUrl, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.$refs.importToken.value }, body: JSON.stringify({ zone_file: text }) });
+                const report = await response.json();
+                if (!response.ok) throw new Error(Object.values(report.errors || {}).flat().join(' ') || 'بررسی فایل ممکن نشد.');
+                if (text === this.importText) this.importPreview = report;
+            } catch (error) { this.importError = error.message || 'ارتباط برقرار نشد؛ دوباره تلاش کنید.'; }
+            finally { this.previewBusy = false; }
+        },
+        async loadZoneFile(event) {
+            this.fileError = ''; this.importPreview = null;
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 250000) { this.fileError = 'حجم فایل باید کمتر از ۲۵۰ کیلوبایت باشد.'; return; }
+            try { this.importText = await file.text(); }
+            catch { this.fileError = 'خواندن فایل ممکن نشد؛ متن را کپی کنید.'; }
+        },
+        destroy() { if (this.pollTimer) clearInterval(this.pollTimer); },
         init() {
+            this.importText = this.old?.zone_file || '';
+            if (this.statusUrl) this.pollTimer = setInterval(() => { if (!document.hidden && !this.connection.healthy) this.refreshStatus(); }, 15000);
             if (this.old?.zone_file) this.$nextTick(() => this.$refs.importer?.showModal());
             if (this.old?.type && this.types[this.old.type]) {
                 this.$nextTick(() => {
@@ -73,8 +108,15 @@ export function cloudDns(options) {
             this.error = '';
             if (this.values.some(v => Object.values(v).some(s => /[\r\n]/.test(String(s))))) { this.error = 'هر مقدار باید یک رکورد مستقل باشد. برای رکورد بعدی از «افزودن مقدار» استفاده کنید.'; return; }
             if (this.type === 'CAA' && this.values.some(v => /["\\]/.test(v.value))) { this.error = 'مقدار CAA را بدون نقل‌قول یا بک‌اسلش وارد کنید.'; return; }
+            if (this.type === 'NS' && this.fqdn.replace(/\.$/, '') === this.zone) { this.error = 'NS فقط برای واگذاری زیردامنه است. نیم‌سرورهای اصلی را در بخش نیم‌سرورهای دامنه ببینید.'; return; }
             const full = `${this.fqdn.replace(/\.$/, '')}.`.toLowerCase();
-            if (!this.editing && this.records.some(r => r.name === full && r.type === this.type)) { this.error = 'این نام و نوع از قبل وجود دارد. برای افزودن مقدار، همان ردیف را ویرایش کنید.'; return; }
+            const existing = this.records.find(r => r.name === full && r.type === this.type);
+            if (!this.editing && existing && this.type === 'NS') {
+                const additions = this.values; this.openEditor(existing);
+                this.values.push(...additions.filter(v => v.value && !existing.records.some(value => value.replace(/\.$/, '').toLowerCase() === v.value.replace(/\.$/, '').toLowerCase())));
+                this.notice = 'نیم‌سرورهای فعلی حفظ شدند؛ فهرست را مرور و ذخیره کنید.'; return;
+            }
+            if (!this.editing && existing) { this.error = 'این نام و نوع از قبل وجود دارد. برای افزودن مقدار، همان ردیف را ویرایش کنید.'; return; }
             this.$refs.content.value = serializeValues(this.type, this.values);
             this.busy = true; event.target.submit();
         },
