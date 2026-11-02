@@ -11,7 +11,11 @@ class ChangelogPageTest extends TestCase
     {
         $this->get('/changelog')
             ->assertOk()
-            ->assertSee('نسخه 1.1.0')
+            ->assertSeeInOrder(['نسخه 1.3.5', 'نسخه 1.2.0', 'نسخه 1.1.0'])
+            ->assertSee('دوشنبه یازدهم آبان ۱۴۰۵')
+            ->assertSee('مدیریت DNS و دامنه')
+            ->assertSee('حساب حقوقی و صورتحساب‌ها')
+            ->assertSee('سفارش و پرداخت کولوکیشن')
             ->assertSee('دوشنبه ششم مهر ۱۴۰۵')
             ->assertSee('درصدهای پیش‌فرض ۱۵، ۱۰ و ۵ هستند')
             ->assertSee('نسخه 1.0.0')
