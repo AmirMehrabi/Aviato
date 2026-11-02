@@ -403,61 +403,62 @@
                     مصرف PAYG از کیف پول کسر می شود و صورتحساب ماهانه برای بایگانی صادر می گردد.
                 </div> -->
 
-                <div class="relative mt-5 border-t border-white/10 px-3 pt-3" @click.outside="profileOpen = false" @focusout="if (!$el.contains($event.relatedTarget)) profileOpen = false">
-                    <button
-                        type="button"
-                        class="hidden w-full items-center gap-3 rounded-xl px-2 py-2.5 text-right transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:flex {{ $activeNav === 'profile' ? 'bg-white/10' : '' }}"
-                        @click="profileOpen = !profileOpen; walletOpen = false; workspaceOpen = false; searchOpen = false"
-                        :aria-expanded="profileOpen.toString()"
-                        aria-controls="customer-account-menu"
-                        aria-label="حساب کاربری {{ $customer->name }}"
-                    >
+            </div>
+
+            <div class="relative mt-5 shrink-0 border-t border-white/10 px-3 pt-3" @click.outside="profileOpen = false" @focusout="if (!$el.contains($event.relatedTarget)) profileOpen = false">
+                <button
+                    type="button"
+                    class="hidden w-full items-center gap-3 rounded-xl px-2 py-2.5 text-right transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:flex {{ $activeNav === 'profile' ? 'bg-white/10' : '' }}"
+                    @click="profileOpen = !profileOpen; walletOpen = false; workspaceOpen = false; searchOpen = false"
+                    :aria-expanded="profileOpen.toString()"
+                    aria-controls="customer-account-menu"
+                    aria-label="حساب کاربری {{ $customer->name }}"
+                >
+                    <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-[10px] font-bold text-[#9DB4DC]">حساب کاربری</span>
+                        <span class="block truncate text-sm font-black text-white">{{ $customer->name }}</span>
+                    </span>
+                    <svg class="size-4 shrink-0 text-[#9DB4DC] transition-transform" :class="profileOpen ? '' : 'rotate-180'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <div id="customer-account-menu" x-cloak x-show="profileOpen" x-transition class="absolute inset-x-3 bottom-full z-50 mb-2 hidden max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl lg:block">
+                    <div class="border-b border-slate-100 px-2 py-2">
+                        <p class="truncate text-sm font-black text-slate-950">{{ $customer->name }}</p>
+                        <p class="truncate text-xs text-slate-500" dir="ltr">{{ $customer->email ?? $customer->phone ?? 'حساب مشتری' }}</p>
+                    </div>
+                    <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="mt-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF]">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                        پروفایل
+                    </a>
+                    <form method="POST" action="{{ route('customer.logout', [], false) }}" class="mt-1 border-t border-slate-100 pt-1">
+                        @csrf
+                        <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-600 transition hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
+                            خروج از حساب
+                        </button>
+                    </form>
+                </div>
+
+                <div class="lg:hidden">
+                    <div class="flex items-center gap-3 px-2 pb-3">
                         <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
-                        <span class="min-w-0 flex-1">
+                        <span class="min-w-0">
                             <span class="block text-[10px] font-bold text-[#9DB4DC]">حساب کاربری</span>
                             <span class="block truncate text-sm font-black text-white">{{ $customer->name }}</span>
                         </span>
-                        <svg class="size-4 shrink-0 text-[#9DB4DC] transition-transform" :class="profileOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-                    </button>
-
-                    <div id="customer-account-menu" x-cloak x-show="profileOpen" x-transition class="mt-2 hidden rounded-xl border border-slate-200 bg-white p-2 text-right lg:block">
-                        <div class="border-b border-slate-100 px-2 py-2">
-                            <p class="truncate text-sm font-black text-slate-950">{{ $customer->name }}</p>
-                            <p class="truncate text-xs text-slate-500" dir="ltr">{{ $customer->email ?? $customer->phone ?? 'حساب مشتری' }}</p>
-                        </div>
-                        <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="mt-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF]">
-                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
-                            پروفایل
-                        </a>
-                        <form method="POST" action="{{ route('customer.logout', [], false) }}" class="mt-1 border-t border-slate-100 pt-1">
-                            @csrf
-                            <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-600 transition hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
-                                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
-                                خروج از حساب
-                            </button>
-                        </form>
                     </div>
-
-                    <div class="lg:hidden">
-                        <div class="flex items-center gap-3 px-2 pb-3">
-                            <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
-                            <span class="min-w-0">
-                                <span class="block text-[10px] font-bold text-[#9DB4DC]">حساب کاربری</span>
-                                <span class="block truncate text-sm font-black text-white">{{ $customer->name }}</span>
-                            </span>
-                        </div>
-                        <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
-                            پروفایل
-                        </a>
-                        <form method="POST" action="{{ route('customer.logout', [], false) }}">
-                            @csrf
-                            <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-200 transition hover:bg-red-400/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-200">
-                                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
-                                خروج از حساب
-                            </button>
-                        </form>
-                    </div>
+                    <a href="{{ route('customer.profile.show', [], false) }}" @if($activeNav === 'profile') aria-current="page" @endif class="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                        پروفایل
+                    </a>
+                    <form method="POST" action="{{ route('customer.logout', [], false) }}">
+                        @csrf
+                        <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-right text-sm font-black text-red-200 transition hover:bg-red-400/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-200">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>
+                            خروج از حساب
+                        </button>
+                    </form>
                 </div>
             </div>
         </aside>

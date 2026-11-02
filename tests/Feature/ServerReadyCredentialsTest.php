@@ -33,9 +33,14 @@ class ServerReadyCredentialsTest extends TestCase
         $vm->notificationPasswordEncrypted = Crypt::encryptString($password);
         $vm->update(['provisioning_status' => 'ready']);
         $this->assertNull($vm->fresh()->login_password);
-        $this->assertStringNotContainsString($password, json_encode($customer->notifications()->first()->data));
+        $this->assertStringNotContainsString($password, json_encode($customer->notifications()->where('data->event', 'server_ready')->sole()->data));
         $this->assertStringNotContainsString($password, json_encode(DB::table('notification_deliveries')->get()));
+        $this->assertSame(1, DB::table('notification_deliveries')->where('event', 'server_ready')->count());
         Queue::assertPushed(SendNotificationEmail::class, function ($job) use ($password, $queueManager): bool {
+            if (DB::table('notification_deliveries')->where('id', $job->deliveryId)->value('event') !== 'server_ready') {
+                return false;
+            }
+
             $this->assertSame($password, $job->variables['initial_password']);
             $this->assertSame('192.0.2.10', $job->variables['server_ip']);
             $this->assertSame('ubuntu', $job->variables['username']);

@@ -107,6 +107,10 @@ class ProfileController extends Controller
             'national_code_verified_at' => now(),
         ])->save();
 
+        if ($request->boolean('continue_corporate')) {
+            return redirect()->route('customer.corporate.create')->with('status', 'هویت فردی تأیید شد. اکنون مشخصات شرکت را وارد کنید.');
+        }
+
         return back()->with('status', 'کد ملی تایید شد و سطح حساب شما ارتقا پیدا کرد.');
     }
 }

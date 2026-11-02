@@ -11,7 +11,7 @@
 @section('content')
 <div class="px-4 pt-5 md:px-8"><a href="{{ route('customer.notification-preferences.edit') }}" class="text-sm font-bold text-blue-600">تنظیمات اعلان‌ها ←</a></div>
     <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+        <section id="personal-identity" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <p class="text-xs font-black text-[#0069FF]">Account Level</p>
@@ -33,6 +33,7 @@
                 <form method="POST" action="{{ route('customer.profile.national-code.update', [], false) }}" class="mt-6 space-y-4" data-submit-loading>
                     @csrf
                     @method('PATCH')
+                    @if(request()->boolean('corporate'))<input type="hidden" name="continue_corporate" value="1">@endif
                     <div>
                         <label for="national_code" class="block text-xs font-black text-slate-500">کد ملی</label>
                         <input id="national_code" name="national_code" value="{{ old('national_code') }}" inputmode="numeric" autocomplete="off" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-left text-sm font-bold text-slate-900 focus:border-[#0069FF] focus:outline-none" dir="ltr" placeholder="0012345678">

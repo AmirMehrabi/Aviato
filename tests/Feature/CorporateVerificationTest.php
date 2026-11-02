@@ -66,6 +66,78 @@ class CorporateVerificationTest extends TestCase
         $draft->refresh();
     }
 
+    public function test_profile_offers_corporate_application_without_collecting_company_id(): void
+    {
+        $this->actingAs($this->customer(), 'customer')->get('https://cp.localhost/profile')
+            ->assertOk()->assertSee('درخواست حساب حقوقی')->assertDontSee('name="national_id"', false);
+        $this->get('https://cp.localhost/profile/corporate/create')->assertOk()
+            ->assertSee('name="national_id"', false)->assertSee('قبل از شروع');
+        $this->assertDatabaseCount('corporate_requests', 0);
+    }
+
+    public function test_unverified_customer_can_see_prerequisite_and_return_after_verification(): void
+    {
+        $customer = Customer::factory()->create(['national_code' => null, 'national_code_verified_at' => null]);
+        AppSetting::setValue(AppSetting::NATIONAL_CODE_VERIFICATION_ENABLED, false, 'boolean', 'customer');
+        $this->actingAs($customer, 'customer')->get('https://cp.localhost/profile/corporate/create')
+            ->assertOk()->assertSee('تأیید هویت فردی و ادامه درخواست')->assertDontSee('name="national_id"', false);
+        $this->patch('https://cp.localhost/profile/national-code', ['national_code' => '0100000002', 'continue_corporate' => 1])
+            ->assertRedirect(route('customer.corporate.create'));
+    }
+
+    public function test_customer_can_save_partial_draft_with_documents_and_resume(): void
+    {
+        $draft = $this->draft();
+        $this->actingAs($draft->customer, 'customer')->patch('https://cp.localhost/profile/corporate/'.$draft->id, [
+            'version' => 0, 'billing_email' => 'finance@example.com',
+            'incorporation' => UploadedFile::fake()->create('company.pdf', 10, 'application/pdf'),
+        ])->assertSessionHasNoErrors()->assertRedirect();
+        $draft->refresh();
+        $this->assertSame('draft', $draft->status);
+        $this->assertSame('finance@example.com', $draft->billing_email);
+        $this->assertNull($draft->consented_at);
+        $this->assertDatabaseCount('corporate_request_events', 0);
+        Storage::disk('local')->assertExists($draft->documents->first()->path);
+        Queue::assertNothingPushed();
+        $this->get('https://cp.localhost/profile/corporate/create')->assertRedirect(route('customer.corporate.show', $draft));
+        $this->get('https://cp.localhost/profile/corporate/'.$draft->id)->assertOk()->assertSee('finance@example.com')->assertSee('company.pdf');
+        $this->patch('https://cp.localhost/profile/corporate/'.$draft->id, ['version' => 0])->assertSessionHasErrors('version');
+    }
+
+    public function test_customer_can_save_corrections_without_losing_reason_or_existing_documents(): void
+    {
+        $draft = $this->draft();
+        $this->submit($draft);
+        $draft->update(['status' => 'needs_correction', 'reason' => 'آگهی جدید لازم است']);
+        $this->actingAs($draft->customer, 'customer')->patch('https://cp.localhost/profile/corporate/'.$draft->id, [
+            'version' => $draft->version, 'address' => 'نشانی جدید',
+        ])->assertSessionHasNoErrors();
+        $draft->refresh();
+        $this->assertSame('needs_correction', $draft->status);
+        $this->assertSame('آگهی جدید لازم است', $draft->reason);
+        $this->assertSame('1234567890', $draft->postal_code);
+        $this->assertSame(2, $draft->documents()->where('version', $draft->version)->count());
+        $this->assertDatabaseCount('corporate_request_events', 1);
+    }
+
+    public function test_customer_can_discard_only_their_own_draft(): void
+    {
+        $draft = $this->draft();
+        $this->actingAs($this->customer(), 'customer')->delete('https://cp.localhost/profile/corporate/'.$draft->id)->assertNotFound();
+        $this->patch('https://cp.localhost/profile/corporate/'.$draft->id, ['version' => 0])->assertNotFound();
+        $this->actingAs($draft->customer, 'customer')->patch('https://cp.localhost/profile/corporate/'.$draft->id, [
+            'version' => 0, 'incorporation' => UploadedFile::fake()->create('company.pdf', 10, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+        $path = $draft->documents()->first()->path;
+        $this->delete('https://cp.localhost/profile/corporate/'.$draft->id)->assertRedirect(route('customer.corporate.create'));
+        $this->assertModelMissing($draft);
+        Storage::disk('local')->assertMissing($path);
+        $pending = $this->draft();
+        $this->submit($pending);
+        $this->actingAs($pending->customer, 'customer')->delete('https://cp.localhost/profile/corporate/'.$pending->id)->assertForbidden();
+        $this->patch('https://cp.localhost/profile/corporate/'.$pending->id, ['version' => $pending->version])->assertSessionHasErrors('version');
+    }
+
     public function test_customer_can_lookup_submit_and_view_corporate_request(): void
     {
         $customer = $this->customer();

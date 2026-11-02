@@ -520,6 +520,9 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::post('domains/check', [DomainController::class, 'check'])->middleware('throttle:15,1')->name('customer.domains.check');
         });
         Route::get($customerHome, DashboardController::class)->name('dashboard');
+        Route::get('profile/corporate/create', [CustomerCorporateController::class, 'create'])->middleware('no-store')->name('customer.corporate.create');
+        Route::patch('profile/corporate/{corporate}', [CustomerCorporateController::class, 'save'])->middleware('throttle:corporate-submit')->name('customer.corporate.save');
+        Route::delete('profile/corporate/{corporate}', [CustomerCorporateController::class, 'discard'])->name('customer.corporate.discard');
         Route::post('profile/corporate', [CustomerCorporateController::class, 'start'])->middleware('throttle:corporate-start')->name('customer.corporate.start');
         Route::get('profile/corporate/{corporate}', [CustomerCorporateController::class, 'show'])->middleware('no-store')->name('customer.corporate.show');
         Route::post('profile/corporate/{corporate}', [CustomerCorporateController::class, 'submit'])->middleware('throttle:corporate-submit')->name('customer.corporate.submit');

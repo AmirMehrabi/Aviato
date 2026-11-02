@@ -13,6 +13,7 @@ use App\Services\VmActivityRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Event;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -171,12 +172,13 @@ class CustomerPasswordResetTest extends TestCase
         $customer = Customer::factory()->create();
         $host = ProxmoxServer::create(['name' => 'PVE', 'host' => 'pve.local', 'port' => 8006, 'username' => 'root', 'realm' => 'pam', 'is_active' => true]);
         $image = CloudImage::create(['name' => 'Ubuntu', 'slug' => 'ubuntu', 'proxmox_server_id' => $host->id, 'node' => 'pve1', 'template_vmid' => 9000, 'storage' => 'local-lvm', 'os_family' => 'ubuntu', 'default_username' => 'ubuntu', 'cloud_init_enabled' => true, 'is_active' => true]);
-        $vm = VirtualMachine::create([
+        // Fixture creation must not send unrelated machine-created notifications.
+        $vm = Event::fakeFor(fn () => VirtualMachine::create([
             'customer_id' => $customer->id, 'proxmox_server_id' => $host->id, 'cloud_image_id' => $image->id,
             'name' => 'test-server', 'node' => 'pve1', 'vmid' => 101, 'login_username' => 'ubuntu',
             'login_password' => $legacy ? 'legacy-password' : null, 'retain_login_password' => $legacy,
             'cpu_cores' => 2, 'ram_gb' => 4, 'disk_gb' => 40, 'status' => 'running', 'provisioning_status' => 'ready',
-        ]);
+        ]), ['eloquent.created: '.VirtualMachine::class]);
 
         return [$customer, $vm];
     }

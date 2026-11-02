@@ -44,7 +44,7 @@ class CorporateVerificationService
         });
     }
 
-    public function submit(CorporateRequest $request, array $data, array $files): void
+    public function submit(CorporateRequest $request, array $data, array $files, bool $submit = true): void
     {
         $stored = [];
         try {
@@ -57,31 +57,36 @@ class CorporateVerificationService
                     $stored[$kind] = ['path' => $path, 'original_name' => $file->getClientOriginalName()];
                 }
             }
-            DB::transaction(function () use ($request, $data, $stored) {
+            DB::transaction(function () use ($request, $data, $stored, $submit) {
                 $request = CorporateRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
                 if (! in_array($request->status, ['draft', 'needs_correction']) || $request->version !== (int) $data['version']) {
                     throw ValidationException::withMessages(['version' => 'درخواست تغییر کرده است؛ صفحه را تازه کنید.']);
                 }
-                if ($request->looked_up_at->lt(now()->subDays(7))) {
+                if ($submit && $request->looked_up_at->lt(now()->subDays(7))) {
                     $registry = app(CompanyInquiryClient::class)->lookup($request->national_id);
                     $request->fill(['company' => $registry, 'registry_result' => $registry, 'looked_up_at' => now()]);
                 }
                 $previous = $request->documents()->where('version', $request->version)->get()->keyBy('kind');
-                foreach (['incorporation', 'signatories', ...($data['representative_role'] === 'delegate' ? ['authorization'] : [])] as $kind) {
+                foreach ($submit ? ['incorporation', 'signatories', ...(($data['representative_role'] ?? null) === 'delegate' ? ['authorization'] : [])] : [] as $kind) {
                     if (! isset($stored[$kind]) && ! isset($previous[$kind])) {
                         throw ValidationException::withMessages([$kind => 'این مدرک الزامی است.']);
                     }
                 }
                 $request->fill(Arr::only($data, ['representative_role', 'billing_email', 'company_phone', 'address', 'postal_code', 'tax_number']));
                 $request->version++;
-                $request->fill(['status' => 'pending', 'submitted_at' => now(), 'consented_at' => now(), 'reason' => null, 'reviewer_id' => null, 'reviewed_at' => null, 'internal_notes' => null])->save();
+                if ($submit) {
+                    $request->fill(['status' => 'pending', 'submitted_at' => now(), 'consented_at' => now(), 'reason' => null, 'reviewer_id' => null, 'reviewed_at' => null, 'internal_notes' => null]);
+                }
+                $request->save();
                 foreach (['incorporation', 'signatories', 'authorization'] as $kind) {
                     $document = $stored[$kind] ?? (isset($previous[$kind]) ? $previous[$kind]->only(['path', 'original_name']) : null);
                     if ($document) {
                         $request->documents()->create($document + ['kind' => $kind, 'version' => $request->version]);
                     }
                 }
-                $this->event($request, 'submitted');
+                if ($submit) {
+                    $this->event($request, 'submitted');
+                }
             });
         } catch (\Throwable $e) {
             foreach ($stored as $file) {

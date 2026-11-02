@@ -1,3 +1,5 @@
+import { corporateApplication } from './corporate-application';
+window.corporateApplication = corporateApplication;
 import { cloudDns } from './cloud-dns';
 window.cloudDns = cloudDns;
 import Alpine from 'alpinejs';

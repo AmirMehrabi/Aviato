@@ -13,6 +13,7 @@ use App\Services\WorkspaceWalletQuietHours;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Mockery;
@@ -375,14 +376,15 @@ class WorkspaceWalletAlertTest extends TestCase
             'monthly_price' => 730_000, 'hourly_price' => 1000,
             'is_active' => true, 'sort_order' => 1,
         ]);
-        VirtualMachine::create([
+        // Fixture creation must not send unrelated machine-created notifications.
+        Event::fakeFor(fn () => VirtualMachine::create([
             'customer_id' => $owner->id, 'project_id' => $project->id,
             'vm_bundle_id' => $bundle->id, 'name' => 'alert-vm',
             'cpu_cores' => 1, 'ram_gb' => 1, 'disk_gb' => 10, 'ip_count' => 1,
             'status' => VirtualMachine::STATUS_RUNNING,
             'provisioning_status' => VirtualMachine::PROVISION_READY,
             'last_billed_at' => now(),
-        ]);
+        ]), ['eloquent.created: '.VirtualMachine::class]);
 
         return [$owner, $project];
     }
