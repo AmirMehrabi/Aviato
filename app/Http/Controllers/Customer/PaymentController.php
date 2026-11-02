@@ -189,6 +189,13 @@ class PaymentController extends Controller
     private function ensureOwnership(Request $request, Payment $payment): void
     {
         $customer = $request->user('customer');
+        if ($payment->invoice_id) {
+            $project = $payment->invoice->colocationService->project;
+            abort_unless($this->projects->canViewBilling($project, $customer), 404);
+            $this->projects->switch($request, $customer, $project);
+
+            return;
+        }
         if ($payment->domain_order_id) {
             abort_unless($payment->customer_id === $customer->id, 404);
 
@@ -210,6 +217,10 @@ class PaymentController extends Controller
 
     private function walletRedirect(Payment $payment): RedirectResponse
     {
+        if ($payment->invoice_id) {
+            return redirect()->route('customer.colocation.invoices.show', $payment->invoice_id)
+                ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
+        }
         if ($payment->domain_order_id) {
             $order = DomainOrder::findOrFail($payment->domain_order_id);
 

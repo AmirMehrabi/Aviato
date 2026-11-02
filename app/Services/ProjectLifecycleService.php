@@ -33,6 +33,10 @@ class ProjectLifecycleService
             $blockers['domains'] = 'این فضای کاری دامنه یا سفارش دامنه دارد و قابل حذف نیست.';
         }
 
+        if ($project->colocationServices()->exists()) {
+            $blockers['colocation'] = 'این فضای کاری سوابق هم‌مکانی دارد و برای حفظ سرویس‌ها و صورتحساب‌ها قابل حذف نیست.';
+        }
+
         if ($project->dnsZones()->where('status', '!=', 'deleted')->exists()) {
             $blockers['dns'] = 'ابتدا دامنه‌های Cloud DNS را حذف کنید و منتظر تکمیل حذف بمانید.';
         }

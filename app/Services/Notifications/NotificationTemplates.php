@@ -11,6 +11,7 @@ class NotificationTemplates
     public function catalog(): array
     {
         $items = [
+            'colocation' => ['هم‌مکانی و صورتحساب', 'هم‌مکانی | آویاتو', "{{name}} عزیز،\n{{body}}", false],
             'domain_order' => ['سفارش دامنه', 'وضعیت سفارش دامنه | آویاتو', "{{name}} عزیز،\n{{body}}", false],
             'domain_expiry' => ['تمدید و انقضای دامنه', 'تمدید دامنه | آویاتو', "{{name}} عزیز،\n{{body}}", false],
             'password_reset' => ['بازیابی رمز عبور', 'کد بازیابی رمز عبور آویاتو', "{{name}} عزیز،\nبرای انتخاب رمز عبور جدید، کد زیر را در پنل آویاتو وارد کنید.\nاین کد تا ۱۰ دقیقه معتبر است. اگر شما این درخواست را ثبت نکرده‌اید، این ایمیل را نادیده بگیرید. کد را با کسی به اشتراک نگذارید.", true],
@@ -45,7 +46,7 @@ class NotificationTemplates
 
         return collect($items)->map(fn ($item, $event) => [
             'label' => $item[0], 'subject' => $item[1], 'body' => $item[2], 'required' => $item[3],
-            'email_enabled' => $item[3] || str_starts_with($event, 'vm_created_') || str_starts_with($event, 'ticket_') || str_starts_with($event, 'domain_') || str_starts_with($event, 'corporate_'),
+            'email_enabled' => $item[3] || $event === 'colocation' || str_starts_with($event, 'vm_created_') || str_starts_with($event, 'ticket_') || str_starts_with($event, 'domain_') || str_starts_with($event, 'corporate_'),
             'in_app_enabled' => true,
             ...(str_starts_with($event, 'vm_created_') ? ['sms_enabled' => true, 'sms_template' => $event === 'vm_created_admin' ? 'aviato-vm-created-admin' : 'aviato-vm-created-customer'] : []),
         ])->all();

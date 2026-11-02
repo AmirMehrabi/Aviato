@@ -26,6 +26,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'tax_amount',
     'tax_rate_percentage',
     'meta',
+    'colocation_service_id',
+    'colocation_key',
+    'due_at',
+    'paid_at',
 ])]
 class Invoice extends Model
 {
@@ -50,6 +54,16 @@ class Invoice extends Model
         return $this->hasMany(InvoiceItem::class);
     }
 
+    public function colocationService(): BelongsTo
+    {
+        return $this->belongsTo(ColocationService::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     protected function casts(): array
     {
         return [
@@ -57,6 +71,8 @@ class Invoice extends Model
             'period_start' => 'datetime',
             'period_end' => 'datetime',
             'issued_at' => 'datetime',
+            'due_at' => 'datetime',
+            'paid_at' => 'datetime',
             'subtotal_amount' => 'integer',
             'wallet_charged_amount' => 'integer',
             'adjustment_amount' => 'integer',

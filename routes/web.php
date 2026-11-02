@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\CloudDnsController;
 use App\Http\Controllers\Admin\CloudImageController;
+use App\Http\Controllers\Admin\ColocationController as AdminColocationController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DomainCommerceController;
@@ -49,6 +50,7 @@ use App\Http\Controllers\Corporate\CorporateSettingsController;
 use App\Http\Controllers\Corporate\CustomerCorporateController;
 use App\Http\Controllers\Customer\ApiTokenController;
 use App\Http\Controllers\Customer\BackupController;
+use App\Http\Controllers\Customer\ColocationController as CustomerColocationController;
 use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\DomainCheckoutController;
 use App\Http\Controllers\Customer\DomainController;
@@ -134,6 +136,18 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
 
     Route::middleware(['auth:admin', 'admin.active', 'admin.audit', 'admin.route-access'])->group(function () use ($adminHome) {
         Route::get($adminHome, AdminDashboardController::class)->name('admin.dashboard');
+        Route::prefix('colocation')->name('admin.colocation.')->middleware('no-store')->group(function (): void {
+            Route::get('/', [AdminColocationController::class, 'index'])->name('index');
+            Route::get('customers/{customer}', [AdminColocationController::class, 'customer'])->name('customer');
+            Route::patch('customers/{customer}/access', [AdminColocationController::class, 'access'])->name('access');
+            Route::post('customers/{customer}/plans', [AdminColocationController::class, 'plan'])->name('plans.store');
+            Route::patch('customers/{customer}/plans/{plan:uuid}', [AdminColocationController::class, 'plan'])->name('plans.update');
+            Route::get('services/{service:uuid}', [AdminColocationController::class, 'show'])->name('show');
+            Route::patch('services/{service:uuid}/progress', [AdminColocationController::class, 'progress'])->name('progress');
+            Route::post('services/{service:uuid}/activate', [AdminColocationController::class, 'activate'])->name('activate');
+            Route::post('services/{service:uuid}/traffic', [AdminColocationController::class, 'traffic'])->name('traffic');
+            Route::post('services/{service:uuid}/end', [AdminColocationController::class, 'end'])->name('end');
+        });
         Route::get('corporate-requests', [AdminCorporateController::class, 'index'])->name('admin.corporate.index');
         Route::get('corporate-requests/{corporate}', [AdminCorporateController::class, 'show'])->name('admin.corporate.show');
         Route::patch('corporate-requests/{corporate}', [AdminCorporateController::class, 'review'])->name('admin.corporate.review');
@@ -479,6 +493,16 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         ->name('customer.wallet.payments.callback');
 
     Route::middleware('auth:customer')->group(function () use ($customerHome) {
+        Route::prefix('colocation')->name('customer.colocation.')->middleware('no-store')->group(function (): void {
+            Route::get('/', [CustomerColocationController::class, 'index'])->name('index');
+            Route::get('plans/{plan:uuid}', [CustomerColocationController::class, 'checkout'])->name('checkout');
+            Route::post('plans/{plan:uuid}', [CustomerColocationController::class, 'store'])->middleware('throttle:15,1')->name('store');
+            Route::get('invoices', [CustomerColocationController::class, 'invoices'])->name('invoices.index');
+            Route::get('invoices/{invoice}', [CustomerColocationController::class, 'invoice'])->name('invoices.show');
+            Route::post('invoices/{invoice}/pay', [CustomerColocationController::class, 'pay'])->middleware('throttle:10,1')->name('invoices.pay');
+            Route::get('services/{service:uuid}', [CustomerColocationController::class, 'show'])->name('show');
+            Route::post('services/{service:uuid}/cancel', [CustomerColocationController::class, 'cancel'])->name('cancel');
+        });
         Route::middleware([EnsureDomainManagementAccess::class, 'no-store'])->group(function (): void {
             Route::get('domains', [DomainController::class, 'index'])->name('customer.domains.index');
             Route::post('domains/orders', [DomainCheckoutController::class, 'store'])->middleware('throttle:15,1')->name('customer.domains.orders.store');

@@ -48,6 +48,7 @@ class AdminNavigation
                 ['label' => 'دسته‌بندی تیکت‌ها', 'route' => 'admin.ticket-categories.index', 'active' => request()->routeIs('admin.ticket-categories.*'), 'icon' => 'tags', 'keywords' => 'ticket categories settings'],
             ]],
             ['id' => 'billing-tools', 'label' => 'ابزارهای صورتحساب', 'secondary' => true, 'icon' => 'chart-no-axes-combined', 'items' => [
+                ['label' => 'هم‌مکانی', 'route' => 'admin.colocation.index', 'active' => request()->routeIs('admin.colocation.*'), 'icon' => 'server', 'keywords' => 'colocation installation هم‌مکانی نصب'],
                 ['label' => 'مصرف و تسویه', 'route' => 'admin.billing.usage.index', 'active' => request()->routeIs('admin.billing.usage.*'), 'icon' => 'gauge', 'keywords' => 'usage settlement'],
                 ['label' => 'حسابداری شبکه', 'route' => 'admin.billing.network.index', 'active' => request()->routeIs('admin.billing.network.*'), 'icon' => 'activity', 'keywords' => 'network billing traffic'],
             ]],

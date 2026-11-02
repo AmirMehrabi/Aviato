@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[Fillable([
     'customer_id',
+    'invoice_id',
     'wallet_id',
     'domain_order_id',
     'promotion_code_id',
@@ -40,6 +41,8 @@ class Payment extends Model
 
     public const TYPE_TOP_UP = 'top_up';
 
+    public const TYPE_INVOICE = 'invoice';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_SUCCESSFUL = 'successful';
@@ -56,6 +59,11 @@ class Payment extends Model
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     public function walletTransactions(): MorphMany

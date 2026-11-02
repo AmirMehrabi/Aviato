@@ -11,6 +11,7 @@ use App\Services\Payments\PaymentGatewayManager;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
@@ -69,8 +70,13 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function show(Request $request, Invoice $invoice): View
+    public function show(Request $request, Invoice $invoice): View|RedirectResponse
     {
+        if ($invoice->kind === 'colocation') {
+            abort_unless($invoice->colocationService && $this->projects->canViewBilling($invoice->colocationService->project, $request->user('customer')), 404);
+
+            return redirect()->to(route('customer.colocation.invoices.show', $invoice, false));
+        }
         $customer = $request->user('customer');
         if ($invoice->kind === 'domain') {
             $order = DomainOrder::findOrFail($invoice->domain_order_id);

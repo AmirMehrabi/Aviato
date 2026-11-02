@@ -39,7 +39,8 @@ class AdminNavigationTest extends TestCase
         foreach (['admin.proxmox-servers.index', 'admin.billing.rates.index', 'admin.users.index'] as $route) {
             $this->assertStringNotContainsString('href="'.route($route).'"', $main);
         }
-        foreach (['infrastructure' => 6, 'support-settings' => 2, 'billing-tools' => 2, 'sales' => 3, 'administration' => 4] as $panel => $count) {
+        $this->assertStringContainsString('href="'.route('admin.colocation.index').'"', $document->saveHTML($document->getElementById('admin-nav-billing-tools')));
+        foreach (['infrastructure' => 6, 'support-settings' => 2, 'billing-tools' => 3, 'sales' => 3, 'administration' => 4] as $panel => $count) {
             $this->assertSame($count, $xpath->query('//*[@id="admin-nav-'.$panel.'"]//a')->length);
             $this->assertStringContainsString('منوی اصلی', $document->saveHTML($document->getElementById('admin-nav-'.$panel)));
         }

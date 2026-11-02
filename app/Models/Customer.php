@@ -53,6 +53,16 @@ class Customer extends Authenticatable
         return $this->hasMany(Invoice::class)->latest('period_start');
     }
 
+    public function colocationPlans(): HasMany
+    {
+        return $this->hasMany(ColocationPlan::class);
+    }
+
+    public function colocationServices(): HasMany
+    {
+        return $this->hasMany(ColocationService::class);
+    }
+
     public function virtualMachines(): HasMany
     {
         return $this->hasMany(VirtualMachine::class);
@@ -219,6 +229,7 @@ class Customer extends Authenticatable
     protected function casts(): array
     {
         return [
+            'colocation_enabled' => 'boolean',
             'domain_management_enabled' => 'boolean',
             'email_verified_at' => 'datetime',
             'email_verification_expires_at' => 'datetime',

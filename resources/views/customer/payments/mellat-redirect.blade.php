@@ -5,20 +5,21 @@
 @section('header_subtitle', 'در حال اتصال امن به درگاه پرداخت ملت')
 
 @php
-    $activeNav = $payment->domain_order_id ? 'domains' : 'wallet';
+    $activeNav = $payment->invoice_id ? 'colocation' : ($payment->domain_order_id ? 'domains' : 'wallet');
     $payload = $payment->gateway_payload ?? [];
 @endphp
 
-@if($payment->domain_order_id) @section('primary_actions_in_content', '1') @endif
+@if($payment->domain_order_id || $payment->invoice_id) @section('primary_actions_in_content', '1') @endif
 
 @section('content')
+    @if($payment->invoice_id)<p class="mx-auto mb-5 max-w-3xl rounded-xl bg-blue-50 p-4 text-sm leading-7 text-blue-900">این پرداخت مستقیماً صورتحساب هم‌مکانی را تسویه می‌کند. پس از تأیید بانک به صورتحساب برمی‌گردید.</p>@endif
     @if($payment->domain_order_id)<p class="mx-auto mb-5 max-w-xl rounded-xl bg-blue-50 p-4 text-sm leading-7 text-blue-900">{{ $payment->description }}. پس از پرداخت به سفارش دامنه برمی‌گردید؛ انجام ثبت یا تمدید در همان صفحه تأیید می‌شود.</p>@endif
     <section class="mx-auto max-w-3xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60 md:p-8">
         <div class="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
             <div>
                 <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#2563EB]">Mellat</span>
                 <h2 class="mt-4 text-2xl font-black text-slate-950">پرداخت آماده است</h2>
-                <p class="mt-3 text-sm leading-7 text-slate-600">پس از بازگشت موفق از بانک، کیف پول شما به مبلغ پرداخت شده شارژ می‌شود.</p>
+                <p class="mt-3 text-sm leading-7 text-slate-600">{{ $payment->invoice_id ? 'پس از تأیید پرداخت، صورتحساب شما تسویه می‌شود.' : 'پس از بازگشت موفق از بانک، کیف پول شما به مبلغ پرداخت شده شارژ می‌شود.' }}</p>
             </div>
             <div class="rounded-2xl bg-slate-50 px-5 py-4 text-right">
                 <p class="text-xs font-black text-slate-500">شناسه پرداخت</p>

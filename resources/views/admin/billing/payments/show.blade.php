@@ -12,10 +12,14 @@
 <a href="{{ route('admin.billing.transactions.show',$transaction) }}" class="mt-6 inline-flex rounded-lg bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">مشاهده تراکنش کیف پول مرتبط</a>
 @endadminRoute
 @endif
+@if($payment->invoice_id)
+<div class="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-7 text-blue-900"><p>پرداخت مستقیم صورتحساب هم‌مکانی: {{ $payment->invoice->number }}. این مبلغ به کیف پول اضافه نشده است.</p><a class="mt-2 inline-block font-bold" href="{{ route('admin.billing.invoices.show', $payment->invoice) }}">مشاهده صورتحساب ←</a><p class="mt-2 text-xs">ثبت حسابداری این سرویس از گزارش صورتحساب‌ها انجام می‌شود؛ مسیر حسابرو برای شارژ کیف پول است.</p></div>
+@else
 <div class="mt-6 rounded-xl border border-slate-200 p-4"><h2 class="font-black">ثبت در حسابرو</h2><p class="mt-2 text-sm">وضعیت: {{ ['queued' => 'در صف', 'submitted' => 'ثبت شده', 'failed' => 'ناموفق'][$payment->hesabro_status] ?? 'ارسال نشده' }}</p>@if($payment->hesabro_factor_id)<p class="mt-1 text-sm">شناسه فاکتور: {{ $payment->hesabro_factor_id }}</p>@endif @if($payment->hesabro_error)<p class="mt-1 text-sm text-red-700">{{ $payment->hesabro_error }}</p>@endif
 @if($payment->isSuccessful() && !in_array($payment->hesabro_status, ['queued', 'submitted'], true))
 @adminRoute('admin.billing.payments.hesabro.submit')
 <form method="POST" action="{{ route('admin.billing.payments.hesabro.submit', $payment) }}" class="mt-3">@csrf<button class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white">ارسال به حسابرو</button></form>
 @endadminRoute
 @endif</div>
+@endif
 </section><aside class="rounded-xl border bg-slate-950 p-5 text-slate-100"><h2 class="font-black">داده تشخیصی درگاه (Redacted)</h2><pre dir="ltr" class="mt-4 max-h-[560px] overflow-auto whitespace-pre-wrap break-all text-xs leading-6">{{ json_encode($payload, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) }}</pre></aside></div></div>@endsection

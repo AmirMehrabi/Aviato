@@ -16,6 +16,10 @@ class HesabroAccountingService
 {
     public function enqueue(Payment $payment): bool
     {
+        if ($payment->invoice_id) {
+            // Co-location invoices must not be exported as wallet top-up products.
+            return false;
+        }
         if (! AppSetting::hesabroAccountingEnabled() || ! AppSetting::hesabroAccountingConfigured()) {
             return false;
         }

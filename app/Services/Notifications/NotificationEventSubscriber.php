@@ -47,6 +47,9 @@ class NotificationEventSubscriber
             }
         });
         Payment::updated(function (Payment $payment): void {
+            if ($payment->invoice_id) {
+                return;
+            }
             if ($payment->wasChanged('status') && $payment->status === Payment::STATUS_SUCCESSFUL) {
                 DB::afterCommit(function () use ($payment): void {
                     if ($payment->customer) {

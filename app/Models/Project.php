@@ -47,6 +47,11 @@ class Project extends Model
         return $this->hasMany(ManagedDomain::class);
     }
 
+    public function colocationServices(): HasMany
+    {
+        return $this->hasMany(ColocationService::class);
+    }
+
     public function domainOrders(): HasMany
     {
         return $this->hasMany(DomainOrder::class);

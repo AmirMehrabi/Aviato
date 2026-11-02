@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class PaymentReceiptController extends Controller
@@ -17,9 +18,14 @@ class PaymentReceiptController extends Controller
         private readonly ProjectAccessService $projects,
     ) {}
 
-    public function show(Request $request, Payment $payment): View
+    public function show(Request $request, Payment $payment): View|RedirectResponse
     {
         $customer = $request->user('customer');
+        if ($payment->invoice_id) {
+            abort_unless($payment->isSuccessful() && $this->projects->canViewBilling($payment->invoice->colocationService->project, $customer), 404);
+
+            return redirect()->to(route('customer.colocation.invoices.show', $payment->invoice_id, false));
+        }
         abort_if($payment->domain_order_id && $payment->customer_id !== $customer->id, 404);
         $activeProject = $payment->domain_order_id ? $customer->ensureDefaultProject() : $this->projects->activeProject($request, $customer);
 

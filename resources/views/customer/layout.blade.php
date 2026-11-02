@@ -30,6 +30,7 @@
         $activeWorkspaceRole = $workspaceRoleLabels[$activeMembership?->role ?? 'member'] ?? 'عضو';
         $customerInitial = mb_substr($customer->name ?? 'م', 0, 1);
         $billingOwner = $activeProject?->owner ?? $customer;
+        $canViewColocation = $canViewBilling && ($billingOwner->colocation_enabled || $activeProject->colocationServices()->exists());
         $sidebarWallet = app(\App\Services\WalletService::class)->walletFor($billingOwner);
         $effectiveWalletBalance = $billingOwner instanceof \App\Models\Customer
             ? app(\App\Services\UsageBalanceService::class)->effectiveBalance($billingOwner)
@@ -58,6 +59,9 @@
                 ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z'],
             ],
             'زیرساخت' => [
+                ...($canViewColocation ? [
+                    ['key' => 'colocation', 'label' => 'هم‌مکانی', 'route' => route('customer.colocation.index', [], false), 'icon' => 'M4 3h16v18H4V3Zm0 6h16M4 15h16M8 6h.01M8 12h.01M8 18h.01'],
+                ] : []),
                 ...($canViewVms ? [
                     ['key' => 'servers', 'label' => 'ماشین‌های مجازی', 'route' => route('customer.servers.index', [], false), 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
                     ['key' => 'backups', 'label' => 'پشتیبان‌گیری', 'route' => route('customer.backups.index', [], false), 'icon' => 'M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 6.5 19H8'],
@@ -104,6 +108,10 @@
             $searchBaseItems[] = ['title' => 'دامنه‌ها', 'description' => 'جستجو، ثبت، تمدید و مدیریت دامنه‌ها', 'url' => route('customer.domains.index', [], false), 'type' => 'صفحه'];
         }
 
+        if ($canViewColocation) {
+            $searchBaseItems[] = ['title' => 'هم‌مکانی', 'description' => 'Co-location، پلن‌های اختصاصی، پیگیری نصب و صورتحساب', 'url' => route('customer.colocation.index', [], false), 'type' => 'صفحه'];
+        }
+
         if ($activeMembership?->canReadDns() && app(\App\Services\CloudDns\CloudDnsRollout::class)->allows($customer, $activeProject)) {
             $searchBaseItems[] = ['title' => 'مدیریت DNS', 'description' => 'مدیریت رکوردهای A، MX، TXT و سایر رکوردها', 'url' => route('customer.cloud-dns.index', [], false), 'type' => 'صفحه'];
         }
@@ -126,7 +134,7 @@
         }
     @endphp
 
-    @if (($walletIsDepleted || $walletIsLocked) && $canViewBilling)
+    @if (($walletIsDepleted || $walletIsLocked) && $canViewBilling && !request()->routeIs('*customer.colocation.*') && !($payment->invoice_id ?? false))
         <div class="border-b {{ $walletIsOverdrawn || $walletIsLocked ? 'border-red-200 bg-red-50 text-red-900' : 'border-amber-200 bg-amber-50 text-amber-900' }} px-4 py-3 sm:px-6 lg:px-8">
             <div class="mx-auto flex max-w-[1600px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div class="flex items-start gap-3">
@@ -664,7 +672,9 @@
                     <div class="mb-6 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ $errors->first() }}</div>
                 @endif
 
-                @include('customer.partials.wallet-retention')
+                @if(!request()->routeIs('*customer.colocation.*') && !($payment->invoice_id ?? false))
+                    @include('customer.partials.wallet-retention')
+                @endif
                 @yield('content')
             </div>
 

@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\AppSetting;
+use App\Models\ColocationService;
 use App\Models\Customer;
 use App\Models\DomainOrder;
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Project;
 use App\Services\Domains\DomainOrderService;
@@ -94,6 +96,10 @@ class PaymentService
     public function completeTopUp(Payment $payment, array $payload = []): Payment
     {
         $completed = DB::transaction(function () use ($payment, $payload): Payment {
+            if ($payment->invoice_id) {
+                ColocationService::lockForUpdate()->findOrFail($payment->invoice->colocation_service_id);
+                Invoice::lockForUpdate()->findOrFail($payment->invoice_id);
+            }
             $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
 
             if ($payment->isSuccessful()) {
@@ -114,6 +120,12 @@ class PaymentService
                 'paid_at' => now(),
                 'failed_at' => null,
             ])->save();
+
+            if ($payment->invoice_id) {
+                app(ColocationBillingService::class)->paymentCompleted($payment);
+
+                return $payment->refresh();
+            }
 
             if ($payment->domain_order_id) {
                 DomainOrder::lockForUpdate()->findOrFail($payment->domain_order_id);
@@ -141,12 +153,40 @@ class PaymentService
         });
 
         try {
-            app(HesabroAccountingService::class)->enqueue($completed);
+            if (! $completed->invoice_id) {
+                app(HesabroAccountingService::class)->enqueue($completed);
+            }
         } catch (\Throwable $exception) {
             report($exception);
         }
 
         return $completed;
+    }
+
+    public function createInvoicePayment(Invoice $invoice, string $provider): Payment
+    {
+        // Hesabro's user-charge endpoint specifically funds its external wallet.
+        if (! in_array($provider, ['mellat', 'zibal'], true) || ! array_key_exists($provider, $this->gateways->available())) {
+            throw ValidationException::withMessages(['gateway' => 'درگاه پرداخت مستقیم انتخاب‌شده در دسترس نیست.']);
+        }
+        if (! in_array($invoice->currency, ['IRR', 'IRT'], true) || $invoice->total_amount <= 0) {
+            throw ValidationException::withMessages(['payment' => 'واحد پول یا مبلغ صورتحساب برای پرداخت مستقیم معتبر نیست.']);
+        }
+        $payment = Payment::create([
+            'customer_id' => $invoice->customer_id, 'wallet_id' => $invoice->customer->wallet->id,
+            'invoice_id' => $invoice->id, 'provider' => $provider, 'type' => Payment::TYPE_INVOICE,
+            'status' => Payment::STATUS_PENDING, 'amount' => $invoice->total_amount * ($invoice->currency === 'IRT' ? 10 : 1),
+            'currency' => 'IRR', 'authority' => $this->newAuthority(), 'description' => 'پرداخت هم‌مکانی — '.$invoice->number,
+        ]);
+        try {
+            $payload = $this->gateways->gateway($provider)->initiate($payment);
+        } catch (PaymentGatewayException|ValidationException $exception) {
+            $this->failTopUp($payment, ['failed_reason' => $exception->getMessage()]);
+            throw $exception;
+        }
+        $payment->update(['gateway_payload' => $payload, 'authority' => $payload['authority'] ?? $payment->authority]);
+
+        return $payment->refresh();
     }
 
     public function failTopUp(Payment $payment, array $payload = []): Payment

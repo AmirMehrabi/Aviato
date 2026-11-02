@@ -16,6 +16,7 @@ use App\Models\Project;
 use App\Models\VirtualMachine;
 use App\Models\VmUpgradeOrder;
 use App\Services\CloudDns\CloudDnsService;
+use App\Services\ColocationBillingService;
 use App\Services\Domains\DomainLifecycleService;
 use App\Services\Domains\DomainPricingService;
 use App\Services\Domains\IrpowerCatalogService;
@@ -103,6 +104,12 @@ Artisan::command('billing:generate-monthly-invoices', function (InvoiceService $
 
     $this->info(sprintf('Generated %d monthly invoice(s).', $generated->count()));
 })->purpose('Generate monthly customer usage invoices');
+
+Artisan::command('colocation:bill', function (ColocationBillingService $billing): void {
+    $this->info(sprintf('Created %d renewal invoice(s); sent %d reminder(s).', $billing->generateRenewals(), $billing->sendReminders()));
+})->purpose('Generate co-location renewal invoices, send due reminders, and close ended services');
+
+Schedule::command('colocation:bill')->dailyAt('09:00')->timezone('Asia/Tehran')->withoutOverlapping();
 
 Artisan::command('network-usage:sync {--from= : UTC ISO-8601 backfill start} {--to= : UTC ISO-8601 backfill end} {--max-pages=100}', function (NetworkUsageIngestionService $ingestion) {
     $stats = $ingestion->sync($this->option('from'), $this->option('to'), max(1, (int) $this->option('max-pages')));

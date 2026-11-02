@@ -105,6 +105,9 @@ class AdminAccess
                 return [$ability];
             }
         }
+        if (str_starts_with($name, 'admin.colocation.')) {
+            return [AdminAbility::CustomersRead, AdminAbility::BillingRead, ...($read ? [] : [AdminAbility::BillingManage])];
+        }
         if (str_starts_with($name, 'admin.billing.network.')) {
             return [AdminAbility::NetworkRead, ...($read ? [] : [AdminAbility::NetworkManage])];
         }
