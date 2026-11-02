@@ -30,11 +30,14 @@ class CloudDnsUiTest extends TestCase
         if ($path = getenv('CLOUD_DNS_UX_RENDER_PATH')) {
             file_put_contents($path, $initial->getContent());
         }
+        $this->assertLessThan(strpos($initial->getContent(), 'id="dns-records"'), strpos($initial->getContent(), 'id="domain-nameservers"'));
         $zone->update(['verified_at' => now(), 'status' => 'ready', 'synced_revision' => $zone->revision, 'delegation_status' => 'pending', 'checked_at' => now()]);
-        $this->get($url)->assertOk()->assertDontSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('نیم‌سرورها هنوز متصل نیستند')->assertDontSee('دامنه به آویاتو متصل است');
+        $pending = $this->get($url)->assertOk()->assertDontSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('نیم‌سرورها هنوز متصل نیستند')->assertDontSee('دامنه به آویاتو متصل است');
+        $this->assertLessThan(strpos($pending->getContent(), 'id="domain-nameservers"'), strpos($pending->getContent(), 'id="dns-records"'));
         $zone->update(['delegation_status' => 'active']);
         $html = $this->get($url)->assertOk()->assertSee('دامنه به آویاتو متصل است')->getContent();
-        $this->assertLessThan(strpos($html, 'id="dns-records"'), strpos($html, 'id="domain-nameservers"'));
+        $this->assertLessThan(strpos($html, 'id="domain-nameservers"'), strpos($html, 'id="dns-records"'));
+        $this->assertStringContainsString('<details id="dns-connection-details" class=', $html);
         $zone->update(['status' => 'pending', 'revision' => $zone->revision + 1]);
         $this->get($url)->assertOk()->assertDontSee('دامنه به آویاتو متصل است')->assertSee('تغییرات در انتظار انتشار هستند');
     }

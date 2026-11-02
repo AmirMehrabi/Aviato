@@ -20,9 +20,16 @@
     @if($management)
         @include('cloud-dns.management')
     @else
-        @include('cloud-dns.setup')
-        @if($zone->last_error)<p role="alert" class="rounded-xl bg-amber-50 p-4 text-sm leading-7 text-amber-900">انتشار تغییرات کامل نشد؛ در صورت تداوم مشکل با پشتیبانی تماس بگیرید.</p>@endif
+        @unless($zone->verified_at)
+            @include('cloud-dns.setup')
+        @endunless
         @include('cloud-dns.records')
-
+        @if($zone->last_error)<p role="alert" class="rounded-xl bg-amber-50 p-4 text-sm leading-7 text-amber-900">انتشار تغییرات کامل نشد؛ در صورت تداوم مشکل با پشتیبانی تماس بگیرید.</p>@endif
+        @if($zone->verified_at)
+            <details id="dns-connection-details" class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
+                <summary class="cursor-pointer text-sm font-bold text-slate-600">نیم‌سرورها و بررسی اتصال دامنه</summary>
+                <div class="mt-4">@include('cloud-dns.setup')</div>
+            </details>
+        @endif
     @endif
 </div>
