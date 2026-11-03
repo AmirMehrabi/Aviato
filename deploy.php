@@ -40,6 +40,7 @@ after('deploy:shared', 'deploy:prepare_storage');
 host('production')
     ->set('hostname', getenv('AVIATO_DEPLOY_HOST') ?: '5.202.19.100')
     ->set('port', (int) (getenv('AVIATO_DEPLOY_PORT') ?: 2220))
+    ->set('ssh_arguments', ['-o PubkeyAuthentication=no'])
     ->set('remote_user', 'deploy')
     ->set('deploy_path', '/var/www/html/aviato')
     ->set('branch', 'master');
