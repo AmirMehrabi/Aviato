@@ -174,6 +174,7 @@
                                 </div>
                             </div>
 
+                            <p class="mt-3 text-sm font-bold text-blue-700" x-show="server(@js($server['id'])).operation_label" x-text="server(@js($server['id'])).operation_label">{{ $server['operation_label'] }}</p>
                             <div class="mt-4 rounded-2xl bg-slate-50 p-4">
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="min-w-0">

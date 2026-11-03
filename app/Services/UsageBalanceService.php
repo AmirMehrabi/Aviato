@@ -92,7 +92,7 @@ class UsageBalanceService
             ->whereNotIn('status', [VirtualMachine::STATUS_DELETING, VirtualMachine::STATUS_DELETED])
             ->get()
             ->sum(function (VirtualMachine $vm) use ($until): int {
-                if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
+                if ($vm->isLifecycleLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
                     return 0;
                 }
 

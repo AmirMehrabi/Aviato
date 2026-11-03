@@ -30,7 +30,7 @@ class UsageBillingService
         $until = $vm->usageBillingUntil($until ?? now());
         $from = $vm->last_billed_at ?? $vm->created_at ?? $until;
 
-        if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
+        if ($vm->isLifecycleLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
             return [
                 'from' => $from,
                 'until' => $until,

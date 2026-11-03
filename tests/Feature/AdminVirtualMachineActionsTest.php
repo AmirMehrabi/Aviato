@@ -20,6 +20,7 @@ use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AdminVirtualMachineActionsTest extends TestCase
@@ -156,15 +157,9 @@ class AdminVirtualMachineActionsTest extends TestCase
             $mock->shouldReceive('shutdownVm')
                 ->once()
                 ->andReturn(['task_id' => 'UPID:pve1:shutdown']);
-            $mock->shouldReceive('waitForTask')
-                ->once()
-                ->withArgs(fn ($server, string $node, string $taskId, int $timeout): bool => $node === 'pve1'
-                    && $taskId === 'UPID:pve1:shutdown'
-                    && $timeout === 180)
-                ->andReturn(['status' => 'OK']);
-            $mock->shouldReceive('waitForVmStopped')
-                ->once()
-                ->andReturn(['status' => 'stopped']);
+            $mock->shouldReceive('vmConfig')->twice()->andReturn([]);
+            $mock->shouldReceive('taskStatus')->once()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
         });
 
         $this->actingAs($admin, 'admin');
@@ -181,6 +176,17 @@ class AdminVirtualMachineActionsTest extends TestCase
         $this->assertNotNull($vm->last_stopped_at);
         $this->assertSame(1, data_get($vm->desired_state, 'power_generation'));
         $this->assertSame('admin_stop', data_get($vm->desired_state, 'power_intent_source'));
+    }
+
+    public function test_admin_can_request_force_stop_separately_from_shutdown(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->create();
+        $vm = $this->readyVm(Customer::factory()->create());
+        $this->actingAs($admin, 'admin')->post($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/force-stop', [
+            'power_generation' => 0, 'confirm_force_stop' => 1,
+        ])->assertRedirect()->assertSessionHas('status');
+        $this->assertDatabaseHas('vm_operations', ['virtual_machine_id' => $vm->id, 'action' => 'force-stop', 'actor_type' => 'admin', 'actor_id' => $admin->id]);
     }
 
     public function test_admin_stale_stop_request_cannot_override_a_newer_start_intent(): void

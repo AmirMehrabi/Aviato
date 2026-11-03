@@ -1328,6 +1328,11 @@ class ProxmoxService
     /**
      * @return array<string, mixed>
      */
+    public function taskStatus(ProxmoxServer $server, string $node, string $upid): array
+    {
+        return $this->getData($server, "/nodes/{$node}/tasks/".rawurlencode($upid).'/status') ?? [];
+    }
+
     public function waitForTask(ProxmoxServer $server, string $node, string $upid, int $timeoutSeconds = 300): array
     {
         $deadline = now()->addSeconds($timeoutSeconds);

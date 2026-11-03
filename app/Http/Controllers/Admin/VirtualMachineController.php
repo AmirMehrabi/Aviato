@@ -21,9 +21,9 @@ use App\Services\IpPoolService;
 use App\Services\NetworkBillingPolicyAdjustmentService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBalanceService;
-use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VirtualMachineIpReassignmentService;
+use App\Services\VmOperationService;
 use App\Services\VmTransferService;
 use App\Services\WalletService;
 use App\Support\AdminTableSort;
@@ -472,81 +472,16 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'این VM تا شارژ شدن کیف پول فضای کاری مربوطه قابل روشن کردن نیست.');
         }
 
-        // Accrue usage after the provider confirms the power change.
-
-        if (! $virtualMachine->isRunning()) {
-            if ($virtualMachine->isProxmox() && (! $virtualMachine->proxmoxServer || ! $virtualMachine->node || ! $virtualMachine->vmid)) {
-                return back()->with('error', 'اطلاعات Proxmox، Node یا VMID برای روشن کردن کامل نیست.');
-            }
-
-            if ($virtualMachine->isHetzner() && (! $virtualMachine->infrastructureLocation?->hetznerAccount || ! $virtualMachine->remote_id)) {
-                return back()->with('error', 'اطلاعات Hetzner برای روشن کردن کامل نیست.');
-            }
-
-            try {
-                if ($virtualMachine->isHetzner()) {
-                    $serverInfo = $this->hetzner->server($virtualMachine->infrastructureLocation->hetznerAccount, $virtualMachine->remote_id);
-                    $remoteRunning = ($serverInfo['server']['status'] ?? '') === 'running';
-
-                    if (! $remoteRunning) {
-                        $start = $this->hetzner->powerOn($virtualMachine->infrastructureLocation->hetznerAccount, $virtualMachine->remote_id);
-                        $this->hetzner->waitForAction($virtualMachine->infrastructureLocation->hetznerAccount, $start['action']['id'] ?? null, 180);
-                    }
-                } else {
-                    $remoteStatus = $this->proxmox->vmStatus($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
-                    $remoteRunning = ($remoteStatus['status'] ?? '') === 'running';
-
-                    if (! $remoteRunning) {
-                        $start = $this->proxmox->startVm(
-                            $virtualMachine->proxmoxServer,
-                            $virtualMachine->node,
-                            (int) $virtualMachine->vmid,
-                            [
-                                'source' => 'admin_start',
-                                'virtual_machine_id' => $virtualMachine->id,
-                                'admin_id' => request()->user('admin')?->getAuthIdentifier(),
-                                'ip' => request()->ip(),
-                            ],
-                        );
-
-                        if (! empty($start['task_id'])) {
-                            $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $start['task_id'], 180);
-                        }
-
-                        $postStartStatus = $this->proxmox->vmStatus($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
-
-                        if (($postStartStatus['status'] ?? '') !== 'running') {
-                            sleep(3);
-                            $postStartStatus = $this->proxmox->vmStatus($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid);
-                        }
-
-                        if (($postStartStatus['status'] ?? '') !== 'running') {
-                            return back()->with('error', 'VM پس از ارسال فرمان روشن شدن، در Proxmox اجرا نشد. وضعیت فعلی: '.($postStartStatus['status'] ?? 'ناشناخته').'. لطفاً پیکربندی VM را بررسی کنید.');
-                        }
-                    }
-                }
-            } catch (Throwable $exception) {
-                return back()->with('error', 'روشن کردن VM ناموفق بود: '.$exception->getMessage());
-            }
+        if ($virtualMachine->isRunning()) {
+            return back()->with('status', 'سرور از قبل روشن است.');
         }
 
-        app(UsageBillingService::class)->accrueVm($virtualMachine);
-        $virtualMachine->refresh();
-        $virtualMachine->forceFill([
-            'status' => VirtualMachine::STATUS_RUNNING,
-            'provisioning_status' => VirtualMachine::PROVISION_READY,
-            'last_started_at' => now(),
-            'last_billed_at' => now(),
-            'unbilled_amount' => 0,
-            'desired_state' => array_merge($virtualMachine->desired_state ?? [], [
-                'status' => VirtualMachine::STATUS_RUNNING,
-                'power_generation' => (int) data_get($virtualMachine->desired_state, 'power_generation', 0) + 1,
-                'power_intent_at' => now()->toISOString(),
-                'power_intent_source' => 'admin_start',
-            ]),
-        ])->save();
+        abort_unless($virtualMachine->provisioning_status === VirtualMachine::PROVISION_READY, 422);
+        abort_unless(($virtualMachine->isProxmox() && $virtualMachine->proxmoxServer && $virtualMachine->node && $virtualMachine->vmid)
+            || ($virtualMachine->isHetzner() && $virtualMachine->infrastructureLocation?->hetznerAccount && $virtualMachine->remote_id), 422);
+        app(VmOperationService::class)->request($virtualMachine, 'start', 'admin', request()->user('admin')?->id);
 
-        return back()->with('status', 'VM روشن شد. از این لحظه CPU و RAM هم محاسبه می‌شوند.');
+        return back()->with('status', 'درخواست روشن کردن ثبت شد.');
     }
 
     public function stop(VirtualMachine $virtualMachine): RedirectResponse
@@ -584,61 +519,20 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'اطلاعات Hetzner برای خاموش کردن کامل نیست.');
         }
 
-        // Accrue usage after the provider confirms the power change.
+        app(VmOperationService::class)->request($virtualMachine, 'shutdown', 'admin', request()->user('admin')?->id, $currentGeneration);
 
-        try {
-            if ($virtualMachine->isHetzner()) {
-                $shutdown = $this->hetzner->shutdown($virtualMachine->infrastructureLocation->hetznerAccount, $virtualMachine->remote_id);
-                $this->hetzner->waitForAction($virtualMachine->infrastructureLocation->hetznerAccount, $shutdown['action']['id'] ?? null, 180);
-            } else {
-                Log::info('Admin VM shutdown requested', [
-                    'virtual_machine_id' => $virtualMachine->id,
-                    'uuid' => $virtualMachine->uuid,
-                    'vmid' => $virtualMachine->vmid,
-                    'node' => $virtualMachine->node,
-                    'admin_id' => request()->user('admin')?->getAuthIdentifier(),
-                    'power_generation' => $currentGeneration,
-                    'ip' => request()->ip(),
-                    'user_agent' => request()->userAgent(),
-                ]);
-                $shutdown = $this->proxmox->shutdownVm(
-                    $virtualMachine->proxmoxServer,
-                    $virtualMachine->node,
-                    (int) $virtualMachine->vmid,
-                    context: [
-                        'source' => 'admin_stop',
-                        'virtual_machine_id' => $virtualMachine->id,
-                        'admin_id' => request()->user('admin')?->getAuthIdentifier(),
-                        'ip' => request()->ip(),
-                    ],
-                );
+        return back()->with('status', 'درخواست خاموش کردن ثبت شد.');
+    }
 
-                if (! empty($shutdown['task_id'])) {
-                    $this->proxmox->waitForTask($virtualMachine->proxmoxServer, $virtualMachine->node, (string) $shutdown['task_id'], 180);
-                }
+    public function forceStop(VirtualMachine $virtualMachine): RedirectResponse
+    {
+        request()->validate(['confirm_force_stop' => ['required', 'accepted'], 'power_generation' => ['required', 'integer']]);
+        abort_unless(! $virtualMachine->isLxc() && $virtualMachine->provisioning_status === VirtualMachine::PROVISION_READY &&
+            (($virtualMachine->isProxmox() && $virtualMachine->proxmoxServer && $virtualMachine->node && $virtualMachine->vmid)
+            || ($virtualMachine->isHetzner() && $virtualMachine->infrastructureLocation?->hetznerAccount && $virtualMachine->remote_id)), 422);
+        app(VmOperationService::class)->request($virtualMachine, 'force-stop', 'admin', request()->user('admin')?->id, request()->integer('power_generation'));
 
-                $this->proxmox->waitForVmStopped($virtualMachine->proxmoxServer, $virtualMachine->node, (int) $virtualMachine->vmid, 60);
-            }
-        } catch (Throwable $exception) {
-            return back()->with('error', 'خاموش کردن VM ناموفق بود: '.$exception->getMessage());
-        }
-
-        app(UsageBillingService::class)->accrueVm($virtualMachine);
-        $virtualMachine->refresh();
-        $virtualMachine->forceFill([
-            'status' => VirtualMachine::STATUS_STOPPED,
-            'last_stopped_at' => now(),
-            'last_billed_at' => now(),
-            'unbilled_amount' => 0,
-            'desired_state' => array_merge($virtualMachine->desired_state ?? [], [
-                'status' => VirtualMachine::STATUS_STOPPED,
-                'power_generation' => $currentGeneration + 1,
-                'power_intent_at' => now()->toISOString(),
-                'power_intent_source' => 'admin_stop',
-            ]),
-        ])->save();
-
-        return back()->with('status', 'VM خاموش شد. فقط IP و Disk محاسبه می‌شوند.');
+        return back()->with('status', 'درخواست خاموش کردن اجباری ثبت شد.');
     }
 
     public function showTransferForm(VirtualMachine $virtualMachine): View

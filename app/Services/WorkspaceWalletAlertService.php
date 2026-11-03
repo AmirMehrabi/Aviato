@@ -57,7 +57,7 @@ class WorkspaceWalletAlertService
         $hours = ResourceRate::hoursPerMonth();
         $monthly = 0;
         foreach ($machines as $vm) {
-            if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
+            if ($vm->isLifecycleLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
                 continue;
             }
 

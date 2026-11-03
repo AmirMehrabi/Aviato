@@ -10,6 +10,7 @@
 
 @section('content')
     <div class="mx-auto max-w-7xl">
+        @include('components.vm-operation-status', ['machine' => $server])
         @include('customer.servers.partials.password-reset-status')
         @include('customer.servers.partials.retention-cost')
         @include('customer.servers.tabs.'.$tab)

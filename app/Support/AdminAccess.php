@@ -148,7 +148,7 @@ class AdminAccess
                 $action === 'options' => [AdminAbility::VmManage],
                 str_contains($name, '.console.') => [AdminAbility::VmConsole],
                 str_contains($name, '.transfer'), $action === 'move-node' => [AdminAbility::VmTransfer],
-                in_array($action, ['start', 'stop'], true) => [AdminAbility::VmPower],
+                in_array($action, ['start', 'stop', 'forceStop', 'force-stop'], true) => [AdminAbility::VmPower],
                 $action === 'destroy' => [AdminAbility::VmDelete],
                 default => $read ? [] : [AdminAbility::VmManage],
             }];

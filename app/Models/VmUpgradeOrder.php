@@ -30,6 +30,31 @@ class VmUpgradeOrder extends Model
 {
     protected static function booted(): void
     {
+        static::created(function (VmUpgradeOrder $order): void {
+            $order->virtualMachine->operations()->create([
+                'active_vm_id' => $order->virtual_machine_id,
+                'action' => 'upgrade', 'actor_type' => 'customer', 'actor_id' => $order->customer_id,
+                'details' => ['upgrade_order_id' => $order->id, 'requested_changes' => $order->after_snapshot],
+            ]);
+        });
+        static::updated(function (VmUpgradeOrder $order): void {
+            $operation = $order->virtualMachine->operations()->where('action', 'upgrade')->where('details->upgrade_order_id', $order->id)->first();
+            if (! $operation) {
+                return;
+            }
+            $terminal = in_array($order->status, [self::STATUS_SUCCEEDED, self::STATUS_FAILED], true);
+            $operation->update([
+                'status' => match ($order->status) {
+                    self::STATUS_APPLYING => 'running', self::STATUS_RECONCILIATION_REQUIRED => 'checking',
+                    self::STATUS_SUCCEEDED => 'succeeded', self::STATUS_FAILED => 'failed', default => 'queued',
+                },
+                'active_vm_id' => $terminal ? null : $order->virtual_machine_id,
+                'started_at' => $operation->started_at ?? $order->last_attempt_at,
+                'finished_at' => $terminal ? now() : null,
+                'task_id' => $order->proxmox_task_id,
+                'details' => array_merge($operation->details ?? [], ['steps' => $order->progress]),
+            ]);
+        });
         static::updated(function (VmUpgradeOrder $order): void {
             if (! $order->wasChanged('status') || ! in_array($order->status, [self::STATUS_SUCCEEDED, self::STATUS_FAILED, self::STATUS_RECONCILIATION_REQUIRED], true)) {
                 return;

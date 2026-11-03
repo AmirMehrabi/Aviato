@@ -321,6 +321,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             ->name('admin.virtual-machines.move-node');
         Route::post('virtual-machines/{virtualMachine}/start', [VirtualMachineController::class, 'start'])
             ->name('admin.virtual-machines.start');
+        Route::post('virtual-machines/{virtualMachine}/force-stop', [VirtualMachineController::class, 'forceStop'])->name('admin.virtual-machines.force-stop');
         Route::post('virtual-machines/{virtualMachine}/stop', [VirtualMachineController::class, 'stop'])
             ->name('admin.virtual-machines.stop');
         Route::patch('virtual-machines/{virtualMachine}/ip-address', [VirtualMachineController::class, 'updateIpAddress'])
@@ -587,6 +588,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::post('servers/{virtualMachine}/reset-password', [ServerController::class, 'resetPassword'])->middleware('throttle:3,1')->name('customer.servers.reset-password');
             Route::post('servers/{virtualMachine}/rebuild', [ServerController::class, 'rebuild'])->name('customer.servers.rebuild');
             Route::post('servers/{virtualMachine}/start', [ServerController::class, 'start'])->name('customer.servers.start');
+            Route::post('servers/{virtualMachine}/force-stop', [ServerController::class, 'forceStop'])->name('customer.servers.force-stop');
             Route::post('servers/{virtualMachine}/stop', [ServerController::class, 'stop'])->name('customer.servers.stop');
             Route::post('servers/{virtualMachine}/restart', [ServerController::class, 'restart'])->name('customer.servers.restart');
             Route::patch('servers/{virtualMachine}/display-name', [ServerController::class, 'updateDisplayName'])->name('customer.servers.display-name.update');

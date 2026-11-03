@@ -15,7 +15,7 @@ class BillingService
 {
     public function estimateMonthly(VirtualMachine $vm): int
     {
-        if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
+        if ($vm->isLifecycleLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
             return 0;
         }
 
@@ -24,7 +24,7 @@ class BillingService
 
     public function estimateStoppedMonthly(VirtualMachine $vm): int
     {
-        if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
+        if ($vm->isLifecycleLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
             return 0;
         }
 
@@ -33,7 +33,7 @@ class BillingService
 
     public function currentAccrued(VirtualMachine $vm): int
     {
-        if ($vm->isActionLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
+        if ($vm->isLifecycleLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
             return 0;
         }
 
@@ -126,11 +126,11 @@ class BillingService
             'running' => $vms->where('status', VirtualMachine::STATUS_RUNNING)->count(),
             'stopped' => $vms->where('status', VirtualMachine::STATUS_STOPPED)->count(),
             'monthly_spend' => $vms
-                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isLifecycleLocked())
                 ->sum(fn (VirtualMachine $vm): int => ($vm->isRunning() ? $this->estimateMonthly($vm) : $this->estimateStoppedMonthly($vm))
                     + $vm->disks->where('status', VmDisk::STATUS_READY)->sum(fn (VmDisk $disk): int => (int) round($this->extraDiskHourly($disk) * ResourceRate::hoursPerMonth()))),
             'unbilled_accrued' => $vms
-                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isLifecycleLocked())
                 ->sum(fn (VirtualMachine $vm): int => $this->currentAccrued($vm)),
         ];
     }
@@ -152,11 +152,11 @@ class BillingService
             'running' => $vms->where('status', VirtualMachine::STATUS_RUNNING)->count(),
             'stopped' => $vms->where('status', VirtualMachine::STATUS_STOPPED)->count(),
             'monthly_spend' => $vms
-                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isLifecycleLocked())
                 ->sum(fn (VirtualMachine $vm): int => ($vm->isRunning() ? $this->estimateMonthly($vm) : $this->estimateStoppedMonthly($vm))
                     + $vm->disks->where('status', VmDisk::STATUS_READY)->sum(fn (VmDisk $disk): int => (int) round($this->extraDiskHourly($disk) * ResourceRate::hoursPerMonth()))),
             'unbilled_accrued' => $vms
-                ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+                ->reject(fn (VirtualMachine $vm): bool => $vm->isLifecycleLocked())
                 ->sum(fn (VirtualMachine $vm): int => $this->currentAccrued($vm)),
         ];
     }

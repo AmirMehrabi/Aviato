@@ -181,6 +181,11 @@ class HetznerCloudService
         return $response->json() ?: ['deleted' => true];
     }
 
+    public function actionStatus(HetznerAccount $account, int|string $actionId): array
+    {
+        return $this->get($account, '/actions/'.$actionId)['action'] ?? [];
+    }
+
     public function waitForAction(HetznerAccount $account, int|string|null $actionId, int $timeoutSeconds = 300): array
     {
         if (! $actionId) {

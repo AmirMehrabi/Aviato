@@ -30,6 +30,7 @@ use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmActivityRecorder;
+use App\Services\VmOperationService;
 use App\Services\VmUpgradeService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
@@ -95,7 +96,7 @@ class ServerController extends Controller
 
         $summarySource = $this->projects->visibleVms($activeProject, $customer)->with(['bundle', 'disks', 'infrastructureLocation'])->get();
         $monthlySpend = $summarySource
-            ->reject(fn (VirtualMachine $vm): bool => $vm->isActionLocked())
+            ->reject(fn (VirtualMachine $vm): bool => $vm->isLifecycleLocked())
             ->sum(fn (VirtualMachine $vm): int => ($vm->isRunning()
                 ? $this->billing->estimateMonthly($vm)
                 : $this->billing->estimateStoppedMonthly($vm))
@@ -124,7 +125,7 @@ class ServerController extends Controller
                 'disk_gb' => $server->disk_gb,
                 'extra_disk_count' => $server->disks->where('status', 'ready')->count(),
                 'extra_disk_monthly_cost' => $server->disks->where('status', 'ready')->sum(fn ($disk): int => (int) round($this->billing->extraDiskHourly($disk) * ResourceRate::hoursPerMonth())),
-                'monthly_cost' => $server->isActionLocked()
+                'monthly_cost' => $server->isLifecycleLocked()
                     ? 0
                     : ($server->isRunning()
                         ? $this->billing->estimateMonthly($server)
@@ -133,6 +134,7 @@ class ServerController extends Controller
                 'billing_hint' => $server->isRunning() ? 'CPU/RAM فعال' : 'دیسک و IP پایدار',
                 'status' => $server->status,
                 'status_label' => $server->customerStatusLabel(),
+                'operation_label' => ($operation = $server->operations()->whereNotNull('active_vm_id')->first()) ? $operation->label().' · '.$operation->customerStatus() : null,
                 'status_class' => $this->statusClass($server->status),
                 'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
@@ -219,12 +221,13 @@ class ServerController extends Controller
                 'id' => $server->uuid,
                 'status' => $server->status,
                 'status_label' => $server->customerStatusLabel(),
+                'operation_label' => ($operation = $server->operations()->whereNotNull('active_vm_id')->first()) ? $operation->label().' · '.$operation->customerStatus() : null,
                 'status_class' => $this->statusClass($server->status),
                 'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
                 'provisioning_pending' => $server->provisioning_status === VirtualMachine::PROVISION_PENDING,
                 'password_reset_status' => $server->password_reset_status,
-                'action_pending' => $server->password_reset_status === 'pending' || $server->provisioning_status === VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null && ! $server->deleteAttemptIsStale()),
+                'action_pending' => $server->operations()->whereNotNull('active_vm_id')->exists() || $server->password_reset_status === 'pending' || $server->provisioning_status === VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && $server->delete_failed_at === null && ! $server->deleteAttemptIsStale()),
                 'is_deleting' => $server->isDeleting(),
                 'delete_failed' => $server->isDeleting() && $server->delete_failed_at !== null,
                 'delete_stale' => $server->deleteAttemptIsStale(),
@@ -582,7 +585,7 @@ class ServerController extends Controller
             ->map(fn (int $size): array => $this->upgrades->previewExtraDisk($server, $size))
             ->values();
 
-        $monthlyCost = $server->isActionLocked()
+        $monthlyCost = $server->isLifecycleLocked()
             ? 0
             : ($server->isRunning()
                 ? $this->billing->estimateMonthly($server)
@@ -844,57 +847,9 @@ class ServerController extends Controller
             return back()->with('error', 'اطلاعات زیرساخت برای روشن کردن سرور کامل نیست.');
         }
 
-        // Usage is accrued at the confirmed power-state transition below.
-        $this->activities->record($server, 'power', 'requested', 'درخواست روشن کردن سرور ثبت شد', null, $customer);
+        app(VmOperationService::class)->request($server, 'start', 'customer', $customer->id, null);
 
-        try {
-            if ($server->isHetzner()) {
-                $serverInfo = $this->hetzner->server($server->infrastructureLocation->hetznerAccount, $server->remote_id);
-
-                if (($serverInfo['server']['status'] ?? '') !== 'running') {
-                    $start = $this->hetzner->powerOn($server->infrastructureLocation->hetznerAccount, $server->remote_id);
-                    $this->hetzner->waitForAction($server->infrastructureLocation->hetznerAccount, $start['action']['id'] ?? null, 180);
-                }
-            } else {
-                $remoteStatus = $this->proxmox->vmStatus($server->proxmoxServer, $server->node, (int) $server->vmid);
-
-                if (($remoteStatus['status'] ?? '') !== 'running') {
-                    $start = $this->proxmox->startVm($server->proxmoxServer, $server->node, (int) $server->vmid, [
-                        'source' => 'customer_start',
-                        'virtual_machine_id' => $server->id,
-                        'customer_id' => $customer->getAuthIdentifier(),
-                        'ip' => $request->ip(),
-                    ]);
-
-                    if (! empty($start['task_id'])) {
-                        $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $start['task_id'], 180);
-                    }
-                }
-            }
-        } catch (Throwable $exception) {
-            report($exception);
-            $this->activities->record($server, 'power', 'failed', 'روشن کردن سرور ناموفق بود', null, $customer);
-
-            return back()->with('error', 'روشن کردن سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
-        }
-
-        $this->usageBilling->accrueVm($server);
-        $server->refresh();
-        $server->forceFill([
-            'status' => VirtualMachine::STATUS_RUNNING,
-            'last_started_at' => now(),
-            'last_billed_at' => now(),
-            'unbilled_amount' => 0,
-            'desired_state' => array_merge($server->desired_state ?? [], [
-                'status' => VirtualMachine::STATUS_RUNNING,
-                'power_generation' => (int) data_get($server->desired_state, 'power_generation', 0) + 1,
-                'power_intent_at' => now()->toISOString(),
-                'power_intent_source' => 'customer_start',
-            ]),
-        ])->save();
-        $this->activities->record($server, 'power', 'succeeded', 'سرور روشن شد', null, $customer);
-
-        return back()->with('status', 'سرور روشن شد.');
+        return back()->with('status', 'درخواست ثبت شد. پیشرفت آن را در همین صفحه دنبال کنید.');
     }
 
     public function stop(Request $request, VirtualMachine $virtualMachine): RedirectResponse
@@ -929,57 +884,9 @@ class ServerController extends Controller
             return back()->with('error', 'اطلاعات زیرساخت برای خاموش کردن سرور کامل نیست.');
         }
 
-        // Usage is accrued at the confirmed power-state transition below.
-        $this->activities->record($server, 'power', 'requested', 'درخواست خاموش کردن سرور ثبت شد', null, $customer);
+        app(VmOperationService::class)->request($server, 'shutdown', 'customer', $customer->id, $currentGeneration);
 
-        try {
-            if ($server->isHetzner()) {
-                $shutdown = $this->hetzner->shutdown($server->infrastructureLocation->hetznerAccount, $server->remote_id);
-                $this->hetzner->waitForAction($server->infrastructureLocation->hetznerAccount, $shutdown['action']['id'] ?? null, 180);
-            } else {
-                Log::info('Customer VM shutdown requested', [
-                    'virtual_machine_id' => $server->id,
-                    'customer_id' => $customer->getAuthIdentifier(),
-                    'power_generation' => $currentGeneration,
-                    'ip' => $request->ip(),
-                ]);
-                $shutdown = $this->proxmox->shutdownVm($server->proxmoxServer, $server->node, (int) $server->vmid, context: [
-                    'source' => 'customer_stop',
-                    'virtual_machine_id' => $server->id,
-                    'customer_id' => $customer->getAuthIdentifier(),
-                    'ip' => $request->ip(),
-                ]);
-
-                if (! empty($shutdown['task_id'])) {
-                    $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $shutdown['task_id'], 180);
-                }
-
-                $this->proxmox->waitForVmStopped($server->proxmoxServer, $server->node, (int) $server->vmid, 60);
-            }
-        } catch (Throwable $exception) {
-            report($exception);
-            $this->activities->record($server, 'power', 'failed', 'خاموش کردن سرور ناموفق بود', null, $customer);
-
-            return back()->with('error', 'خاموش کردن سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
-        }
-
-        $this->usageBilling->accrueVm($server);
-        $server->refresh();
-        $server->forceFill([
-            'status' => VirtualMachine::STATUS_STOPPED,
-            'last_stopped_at' => now(),
-            'last_billed_at' => now(),
-            'unbilled_amount' => 0,
-            'desired_state' => array_merge($server->desired_state ?? [], [
-                'status' => VirtualMachine::STATUS_STOPPED,
-                'power_generation' => $currentGeneration + 1,
-                'power_intent_at' => now()->toISOString(),
-                'power_intent_source' => 'customer_stop',
-            ]),
-        ])->save();
-        $this->activities->record($server, 'power', 'succeeded', 'سرور خاموش شد', null, $customer);
-
-        return back()->with('status', 'سرور خاموش شد.');
+        return back()->with('status', 'درخواست ثبت شد. پیشرفت آن را در همین صفحه دنبال کنید.');
     }
 
     public function restart(Request $request, VirtualMachine $virtualMachine): RedirectResponse
@@ -1003,42 +910,21 @@ class ServerController extends Controller
             return back()->with('error', 'اطلاعات زیرساخت برای ری‌استارت سرور کامل نیست.');
         }
 
-        $this->activities->record($server, 'power', 'requested', 'درخواست ری‌استارت سرور ثبت شد', null, $customer);
+        app(VmOperationService::class)->request($server, 'restart', 'customer', $customer->id, $currentGeneration);
 
-        try {
-            if ($server->isHetzner()) {
-                $reboot = $this->hetzner->reboot($server->infrastructureLocation->hetznerAccount, $server->remote_id);
-                $this->hetzner->waitForAction($server->infrastructureLocation->hetznerAccount, $reboot['action']['id'] ?? null, 180);
-            } else {
-                $reboot = $this->proxmox->rebootVm($server->proxmoxServer, $server->node, (int) $server->vmid, [
-                    'source' => 'customer_restart',
-                    'virtual_machine_id' => $server->id,
-                    'customer_id' => $customer->getAuthIdentifier(),
-                    'ip' => $request->ip(),
-                ]);
+        return back()->with('status', 'درخواست ثبت شد. پیشرفت آن را در همین صفحه دنبال کنید.');
+    }
 
-                if (! empty($reboot['task_id'])) {
-                    $this->proxmox->waitForTask($server->proxmoxServer, $server->node, (string) $reboot['task_id'], 180);
-                }
-            }
-        } catch (Throwable $exception) {
-            report($exception);
-            $this->activities->record($server, 'power', 'failed', 'ری‌استارت سرور ناموفق بود', null, $customer);
+    public function forceStop(Request $request, VirtualMachine $virtualMachine): RedirectResponse
+    {
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine, manage: true);
+        $request->validate(['confirm_force_stop' => ['required', 'accepted'], 'power_generation' => ['required', 'integer']]);
+        abort_unless(! $server->isLxc() && $server->provisioning_status === VirtualMachine::PROVISION_READY &&
+            (($server->isProxmox() && $server->proxmoxServer && $server->node && $server->vmid)
+            || ($server->isHetzner() && $server->infrastructureLocation?->hetznerAccount && $server->remote_id)), 422);
+        app(VmOperationService::class)->request($server, 'force-stop', 'customer', $request->user('customer')->id, $request->integer('power_generation'));
 
-            return back()->with('error', 'ری‌استارت سرور ناموفق بود. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
-        }
-
-        $server->forceFill([
-            'desired_state' => array_merge($server->desired_state ?? [], [
-                'status' => VirtualMachine::STATUS_RUNNING,
-                'power_generation' => $currentGeneration + 1,
-                'power_intent_at' => now()->toISOString(),
-                'power_intent_source' => 'customer_restart',
-            ]),
-        ])->save();
-        $this->activities->record($server, 'power', 'succeeded', 'سرور ری‌استارت شد', null, $customer);
-
-        return back()->with('status', 'سرور ری‌استارت شد.');
+        return back()->with('status', 'درخواست خاموش کردن اجباری ثبت شد. پس از خاموش شدن، می‌توانید سرور را روشن کنید.');
     }
 
     public function destroy(Request $request, VirtualMachine $virtualMachine): RedirectResponse

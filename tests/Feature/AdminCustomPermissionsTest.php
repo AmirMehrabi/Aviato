@@ -203,6 +203,12 @@ class AdminCustomPermissionsTest extends TestCase
         }
     }
 
+    public function test_force_stop_requires_power_permission(): void
+    {
+        $this->assertTrue(AdminAccess::allowsRoute($this->custom(['virtual-machines.power']), 'admin.virtual-machines.force-stop', 'POST'));
+        $this->assertFalse(AdminAccess::allowsRoute($this->custom(['virtual-machines.read']), 'admin.virtual-machines.force-stop', 'POST'));
+    }
+
     public function test_customer_edit_permission_cannot_bypass_suspend_permission(): void
     {
         $customer = Customer::factory()->create(['status' => 'active']);

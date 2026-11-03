@@ -8,6 +8,7 @@ use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class VirtualMachineDeletionService
 {
@@ -51,6 +52,10 @@ class VirtualMachineDeletionService
 
                     return $locked;
                 }
+            }
+
+            if ($locked->operations()->whereNotNull('active_vm_id')->exists() || $locked->pendingUpgradeOrders()->exists()) {
+                throw ValidationException::withMessages(['server' => 'تا پایان درخواست فعلی، حذف سرور در دسترس نیست.']);
             }
 
             if ($locked->isDeleted()) {

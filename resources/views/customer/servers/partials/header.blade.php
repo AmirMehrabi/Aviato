@@ -9,7 +9,7 @@
         ['key' => 'delete', 'label' => 'حذف', 'href' => route('customer.servers.tab', [$server, 'tab' => 'delete'], false)],
         ['key' => 'activity', 'label' => 'فعالیت', 'href' => route('customer.servers.tab', [$server, 'tab' => 'activity'], false)],
     ];
-    $consoleReady = $server->isProxmox() && ! $server->isLxc() && $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $server->isActionLocked();
+    $consoleReady = $server->isProxmox() && ! $server->isLxc() && $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $server->isLifecycleLocked();
     $providerReady = $server->isHetzner()
         ? ($server->infrastructureLocation?->hetznerAccount && $server->remote_id)
         : ($server->proxmoxServer && $server->node && $server->vmid);
@@ -97,3 +97,16 @@
         </nav>
     </header>
 </div>
+
+@if (($canManageServer ?? false) && ! $server->isLxc() && ! $server->isActionLocked() && $server->isRunning() && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY)
+    <details class="mx-auto my-4 max-w-7xl rounded-xl border border-slate-200 p-4 text-sm">
+        <summary class="cursor-pointer font-bold text-slate-700">سرور پاسخ نمی‌دهد؟</summary>
+        <p class="mt-3 leading-7 text-slate-600">ابتدا راه‌اندازی مجدد را امتحان کنید. اگر درخواست قبلی پایان یافته ولی سرور همچنان پاسخ نمی‌دهد، می‌توانید آن را اجباری خاموش کنید. اطلاعات ذخیره‌نشده ممکن است از بین بروند. پس از خاموش شدن، سرور را دوباره روشن کنید.</p>
+        <form method="POST" action="{{ route('customer.servers.force-stop', $server, false) }}" class="mt-3 flex flex-wrap items-center gap-3">
+            @csrf
+            <input type="hidden" name="power_generation" value="{{ (int) data_get($server->desired_state, 'power_generation', 0) }}">
+            <label class="flex items-center gap-2"><input type="checkbox" name="confirm_force_stop" value="1" required>خطر از دست رفتن اطلاعات ذخیره‌نشده را می‌پذیرم.</label>
+            <button class="rounded-lg bg-red-700 px-4 py-2 font-bold text-white" type="submit">خاموش کردن اجباری</button>
+        </form>
+    </details>
+@endif

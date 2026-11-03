@@ -3,6 +3,8 @@
 use App\Jobs\ApplyVmUpgradeJob;
 use App\Jobs\CheckDnsDelegation;
 use App\Jobs\DeleteVirtualMachineJob;
+use App\Jobs\ProcessVmOperation;
+use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Jobs\ReconcilePendingVirtualMachine;
 use App\Jobs\ReconcileWalletRestrictions;
 use App\Jobs\RunNetworkIntegration;
@@ -14,6 +16,7 @@ use App\Models\HetznerAccount;
 use App\Models\NetworkIntegrationRun;
 use App\Models\Project;
 use App\Models\VirtualMachine;
+use App\Models\VmOperation;
 use App\Models\VmUpgradeOrder;
 use App\Services\CloudDns\CloudDnsService;
 use App\Services\ColocationBillingService;
@@ -581,3 +584,11 @@ Artisan::command('cloud-dns:add-domain {phone} {domain} {--project= : Project UU
 
     return 0;
 })->purpose('Prepare a customer-owned DNS zone and print its TXT ownership challenge');
+
+Schedule::call(function (): void {
+    VmOperation::whereNotNull('active_vm_id')->where('action', '!=', 'upgrade')->orderBy('id')->chunkById(100, function ($operations): void {
+        foreach ($operations as $operation) {
+            ProcessVmOperation::dispatch($operation->id)->onQueue(ProvisionCloudVirtualMachine::QUEUE);
+        }
+    });
+})->name('reconcile-vm-operations')->everyMinute()->withoutOverlapping();

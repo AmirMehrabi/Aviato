@@ -93,6 +93,7 @@ class VmUpgradeService
             ]);
         });
 
+        $order->virtualMachine->operations()->where('action', 'upgrade')->where('details->upgrade_order_id', $order->id)->update(['actor_id' => $customer->id]);
         ApplyVmUpgradeJob::dispatch($order->id)->onQueue(ApplyVmUpgradeJob::QUEUE);
 
         return $order;
@@ -141,6 +142,7 @@ class VmUpgradeService
             return $order;
         });
 
+        $order->virtualMachine->operations()->where('action', 'upgrade')->where('details->upgrade_order_id', $order->id)->update(['actor_id' => $customer->id]);
         ApplyVmUpgradeJob::dispatch($order->id)->onQueue(ApplyVmUpgradeJob::QUEUE);
 
         return $order;

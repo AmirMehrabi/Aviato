@@ -2,6 +2,22 @@
 @inject('money', 'App\Services\WalletService')
 @section('title', 'نمایش ماشین مجازی')
 @section('content')
+@include('components.vm-operation-status', ['machine' => $vm])
+@adminAbility('virtual-machines.power')
+@if (! $vm->isLxc() && ! $vm->isActionLocked() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY)
+<details class="my-4 rounded-xl border border-red-200 bg-white p-4 text-sm">
+    <summary class="cursor-pointer font-bold text-red-700">خاموش کردن اجباری</summary>
+    <p class="my-3">برق سرور بلافاصله قطع می‌شود و اطلاعات ذخیره‌نشده ممکن است از بین بروند. برای خاموش کردن معمول، از «خاموش کردن» استفاده کنید.</p>
+    <form method="POST" action="{{ route('admin.virtual-machines.force-stop', $vm) }}" class="flex flex-wrap items-center gap-3">
+        @csrf
+        <input type="hidden" name="power_generation" value="{{ (int) data_get($vm->desired_state, 'power_generation', 0) }}">
+        <label><input type="checkbox" name="confirm_force_stop" value="1" required> خاموش کردن اجباری را تأیید می‌کنم.</label>
+        <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-bold text-white">خاموش کردن اجباری</button>
+    </form>
+</details>
+@endif
+@endadminAbility
+
 <div class="px-4 py-6 md:px-8 lg:px-10" x-data="{ confirmAction: null }" @keydown.escape.window="confirmAction = null">
 
     @if (session('status'))
@@ -111,6 +127,7 @@
 @adminAbility('virtual-machines.power')
 <button
                         type="button"
+                        @disabled($vm->isActionLocked())
                         @click="confirmAction = 'stop'"
                         class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
                     >خاموش کردن</button>
@@ -122,7 +139,7 @@
 <button
                         type="button"
                         @click="{{ $walletBlocked ? 'null' : "confirmAction = 'start'" }}"
-                        @disabled($walletBlocked)
+                        @disabled($walletBlocked || $vm->isActionLocked())
                         class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
                     >روشن کردن</button>
 @endadminAbility

@@ -286,7 +286,19 @@ class VirtualMachine extends Model
         return $this->status === self::STATUS_DELETED || $this->deleted_at !== null;
     }
 
+    public function operations(): HasMany
+    {
+        return $this->hasMany(VmOperation::class);
+    }
+
     public function isActionLocked(): bool
+    {
+        return $this->isLifecycleLocked()
+            || $this->operations()->whereNotNull('active_vm_id')->exists()
+            || $this->pendingUpgradeOrders()->exists();
+    }
+
+    public function isLifecycleLocked(): bool
     {
         return $this->password_reset_status === 'pending'
             || in_array($this->status, [self::STATUS_DELETING, self::STATUS_DELETED], true);
