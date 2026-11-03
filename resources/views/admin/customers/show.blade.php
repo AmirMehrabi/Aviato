@@ -135,13 +135,24 @@
             <p class="mt-6 text-4xl font-black {{ $wallet->balance < 0 ? 'text-red-600' : 'text-[#0069FF]' }}">{{ $wallets->format($wallet->balance) }}</p>
             @if(auth('admin')->user()->is_active)
 @adminRoute('admin.customers.wallet-transactions.store')
-<form method="POST" action="{{ route('admin.customers.wallet-transactions.store', $customer) }}" class="mt-6 grid gap-3 md:grid-cols-2">
+<form method="POST" action="{{ route('admin.customers.wallet-transactions.store', $customer) }}" class="mt-6 grid gap-3 md:grid-cols-2" x-data="{ type: @js(old('type', 'credit')), amount: @js(old('amount_toman', '')), formatAmount(value) { return value.replace(/[۰-۹]/g, digit => '۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)).replace(/[٠-٩]/g, digit => '٠١٢٣٤٥٦٧٨٩'.indexOf(digit)).replace(/[,٬]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ','); } }">
                 @csrf
-                <select name="type" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-bold focus:border-[#0069FF] focus:outline-none">
+                <label class="grid gap-2 text-sm font-bold">نوع تراکنش
+                <select name="type" x-model="type" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-bold focus:border-[#0069FF] focus:outline-none">
                     <option value="credit">افزایش اعتبار</option>
                     <option value="debit">کسر اعتبار</option>
                 </select>
-                <input name="amount" type="number" min="1" placeholder="مبلغ" class="rounded-lg border border-slate-200 px-4 py-3 text-sm focus:border-[#0069FF] focus:outline-none">
+                </label>
+                <div>
+                    <label for="wallet-amount-toman" class="mb-2 block text-sm font-bold">مبلغ (تومان)</label>
+                    <div class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 focus-within:ring-2 focus-within:ring-[#0069FF]">
+                        <input id="wallet-amount-toman" name="amount_toman" type="text" inputmode="numeric" required value="{{ old('amount_toman') }}" x-init="amount = formatAmount(amount)" :value="amount" @input="amount = formatAmount($event.target.value); $event.target.value = amount" aria-describedby="wallet-amount-help wallet-amount-error" @error('amount_toman') aria-invalid="true" @enderror placeholder="۱۰۰٬۰۰۰" dir="ltr" class="min-w-0 w-full border-0 bg-transparent py-3 text-sm focus:outline-none">
+                        <span class="shrink-0 text-sm text-slate-500">تومان</span>
+                    </div>
+                    <p id="wallet-amount-help" class="mt-2 text-xs text-slate-500">مبلغ را به تومان وارد کنید.</p>
+                    <p id="wallet-amount-error" class="mt-2 text-xs text-red-700">@error('amount_toman'){{ $message }}@enderror</p>
+                </div>
+                <p class="text-sm font-bold text-slate-700 md:col-span-2" aria-live="polite" x-text="amount ? amount + ' تومان ' + (type === 'credit' ? 'به کیف پول اضافه می‌شود.' : 'از کیف پول کسر می‌شود.') : ''"></p>
                 <input name="description" placeholder="توضیح تراکنش" class="rounded-lg border border-slate-200 px-4 py-3 text-sm focus:border-[#0069FF] focus:outline-none md:col-span-2">
                 <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-xs font-bold text-slate-600 md:col-span-2">
                     <input type="checkbox" name="allow_negative" value="1" class="size-4 rounded border-slate-300 text-[#0069FF]">
