@@ -84,7 +84,7 @@ class CustomerCorporateController extends Controller
             'signatories' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'authorization' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
-        $service->submit($corporate, $data, Arr::only($request->allFiles(), ['incorporation', 'signatories', 'authorization']), ! $saving);
+        $service->submit($corporate, $data, Arr::only($request->allFiles(), array_keys(CorporateDocument::labels())), ! $saving);
 
         return back()->with('status', $saving ? 'پیش‌نویس ذخیره شد؛ هنوز برای بررسی ارسال نشده است.' : 'درخواست برای بررسی ارسال شد. نتیجه از طریق اعلان‌های حساب اطلاع‌رسانی می‌شود.');
     }

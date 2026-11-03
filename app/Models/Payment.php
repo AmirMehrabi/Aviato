@@ -43,6 +43,8 @@ class Payment extends Model
 
     public const TYPE_INVOICE = 'invoice';
 
+    public const TYPE_DOMAIN = 'domain';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_SUCCESSFUL = 'successful';

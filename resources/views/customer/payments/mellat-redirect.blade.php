@@ -19,7 +19,7 @@
             <div>
                 <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#2563EB]">Mellat</span>
                 <h2 class="mt-4 text-2xl font-black text-slate-950">پرداخت آماده است</h2>
-                <p class="mt-3 text-sm leading-7 text-slate-600">{{ $payment->invoice_id ? 'پس از تأیید پرداخت، صورتحساب شما تسویه می‌شود.' : 'پس از بازگشت موفق از بانک، کیف پول شما به مبلغ پرداخت شده شارژ می‌شود.' }}</p>
+                <p class="mt-3 text-sm leading-7 text-slate-600">{{ $payment->invoice_id ? 'پس از تأیید پرداخت، صورتحساب شما تسویه می‌شود.' : ($payment->type === \App\Models\Payment::TYPE_DOMAIN ? 'پس از تأیید پرداخت، ثبت یا تمدید دامنه آغاز می‌شود. موجودی کیف پول شما تغییری نمی‌کند.' : 'پس از بازگشت موفق از بانک، کیف پول شما به مبلغ پرداخت شده شارژ می‌شود.') }}</p>
             </div>
             <div class="rounded-2xl bg-slate-50 px-5 py-4 text-right">
                 <p class="text-xs font-black text-slate-500">شناسه پرداخت</p>

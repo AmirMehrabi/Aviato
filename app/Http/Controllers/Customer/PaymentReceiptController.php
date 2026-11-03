@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
+use App\Models\DomainOrder;
 use App\Models\Payment;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
@@ -21,6 +22,11 @@ class PaymentReceiptController extends Controller
     public function show(Request $request, Payment $payment): View|RedirectResponse
     {
         $customer = $request->user('customer');
+        if ($payment->type === Payment::TYPE_DOMAIN) {
+            abort_unless($payment->isSuccessful() && (int) $payment->customer_id === (int) $customer->id, 404);
+
+            return redirect()->to(route('customer.domains.orders.show', DomainOrder::findOrFail($payment->domain_order_id), false));
+        }
         if ($payment->invoice_id) {
             abort_unless($payment->isSuccessful() && $this->projects->canViewBilling($payment->invoice->colocationService->project, $customer), 404);
 

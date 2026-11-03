@@ -14,6 +14,8 @@
 @endif
 @if($payment->invoice_id)
 <div class="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-7 text-blue-900"><p>پرداخت مستقیم صورتحساب کولوکیشن: {{ $payment->invoice->number }}. این مبلغ به کیف پول اضافه نشده است.</p><a class="mt-2 inline-block font-bold" href="{{ route('admin.billing.invoices.show', $payment->invoice) }}">مشاهده صورتحساب ←</a><p class="mt-2 text-xs">ثبت حسابداری این سرویس از گزارش صورتحساب‌ها انجام می‌شود؛ مسیر حسابرو برای شارژ کیف پول است.</p></div>
+@elseif($payment->type === \App\Models\Payment::TYPE_DOMAIN)
+<div class="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-7 text-blue-900">{{ $payment->description }}. این پرداخت برای سفارش دامنه است و به‌عنوان شارژ کیف پول به حسابرو ارسال نمی‌شود.</div>
 @else
 <div class="mt-6 rounded-xl border border-slate-200 p-4"><h2 class="font-black">ثبت در حسابرو</h2><p class="mt-2 text-sm">وضعیت: {{ ['queued' => 'در صف', 'submitted' => 'ثبت شده', 'failed' => 'ناموفق'][$payment->hesabro_status] ?? 'ارسال نشده' }}</p>@if($payment->hesabro_factor_id)<p class="mt-1 text-sm">شناسه فاکتور: {{ $payment->hesabro_factor_id }}</p>@endif @if($payment->hesabro_error)<p class="mt-1 text-sm text-red-700">{{ $payment->hesabro_error }}</p>@endif
 @if($payment->isSuccessful() && !in_array($payment->hesabro_status, ['queued', 'submitted'], true))

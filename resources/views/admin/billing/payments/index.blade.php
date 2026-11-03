@@ -11,7 +11,7 @@
 @adminRoute('admin.customers.show')
 <a class="font-black text-slate-900" href="{{ route('admin.customers.show',$payment->customer) }}">{{ $payment->customer?->name }}</a>
 @endadminRoute
-<div class="text-xs text-slate-400">{{ $payment->customer?->email }}</div></td><td>{{ $payment->provider }}</td><td class="font-black">{{ $wallets->format($payment->amount,$payment->currency) }}</td><td><x-admin.status-badge :value="$payment->status" /></td><td class="px-3"><span>{{ ['queued' => 'در صف', 'submitted' => 'ثبت شده', 'failed' => 'ناموفق'][$payment->hesabro_status] ?? 'ارسال نشده' }}</span>@if($payment->isSuccessful() && !in_array($payment->hesabro_status, ['queued', 'submitted'], true))
+<div class="text-xs text-slate-400">{{ $payment->customer?->email }}</div></td><td>{{ $payment->provider }}</td><td class="font-black">{{ $wallets->format($payment->amount,$payment->currency) }}</td><td><x-admin.status-badge :value="$payment->status" /></td><td class="px-3"><span>{{ ['queued' => 'در صف', 'submitted' => 'ثبت شده', 'failed' => 'ناموفق'][$payment->hesabro_status] ?? 'ارسال نشده' }}</span>@if(!$payment->invoice_id && $payment->type !== \App\Models\Payment::TYPE_DOMAIN && $payment->isSuccessful() && !in_array($payment->hesabro_status, ['queued', 'submitted'], true))
 @adminRoute('admin.billing.payments.hesabro.submit')
 <form method="POST" action="{{ route('admin.billing.payments.hesabro.submit', $payment) }}" class="mt-1">@csrf<button class="text-xs font-black text-blue-600">ارسال به حسابرو</button></form>
 @endadminRoute

@@ -62,8 +62,31 @@ class CorporateVerificationTest extends TestCase
     private function submit(CorporateRequest $draft): void
     {
         app(CorporateVerificationService::class)->submit($draft, ['version' => $draft->version, 'representative_role' => 'signatory', 'billing_email' => 'billing@example.com', 'company_phone' => '02112345678', 'address' => 'تهران', 'postal_code' => '1234567890'],
-            ['incorporation' => UploadedFile::fake()->create('incorporation.pdf', 10, 'application/pdf'), 'signatories' => UploadedFile::fake()->create('signatories.pdf', 10, 'application/pdf')]);
+            ['incorporation' => UploadedFile::fake()->create('incorporation.pdf', 10, 'application/pdf'), 'signatories' => UploadedFile::fake()->create('signatories.pdf', 10, 'application/pdf'), 'authorization' => UploadedFile::fake()->create('letter.pdf', 10, 'application/pdf')]);
         $draft->refresh();
+    }
+
+    public function test_both_representative_roles_require_all_corporate_documents(): void
+    {
+        foreach (['signatory', 'delegate'] as $role) {
+            $draft = $this->draft();
+            $data = ['version' => 0, 'representative_role' => $role, 'billing_email' => 'billing@example.com', 'company_phone' => '02112345678', 'address' => 'تهران', 'postal_code' => '1234567890', 'consent' => 1];
+            $this->actingAs($draft->customer, 'customer');
+            foreach (['signatories', 'authorization'] as $missing) {
+                $files = [
+                    'incorporation' => UploadedFile::fake()->create('company.pdf', 10, 'application/pdf'),
+                    'signatories' => UploadedFile::fake()->create('changes.pdf', 10, 'application/pdf'),
+                    'authorization' => UploadedFile::fake()->create('letter.pdf', 10, 'application/pdf'),
+                ];
+                unset($files[$missing]);
+                $this->post('https://cp.localhost/profile/corporate/'.$draft->id, $data + $files)
+                    ->assertSessionHasErrors($missing);
+                $this->assertSame('draft', $draft->fresh()->status);
+                $this->assertSame([], Storage::disk('local')->allFiles());
+            }
+        }
+        $this->assertDatabaseCount('corporate_documents', 0);
+        $this->assertDatabaseCount('corporate_request_events', 0);
     }
 
     public function test_profile_offers_corporate_application_without_collecting_company_id(): void
@@ -116,7 +139,7 @@ class CorporateVerificationTest extends TestCase
         $this->assertSame('needs_correction', $draft->status);
         $this->assertSame('آگهی جدید لازم است', $draft->reason);
         $this->assertSame('1234567890', $draft->postal_code);
-        $this->assertSame(2, $draft->documents()->where('version', $draft->version)->count());
+        $this->assertSame(3, $draft->documents()->where('version', $draft->version)->count());
         $this->assertDatabaseCount('corporate_request_events', 1);
     }
 
@@ -144,7 +167,7 @@ class CorporateVerificationTest extends TestCase
         $this->actingAs($customer, 'customer')->post('https://cp.localhost/profile/corporate', ['national_id' => '۱۰۱۲۳۴۵۶۷۸۹'])->assertRedirect();
         $draft = CorporateRequest::firstOrFail();
         Http::assertSent(fn ($request) => $request->url() === 'https://service.zohal.io/api/v0/services/inquiry/company_inquiry' && $request['national_id'] === '10123456789' && $request->hasHeader('Authorization', 'Bearer test-token'));
-        $this->get('https://cp.localhost/profile/corporate/'.$draft->id)->assertOk()->assertSee('شرکت نمونه');
+        $this->get('https://cp.localhost/profile/corporate/'.$draft->id)->assertOk()->assertSee('شرکت نمونه')->assertDontSee('عکس کارت ملی نماینده')->assertDontSee('name="representative_national_card"', false);
         $this->post('https://cp.localhost/profile/corporate/'.$draft->id, ['version' => 0, 'representative_role' => 'delegate', 'billing_email' => 'billing@example.com', 'company_phone' => '02112345678', 'address' => 'تهران', 'postal_code' => '۱۲۳۴۵۶۷۸۹۰', 'consent' => 1,
             'incorporation' => UploadedFile::fake()->create('a.pdf', 10, 'application/pdf'), 'signatories' => UploadedFile::fake()->create('b.pdf', 10, 'application/pdf'), 'authorization' => UploadedFile::fake()->create('c.pdf', 10, 'application/pdf')])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('pending', $draft->fresh()->status);
@@ -204,10 +227,12 @@ class CorporateVerificationTest extends TestCase
     {
         $draft = $this->draft();
         $this->submit($draft);
-        $document = $draft->documents()->first();
-        $this->actingAs($this->customer(), 'customer')->get('https://cp.localhost/profile/corporate/'.$draft->id)->assertNotFound();
-        $this->get('https://cp.localhost/profile/corporate-documents/'.$document->id)->assertNotFound();
-        $this->actingAs($draft->customer, 'customer')->get('https://cp.localhost/profile/corporate-documents/'.$document->id)->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+        $otherCustomer = $this->customer();
+        $this->actingAs($otherCustomer, 'customer')->get('https://cp.localhost/profile/corporate/'.$draft->id)->assertNotFound();
+        foreach ($draft->documents as $document) {
+            $this->actingAs($otherCustomer, 'customer')->get('https://cp.localhost/profile/corporate-documents/'.$document->id)->assertNotFound();
+            $this->actingAs($draft->customer, 'customer')->get('https://cp.localhost/profile/corporate-documents/'.$document->id)->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+        }
     }
 
     public function test_review_requires_permissions_and_stale_reviews_are_rejected(): void
@@ -220,7 +245,8 @@ class CorporateVerificationTest extends TestCase
         @$document->loadHTML('<?xml encoding="UTF-8">'.$page->getContent());
         $xpath = new \DOMXPath($document);
         $this->assertSame(1, $xpath->query('//a[contains(@href, "/corporate-requests") and @aria-current="page"]')->length);
-        $page->assertDontSee('مانده کیف پول هنگام ثبت رویداد');
+        $page->assertDontSee('مانده کیف پول هنگام ثبت رویداد')
+            ->assertDontSee('عکس کارت ملی نماینده')->assertSee('آخرین آگهی تغییرات صاحبان امضا')->assertSee('نامه رسمی با سربرگ شرکت و امضای صاحبان امضا');
         $this->patch('https://admin.localhost/corporate-requests/'.$draft->id, ['version' => 1, 'decision' => 'approved'])->assertForbidden();
         $admin = User::factory()->create();
         $this->actingAs($admin, 'admin')->patch('https://admin.localhost/corporate-requests/'.$draft->id, ['version' => 0, 'decision' => 'approved'])->assertSessionHasErrors('version');
@@ -230,7 +256,7 @@ class CorporateVerificationTest extends TestCase
         $draft->refresh();
         app(CorporateVerificationService::class)->submit($draft, ['version' => 1, 'representative_role' => 'signatory', 'billing_email' => 'billing@example.com', 'company_phone' => '02112345678', 'address' => 'تهران', 'postal_code' => '1234567890'], []);
         $this->assertSame(2, $draft->fresh()->version);
-        $this->assertDatabaseCount('corporate_documents', 4);
+        $this->assertDatabaseCount('corporate_documents', 6);
         $this->assertDatabaseCount('corporate_request_events', 3);
     }
 

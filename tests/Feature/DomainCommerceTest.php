@@ -19,6 +19,7 @@ use App\Services\Domains\DomainManagementService;
 use App\Services\Domains\DomainOrderService;
 use App\Services\Domains\DomainPricingService;
 use App\Services\Domains\DomainProvider;
+use App\Services\HesabroAccountingService;
 use App\Services\Payments\PaymentGatewayInterface;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\PaymentService;
@@ -180,6 +181,181 @@ class DomainCommerceTest extends TestCase
         return ManagedDomain::firstOrFail();
     }
 
+    private function fakeDirectGateway(int $initiations = 1, int $completions = 1): void
+    {
+        $gateway = \Mockery::mock(PaymentGatewayInterface::class);
+        $gateway->shouldReceive('label')->andReturn('Test bank');
+        $gateway->shouldReceive('initiate')->times($initiations)->andReturnUsing(fn (Payment $payment) => ['authority' => 'domain-'.$payment->id, 'redirect_url' => 'https://gateway.example/pay']);
+        $gateway->shouldReceive('complete')->times($completions)->andReturn(['provider_reference' => 'domain-reference']);
+        $manager = \Mockery::mock(PaymentGatewayManager::class);
+        $manager->shouldReceive('available')->andReturn(['zibal' => 'Test bank', 'hesabro' => 'Wallet funding']);
+        $manager->shouldReceive('gateway')->with('zibal')->andReturn($gateway);
+        $this->app->instance(PaymentGatewayManager::class, $manager);
+    }
+
+    public function test_review_defaults_to_wallet_only_when_sufficient_and_explains_online_payment(): void
+    {
+        $this->fakeDirectGateway(0, 0);
+        $order = $this->order(true);
+        $this->actingAs($this->customer, 'customer')->get('https://cp.localhost/domains/orders/'.$order->uuid.'?step=review')
+            ->assertOk()->assertViewHas('walletUsable', true)->assertSee('موجودی پس از پرداخت:')
+            ->assertSee('پرداخت آنلاین')->assertDontSee('Wallet funding');
+        app(WalletService::class)->debit($this->customer, 14000000, 'Other purchase');
+        $response = $this->get('https://cp.localhost/domains/orders/'.$order->uuid.'?step=review')
+            ->assertOk()->assertViewHas('walletUsable', false)->assertSee('موجودی کیف پول کافی نیست.');
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+        $xpath = new \DOMXPath($document);
+        $this->assertSame(1, $xpath->query('//input[@name="payment_method" and @value="wallet" and @disabled]')->length);
+        $this->assertSame(1, $xpath->query('//input[@name="payment_method" and @value="online" and @checked]')->length);
+    }
+
+    public function test_wallet_choice_never_silently_creates_a_shortfall_payment(): void
+    {
+        $order = $this->order();
+        $this->actingAs($this->customer, 'customer')->from('https://cp.localhost/domains/orders/'.$order->uuid.'?step=review')
+            ->post('https://cp.localhost/domains/orders/'.$order->uuid.'/pay', ['terms' => 1, 'payment_method' => 'wallet'])
+            ->assertRedirect()->assertSessionHasErrors('payment');
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertNull($order->fresh()->funded_at);
+    }
+
+    public function test_wallet_choice_works_without_an_online_gateway(): void
+    {
+        $order = $this->order(true);
+        $this->actingAs($this->customer, 'customer')->post('https://cp.localhost/domains/orders/'.$order->uuid.'/pay', ['terms' => 1, 'payment_method' => 'wallet'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('funded', $order->fresh()->status);
+        $this->assertSame(5000000, $this->customer->wallet->fresh()->balance);
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    public function test_online_payment_charges_full_total_and_completes_without_touching_wallet(): void
+    {
+        $this->fakeDirectGateway();
+        $order = $this->order(true);
+        $this->actingAs($this->customer, 'customer')->post('https://cp.localhost/domains/orders/'.$order->uuid.'/pay', ['terms' => 1, 'payment_method' => 'online', 'gateway' => 'zibal'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $payment = $order->fresh()->payment;
+        $this->assertSame(Payment::TYPE_DOMAIN, $payment->type);
+        $this->assertSame($order->total, $payment->amount);
+        $this->assertSame(15000000, $this->customer->wallet->fresh()->balance);
+        $this->get('https://cp.localhost/wallet/payments/'.$payment->id.'/callback')
+            ->assertRedirect('https://cp.localhost/domains/orders/'.$order->uuid.'?step=review');
+        app(PaymentService::class)->completeTopUp($payment->fresh());
+        $this->assertSame('funded', $order->fresh()->status);
+        $this->assertNull($order->fresh()->wallet_transaction_id);
+        app(DomainFulfillmentService::class)->process($order->fresh());
+        app(DomainFulfillmentService::class)->process($order->fresh());
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame(0, $order->fresh()->invoice->wallet_charged_amount);
+        $this->assertSame(15000000, $this->customer->wallet->fresh()->balance);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertFalse(app(HesabroAccountingService::class)->enqueue($payment->fresh()));
+        $this->get('https://cp.localhost/domains/orders/'.$order->uuid.'/invoice')->assertOk()->assertSee('ثبت دامنه example.com');
+        $this->get(route('customer.payments.receipt.show', $payment, false))->assertRedirect('https://cp.localhost/domains/orders/'.$order->uuid);
+    }
+
+    public function test_online_payment_with_partial_balance_charges_full_total_in_rials_for_toman_order(): void
+    {
+        AppSetting::setValue(AppSetting::BILLING_CURRENCY, 'IRT', 'string', 'billing');
+        $this->fakeDirectGateway();
+        $order = $this->order();
+        app(WalletService::class)->credit($this->customer, 400000, 'Partial balance');
+        $payment = app(DomainOrderService::class)->pay($order, 'zibal', paymentMethod: 'online');
+        $this->assertSame(10000000, $payment->amount);
+        $this->assertSame('IRR', $payment->currency);
+        app(PaymentService::class)->completeTopUp($payment);
+        $this->assertSame('funded', $order->fresh()->status);
+        $this->assertSame(400000, $this->customer->wallet->fresh()->balance);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+    }
+
+    public function test_pending_online_payment_is_resumed_even_after_quote_expires_without_another_charge(): void
+    {
+        $this->fakeDirectGateway(1, 0);
+        $order = $this->order(true);
+        $service = app(DomainOrderService::class);
+        $payment = $service->pay($order, 'zibal', paymentMethod: 'online');
+        $this->travel(16)->minutes();
+        $this->assertSame($payment->id, $service->pay($order->fresh(), null, paymentMethod: 'wallet')->id);
+        $this->actingAs($this->customer, 'customer')->get('https://cp.localhost/domains/orders/'.$order->uuid.'?step=review')
+            ->assertOk()->assertSee('ادامه پرداخت جاری')->assertSee('بررسی وضعیت پرداخت')->assertDontSee('>ویرایش</a>', false)
+            ->assertDontSee('name="payment_method"', false);
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertSame(15000000, $this->customer->wallet->fresh()->balance);
+    }
+
+    public function test_failed_online_payment_keeps_details_and_allows_a_new_attempt(): void
+    {
+        $this->fakeDirectGateway(2, 0);
+        $order = $this->order();
+        $payment = app(DomainOrderService::class)->pay($order, 'zibal', paymentMethod: 'online');
+        app(PaymentService::class)->failTopUp($payment);
+        $this->actingAs($this->customer, 'customer')->get('https://cp.localhost/domains/orders/'.$order->uuid.'?step=review')
+            ->assertOk()->assertSee('پرداخت قبلی تکمیل نشد.')->assertSee('owner@example.org')->assertSee('پرداخت آنلاین');
+        $this->post('https://cp.localhost/domains/orders/'.$order->uuid.'/pay', ['terms' => 1, 'payment_method' => 'online', 'gateway' => 'zibal'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('payments', 2);
+        $this->assertNotSame($payment->id, $order->fresh()->payment_id);
+    }
+
+    public function test_late_direct_payment_for_cancelled_order_is_returned_once_to_wallet(): void
+    {
+        $this->fakeDirectGateway();
+        $order = $this->order();
+        $payment = app(DomainOrderService::class)->pay($order, 'zibal', paymentMethod: 'online');
+        $this->actingAs($this->customer, 'customer')->post('https://cp.localhost/domains/orders/'.$order->uuid.'/cancel')->assertRedirect();
+        app(PaymentService::class)->completeTopUp($payment);
+        app(PaymentService::class)->completeTopUp($payment->fresh());
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertSame(10000000, $this->customer->wallet->fresh()->balance);
+        $this->assertDatabaseCount('domain_claims', 0);
+        $this->assertSame(1, WalletTransaction::where('type', 'refund')->count());
+        $this->get('https://cp.localhost/domains/orders/'.$order->uuid)->assertOk()->assertSee('به حساب بانکی واریز نشده است.');
+    }
+
+    public function test_direct_payment_after_quote_expiry_returns_funds_and_requires_review(): void
+    {
+        $this->fakeDirectGateway();
+        $order = $this->order();
+        $payment = app(DomainOrderService::class)->pay($order, 'zibal', paymentMethod: 'online');
+        $this->travel(16)->minutes();
+        app(PaymentService::class)->completeTopUp($payment);
+        $this->assertSame('draft', $order->fresh()->status);
+        $this->assertSame(10000000, $this->customer->wallet->fresh()->balance);
+        $this->assertDatabaseCount('domain_claims', 0);
+        $this->assertNull($order->fresh()->funded_at);
+    }
+
+    public function test_registration_failure_after_direct_payment_refunds_wallet_once(): void
+    {
+        $this->fakeDirectGateway();
+        $order = $this->order(true);
+        $payment = app(DomainOrderService::class)->pay($order, 'zibal', paymentMethod: 'online');
+        app(PaymentService::class)->completeTopUp($payment);
+        $this->fakeProvider(state: 'failed');
+        app(DomainFulfillmentService::class)->process($order->fresh());
+        app(DomainOrderService::class)->fail($order->fresh(), 'Failure');
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame(25000000, $this->customer->wallet->fresh()->balance);
+        $this->assertSame(1, WalletTransaction::where('type', 'refund')->count());
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_online_checkout_rejects_wallet_funding_gateway_and_requires_explicit_choice(): void
+    {
+        $this->fakeDirectGateway(0, 0);
+        $order = $this->order(true);
+        $this->actingAs($this->customer, 'customer')->post('https://cp.localhost/domains/orders/'.$order->uuid.'/pay', ['terms' => 1])
+            ->assertSessionHasErrors('payment_method');
+        $this->post('https://cp.localhost/domains/orders/'.$order->uuid.'/pay', ['terms' => 1, 'payment_method' => 'online', 'gateway' => 'hesabro'])
+            ->assertSessionHasErrors('gateway');
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame(15000000, $this->customer->wallet->fresh()->balance);
+    }
+
     public function test_search_shows_retail_and_current_renewal_but_never_supplier_costs(): void
     {
         $this->actingAs($this->customer, 'customer')->postJson('https://cp.localhost/domains/check', ['domain' => 'example.com'])
@@ -294,7 +470,7 @@ class DomainCommerceTest extends TestCase
     {
         $order = $this->order(true);
         $this->travel(16)->minutes();
-        $this->actingAs($this->customer, 'customer')->post('https://cp.localhost/domains/orders/'.$order->uuid.'/pay', ['terms' => 1])->assertSessionHasErrors('payment');
+        $this->actingAs($this->customer, 'customer')->post('https://cp.localhost/domains/orders/'.$order->uuid.'/pay', ['terms' => 1, 'payment_method' => 'wallet'])->assertSessionHasErrors('payment');
         $this->assertSame(15000000, $this->customer->wallet->fresh()->balance);
         $this->post('https://cp.localhost/domains/orders/'.$order->uuid.'/refresh')->assertRedirect()->assertSessionHasNoErrors();
         $this->assertNull($order->fresh()->consented_at);

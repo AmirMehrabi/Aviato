@@ -8,7 +8,7 @@
     <a href="{{ route('customer.profile.show') }}#corporate-identity" class="text-sm font-bold text-blue-600">بازگشت به پروفایل</a>
     @if(session('status'))<p role="status" class="rounded-xl bg-blue-50 p-4">{{ session('status') }}</p>@endif
     @include('customer.corporate.letter-notice')
-    <div><h2 class="text-xl font-black">قبل از شروع</h2><p class="mt-3 text-sm leading-8 text-slate-600">آگهی تأسیس و آخرین آگهی صاحبان امضای مجاز را آماده کنید. اگر نماینده معرفی‌شده هستید، معرفی‌نامه شرکت نیز لازم است. فایل‌ها باید PDF، JPG یا PNG و هرکدام حداکثر ۵ مگابایت باشند.</p></div>
+    <div><h2 class="text-xl font-black">قبل از شروع</h2><p class="mt-3 text-sm leading-8 text-slate-600">آگهی تأسیس، آخرین آگهی تغییرات صاحبان امضا و نامه رسمی با سربرگ شرکت و امضای صاحبان امضا را آماده کنید. مدارک می‌توانند PDF، JPG یا PNG باشند. حداکثر حجم هر فایل ۵ مگابایت است.</p></div>
     <p class="rounded-xl bg-slate-50 p-4 text-sm leading-8">پس از تأیید، سرویس‌های فعلی و مانده کیف پول این حساب برای شرکت استفاده خواهند شد. صورتحساب حقوقی از ابتدای ماه شمسی بعد از تأیید آغاز می‌شود؛ قیمت‌ها و سوابق قبلی حفظ می‌شوند. هویت فردی شما برای ورود به حساب حفظ می‌شود.</p>
     @if(! $customer->hasVerifiedNationalCode())
         <div class="rounded-xl bg-amber-50 p-4 text-sm leading-8"><p>ابتدا هویت فردی خود را تأیید کنید، سپس برای استعلام شرکت به این صفحه برگردید.</p><a href="{{ route('customer.profile.show', ['corporate' => 1]) }}#personal-identity" class="font-bold text-blue-700">تأیید هویت فردی و ادامه درخواست</a></div>

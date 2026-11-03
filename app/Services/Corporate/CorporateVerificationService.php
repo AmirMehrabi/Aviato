@@ -6,6 +6,7 @@ use App\Jobs\DeliverCorporateNotification;
 use App\Models\AppSetting;
 use App\Models\BillingIdentity;
 use App\Models\CorporateDelivery;
+use App\Models\CorporateDocument;
 use App\Models\CorporateProfile;
 use App\Models\CorporateRequest;
 use App\Models\Customer;
@@ -67,9 +68,9 @@ class CorporateVerificationService
                     $request->fill(['company' => $registry, 'registry_result' => $registry, 'looked_up_at' => now()]);
                 }
                 $previous = $request->documents()->where('version', $request->version)->get()->keyBy('kind');
-                foreach ($submit ? ['incorporation', 'signatories', ...(($data['representative_role'] ?? null) === 'delegate' ? ['authorization'] : [])] : [] as $kind) {
+                foreach ($submit ? CorporateDocument::labels() : [] as $kind => $label) {
                     if (! isset($stored[$kind]) && ! isset($previous[$kind])) {
-                        throw ValidationException::withMessages([$kind => 'این مدرک الزامی است.']);
+                        throw ValidationException::withMessages([$kind => 'لطفاً «'.$label.'» را بارگذاری کنید.']);
                     }
                 }
                 $request->fill(Arr::only($data, ['representative_role', 'billing_email', 'company_phone', 'address', 'postal_code', 'tax_number']));
@@ -78,7 +79,7 @@ class CorporateVerificationService
                     $request->fill(['status' => 'pending', 'submitted_at' => now(), 'consented_at' => now(), 'reason' => null, 'reviewer_id' => null, 'reviewed_at' => null, 'internal_notes' => null]);
                 }
                 $request->save();
-                foreach (['incorporation', 'signatories', 'authorization'] as $kind) {
+                foreach (array_keys(CorporateDocument::labels()) as $kind) {
                     $document = $stored[$kind] ?? (isset($previous[$kind]) ? $previous[$kind]->only(['path', 'original_name']) : null);
                     if ($document) {
                         $request->documents()->create($document + ['kind' => $kind, 'version' => $request->version]);

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class DomainOrderService
 {
@@ -138,24 +139,40 @@ class DomainOrderService
         }
     }
 
-    public function pay(DomainOrder $order, ?string $gateway, bool $walletOnly = false): ?Payment
+    public function pay(DomainOrder $order, ?string $gateway, bool $walletOnly = false, ?string $paymentMethod = null): ?Payment
     {
-        if ($order->isProcessing() || $order->status === 'completed') {
+        if (! in_array($order->status, ['draft', 'awaiting_payment'], true)) {
             return null;
+        }
+        if ($order->payment?->isPending() && ! $walletOnly) {
+            return $order->payment;
         }
         $this->assertPurchasable($order);
         $this->validateSupplier($order);
 
-        return DB::transaction(function () use ($order, $gateway, $walletOnly): ?Payment {
+        return DB::transaction(function () use ($order, $gateway, $walletOnly, $paymentMethod): ?Payment {
             $order = DomainOrder::lockForUpdate()->findOrFail($order->id);
             if (! in_array($order->status, ['draft', 'awaiting_payment'], true)) {
                 return null;
+            }
+            if ($order->payment?->isPending()) {
+                if ($walletOnly) {
+                    throw ValidationException::withMessages(['payment' => 'یک پرداخت برای این سفارش در جریان است.']);
+                }
+
+                return $order->payment;
             }
             $this->assertPurchasable($order);
             if (DB::table('domain_claims')->where('domain', $order->domain)->where('domain_order_id', '!=', $order->id)->exists()) {
                 $order->update(['customer_message' => 'سفارش دیگری برای این دامنه در حال انجام است. مبلغ در کیف پول شما محفوظ است.']);
 
                 return null;
+            }
+            if ($paymentMethod === 'online') {
+                $payment = app(PaymentService::class)->createDomainPayment($order, (string) $gateway);
+                $order->update(['payment_id' => $payment->id, 'status' => 'awaiting_payment', 'customer_message' => null]);
+
+                return $payment;
             }
             // Serialize with all other wallet charges before calculating the shortfall.
             $wallet = $this->wallets->walletFor($order->customer);
@@ -169,11 +186,8 @@ class DomainOrderService
 
                 return null;
             }
-            if ($walletOnly) {
-                throw ValidationException::withMessages(['payment' => 'موجودی برای تمدید خودکار کافی نیست.']);
-            }
-            if ($order->payment?->isPending()) {
-                return $order->payment;
+            if ($walletOnly || $paymentMethod === 'wallet') {
+                throw ValidationException::withMessages(['payment' => 'موجودی کیف پول کافی نیست. پرداخت آنلاین را انتخاب کنید یا کیف پول را شارژ کنید.']);
             }
             // Ordinary top-up limits remain untouched. Domain checkout funds the exact shortfall.
             $payment = app(PaymentService::class)->createTopUp($order->customer, $shortfall, 'تکمیل موجودی سفارش دامنه '.$order->domain, $gateway, domainOrder: $order);
@@ -210,22 +224,48 @@ class DomainOrderService
         $this->reserve($order);
     }
 
-    private function reserve(DomainOrder $order): void
+    public function directPaymentCompleted(Payment $payment): void
     {
-        if ($order->wallet_transaction_id) {
+        $order = DomainOrder::lockForUpdate()->findOrFail($payment->domain_order_id);
+        $valid = in_array($order->status, ['draft', 'awaiting_payment'], true)
+            && $payment->currency === 'IRR'
+            && (int) $order->payment_id === (int) $payment->id
+            && $payment->amount === $order->total * ($order->currency === 'IRT' ? 10 : 1);
+        try {
+            $this->assertPurchasable($order);
+        } catch (ValidationException|HttpException) {
+            $valid = false;
+        }
+        if ($valid && $this->reserve($order, direct: true)) {
             return;
+        }
+
+        // A late payment never restarts a cancelled, repriced or already funded order.
+        $amount = AppSetting::currency() === 'IRT' ? intdiv($payment->amount, 10) : $payment->amount;
+        $refund = $this->wallets->refund($order->customer, $amount, 'بازگشت پرداخت سفارش دامنه '.$order->domain, reference: $payment,
+            metadata: ['category' => 'domain_payment_returned', 'payment_id' => $payment->id, 'domain_order_id' => $order->id]);
+        $payment->update(['gateway_payload' => array_merge($payment->gateway_payload ?? [], ['domain_refund_transaction_id' => $refund->id])]);
+        if (in_array($order->status, ['draft', 'awaiting_payment', 'cancelled'], true)) {
+            $order->update(['status' => $order->status === 'cancelled' ? 'cancelled' : 'draft', 'customer_message' => 'پرداخت دریافت شد، اما سفارش قابل انجام نبود. مبلغ پرداخت به کیف پول شما بازگشت و به حساب بانکی واریز نشده است.']);
+        }
+    }
+
+    private function reserve(DomainOrder $order, bool $direct = false): bool
+    {
+        if ($order->funded_at) {
+            return true;
         }
         if (DB::table('domain_claims')->where('domain', $order->domain)->exists()) {
             $order->update(['customer_message' => 'سفارش دیگری برای این دامنه در حال انجام است. مبلغ در کیف پول شما محفوظ است.']);
 
-            return;
+            return false;
         }
         $claimed = DB::table('domain_claims')->insertOrIgnore(['domain' => $order->domain, 'domain_order_id' => $order->id]);
         if (! $claimed) {
-            return;
+            return false;
         }
-        $transaction = $this->wallets->debit($order->customer, $order->total, 'رزرو مبلغ سفارش دامنه '.$order->domain, reference: $order, metadata: ['category' => 'domain_reservation', 'provider' => $order->provider, 'domain_order_id' => $order->id]);
-        $order->update(['wallet_transaction_id' => $transaction->id, 'funded_at' => now(), 'status' => 'funded', 'customer_message' => null]);
+        $transaction = $direct ? null : $this->wallets->debit($order->customer, $order->total, 'رزرو مبلغ سفارش دامنه '.$order->domain, reference: $order, metadata: ['category' => 'domain_reservation', 'provider' => $order->provider, 'domain_order_id' => $order->id]);
+        $order->update(['wallet_transaction_id' => $transaction?->id, 'funded_at' => now(), 'status' => 'funded', 'customer_message' => null]);
         DB::afterCommit(function () use ($order): void {
             try {
                 ProcessDomainOrder::dispatch($order->id);
@@ -233,6 +273,8 @@ class DomainOrderService
                 Log::warning('Funded domain order awaiting queue recovery.', ['order_id' => $order->id]);
             }
         });
+
+        return true;
     }
 
     public function fail(DomainOrder $order, string $message): void
@@ -242,8 +284,8 @@ class DomainOrderService
             if (in_array($order->status, ['completed', 'failed', 'cancelled'], true)) {
                 return;
             }
-            if ($order->wallet_transaction_id && ! $order->refund_transaction_id) {
-                $refund = $this->wallets->refund($order->customer, $order->total, 'بازگشت مبلغ رزرو دامنه '.$order->domain, reference: $order, metadata: ['category' => 'domain_reservation_released', 'provider' => $order->provider, 'original_transaction_id' => $order->wallet_transaction_id]);
+            if ($order->funded_at && ! $order->refund_transaction_id) {
+                $refund = $this->wallets->refund($order->customer, $order->total, 'بازگشت مبلغ رزرو دامنه '.$order->domain, reference: $order, metadata: ['category' => $order->wallet_transaction_id ? 'domain_reservation_released' : 'domain_payment_returned', 'provider' => $order->provider, 'payment_id' => $order->payment_id, 'original_transaction_id' => $order->wallet_transaction_id]);
                 $order->refund_transaction_id = $refund->id;
             }
             $order->status = 'failed';

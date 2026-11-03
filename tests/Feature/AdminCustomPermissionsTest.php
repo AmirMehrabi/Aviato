@@ -123,7 +123,7 @@ class AdminCustomPermissionsTest extends TestCase
         $customer = Customer::factory()->create();
         $this->actingAs($this->custom(['dashboard.view', 'billing.read', 'customers.read']), 'admin');
         $this->get($this->base.'/dashboard')->assertOk()->assertViewHas('finance', fn ($finance) => is_array($finance));
-        $this->get($this->base.'/customers/'.$customer->id)->assertOk()->assertSee('کیف پول مشتری')->assertDontSee('ثبت تراکنش');
+        $this->get($this->base.'/customers/'.$customer->id.'?tab=billing')->assertOk()->assertSee('کیف پول مشتری')->assertDontSee('ثبت تراکنش');
         $this->get($this->base.'/billing')->assertOk()->assertDontSee('خروجی CSV');
         $this->get($this->base.'/billing/exports/payments')->assertForbidden();
         $this->post($this->base.'/customers/'.$customer->id.'/wallet-transactions')->assertForbidden();

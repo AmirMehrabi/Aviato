@@ -25,7 +25,7 @@ class PaymentService
         private readonly PromotionService $promotions,
     ) {}
 
-    public function createTopUp(Customer $customer, int $amount, ?string $description = null, ?string $provider = null, ?string $promotionCode = null, ?Customer $redeemer = null, ?Project $project = null, ?Request $request = null, ?DomainOrder $domainOrder = null): Payment
+    public function createTopUp(Customer $customer, int $amount, ?string $description = null, ?string $provider = null, ?string $promotionCode = null, ?Customer $redeemer = null, ?Project $project = null, ?Request $request = null, ?DomainOrder $domainOrder = null, bool $directDomain = false): Payment
     {
         if ($amount <= 0) {
             throw ValidationException::withMessages(['amount' => 'Amount must be greater than zero.']);
@@ -46,7 +46,7 @@ class PaymentService
             'wallet_id' => $wallet->id,
             'domain_order_id' => $domainOrder?->id,
             'provider' => $provider,
-            'type' => Payment::TYPE_TOP_UP,
+            'type' => $directDomain ? Payment::TYPE_DOMAIN : Payment::TYPE_TOP_UP,
             'status' => Payment::STATUS_PENDING,
             'amount' => $domainOrder?->currency === 'IRT' ? $amount * 10 : $amount,
             'currency' => $domainOrder ? 'IRR' : AppSetting::currency(),
@@ -127,6 +127,12 @@ class PaymentService
                 return $payment->refresh();
             }
 
+            if ($payment->type === Payment::TYPE_DOMAIN) {
+                app(DomainOrderService::class)->directPaymentCompleted($payment);
+
+                return $payment->refresh();
+            }
+
             if ($payment->domain_order_id) {
                 DomainOrder::lockForUpdate()->findOrFail($payment->domain_order_id);
             }
@@ -161,6 +167,15 @@ class PaymentService
         }
 
         return $completed;
+    }
+
+    public function createDomainPayment(DomainOrder $order, string $provider): Payment
+    {
+        if (! in_array($provider, ['mellat', 'zibal'], true)) {
+            throw ValidationException::withMessages(['gateway' => 'درگاه پرداخت مستقیم انتخاب‌شده در دسترس نیست.']);
+        }
+
+        return $this->createTopUp($order->customer, $order->total, 'پرداخت سفارش دامنه '.$order->domain, $provider, domainOrder: $order, directDomain: true);
     }
 
     public function createInvoicePayment(Invoice $invoice, string $provider): Payment

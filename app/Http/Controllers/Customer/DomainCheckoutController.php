@@ -54,7 +54,7 @@ class DomainCheckoutController extends Controller
         if (! in_array($step, ['owner', 'setup', 'review'], true)) {
             $step = 'owner';
         }
-        if ($order->operation === 'renew') {
+        if ($order->operation === 'renew' || $order->payment?->isPending()) {
             $step = 'review';
         }
         if ($step !== 'owner' && ! $order->registrant) {
@@ -68,7 +68,8 @@ class DomainCheckoutController extends Controller
 
         return view('customer.domains.checkout', [
             'customer' => $request->user('customer'), 'activeProject' => $project, 'order' => $order->load(['product', 'payment', 'managedDomain']), 'wallets' => app(WalletService::class), 'step' => $step,
-            'contacts' => $contacts, 'countries' => DomainRegistrant::countries(), 'available' => $available, 'shortfall' => max(0, $order->total - $available), 'gateways' => $gateways->available(),
+            'contacts' => $contacts, 'countries' => DomainRegistrant::countries(), 'available' => $available, 'shortfall' => max(0, $order->total - $available), 'gateways' => array_intersect_key($gateways->available(), array_flip(['mellat', 'zibal'])),
+            'walletUsable' => $available >= $order->total && ! app(WalletService::class)->walletFor($order->customer)->is_locked,
             'renewalPrice' => $pricing->renewalPrice($order->domain, $order->provider),
         ]);
     }
@@ -146,7 +147,20 @@ class DomainCheckoutController extends Controller
     public function pay(Request $request, DomainOrder $order, DomainOrderService $orders, PaymentGatewayManager $gateways): RedirectResponse
     {
         $this->own($request, $order);
-        $data = $request->validate(['terms' => ['accepted'], 'gateway' => ['nullable', Rule::in(array_keys($gateways->available()))]]);
+        $pending = $order->payment?->isPending();
+        $data = $request->validate([
+            'terms' => ['accepted'],
+            'payment_method' => [$pending ? 'nullable' : 'required', Rule::in(['wallet', 'online'])],
+            'gateway' => $pending || $request->input('payment_method') !== 'online'
+                ? ['exclude']
+                : ['required', Rule::in(array_keys(array_intersect_key($gateways->available(), array_flip(['mellat', 'zibal']))))],
+        ], [
+            'payment_method.required' => 'روش پرداخت را انتخاب کنید.',
+            'payment_method.in' => 'روش پرداخت معتبر نیست.',
+            'gateway.required' => 'درگاه پرداخت را انتخاب کنید.',
+            'gateway.in' => 'درگاه انتخاب‌شده در دسترس نیست. درگاه دیگری انتخاب کنید.',
+            'terms.accepted' => 'برای پرداخت، مشخصات و مبلغ سفارش را تأیید کنید.',
+        ]);
         DB::transaction(function () use ($order): void {
             $locked = DomainOrder::lockForUpdate()->findOrFail($order->id);
             if (in_array($locked->status, ['draft', 'awaiting_payment'], true)) {
@@ -154,9 +168,9 @@ class DomainCheckoutController extends Controller
             }
         });
         try {
-            $payment = $orders->pay($order->fresh(), $data['gateway'] ?? null);
+            $payment = $orders->pay($order->fresh(), $data['gateway'] ?? null, paymentMethod: $data['payment_method'] ?? null);
         } catch (RuntimeException|PaymentGatewayException) {
-            return $this->redirectTo('customer.domains.orders.show', ['order' => $order, 'step' => 'review'])->withErrors(['payment' => 'ارتباط با سرویس پرداخت یا دامنه برقرار نشد. سفارش محفوظ است؛ کمی بعد دوباره تلاش کنید.']);
+            return $this->redirectTo('customer.domains.orders.show', ['order' => $order, 'step' => 'review'])->withErrors(['payment' => 'ارتباط با سرویس پرداخت یا دامنه برقرار نشد. سفارش محفوظ است؛ کمی بعد دوباره تلاش کنید.'])->withInput();
         }
 
         return $payment

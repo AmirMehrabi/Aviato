@@ -16,8 +16,8 @@ class HesabroAccountingService
 {
     public function enqueue(Payment $payment): bool
     {
-        if ($payment->invoice_id) {
-            // Co-location invoices must not be exported as wallet top-up products.
+        if ($payment->invoice_id || $payment->type === Payment::TYPE_DOMAIN) {
+            // Direct purchases must not be exported as wallet top-up products.
             return false;
         }
         if (! AppSetting::hesabroAccountingEnabled() || ! AppSetting::hesabroAccountingConfigured()) {
@@ -56,7 +56,7 @@ class HesabroAccountingService
     /** @return array{factor_id: int} */
     public function submit(Payment $payment): array
     {
-        if (! $payment->isSuccessful() || ! AppSetting::hesabroAccountingEnabled() || ! AppSetting::hesabroAccountingConfigured()) {
+        if ($payment->type === Payment::TYPE_DOMAIN || $payment->invoice_id || ! $payment->isSuccessful() || ! AppSetting::hesabroAccountingEnabled() || ! AppSetting::hesabroAccountingConfigured()) {
             throw new RuntimeException('Hesabro accounting is not ready for this payment.');
         }
 

@@ -41,13 +41,14 @@
             @error($field)<p class="text-sm text-red-600">{{ $message }}</p>@enderror
         @endforeach
         <p class="text-sm text-slate-500">مدارک PDF، JPG یا PNG تا ۵ مگابایت. در درخواست اصلاح، مدارک قبلی حفظ می‌شوند؛ فقط مدارک نیازمند تغییر را بارگذاری کنید.</p>
-        @foreach(['incorporation' => 'آگهی تأسیس', 'signatories' => 'آخرین آگهی صاحبان امضای مجاز', 'authorization' => 'معرفی‌نامه نماینده (برای نماینده معرفی‌شده الزامی)'] as $kind => $label)
+        @foreach(\App\Models\CorporateDocument::labels() as $kind => $label)
             @php($existingDocument = $corporate->documents->where('version', $corporate->version)->firstWhere('kind', $kind))
-            <div data-document="{{ $label }}" @if($kind === 'authorization') x-show="role === 'delegate'" x-cloak @endif class="space-y-2 rounded-xl border border-slate-200 p-4">
+            <div data-document="{{ $label }}" class="space-y-2 rounded-xl border border-slate-200 p-4">
                 <label class="block font-bold" for="document-{{ $kind }}">{{ $label }} <span class="text-xs text-slate-500">{{ $existingDocument ? '(ثبت شده؛ جایگزینی اختیاری)' : '(الزامی)' }}</span></label>
                 @if($existingDocument)<a href="{{ route('customer.corporate.document', $existingDocument) }}" class="block text-sm text-blue-600">{{ $existingDocument->original_name }}</a>@endif
-                <input id="document-{{ $kind }}" type="file" name="{{ $kind }}" accept=".pdf,.jpg,.jpeg,.png" :disabled="@js($kind === 'authorization') && role !== 'delegate'" :required="stage !== 1 && !@js((bool) $existingDocument) && (!@js($kind === 'authorization') || role === 'delegate')" @change="if ($el.files[0]?.size > 5 * 1024 * 1024) $el.setCustomValidity('حداکثر حجم فایل ۵ مگابایت است.'); else $el.setCustomValidity('')" class="block w-full text-sm">
-                @error($kind)<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                <input id="document-{{ $kind }}" type="file" name="{{ $kind }}" accept=".pdf,.jpg,.jpeg,.png" :required="stage !== 1 && !@js((bool) $existingDocument)" aria-describedby="document-{{ $kind }}-help{{ $errors->has($kind) ? ' document-'.$kind.'-error' : '' }}" @if($errors->has($kind)) aria-invalid="true" @endif @change="if ($el.files[0]?.size > 5 * 1024 * 1024) $el.setCustomValidity('حداکثر حجم فایل ۵ مگابایت است.'); else $el.setCustomValidity('')" class="block w-full text-sm">
+                <p id="document-{{ $kind }}-help" class="text-xs text-slate-500">فایل PDF، JPG یا PNG، حداکثر ۵ مگابایت.</p>
+                @error($kind)<p id="document-{{ $kind }}-error" role="alert" class="text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
         @endforeach
         <div class="flex flex-wrap gap-3">
@@ -73,7 +74,7 @@
     @if($corporate->documents->where('version', $corporate->version)->isNotEmpty())
     <h3 class="font-black">مدارک ثبت‌شده</h3>
     @foreach($corporate->documents->where('version', $corporate->version) as $document)
-        <a class="block text-blue-600" href="{{ route('customer.corporate.document', $document) }}">{{ ['incorporation' => 'آگهی تأسیس', 'signatories' => 'صاحبان امضای مجاز', 'authorization' => 'معرفی‌نامه نماینده'][$document->kind] ?? $document->kind }} — {{ $document->original_name }}</a>
+        <a class="block text-blue-600" href="{{ route('customer.corporate.document', $document) }}">{{ \App\Models\CorporateDocument::labels()[$document->kind] ?? $document->kind }} — {{ $document->original_name }}</a>
     @endforeach
     @endif
     @if($corporate->events->isNotEmpty())

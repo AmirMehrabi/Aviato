@@ -13,7 +13,7 @@
         <dl class="grid gap-3 md:grid-cols-2">@foreach($corporate->registry_result as $key => $value)<div><dt class="text-xs text-slate-500">{{ ['national_id' => 'شناسه ملی', 'name' => 'نام ثبتی', 'register_number' => 'شماره ثبت', 'register_date' => 'تاریخ ثبت', 'company_type' => 'نوع شرکت', 'address' => 'نشانی ثبتی', 'postal_code' => 'کد پستی', 'phone_number' => 'تلفن', 'email_address' => 'ایمیل', 'activity_end_date' => 'پایان فعالیت'][$key] ?? $key }}</dt><dd>{{ $value ?? '—' }}</dd></div>@endforeach</dl>
         <hr>
         @foreach(['representative_role' => 'سمت نماینده', 'address' => 'نشانی اعلامی', 'postal_code' => 'کد پستی', 'billing_email' => 'ایمیل مالی', 'company_phone' => 'تلفن شرکت', 'tax_number' => 'شماره اقتصادی'] as $field => $label)<p>{{ $label }}: {{ $field === 'representative_role' ? (['signatory' => 'صاحب امضای مجاز', 'delegate' => 'نماینده معرفی‌شده'][$corporate->$field] ?? '—') : ($corporate->$field ?? '—') }}</p>@endforeach
-        @foreach($corporate->documents->where('version', $corporate->version) as $document)<a class="block text-blue-600" href="{{ route('admin.corporate.document', $document) }}">{{ ['incorporation' => 'آگهی تأسیس', 'signatories' => 'صاحبان امضای مجاز', 'authorization' => 'معرفی‌نامه نماینده'][$document->kind] ?? $document->kind }} — {{ $document->original_name }}</a>@endforeach
+        @foreach($corporate->documents->where('version', $corporate->version) as $document)<a class="block text-blue-600" href="{{ route('admin.corporate.document', $document) }}">{{ \App\Models\CorporateDocument::labels()[$document->kind] ?? $document->kind }} — {{ $document->original_name }}</a>@endforeach
     </section>
     @if($corporate->status === 'pending')
     @adminRoute('admin.corporate.review')
@@ -39,7 +39,7 @@
                 @if(isset($event->snapshot['billing_effective_at']))<div><dt class="text-xs text-slate-500">شروع صورتحساب حقوقی</dt><dd>{{ \App\Support\Jalali::format(\Carbon\Carbon::parse($event->snapshot['billing_effective_at'])) }}</dd></div>@endif
             </dl>
         </details>
-        @foreach($corporate->documents->where('version', $event->version) as $document)<a class="block text-blue-600" href="{{ route('admin.corporate.document', $document) }}">{{ ['incorporation' => 'آگهی تأسیس', 'signatories' => 'صاحبان امضای مجاز', 'authorization' => 'معرفی‌نامه نماینده'][$document->kind] ?? $document->kind }} — {{ $document->original_name }}</a>@endforeach</div>
+        @foreach($corporate->documents->where('version', $event->version) as $document)<a class="block text-blue-600" href="{{ route('admin.corporate.document', $document) }}">{{ \App\Models\CorporateDocument::labels()[$document->kind] ?? $document->kind }} — {{ $document->original_name }}</a>@endforeach</div>
     @endforeach</section>
     <section class="rounded-xl border border-slate-200 bg-white p-5"><h2 class="font-black">ارسال اعلان‌ها</h2>@foreach($deliveries as $delivery)<p class="py-2 text-sm">{{ $delivery->recipient_type }} #{{ $delivery->recipient_id }} · {{ $delivery->channel }} · {{ $delivery->status }} · {{ $delivery->provider_id }} {{ $delivery->error }}</p>
         @if(in_array($delivery->status, ['failed', 'uncertain']))

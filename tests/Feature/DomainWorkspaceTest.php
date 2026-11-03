@@ -106,7 +106,7 @@ class DomainWorkspaceTest extends TestCase
         $order = DomainOrder::firstOrFail();
         $this->assertSame($this->second->id, $order->project_id);
         $this->assertSame($this->owner->id, $order->customer_id);
-        $this->get('https://cp.localhost/domains/orders/'.$order->uuid)->assertOk()->assertSee('وبلاگ')->assertSee('کیف پول شخصی');
+        $this->get('https://cp.localhost/domains/orders/'.$order->uuid)->assertOk()->assertSee('وبلاگ')->assertSee('پرداخت‌کننده:')->assertSee($this->owner->name);
         $other = app(DomainOrderService::class)->create($this->owner, 'new.com', 1, project: $this->first);
         $this->assertNotSame($other->id, $order->id);
     }
