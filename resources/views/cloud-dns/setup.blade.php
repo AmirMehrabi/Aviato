@@ -23,23 +23,11 @@
         </div>
     </div>
     @unless($zone->verified_at)
-        @php($expired = $zone->verification_expires_at?->isPast())
         <details open class="border-t border-blue-100 bg-blue-50/30 p-5 sm:p-6">
-            <summary class="cursor-pointer text-sm font-bold">۱. تأیید مالکیت دامنه</summary>
-            @if($expired)
-                <p class="mt-3 text-sm leading-7 text-amber-900">مهلت تأیید این دامنه تمام شده است. کد تازه دریافت کنید و مقدار TXT قبلی را جایگزین کنید؛ رکوردهای واردشده حفظ می‌شوند.</p>
-                @if($editable && ! $admin)<form method="POST" action="{{ route($prefix.'verification.renew', $zone, false) }}" class="mt-3">@csrf<button class="rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-bold text-white">دریافت کد تأیید جدید</button></form>@endif
-            @else
-                <p class="mt-3 text-sm leading-7 text-slate-600">این رکورد را در سرویس DNS فعلی دامنه اضافه کنید. فعلاً نیم‌سرورها را تغییر ندهید.</p>
-                <div class="mt-4 overflow-hidden rounded-xl border border-blue-100 bg-white">
-                    @foreach(['نوع رکورد' => 'TXT', 'نام (Name)' => '_aviato-verification', 'مقدار (Content)' => $zone->verification_token] as $label => $value)
-                        <div class="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-0"><span class="w-full text-xs font-bold text-slate-500 sm:w-28">{{ $label }}</span><code dir="ltr" class="min-w-0 flex-1 select-all break-all text-left text-sm">{{ $value }}</code><button type="button" @click="copy({{ \Illuminate\Support\Js::from($value) }})" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-[#0069FF]" aria-label="کپی {{ $label }}">کپی</button></div>
-                    @endforeach
-                </div>
-                @if($editable && ! $admin)
-                    <form method="POST" action="{{ route($prefix.'verify', $zone, false) }}" class="mt-4 flex flex-wrap items-center gap-3" x-data="{ checking: false }" @submit="checking = true">@csrf<button :disabled="checking" class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white disabled:opacity-50" x-text="checking ? 'در حال بررسی رکورد…' : 'رکورد را اضافه کردم؛ بررسی مالکیت'">رکورد را اضافه کردم؛ بررسی مالکیت</button><span class="text-xs text-slate-500">اعتبار کد تا {{ \App\Support\Jalali::format($zone->verification_expires_at) }}</span></form>
-                @endif
-                <details class="mt-4 text-xs leading-7 text-slate-600"><summary class="cursor-pointer font-bold">راهنمای Cloudflare و رفع مشکل تأیید</summary><p class="mt-2">در Cloudflare به DNS → Records بروید و Add record را بزنید. نوع را TXT و TTL را Auto بگذارید. نام کامل رکورد <bdi class="font-mono">_aviato-verification.{{ $zone->name }}</bdi> است. اگر سرویس دامنه را خودکار اضافه می‌کند فقط نام کوتاه را وارد کنید. اگر رکورد پیدا نشد، نام و مقدار را بدون فاصله اضافی کپی کنید و چند دقیقه بعد دوباره بررسی کنید.</p></details>
+            <summary class="cursor-pointer text-sm font-bold">۱. تأیید اتصال دامنه</summary>
+            <p class="mt-3 text-sm leading-7 text-slate-600">نیم‌سرورهای دامنه را در پنل ثبت‌کننده با نیم‌سرورهای آویاتو که در بالا نمایش داده شده جایگزین کنید. پس از انتشار تغییر، اتصال را بررسی کنید تا دامنه فعال شود.</p>
+            @if($editable && ! $admin)
+                <form method="POST" action="{{ route($prefix.'verify', $zone, false) }}" class="mt-4" x-data="{ checking: false }" @submit="checking = true">@csrf<button :disabled="checking" class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white disabled:opacity-50" x-text="checking ? 'در حال بررسی نیم‌سرورها…' : 'بررسی اتصال و فعال‌سازی'">بررسی اتصال و فعال‌سازی</button></form>
             @endif
         </details>
     @endunless
@@ -53,7 +41,7 @@
             <label class="flex gap-2"><input type="checkbox" x-model="emptyDomain" class="mt-2 shrink-0">این دامنه هنوز سرویس فعالی ندارد.</label>
             <label class="flex gap-2"><input type="checkbox" x-model="dnssecReviewed" class="mt-2 shrink-0">DNSSEC غیرفعال است یا DS سرویس قبلی را از رجیسترار حذف کرده‌ام و زمان انقضای کش آن گذشته است.</label>
             <p class="text-xs text-amber-900">Aviato در این مرحله وضعیت DS را خودکار تأیید نمی‌کند. اگر از وضعیت DNSSEC مطمئن نیستید، پیش از جابه‌جایی با پشتیبانی هماهنگ کنید.</p>
-            <p class="text-sm font-bold text-slate-900" x-text="!connection.published ? 'ابتدا مالکیت و انتشار رکوردها را تکمیل کنید.' : (migrationReviewed ? 'مرور شما تکمیل است؛ اکنون نیم‌سرورها را در رجیسترار تغییر دهید.' : 'رکوردها منتشر شده‌اند؛ پیش از تغییر نیم‌سرورها چک‌لیست را کامل کنید.')"></p>
+            <p class="text-sm font-bold text-slate-900" x-text="!connection.published ? 'ابتدا اتصال نیم‌سرورها را تکمیل کنید.' : (migrationReviewed ? 'مرور شما تکمیل است؛ اکنون نیم‌سرورها را در رجیسترار تغییر دهید.' : 'رکوردها منتشر شده‌اند؛ پیش از تغییر نیم‌سرورها چک‌لیست را کامل کنید.')"></p>
         </div>
     </details>
     <details class="border-t border-slate-100 p-5 sm:p-6">

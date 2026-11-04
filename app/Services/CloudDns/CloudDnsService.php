@@ -8,7 +8,6 @@ use App\Models\DnsZone;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CloudDnsService
@@ -30,14 +29,11 @@ class CloudDnsService
             if ($project->dnsZones()->where('status', '!=', 'deleted')->count() >= config('cloud-dns.plans.free.zone_limit')) {
                 throw ValidationException::withMessages(['name' => 'به سقف تعداد دامنه‌های طرح رسیده‌اید.']);
             }
-            // Unverified claims expire and never provision DNS. They cannot reserve a name indefinitely.
-            DnsZone::where('name', $name)->whereNull('verified_at')->where('verification_expires_at', '<', now())->delete();
             if (DnsZone::where('name', $name)->exists()) {
                 throw ValidationException::withMessages(['name' => 'این دامنه قبلاً ثبت شده است؛ برای انتقال با پشتیبانی تماس بگیرید.']);
             }
             $zone = $project->dnsZones()->create([
-                'name' => $name, 'verification_token' => 'aviato-verification='.Str::random(48),
-                'verification_expires_at' => now()->addHours(config('cloud-dns.verification_hours')),
+                'name' => $name,
             ]);
             $this->audit($zone, $actor, 'created', [], ['name' => $name]);
 
@@ -50,11 +46,11 @@ class CloudDnsService
         if ($zone->verified_at) {
             return;
         }
-        if ($zone->verification_expires_at->isPast()) {
-            throw ValidationException::withMessages(['verification' => 'مهلت تأیید تمام شده است؛ از بخش راه‌اندازی کد تأیید جدید دریافت کنید.']);
-        }
-        if (! in_array($zone->verification_token, $this->lookup->txt('_aviato-verification.'.$zone->name), true)) {
-            throw ValidationException::withMessages(['verification' => 'رکورد TXT تأیید هنوز در DNS فعلی دامنه پیدا نشد.']);
+        $observed = $this->lookup->delegation($zone->name);
+        $expected = config('cloud-dns.nameservers');
+        sort($expected);
+        if ($observed !== $expected) {
+            throw ValidationException::withMessages(['verification' => 'نیم‌سرورهای دامنه هنوز به آویاتو واگذار نشده‌اند.']);
         }
         $this->mutate($zone, $actor, 'verified', function ($locked): void {
             $locked->verified_at = now();
@@ -62,12 +58,19 @@ class CloudDnsService
         });
     }
 
-    public function check(DnsZone $zone): void
+    public function check(DnsZone $zone, ?Model $actor = null): void
     {
         $observed = $this->lookup->delegation($zone->name);
         $expected = config('cloud-dns.nameservers');
         sort($expected);
-        $zone->update(['observed_nameservers' => $observed, 'delegation_status' => $observed === $expected ? 'active' : 'pending', 'checked_at' => now()]);
+        $connected = $observed === $expected;
+        $zone->update(['observed_nameservers' => $observed, 'delegation_status' => $connected ? 'active' : 'pending', 'checked_at' => now()]);
+        if ($connected && ! $zone->verified_at) {
+            $this->mutate($zone, $actor ?? $zone->project->owner, 'verified', function ($locked): void {
+                $locked->verified_at = now();
+                $locked->status = 'pending';
+            });
+        }
     }
 
     public function saveRecords(DnsZone $zone, array $inputs, Model $actor): void
@@ -166,17 +169,6 @@ class CloudDnsService
         }
 
         return ['report' => $report, 'changes' => $changes];
-    }
-
-    public function renewVerification(DnsZone $zone, Model $actor): void
-    {
-        DB::transaction(function () use ($zone, $actor): void {
-            $locked = DnsZone::whereKey($zone->id)->lockForUpdate()->firstOrFail();
-            $this->editable($locked);
-            abort_if($locked->verified_at || ! $locked->verification_expires_at?->isPast(), 409);
-            $locked->update(['verification_token' => 'aviato-verification='.Str::random(48), 'verification_expires_at' => now()->addHours(config('cloud-dns.verification_hours'))]);
-            $this->audit($locked, $actor, 'verification.renewed', [], []);
-        });
     }
 
     public function deleteRecord(DnsZone $zone, int $recordId, Model $actor): void

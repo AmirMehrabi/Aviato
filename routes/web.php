@@ -547,7 +547,6 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
             Route::get('{zone}/management', [$controller, 'management'])->name('management');
             Route::get('{zone}/status', [$controller, 'status'])->middleware('throttle:60,1')->name('status');
             Route::post('{zone}/import/preview', [$controller, 'previewImport'])->middleware('throttle:10,1')->name('import.preview');
-            Route::post('{zone}/verification/renew', [$controller, 'renewVerification'])->middleware('throttle:5,1')->name('verification.renew');
             Route::post('{zone}/verify', [$controller, 'verify'])->middleware('throttle:5,1')->name('verify');
             Route::post('{zone}/check', [$controller, 'check'])->middleware('throttle:5,1')->name('check');
             Route::post('{zone}/records', [$controller, 'records'])->middleware('throttle:60,1')->name('records');

@@ -577,13 +577,11 @@ Artisan::command('cloud-dns:add-domain {phone} {domain} {--project= : Project UU
         ->firstOrFail();
     $zone = $dns->create($project, $this->argument('domain'), $customer);
     $this->line('Project: '.$project->name);
-    $this->line('TXT name: _aviato-verification.'.$zone->name);
-    $this->line('TXT value: '.$zone->verification_token);
-    $this->line('Expires: '.$zone->verification_expires_at->toIso8601String());
-    $this->line('No delegation changes made. Import the current zone and verify TXT in the portal.');
+    $this->line('Domain: '.$zone->name);
+    $this->line('Set the registrar nameservers to the configured Aviato nameservers, then check delegation in the portal.');
 
     return 0;
-})->purpose('Prepare a customer-owned DNS zone and print its TXT ownership challenge');
+})->purpose('Prepare a customer DNS zone and verify ownership through nameserver delegation');
 
 Schedule::call(function (): void {
     VmOperation::whereNotNull('active_vm_id')->where('action', '!=', 'upgrade')->orderBy('id')->chunkById(100, function ($operations): void {

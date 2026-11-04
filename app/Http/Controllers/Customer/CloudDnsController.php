@@ -80,19 +80,11 @@ class CloudDnsController extends Controller
         return back()->with('status', 'مالکیت تأیید شد؛ آماده‌سازی DNS در صف قرار گرفت.');
     }
 
-    public function renewVerification(Request $request, DnsZone $zone)
-    {
-        $this->access($request, true, $zone);
-        $this->dns->renewVerification($zone, $request->user('customer'));
-
-        return back()->with('status', 'کد تازه صادر شد؛ رکورد TXT قبلی را با مقدار تازه جایگزین کنید. رکوردهای دامنه حفظ شده‌اند.');
-    }
-
     public function check(Request $request, DnsZone $zone)
     {
         $this->access($request, true, $zone);
         try {
-            $this->dns->check($zone);
+            $this->dns->check($zone, $request->user('customer'));
         } catch (\RuntimeException $e) {
             return back()->withErrors(['dns' => 'بررسی اتصال انجام نشد؛ نتیجه قبلی حفظ شده است. کمی بعد دوباره تلاش کنید.']);
         }
