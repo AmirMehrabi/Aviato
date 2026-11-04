@@ -539,18 +539,29 @@ Artisan::command('cloud-dns:reconcile', function (): int {
     if (! config('cloud-dns.enabled')) {
         return 0;
     }
-    DnsZone::whereNotNull('verified_at')->where('status', '!=', 'deleted')
+    $retentionDays = (int) config('cloud-dns.unverified_retention_days', 7);
+    DnsZone::whereNull('verified_at')->where('created_at', '<=', now()->subDays($retentionDays))->delete();
+
+    DnsZone::where('status', '!=', 'deleted')
+        ->where(function ($query) use ($retentionDays): void {
+            $query->whereNotNull('verified_at')
+                ->orWhere(function ($pending) use ($retentionDays): void {
+                    $pending->whereNull('verified_at')->where('created_at', '>', now()->subDays($retentionDays));
+                });
+        })
         ->orderBy('id')->chunkById(100, function ($zones): void {
             foreach ($zones as $zone) {
-                SyncDnsZone::dispatch($zone->id);
-                if (! $zone->checked_at || $zone->checked_at->lt(now()->subMinutes(30))) {
+                if ($zone->verified_at) {
+                    SyncDnsZone::dispatch($zone->id);
+                }
+                if (! $zone->checked_at || $zone->checked_at->lt(now()->subMinutes($zone->verified_at ? 30 : 5))) {
                     CheckDnsDelegation::dispatch($zone->id);
                 }
             }
         });
 
     return 0;
-})->purpose('Reconcile desired DNS zones with both PowerDNS servers and check delegation');
+})->purpose('Reconcile DNS zones, retry pending delegation checks, and remove unverified claims after their retention period');
 
 Artisan::command('cloud-dns:usage', function (): int {
     Project::whereHas('dnsZones')->chunkById(100, function ($projects): void {

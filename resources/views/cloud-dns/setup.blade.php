@@ -25,7 +25,7 @@
     @unless($zone->verified_at)
         <details open class="border-t border-blue-100 bg-blue-50/30 p-5 sm:p-6">
             <summary class="cursor-pointer text-sm font-bold">۱. تأیید اتصال دامنه</summary>
-            <p class="mt-3 text-sm leading-7 text-slate-600">نیم‌سرورهای دامنه را در پنل ثبت‌کننده با نیم‌سرورهای آویاتو که در بالا نمایش داده شده جایگزین کنید. پس از انتشار تغییر، اتصال را بررسی کنید تا دامنه فعال شود.</p>
+            <p class="mt-3 text-sm leading-7 text-slate-600">نیم‌سرورهای دامنه را در پنل ثبت‌کننده با نیم‌سرورهای آویاتو که در بالا نمایش داده شده جایگزین کنید. بررسی اتصال بلافاصله و سپس خودکار تکرار می‌شود؛ پس از تأیید، DNS فعال خواهد شد. اگر دامنه تا {{ config('cloud-dns.unverified_retention_days', 7) }} روز تأیید نشود، از حساب حذف می‌شود.</p>
             @if($editable && ! $admin)
                 <form method="POST" action="{{ route($prefix.'verify', $zone, false) }}" class="mt-4" x-data="{ checking: false }" @submit="checking = true">@csrf<button :disabled="checking" class="rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-bold text-white disabled:opacity-50" x-text="checking ? 'در حال بررسی نیم‌سرورها…' : 'بررسی اتصال و فعال‌سازی'">بررسی اتصال و فعال‌سازی</button></form>
             @endif

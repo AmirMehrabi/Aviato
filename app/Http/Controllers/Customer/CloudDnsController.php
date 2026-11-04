@@ -33,6 +33,11 @@ class CloudDnsController extends Controller
         [$project] = $this->access($request, true);
         $data = $request->validate(['name' => ['required', 'string', 'max:253']]);
         $zone = $this->dns->create($project, $data['name'], $request->user('customer'));
+        try {
+            $this->dns->check($zone, $request->user('customer'));
+        } catch (\RuntimeException) {
+            // Keep the zone pending; the scheduled delegation check will retry.
+        }
 
         return redirect()->route('customer.cloud-dns.show', $zone);
     }

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\AdminRole;
 use App\Jobs\SyncDnsZone;
+use App\Jobs\CheckDnsDelegation;
 use App\Models\Customer;
 use App\Models\DnsZone;
 use App\Models\User;
@@ -57,13 +58,41 @@ class CloudDnsTest extends TestCase
     public function test_owner_can_create_and_render_a_zone_without_provisioning_unverified_dns(): void
     {
         $customer = Customer::factory()->create();
+        $this->mock(DnsLookup::class, fn ($mock) => $mock->shouldReceive('delegation')->once()->with('example.ir')->andReturn([]));
         $this->actingAs($customer, 'customer')->post('https://cp.localhost/cloud-dns', ['name' => 'Example.IR.'])->assertRedirect();
         $zone = DnsZone::firstOrFail();
         $this->assertSame('example.ir', $zone->name);
+        $this->assertNull($zone->verified_at);
+        $this->assertNotNull($zone->checked_at);
         $this->get('https://cp.localhost/cloud-dns')->assertOk()->assertSee('example.ir');
         $this->get('https://cp.localhost/cloud-dns/'.$zone->uuid)->assertOk()->assertSee('ns2.aviato.ir')->assertSee('تأیید اتصال دامنه')->assertDontSee('_aviato-verification');
         Queue::assertNothingPushed();
         Http::assertNothingSent();
+    }
+
+    public function test_delegation_is_checked_on_submission_and_matching_nameservers_verify_immediately(): void
+    {
+        $customer = Customer::factory()->create();
+        $nameservers = config('cloud-dns.nameservers');
+        sort($nameservers);
+        $this->mock(DnsLookup::class, fn ($mock) => $mock->shouldReceive('delegation')->once()->with('example.ir')->andReturn($nameservers));
+        $this->actingAs($customer, 'customer')->post('https://cp.localhost/cloud-dns', ['name' => 'example.ir'])->assertRedirect();
+        $zone = DnsZone::firstOrFail();
+        $this->assertNotNull($zone->verified_at);
+        Queue::assertPushed(SyncDnsZone::class);
+    }
+
+    public function test_reconcile_retries_recent_unverified_zones_and_removes_expired_claims(): void
+    {
+        $customer = Customer::factory()->create();
+        $pending = $this->zone($customer, 'pending.ir');
+        $expired = $this->zone($customer, 'expired.ir');
+        $expired->update(['created_at' => now()->subDays(config('cloud-dns.unverified_retention_days') + 1)]);
+
+        $this->artisan('cloud-dns:reconcile')->assertSuccessful();
+
+        Queue::assertPushed(CheckDnsDelegation::class, fn ($job) => $job->zoneId === $pending->id);
+        $this->assertDatabaseMissing('dns_zones', ['id' => $expired->id]);
     }
 
     public function test_other_projects_cannot_read_modify_export_or_delete_a_zone(): void

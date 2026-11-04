@@ -20,7 +20,7 @@ class CheckDnsDelegation implements ShouldQueue
     public function handle(CloudDnsService $dns): void
     {
         $zone = DnsZone::find($this->zoneId);
-        if ($zone && $zone->verified_at && ! $zone->delete_requested_at && $zone->status !== 'deleted') {
+        if ($zone && ! $zone->delete_requested_at && $zone->status !== 'deleted') {
             $dns->check($zone);
         }
     }

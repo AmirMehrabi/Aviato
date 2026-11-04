@@ -15,5 +15,5 @@ return [
         'free' => ['zone_limit' => (int) env('CLOUD_DNS_ZONE_LIMIT', 25), 'record_limit' => (int) env('CLOUD_DNS_RECORD_LIMIT', 500), 'monthly_price' => 0],
     ],
     'reserved_domains' => ['aviato.ir'],
-    'verification_hours' => 48,
+    'unverified_retention_days' => 7,
 ];
