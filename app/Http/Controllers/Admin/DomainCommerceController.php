@@ -196,7 +196,10 @@ class DomainCommerceController extends Controller
 
     public function confirmIrpower(Request $request, DomainOrder $order, DomainFulfillmentService $fulfillment): RedirectResponse
     {
-        $data = $request->validate(['expires_at' => ['required', 'date', 'after:today'], 'provider_reference' => ['required', 'string', 'min:10', 'max:500'], 'verified' => ['accepted']]);
+        $data = $request->validate(['expires_at' => ['required', 'date', 'after:today'], 'provider_reference' => ['required', 'string', 'min:10', 'max:500'], 'verified' => ['accepted']], [
+            'expires_at.after' => 'تاریخ انقضا باید بعد از امروز باشد. تاریخ واقعی انقضای دامنه را به میلادی وارد کنید (برای نمونه 2027-10-26)، نه تاریخ ثبت یا تأیید درخواست.',
+            'expires_at.date' => 'تاریخ انقضای دامنه را به میلادی وارد کنید (برای نمونه 2027-10-26).',
+        ]);
         try {
             $fulfillment->confirmIrpower($order, $data['expires_at'], $data['provider_reference'], $request->user('admin')->id);
         } catch (HttpExceptionInterface $exception) {
@@ -211,7 +214,10 @@ class DomainCommerceController extends Controller
     public function confirmExpiry(Request $request, ManagedDomain $domain): RedirectResponse
     {
         abort_unless($domain->provider === 'irpower', 404);
-        $data = $request->validate(['expires_at' => ['required', 'date', 'after:today'], 'provider_reference' => ['required', 'string', 'min:10', 'max:500'], 'verified' => ['accepted']]);
+        $data = $request->validate(['expires_at' => ['required', 'date', 'after:today'], 'provider_reference' => ['required', 'string', 'min:10', 'max:500'], 'verified' => ['accepted']], [
+            'expires_at.after' => 'تاریخ انقضا باید بعد از امروز باشد. تاریخ واقعی انقضای دامنه را به میلادی وارد کنید (برای نمونه 2027-10-26)، نه تاریخ ثبت یا تأیید درخواست.',
+            'expires_at.date' => 'تاریخ انقضای دامنه را به میلادی وارد کنید (برای نمونه 2027-10-26).',
+        ]);
         try {
             app(IrpowerProvider::class)->nameservers($domain->name);
         } catch (Throwable) {

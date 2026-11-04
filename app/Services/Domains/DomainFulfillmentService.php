@@ -212,8 +212,8 @@ class DomainFulfillmentService
             throw ValidationException::withMessages(['expires_at' => 'تاریخ انقضای تأییدشده باید تمام دوره خریداری‌شده را پوشش دهد.']);
         }
         $provider = app(IrpowerProvider::class);
-        // Confirm the domain is accessible through this provider account, independently of public WHOIS.
-        $provider->request('GetDomainWhoisInfo', ['domain' => $order->domain]);
+        // Authenticated nameserver lookup confirms account access. WHOIS formatting is
+        // unsupported for some registry modules; ownership and expiry are operator-attested.
         $provider->nameservers($order->domain);
         DB::transaction(function () use ($order, $operation, $end, $reference, $actor): void {
             $locked = DomainOrder::lockForUpdate()->findOrFail($order->id);

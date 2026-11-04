@@ -26,13 +26,13 @@ class CloudDnsUiTest extends TestCase
         $zone = app(CloudDnsService::class)->create($customer->ensureDefaultProject(), 'example.ir', $customer);
         $this->actingAs($customer, 'customer');
         $url = 'https://cp.localhost/cloud-dns/'.$zone->uuid;
-        $initial = $this->get($url)->assertOk()->assertSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('اتصال هنوز بررسی نشده')->assertSee('مدیریت DNS');
+        $initial = $this->get($url)->assertOk()->assertSee('بررسی اتصال و فعال‌سازی')->assertSee('اتصال هنوز بررسی نشده')->assertSee('مدیریت DNS');
         if ($path = getenv('CLOUD_DNS_UX_RENDER_PATH')) {
             file_put_contents($path, $initial->getContent());
         }
         $this->assertLessThan(strpos($initial->getContent(), 'id="dns-records"'), strpos($initial->getContent(), 'id="domain-nameservers"'));
         $zone->update(['verified_at' => now(), 'status' => 'ready', 'synced_revision' => $zone->revision, 'delegation_status' => 'pending', 'checked_at' => now()]);
-        $pending = $this->get($url)->assertOk()->assertDontSee('رکورد را اضافه کردم؛ بررسی مالکیت')->assertSee('نیم‌سرورها هنوز متصل نیستند')->assertDontSee('دامنه به آویاتو متصل است');
+        $pending = $this->get($url)->assertOk()->assertDontSee('بررسی اتصال و فعال‌سازی')->assertSee('نیم‌سرورها هنوز متصل نیستند')->assertDontSee('دامنه به آویاتو متصل است');
         $this->assertLessThan(strpos($pending->getContent(), 'id="domain-nameservers"'), strpos($pending->getContent(), 'id="dns-records"'));
         $zone->update(['delegation_status' => 'active']);
         $html = $this->get($url)->assertOk()->assertSee('دامنه به آویاتو متصل است')->getContent();
@@ -109,7 +109,7 @@ class CloudDnsUiTest extends TestCase
         $this->post($url.'/verification/renew')->assertNotFound();
     }
 
-    public function test_expired_verification_can_be_renewed_without_losing_records(): void
+    public function test_txt_renewal_endpoint_is_removed_and_records_are_retained(): void
     {
         config(['cloud-dns.enabled' => true]);
         Queue::fake();
@@ -118,16 +118,9 @@ class CloudDnsUiTest extends TestCase
         $dns = app(CloudDnsService::class);
         $zone = $dns->create($customer->ensureDefaultProject(), 'example.ir', $customer);
         $dns->saveRecords($zone, [['name' => 'blog.example.ir', 'type' => 'NS', 'ttl' => 300, 'content' => 'ns1.example.net']], $customer);
-        $zone->update(['verification_expires_at' => now()->subMinute()]);
-        $token = $zone->verification_token;
         $url = 'https://cp.localhost/cloud-dns/'.$zone->uuid;
-        $this->actingAs($customer, 'customer')->from($url)->post($url.'/verification/renew')->assertRedirect($url)->assertSessionHasNoErrors();
-        $this->assertNotSame($token, $zone->fresh()->verification_token);
-        $this->assertTrue($zone->fresh()->verification_expires_at->isFuture());
+        $this->actingAs($customer, 'customer')->post($url.'/verification/renew')->assertNotFound();
         $this->assertSame('blog.example.ir.', $zone->recordSets()->first()->name);
-        $this->post($url.'/verification/renew')->assertStatus(409);
-        $zone->update(['verified_at' => now(), 'verification_expires_at' => now()->subMinute()]);
-        $this->post($url.'/verification/renew')->assertStatus(409);
         Queue::assertNothingPushed();
     }
 
@@ -147,7 +140,7 @@ class CloudDnsUiTest extends TestCase
         $this->getJson($url)->assertOk()->assertJsonPath('published', false)->assertJsonPath('healthy', false);
     }
 
-    public function test_read_only_dns_member_can_poll_but_cannot_preview_or_renew(): void
+    public function test_read_only_dns_member_can_poll_but_cannot_preview_or_use_removed_renewal_route(): void
     {
         config(['cloud-dns.enabled' => true]);
         Queue::fake();

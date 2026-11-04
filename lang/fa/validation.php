@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'date' => ':attribute باید یک تاریخ معتبر باشد.',
+    'after' => ':attribute باید تاریخی بعد از :date باشد.',
     'required' => ':attribute را وارد کنید.',
     'required_without' => ':attribute را وارد کنید.',
     'required_without_all' => ':attribute را وارد کنید.',
@@ -33,6 +35,7 @@ return [
         ],
     ],
     'attributes' => [
+        'expires_at' => 'تاریخ انقضا',
         'login' => 'ایمیل یا شماره موبایل',
         'password' => 'رمز عبور',
         'password_confirmation' => 'تکرار رمز عبور',

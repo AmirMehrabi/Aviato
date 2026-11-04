@@ -65,7 +65,7 @@ class DnsZone extends Model
     protected function casts(): array
     {
         return [
-            'verification_expires_at' => 'datetime', 'verified_at' => 'datetime',
+            'verified_at' => 'datetime',
             'checked_at' => 'datetime', 'synced_at' => 'datetime', 'delete_requested_at' => 'datetime',
             'observed_nameservers' => 'array', 'node_status' => 'array',
             'revision' => 'integer', 'synced_revision' => 'integer',

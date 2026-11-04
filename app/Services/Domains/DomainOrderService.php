@@ -120,7 +120,7 @@ class DomainOrderService
                     app(IrpowerProvider::class)->validateHandles($order->registrant ?? []);
                 }
             } else {
-                app(IrpowerProvider::class)->request('GetDomainWhoisInfo', ['domain' => $order->domain]);
+                app(IrpowerProvider::class)->nameservers($order->domain);
             }
 
             return;

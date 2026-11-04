@@ -45,7 +45,7 @@ class CloudDnsTest extends TestCase
         $zone = DnsZone::firstOrFail();
         $this->assertSame('example.ir', $zone->name);
         $this->get('https://cp.localhost/cloud-dns')->assertOk()->assertSee('example.ir');
-        $this->get('https://cp.localhost/cloud-dns/'.$zone->uuid)->assertOk()->assertSee($zone->verification_token)->assertSee('ns2.aviato.ir');
+        $this->get('https://cp.localhost/cloud-dns/'.$zone->uuid)->assertOk()->assertSee('ns2.aviato.ir')->assertSee('تأیید اتصال دامنه')->assertDontSee('_aviato-verification');
         Queue::assertNothingPushed();
         Http::assertNothingSent();
     }
@@ -79,23 +79,23 @@ class CloudDnsTest extends TestCase
         $this->assertDatabaseCount('dns_record_sets', 1);
     }
 
-    public function test_only_unique_txt_proof_enables_provisioning(): void
+    public function test_matching_nameserver_delegation_enables_provisioning(): void
     {
         $owner = Customer::factory()->create();
         $zone = $this->zone($owner);
         $this->mock(DnsLookup::class, function ($mock) use ($zone): void {
-            $mock->shouldReceive('txt')->once()->with('_aviato-verification.example.ir')->andReturn([$zone->verification_token]);
+            $mock->shouldReceive('delegation')->once()->with('example.ir')->andReturn(config('cloud-dns.nameservers'));
         });
         $this->actingAs($owner, 'customer')->post('https://cp.localhost/cloud-dns/'.$zone->uuid.'/verify')->assertSessionHasNoErrors();
         $this->assertNotNull($zone->fresh()->verified_at);
         Queue::assertPushed(SyncDnsZone::class);
     }
 
-    public function test_missing_txt_and_existing_delegation_do_not_prove_ownership(): void
+    public function test_nonmatching_nameserver_delegation_does_not_verify(): void
     {
         $owner = Customer::factory()->create();
         $zone = $this->zone($owner);
-        $this->mock(DnsLookup::class, fn ($mock) => $mock->shouldReceive('txt')->once()->andReturn(['unrelated-token']));
+        $this->mock(DnsLookup::class, fn ($mock) => $mock->shouldReceive('delegation')->once()->with('example.ir')->andReturn(['ns1.other.net', 'ns2.other.net']));
         $this->actingAs($owner, 'customer')->post('https://cp.localhost/cloud-dns/'.$zone->uuid.'/verify')->assertSessionHasErrors('verification');
         Queue::assertNothingPushed();
     }
@@ -234,17 +234,13 @@ ZONE;
         $this->assertDatabaseCount('dns_record_sets', 1);
     }
 
-    public function test_expired_unverified_claims_can_be_reclaimed_but_verified_domains_cannot(): void
+    public function test_unverified_claims_remain_reserved_and_verified_domains_cannot_be_claimed(): void
     {
         $owner = Customer::factory()->create();
         $zone = $this->zone($owner);
-        $zone->update(['verification_expires_at' => now()->subMinute()]);
-        $second = Customer::factory()->create();
-        $replacement = $this->zone($second);
-        $this->assertSame($second->ensureDefaultProject()->id, $replacement->project_id);
-        $replacement->update(['verified_at' => now()]);
+
         $this->expectException(ValidationException::class);
-        $this->zone($owner);
+        $this->zone(Customer::factory()->create());
     }
 
     public function test_project_and_customer_deletion_are_blocked_while_dns_is_live(): void

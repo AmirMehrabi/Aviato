@@ -89,7 +89,7 @@ class DomainProviderRoutingTest extends TestCase
                 return Http::response(['success' => true, 'result' => match ($request['command']) {
                     'GetContactInfo' => ['relations' => ['holder' => true, 'admin' => true, 'tech' => true, 'bill' => true]],
                     'GetDomainNameServers' => ['ns1' => 'ns1.example.net', 'ns2' => 'ns2.example.net'],
-                    'GetDomainWhoisInfo' => ['registrant' => ['email' => 'owner@example.org']],
+                    'GetDomainWhoisInfo' => throw new RuntimeException('WHOIS formatter unavailable'),
                     'UpdateDomainNameServers' => [],
                     default => throw new RuntimeException('Unexpected IRPOWER command'),
                 }]);

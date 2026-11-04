@@ -27,7 +27,9 @@ class IrpowerProvider
         } catch (ConnectionException) {
             throw new RuntimeException('IRPOWER connection could not be confirmed.');
         }
-        $data = $response->json();
+        // Some provider responses prepend a UTF-8 BOM to otherwise valid JSON.
+        $body = $response->body();
+        $data = json_decode(str_starts_with($body, "\xEF\xBB\xBF") ? substr($body, 3) : $body, true);
         if (! $response->successful() || ! is_array($data) || ! array_key_exists('success', $data)
             || ! in_array($data['success'], [true, false, 'true', 'false'], true)) {
             throw new RuntimeException('IRPOWER response could not be confirmed.');
