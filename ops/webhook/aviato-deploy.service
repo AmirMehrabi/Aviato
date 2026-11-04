@@ -10,7 +10,7 @@ WorkingDirectory=/opt/aviato-deployer
 ExecStart=/usr/bin/python3 /opt/aviato-deployer/ops/webhook/server.py
 Restart=always
 RestartSec=5
-UMask=0077
+UMask=0022
 
 [Install]
 WantedBy=multi-user.target
