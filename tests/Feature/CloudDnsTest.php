@@ -38,6 +38,22 @@ class CloudDnsTest extends TestCase
         return app(CloudDnsService::class)->create($customer->ensureDefaultProject(), $name, $customer);
     }
 
+    public function test_zone_names_must_be_registrable_domains_not_subdomains(): void
+    {
+        $validator = app(RecordValidator::class);
+        $this->assertSame('example.ir', $validator->domain('Example.IR.'));
+        $this->assertSame('example.co.uk', $validator->domain('example.co.uk'));
+
+        foreach (['shop.example.ir', 'shop.example.co.uk'] as $subdomain) {
+            try {
+                $validator->domain($subdomain);
+                $this->fail('Subdomains cannot be added as independent DNS zones.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('name', $exception->errors());
+            }
+        }
+    }
+
     public function test_owner_can_create_and_render_a_zone_without_provisioning_unverified_dns(): void
     {
         $customer = Customer::factory()->create();

@@ -5,10 +5,13 @@ namespace App\Services\CloudDns;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Pdp\Rules;
 
 class RecordValidator
 {
     public const TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'CAA', 'SRV', 'NS'];
+
+    private static ?Rules $publicSuffixes = null;
 
     public function domain(string $value): string
     {
@@ -18,7 +21,17 @@ class RecordValidator
             $this->invalid('name', 'نام دامنه معتبر وارد کنید؛ بدون پروتکل، مسیر یا پورت.');
         }
 
+        $registrableDomain = self::publicSuffixes()->resolve($ascii)->registrableDomain()->toAscii()->toString();
+        if ($ascii !== $registrableDomain) {
+            $this->invalid('name', 'فقط دامنه اصلی را وارد کنید؛ زیردامنه را نمی‌توان به‌عنوان دامنه مستقل افزود.');
+        }
+
         return $ascii;
+    }
+
+    private static function publicSuffixes(): Rules
+    {
+        return self::$publicSuffixes ??= Rules::fromPath(resource_path('public_suffix_list.dat'));
     }
 
     public function rrset(string $zone, array $input): array
