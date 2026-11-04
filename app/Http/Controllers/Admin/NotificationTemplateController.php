@@ -50,6 +50,12 @@ class NotificationTemplateController extends Controller
         }
         $rows[] = ['name' => 'هشدار موجودی منفی فضای کاری', 'template' => AppSetting::customerWalletNegativeSmsTemplate(),
             'active' => AppSetting::customerWalletNegativeSmsEnabled(), 'note' => 'وابسته به تنظیم پیامک مشتری فضای کاری.'];
+        foreach (['days' => 'هشدار اعتبار با روزهای باقی‌مانده', 'frozen' => 'قطع شبکه به دلیل اعتبار', 'stopped' => 'خاموشی به دلیل اعتبار', 'restored' => 'برقراری دوباره سرویس'] as $event => $label) {
+            $template = (string) AppSetting::getValue('customer.wallet.'.$event.'_sms_template', '');
+            $rows[] = ['name' => $label, 'template' => $template,
+                'active' => $template !== '' && AppSetting::customerWalletNegativeSmsEnabled(),
+                'note' => 'پس از تأیید کاوه‌نگار، در تنظیمات محافظت فضای کاری فعال کنید.'];
+        }
         foreach (['vm_created_customer' => 'ساخت ماشین برای مشتری', 'vm_created_admin' => 'ساخت ماشین برای مدیر'] as $event => $label) {
             $defaults = app(NotificationTemplates::class)->catalog()[$event];
             $saved = $machineTemplates[$event] ?? [];

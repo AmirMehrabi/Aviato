@@ -40,8 +40,15 @@ class WorkspaceWalletAlertService
         return [
             'balance' => $balance,
             'monthly_cost' => $monthly,
+            'remaining_days' => self::remainingDays($balance, $monthly),
             'percent' => $monthly > 0 ? round(100 * $balance / $monthly, 2) : null,
         ];
+    }
+
+    public static function remainingDays(int $balance, int $monthlyCost): ?int
+    {
+        // Round down so a partial day never promises a full day of service.
+        return $monthlyCost > 0 ? max(0, (int) floor(max(0, $balance) / $monthlyCost * ResourceRate::hoursPerMonth() / 24)) : null;
     }
 
     public function projectMonthlyCost(Project $project): int
@@ -244,17 +251,27 @@ class WorkspaceWalletAlertService
         }
         $workspaceToken = mb_substr($workspaceToken, 0, 100) ?: 'فضای کاری';
         $template = AppSetting::customerWalletNegativeSmsTemplate();
+        $days = self::remainingDays($snapshot['balance'], $snapshot['monthly_cost'] ?? 0);
+        $daysTemplate = (string) AppSetting::getValue('customer.wallet.days_sms_template', '');
+        $useDays = $daysTemplate !== '' && $days !== null;
+        if ($useDays) {
+            $template = $daysTemplate;
+        }
         $tokens = [
             'token' => $customerToken,
             'token10' => $workspaceToken,
             'token20' => $amountToken,
         ];
+        if ($useDays) {
+            $tokens['token2'] = (string) $days;
+        }
 
         try {
             $sent = app(KavenegarLookupClient::class)->sendLookup(
                 $recipient->phone,
                 $template,
                 $customerToken,
+                token2: $useDays ? (string) $days : null,
                 token10: $workspaceToken,
                 token20: $amountToken,
             );

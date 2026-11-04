@@ -341,6 +341,11 @@ class SettingController extends Controller
                 'wallet_retention_days' => ['nullable', 'integer', 'min:1', 'max:365'],
                 'wallet_shutdown_percentage' => ['nullable', 'integer', 'min:1', 'max:100'],
                 'customer_wallet_negative_sms_template' => ['nullable', 'string', 'max:100'],
+                'wallet_days_sms_template' => ['nullable', 'string', 'max:100'],
+                'wallet_frozen_sms_template' => ['nullable', 'string', 'max:100'],
+                'wallet_stopped_sms_template' => ['nullable', 'string', 'max:100'],
+                'wallet_restored_sms_template' => ['nullable', 'string', 'max:100'],
+
                 'unverified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'], 'verified_customer_vm_limit' => ['required', 'integer', 'min:0', 'max:1000000'],
                 'deleted_vm_cooldown_days' => ['required', 'integer', 'min:0', 'max:3650'], 'vm_rebuild_fee_multiplier_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
             ],
@@ -411,10 +416,13 @@ class SettingController extends Controller
             'sms' => [['sms_gateway', AppSetting::SMS_GATEWAY, 'string', 'sms'], ['sms0098_username', AppSetting::SMS0098_USERNAME, 'string', 'sms0098'], ['sms0098_panel_no', AppSetting::SMS0098_PANEL_NO, 'string', 'sms0098'], ['kavenegar_template', AppSetting::KAVENEGAR_TEMPLATE, 'string', 'kavenegar']],
             'email' => [['smtp_host', AppSetting::SMTP_HOST, 'string', 'smtp'], ['smtp_port', AppSetting::SMTP_PORT, 'integer', 'smtp'], ['smtp_username', AppSetting::SMTP_USERNAME, 'string', 'smtp'], ['smtp_encryption', AppSetting::SMTP_ENCRYPTION, 'string', 'smtp'], ['smtp_from_address', AppSetting::SMTP_FROM_ADDRESS, 'string', 'smtp'], ['smtp_from_name', AppSetting::SMTP_FROM_NAME, 'string', 'smtp']],
             'tickets' => [['ticket_email_notifications_enabled', AppSetting::TICKET_EMAIL_NOTIFICATIONS_ENABLED, 'boolean', 'ticketing'], ['ticket_sms_notifications_enabled', AppSetting::TICKET_SMS_NOTIFICATIONS_ENABLED, 'boolean', 'ticketing'], ['ticket_kavenegar_customer_created_template', AppSetting::TICKET_KAVENEGAR_CUSTOMER_CREATED_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_admin_new_template', AppSetting::TICKET_KAVENEGAR_ADMIN_NEW_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_customer_reply_template', AppSetting::TICKET_KAVENEGAR_CUSTOMER_REPLY_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_admin_reply_template', AppSetting::TICKET_KAVENEGAR_ADMIN_REPLY_TEMPLATE, 'string', 'ticketing'], ['ticket_kavenegar_assignment_template', AppSetting::TICKET_KAVENEGAR_ASSIGNMENT_TEMPLATE, 'string', 'ticketing']],
-            'protection' => [['wallet_retention_days', AppSetting::CUSTOMER_WALLET_RETENTION_DAYS, 'integer', 'billing'], ['wallet_alert_percentages', AppSetting::CUSTOMER_WALLET_ALERT_PERCENTAGES, 'array', 'billing'], ['wallet_quiet_start', AppSetting::CUSTOMER_WALLET_QUIET_START, 'string', 'billing'], ['wallet_quiet_end', AppSetting::CUSTOMER_WALLET_QUIET_END, 'string', 'billing'], ['wallet_shutdown_percentage', AppSetting::CUSTOMER_WALLET_SHUTDOWN_PERCENTAGE, 'integer', 'billing'], ['wallet_alert_recipient_policy', AppSetting::CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY, 'string', 'billing'], ['customer_wallet_negative_sms_enabled', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, 'boolean', 'billing'], ['customer_wallet_negative_sms_template', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'string', 'billing'], ['unverified_customer_vm_limit', AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 'integer', 'customer'], ['verified_customer_vm_limit', AppSetting::CUSTOMER_VERIFIED_VM_LIMIT, 'integer', 'customer'], ['deleted_vm_cooldown_days', AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 'integer', 'customer'], ['vm_rebuild_fee_multiplier_percentage', AppSetting::VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE, 'float', 'billing']],
+            'protection' => [['wallet_days_sms_template', 'customer.wallet.days_sms_template', 'string', 'billing'], ['wallet_frozen_sms_template', 'customer.wallet.frozen_sms_template', 'string', 'billing'], ['wallet_stopped_sms_template', 'customer.wallet.stopped_sms_template', 'string', 'billing'], ['wallet_restored_sms_template', 'customer.wallet.restored_sms_template', 'string', 'billing'], ['wallet_retention_days', AppSetting::CUSTOMER_WALLET_RETENTION_DAYS, 'integer', 'billing'], ['wallet_alert_percentages', AppSetting::CUSTOMER_WALLET_ALERT_PERCENTAGES, 'array', 'billing'], ['wallet_quiet_start', AppSetting::CUSTOMER_WALLET_QUIET_START, 'string', 'billing'], ['wallet_quiet_end', AppSetting::CUSTOMER_WALLET_QUIET_END, 'string', 'billing'], ['wallet_shutdown_percentage', AppSetting::CUSTOMER_WALLET_SHUTDOWN_PERCENTAGE, 'integer', 'billing'], ['wallet_alert_recipient_policy', AppSetting::CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY, 'string', 'billing'], ['customer_wallet_negative_sms_enabled', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, 'boolean', 'billing'], ['customer_wallet_negative_sms_template', AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'string', 'billing'], ['unverified_customer_vm_limit', AppSetting::CUSTOMER_UNVERIFIED_VM_LIMIT, 'integer', 'customer'], ['verified_customer_vm_limit', AppSetting::CUSTOMER_VERIFIED_VM_LIMIT, 'integer', 'customer'], ['deleted_vm_cooldown_days', AppSetting::CUSTOMER_DELETED_VM_COOLDOWN_DAYS, 'integer', 'customer'], ['vm_rebuild_fee_multiplier_percentage', AppSetting::VM_REBUILD_FEE_MULTIPLIER_PERCENTAGE, 'float', 'billing']],
         ];
 
         foreach ($definitions[$section] ?? [] as [$field, $key, $type, $group]) {
+            if (in_array($field, ['wallet_days_sms_template', 'wallet_frozen_sms_template', 'wallet_stopped_sms_template', 'wallet_restored_sms_template'], true) && ! array_key_exists($field, $data)) {
+                continue;
+            }
             AppSetting::setValue($key, $data[$field] ?? false, $type, $group);
         }
 
@@ -459,6 +467,11 @@ class SettingController extends Controller
             'kavenegar_template' => ['nullable', 'string', 'max:100'],
             'customer_wallet_negative_sms_enabled' => ['nullable', 'boolean'],
             'customer_wallet_negative_sms_template' => ['nullable', 'string', 'max:100'],
+            'wallet_days_sms_template' => ['nullable', 'string', 'max:100'],
+            'wallet_frozen_sms_template' => ['nullable', 'string', 'max:100'],
+            'wallet_stopped_sms_template' => ['nullable', 'string', 'max:100'],
+            'wallet_restored_sms_template' => ['nullable', 'string', 'max:100'],
+
             'smtp_host' => ['nullable', 'string', 'max:255'],
             'smtp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'smtp_username' => ['nullable', 'string', 'max:255'],
@@ -601,6 +614,11 @@ class SettingController extends Controller
         AppSetting::setValue(AppSetting::KAVENEGAR_TEMPLATE, $data['kavenegar_template'] ?? '', 'string', 'kavenegar');
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_ENABLED, (bool) ($data['customer_wallet_negative_sms_enabled'] ?? false), 'boolean', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, $data['customer_wallet_negative_sms_template'] ?? '', 'string', 'billing');
+        foreach (['days', 'frozen', 'stopped', 'restored'] as $event) {
+            if (array_key_exists('wallet_'.$event.'_sms_template', $data)) {
+                AppSetting::setValue('customer.wallet.'.$event.'_sms_template', $data['wallet_'.$event.'_sms_template'] ?? '', 'string', 'billing');
+            }
+        }
         AppSetting::setValue(AppSetting::SMTP_HOST, $data['smtp_host'] ?? '', 'string', 'smtp');
         AppSetting::setValue(AppSetting::SMTP_PORT, (int) ($data['smtp_port'] ?? 587), 'integer', 'smtp');
         AppSetting::setValue(AppSetting::SMTP_USERNAME, $data['smtp_username'] ?? '', 'string', 'smtp');

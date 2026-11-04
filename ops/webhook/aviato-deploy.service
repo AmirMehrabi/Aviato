@@ -1,0 +1,16 @@
+[Unit]
+Description=Aviato authenticated GitHub deployment webhook
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=deploy
+Group=aviato-app
+WorkingDirectory=/opt/aviato-deployer
+ExecStart=/usr/bin/python3 /opt/aviato-deployer/ops/webhook/server.py
+Restart=always
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

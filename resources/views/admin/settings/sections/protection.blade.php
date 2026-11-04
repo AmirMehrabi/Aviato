@@ -19,3 +19,13 @@
 </div>
 <div class="rounded-xl border border-amber-200 bg-amber-50 p-4"><h2 class="font-black text-amber-950">زمان اعمال محدودیت</h2><p class="text-xs leading-6 text-amber-900">در موجودی مؤثر صفر یا کمتر، شبکه ماشین‌ها قطع می‌شود و ماشین‌ها روشن می‌مانند. در حد بدهی تعیین‌شده، ماشین‌های روشن خاموش می‌شوند. پس از شارژ و مثبت شدن موجودی مؤثر، شبکه وصل و فقط ماشین‌هایی که به‌دلیل کیف پول خاموش شده‌اند روشن می‌شوند.</p></div>
 <div class="grid gap-4 md:grid-cols-2"><x-form.input name="unverified_customer_vm_limit" type="number" label="سقف VM حساب تأییدنشده" :value="$unverifiedCustomerVmLimit" min="0" max="1000000" dir-ltr /><x-form.input name="verified_customer_vm_limit" type="number" label="سقف VM حساب تأییدشده" :value="$verifiedCustomerVmLimit" min="0" max="1000000" dir-ltr /><x-form.input name="deleted_vm_cooldown_days" type="number" label="روزهای نگهداری سهمیه VM حذف‌شده" :value="$deletedVmCooldownDays" min="0" max="3650" dir-ltr /><x-form.input name="vm_rebuild_fee_multiplier_percentage" type="number" label="درصد هزینه بازسازی" :value="$vmRebuildFeeMultiplierPercentage" min="0" max="100" step="0.01" dir-ltr /></div>
+
+<div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+    <h2 class="font-black">قالب‌های جدید پیامک اعتبار</h2>
+    <p class="mt-2 text-xs leading-6">تا تأیید کاوه‌نگار این موارد را خالی بگذارید. قالب فعلی تغییر نمی‌کند. با انتخاب قالب روزهای باقی‌مانده، همان سه هشدار فعلی با متن جدید ارسال می‌شوند. %token نام مشتری، %token10 نام فضای کاری و %token20 اعتبار مؤثر به تومان است. %token2 تعداد روز کامل با مصرف فعلی تمام سرویس‌های کیف پول مالک است (گرد به پایین؛ صفر یعنی کمتر از یک روز). برای پیامک‌های وضعیت، %token10 نام سرور است. این پیامک‌ها پس از تأیید عملیات ارسال می‌شوند و ساعات سکوت هشدار موجودی را ندارند.</p>
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+    @foreach (['days' => 'روزهای باقی‌مانده', 'frozen' => 'قطع شبکه', 'stopped' => 'خاموشی سرور', 'restored' => 'برقراری دوباره دسترسی'] as $event => $label)
+        <x-form.input :name="'wallet_'.$event.'_sms_template'" :label="$label" :value="old('wallet_'.$event.'_sms_template', \App\Models\AppSetting::getValue('customer.wallet.'.$event.'_sms_template', ''))" dir-ltr />
+    @endforeach
+    </div>
+</div>

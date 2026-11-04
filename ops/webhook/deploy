@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+exec 9>/var/lib/aviato-deploy/deploy.lock
+flock 9
+cd /opt/aviato-deployer
+git fetch origin master
+revision=$(git rev-parse origin/master)
+# Coalesce older deliveries to the current master; never execute a payload as code.
+git reset --hard "$revision"
+composer install --no-interaction --prefer-dist --no-progress
+vendor/bin/dep deploy local --revision="$revision" -v

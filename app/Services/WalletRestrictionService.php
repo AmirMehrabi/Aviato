@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\VirtualMachine;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -97,10 +98,15 @@ class WalletRestrictionService
                 $vm->refresh();
                 $vm->forceFill(['status' => VirtualMachine::STATUS_RUNNING])->save();
             }
-            $vm->forceFill([
-                'wallet_restriction' => null,
-                'remote_state' => array_merge($vm->remote_state ?? [], ['wallet_locked_at' => null, 'wallet_unlocked_at' => now()->toISOString()]),
-            ])->save();
+            DB::transaction(function () use ($vm, $state): void {
+                if (! empty($state['network_frozen_at']) || ! empty($state['wallet_stopped'])) {
+                    app(WalletLifecycleNotificationService::class)->notify($vm, 'restored');
+                }
+                $vm->forceFill([
+                    'wallet_restriction' => null,
+                    'remote_state' => array_merge($vm->remote_state ?? [], ['wallet_locked_at' => null, 'wallet_unlocked_at' => now()->toISOString()]),
+                ])->save();
+            });
 
             return;
         }
@@ -133,6 +139,11 @@ class WalletRestrictionService
         }
         $state = $vm->fresh()->wallet_restriction ?? $state;
 
+        if (! empty($state['network_frozen_at'])) {
+            app(WalletLifecycleNotificationService::class)->notify($vm, 'frozen');
+            $state = $vm->wallet_restriction ?? $state;
+        }
+
         if ($target === 'stopped' && $vm->isRunning()) {
             $this->powerOff($vm);
             $this->usage->accrueVm($vm);
@@ -144,6 +155,9 @@ class WalletRestrictionService
                 'last_stopped_at' => now(),
                 'wallet_restriction' => $state,
             ])->save();
+        }
+        if (data_get($vm->wallet_restriction, 'wallet_stopped')) {
+            app(WalletLifecycleNotificationService::class)->notify($vm, 'stopped');
         }
     }
 

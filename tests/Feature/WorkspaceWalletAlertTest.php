@@ -31,6 +31,28 @@ class WorkspaceWalletAlertTest extends TestCase
         $this->travelTo(Carbon::parse('2026-09-28 10:00:00', 'Asia/Tehran'));
     }
 
+    public function test_remaining_days_are_conservative_and_normalized(): void
+    {
+        $this->assertSame(4, WorkspaceWalletAlertService::remainingDays(100000, 730000));
+        $this->assertSame(0, WorkspaceWalletAlertService::remainingDays(1, 730000));
+        $this->assertSame(0, WorkspaceWalletAlertService::remainingDays(-100, 730000));
+        $this->assertNull(WorkspaceWalletAlertService::remainingDays(100, 0));
+    }
+
+    public function test_days_template_is_opt_in_and_receives_days_token(): void
+    {
+        [$owner, $project] = $this->billableWorkspace();
+        $owner->update(['phone' => '09123456789']);
+        AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'aviato-negative-credit');
+        AppSetting::setValue('customer.wallet.days_sms_template', 'aviato-credit-days-v2');
+        AppSetting::setValue(AppSetting::SMS_GATEWAY, 'kavenegar');
+        AppSetting::setValue(AppSetting::KAVENEGAR_API_KEY, 'fake');
+        Http::fake(['api.kavenegar.com/*' => Http::response(['return' => ['status' => 200]])]);
+        app(WorkspaceWalletAlertService::class)->sendSmsNow($project, $owner, ['balance' => 100000, 'monthly_cost' => 730000]);
+        Http::assertSent(fn ($request) => $request['template'] === 'aviato-credit-days-v2' && $request['token2'] === '4');
+        $this->assertSame('aviato-negative-credit', AppSetting::customerWalletNegativeSmsTemplate());
+    }
+
     public function test_default_levels_are_15_10_and_5_and_alerts_are_idempotent(): void
     {
         [$owner, $project] = $this->billableWorkspace();
