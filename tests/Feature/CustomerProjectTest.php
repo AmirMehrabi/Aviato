@@ -49,13 +49,72 @@ class CustomerProjectTest extends TestCase
 
         $project = $customer->ownedProjects()->where('name', 'Production Servers')->firstOrFail();
 
-        $response->assertRedirect($this->customerBaseUrl.'/dashboard');
+        $response->assertRedirect($this->customerBaseUrl.'/projects/'.$project->uuid);
+        $response->assertSessionHas('workspace_created', true);
         $response->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id);
         $this->assertDatabaseHas('project_members', [
             'project_id' => $project->id,
             'customer_id' => $customer->id,
             'role' => ProjectMember::ROLE_OWNER,
         ]);
+    }
+
+    public function test_workspace_hub_and_management_sections_keep_actions_in_context(): void
+    {
+        $owner = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $url = $this->customerBaseUrl.'/projects/'.$project->uuid;
+
+        $this->actingAs($owner, 'customer')->get($this->customerBaseUrl.'/projects')
+            ->assertOk()
+            ->assertSee('create-workspace-title')
+            ->assertSee('مشاهده منابع');
+        $this->get($url)->assertOk()
+            ->assertSee('ساخت اولین ماشین')
+            ->assertDontSee('name="identifier"', false)
+            ->assertDontSee('name="confirmation"', false);
+        $this->get($url.'?section=members')->assertOk()
+            ->assertSee('name="identifier"', false)
+            ->assertDontSee('name="confirmation"', false);
+        $this->get($url.'?section=settings')->assertOk()
+            ->assertSee('تنظیمات فضای کاری')
+            ->assertDontSee('name="identifier"', false);
+        $this->from($url.'?section=settings')->patch($url, ['name' => 'Renamed workspace'])
+            ->assertRedirect($url.'?section=settings');
+        $this->get($url.'?section=unknown')->assertOk()->assertSee('ساخت اولین ماشین');
+        $this->get($url.'?section[]=settings')->assertOk()->assertSee('ساخت اولین ماشین');
+    }
+
+    public function test_workspace_hub_enters_resources_only_for_roles_that_can_view_them(): void
+    {
+        $owner = Customer::factory()->create();
+        $billing = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $project->members()->create(['customer_id' => $billing->id, 'role' => ProjectMember::ROLE_BILLING]);
+        $payload = ['project_id' => $project->id, 'destination' => 'resources'];
+
+        $this->actingAs($owner, 'customer')->post($this->customerBaseUrl.'/projects/switch', $payload)
+            ->assertRedirect($this->customerBaseUrl.'/servers');
+        $this->actingAs($billing, 'customer')->post($this->customerBaseUrl.'/projects/switch', $payload)
+            ->assertRedirect($this->customerBaseUrl.'/dashboard');
+        $this->get($this->customerBaseUrl.'/projects/'.$project->uuid.'?section=billing')
+            ->assertOk()->assertSee('مشاهده کیف‌پول و پرداخت‌ها')
+            ->assertDontSee('name="threshold_mode"', false);
+    }
+
+    public function test_workspace_creation_validation_reopens_dialog_and_keeps_the_name(): void
+    {
+        $customer = Customer::factory()->create();
+        $url = $this->customerBaseUrl.'/projects';
+        $name = str_repeat('x', 121);
+
+        $this->actingAs($customer, 'customer')->from($url)->post($url, ['name' => $name])
+            ->assertRedirect($url);
+        $this->get($url)->assertOk()
+            ->assertSee('x-init="$el.showModal()"', false)
+            ->assertSee('value="'.$name.'"', false)
+            ->assertSee('aria-invalid="true"', false);
+        $this->assertSame(1, $customer->ownedProjects()->count());
     }
 
     public function test_owner_and_admin_member_can_rename_workspace(): void
@@ -115,7 +174,7 @@ class CustomerProjectTest extends TestCase
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_ALERT_PERCENTAGES, [20, 10], 'array', 'billing');
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_ALERT_RECIPIENT_POLICY, 'owner_and_billing', 'string', 'billing');
 
-        $this->actingAs($owner, 'customer')->get($url)
+        $this->actingAs($owner, 'customer')->get($url.'?section=billing')
             ->assertOk()
             ->assertSee('هشدارهای موجودی کیف‌پول')
             ->assertSee('پیش‌فرض فعلی: 20، 10 درصد')
@@ -132,7 +191,7 @@ class CustomerProjectTest extends TestCase
         $this->assertSame([$admin->id], $project->fresh()->wallet_alert_recipient_ids);
         $this->assertSame([$admin->id], array_map(fn (Customer $recipient): int => $recipient->id, app(WorkspaceWalletAlertService::class)->recipients($project->fresh())));
 
-        $this->actingAs($admin, 'customer')->get($url)
+        $this->actingAs($admin, 'customer')->get($url.'?section=billing')
             ->assertOk()
             ->assertSee('هشدارهای موجودی کیف‌پول')
             ->assertSee('name="recipient_ids[]"', false);
@@ -315,6 +374,13 @@ class CustomerProjectTest extends TestCase
             ->assertOk()
             ->assertSee('در حال مدیریت یک فضای کاری غیرفعال هستید')
             ->assertSessionHas(ProjectAccessService::SESSION_KEY, $default->id);
+
+        $this->post($this->customerBaseUrl.'/projects/switch', [
+            'project_id' => $managed->id,
+            'destination' => 'management',
+            'section' => 'members',
+        ])->assertRedirect($this->customerBaseUrl.'/projects/'.$managed->uuid.'?section=members')
+            ->assertSessionHas(ProjectAccessService::SESSION_KEY, $managed->id);
     }
 
     public function test_only_owner_can_set_default_without_switching_active_workspace(): void

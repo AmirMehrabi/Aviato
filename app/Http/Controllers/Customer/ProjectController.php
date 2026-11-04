@@ -97,7 +97,9 @@ class ProjectController extends Controller
         ]);
         $this->projects->switch($request, $customer, $project);
 
-        return redirect()->route('dashboard')->with('status', 'فضای کاری ساخته و فعال شد.');
+        return redirect()->route('customer.projects.show', $project)
+            ->with('workspace_created', true)
+            ->with('status', 'فضای کاری ساخته و فعال شد.');
     }
 
     public function update(Request $request, Project $project): RedirectResponse
@@ -115,7 +117,7 @@ class ProjectController extends Controller
             'slug' => $this->uniqueSlug($project->owner, $data['name'], $project),
         ]);
 
-        return redirect()->route('customer.projects.show', $project)->with('status', 'نام فضای کاری تغییر کرد.');
+        return redirect()->route('customer.projects.show', ['project' => $project, 'section' => 'settings'])->with('status', 'نام فضای کاری تغییر کرد.');
     }
 
     public function updateWalletAlerts(Request $request, Project $project): RedirectResponse
@@ -126,7 +128,7 @@ class ProjectController extends Controller
 
         app(WorkspaceWalletAlertPreferences::class)->update($request, $project);
 
-        return redirect()->route('customer.projects.show', $project)->with('status', 'تنظیمات هشدار کیف‌پول ذخیره شد.');
+        return redirect()->route('customer.projects.show', ['project' => $project, 'section' => 'billing'])->with('status', 'تنظیمات هشدار کیف‌پول ذخیره شد.');
     }
 
     public function setDefault(Request $request, Project $project): RedirectResponse
@@ -136,7 +138,7 @@ class ProjectController extends Controller
 
         $this->lifecycle->setDefault($project, $customer);
 
-        return redirect()->route('customer.projects.show', $project)
+        return redirect()->route('customer.projects.show', ['project' => $project, 'section' => 'settings'])
             ->with('status', 'فضای کاری پیش‌فرض تغییر کرد.');
     }
 
@@ -153,7 +155,7 @@ class ProjectController extends Controller
 
         $blockers = $this->lifecycle->deletionBlockers($project, $customer);
         if ($blockers !== []) {
-            return redirect()->route('customer.projects.show', $project)
+            return redirect()->route('customer.projects.show', ['project' => $project, 'section' => 'settings'])
                 ->withErrors(['delete' => reset($blockers)]);
         }
 
@@ -172,9 +174,19 @@ class ProjectController extends Controller
         $customer = $request->user('customer');
         $data = $request->validate([
             'project_id' => ['required', 'integer', 'exists:projects,id'],
+            'section' => ['sometimes', 'string', Rule::in(['overview', 'members', 'billing', 'settings'])],
         ]);
         $project = Project::query()->with('members')->findOrFail($data['project_id']);
         $this->projects->switch($request, $customer, $project);
+
+        if ($request->input('destination') === 'management') {
+            return redirect()->route('customer.projects.show', ['project' => $project, 'section' => $data['section'] ?? 'overview'])
+                ->with('status', 'فضای کاری فعال تغییر کرد.');
+        }
+
+        if ($request->input('destination') === 'resources' && $this->projects->canViewVms($project, $customer)) {
+            return redirect()->route('customer.servers.index')->with('status', 'فضای کاری فعال تغییر کرد.');
+        }
 
         return redirect()->route('dashboard')->with('status', 'فضای کاری فعال تغییر کرد.');
     }

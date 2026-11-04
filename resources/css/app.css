@@ -188,3 +188,14 @@
     .domain-error { @apply rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-7 text-red-800; }
     .domain-badge { @apply rounded-full bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700; }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+    [data-workspace-dialog][open] {
+        animation: workspace-dialog-in 160ms ease-out;
+    }
+
+    @keyframes workspace-dialog-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+}
