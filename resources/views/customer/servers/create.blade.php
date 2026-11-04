@@ -402,7 +402,7 @@
 
                     <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-xs leading-7 text-slate-600">
                         <p>نگهداری سرور خاموش: <strong x-text="formatDisplayAmount(Number(selectedBundle?.stopped_monthly_price || 0) * (showsTax ? 1 + taxRatePercentage / 100 : 1)) + ' تومان در ماه'"></strong>. دیسک اضافه و بکاپ جداگانه محاسبه می‌شوند.</p>
-                        <p>پس از تمام شدن موجودی قابل استفاده، برای شارژ کیف پول <strong>{{ \App\Support\PersianDigits::convert((string) \App\Models\AppSetting::customerWalletRetentionDays()) }} روز</strong> فرصت دارید. پس از این مهلت، سرور، دیسک‌ها و بکاپ‌های آن دائماً حذف می‌شوند.</p>
+                        <p>پس از تمام شدن موجودی قابل استفاده، برای شارژ کیف پول <strong>{{ \App\Support\PersianDigits::convert((string) app(\App\Services\WorkspaceProtectionSettings::class)->value($activeProject, 'wallet_retention_days')) }} روز</strong> فرصت دارید. پس از این مهلت، سرور، دیسک‌ها و بکاپ‌های آن دائماً حذف می‌شوند.</p>
                     </div>
                     <div class="mt-4 space-y-3 text-sm">
                         <div x-show="walletNeedsTopUp" x-cloak class="rounded-xl border border-red-100 bg-red-50 p-4">

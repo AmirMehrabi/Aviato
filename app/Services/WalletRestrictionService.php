@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\VirtualMachine;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,17 +23,18 @@ class WalletRestrictionService
     public function reconcile(Customer $owner): void
     {
         $snapshot = $this->walletAlerts->snapshot($owner);
-        $shutdownAt = -max(1, (int) ceil($snapshot['monthly_cost'] * AppSetting::customerWalletShutdownPercentage() / 100));
+        $settings = app(WorkspaceProtectionSettings::class);
         VirtualMachine::query()
             ->notDeleted()
             ->where(function (Builder $query) use ($owner): void {
                 $query->whereHas('project', fn (Builder $project) => $project->where('owner_customer_id', $owner->id))
                     ->orWhere(fn (Builder $legacy) => $legacy->whereNull('project_id')->where('customer_id', $owner->id));
             })
-            ->with(['proxmoxServer', 'infrastructureLocation.hetznerAccount'])
+            ->with(['project', 'proxmoxServer', 'infrastructureLocation.hetznerAccount'])
             ->orderBy('id')
-            ->chunkById(100, function ($machines) use ($owner, $shutdownAt): void {
+            ->chunkById(100, function ($machines) use ($owner, $snapshot, $settings): void {
                 foreach ($machines as $vm) {
+                    $shutdownAt = -max(1, (int) ceil($snapshot['monthly_cost'] * $settings->value($vm->project, 'wallet_shutdown_percentage') / 100));
                     $owner->refresh();
                     $balance = $this->balances->effectiveBalance($owner);
                     $target = ! $owner->auto_suspend_vms || $balance > 0

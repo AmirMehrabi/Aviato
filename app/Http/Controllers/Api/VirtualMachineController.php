@@ -49,7 +49,7 @@ class VirtualMachineController extends Controller
         $locations = InfrastructureLocation::query()->with(['proxmoxServer', 'hetznerAccount', 'bundleMappings' => fn ($q) => $q->where('is_active', true)])->where('is_active', true)->where('maintenance_mode', false)->orderBy('sort_order')->orderBy('name')->get();
         $images = CloudImage::query()->with(['allowedBundles', 'infrastructureLocation', 'nodeMappings'])->where('is_active', true)->orderBy('sort_order')->get();
         $bundles = VmBundle::query()->where('is_active', true)->orderBy('sort_order')->orderBy('monthly_price')->get();
-        $quota = $this->quota->snapshot($project->owner);
+        $quota = $this->quota->snapshot($project->owner, $project);
         $wallet = $this->wallets->walletFor($project->owner);
 
         return response()->json([
@@ -129,7 +129,7 @@ class VirtualMachineController extends Controller
         if (! $this->bundleAvailable($image, $location, (int) ($data['vm_bundle_id'] ?? 0))) {
             return $this->error('The selected bundle is not available for this image and location.', 'bundle_incompatible', 422);
         }
-        $quota = $this->quota->snapshot($project->owner);
+        $quota = $this->quota->snapshot($project->owner, $project);
         $wallet = $this->wallets->walletFor($project->owner);
         if (! $quota['can_create']) {
             return $this->error(

@@ -1422,6 +1422,57 @@ class CustomerWalletBillingTest extends TestCase
         $this->assertNull($vm->fresh()->wallet_restriction);
     }
 
+    public function test_workspace_shutdown_override_uses_shared_owner_balance_and_custom_threshold(): void
+    {
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $project->forceFill(['protection_overrides' => ['wallet_shutdown_percentage' => 20]])->save();
+        $server = ProxmoxServer::create([
+            'name' => 'THR Proxmox', 'datacenter' => 'THR-1', 'host' => 'pve.local',
+            'port' => 8006, 'realm' => 'pam', 'username' => 'root',
+            'api_token_id' => 'root@pam!panel', 'api_token_secret' => 'secret',
+            'is_active' => true, 'maintenance_mode' => false,
+        ]);
+        $bundle = VmBundle::create([
+            'name' => 'Wallet threshold', 'slug' => 'wallet-threshold',
+            'cpu_cores' => 2, 'ram_gb' => 4, 'disk_gb' => 40, 'ip_count' => 1,
+            'monthly_price' => 730000, 'is_active' => true,
+        ]);
+        $vm = VirtualMachine::create([
+            'project_id' => $project->id, 'customer_id' => $customer->id, 'proxmox_server_id' => $server->id,
+            'vm_bundle_id' => $bundle->id, 'vmid' => 101, 'name' => 'wallet-vm',
+            'node' => 'pve1', 'cpu_cores' => 2, 'ram_gb' => 4, 'disk_gb' => 40,
+            'ip_count' => 1, 'status' => VirtualMachine::STATUS_RUNNING,
+            'provisioning_status' => VirtualMachine::PROVISION_READY,
+            'last_billed_at' => now(),
+        ]);
+        $networks = $this->mock(WalletNetworkRestrictionService::class);
+        $networks->shouldReceive('freeze')->twice();
+        $networks->shouldReceive('restore')->once();
+        $proxmox = $this->mock(ProxmoxService::class);
+        $proxmox->shouldReceive('shutdownVm')->once()->andReturn(['task_id' => 'UPID:stop']);
+        $proxmox->shouldReceive('waitForTask')->twice()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
+        $proxmox->shouldReceive('waitForVmStopped')->once()->andReturn(['status' => 'stopped']);
+        $proxmox->shouldReceive('startVm')->once()->andReturn(['task_id' => 'UPID:start']);
+        $proxmox->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
+        $restrictions = app(WalletRestrictionService::class);
+
+        $customer->wallet()->update(['balance' => -73000]);
+        $restrictions->reconcile($customer);
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->fresh()->status);
+        $this->assertFalse((bool) data_get($vm->fresh()->wallet_restriction, 'wallet_stopped'));
+
+        $customer->wallet()->update(['balance' => -146000]);
+        $restrictions->reconcile($customer);
+        $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->fresh()->status);
+        $this->assertTrue((bool) data_get($vm->fresh()->wallet_restriction, 'wallet_stopped'));
+
+        $customer->wallet()->update(['balance' => 100000]);
+        $restrictions->reconcile($customer);
+        $this->assertSame(VirtualMachine::STATUS_RUNNING, $vm->fresh()->status);
+        $this->assertNull($vm->fresh()->wallet_restriction);
+    }
+
     public function test_disabling_wallet_protection_restores_network_without_starting_customer_stopped_vm(): void
     {
         $customer = Customer::factory()->create(['auto_suspend_vms' => false]);

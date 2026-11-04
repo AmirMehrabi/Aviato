@@ -95,6 +95,8 @@
     </section>
 
 
+    @include('admin.projects._protection')
+
 @adminAbility('billing.read')
 
     <section class="mt-6 rounded-xl border border-slate-200 bg-white p-5">

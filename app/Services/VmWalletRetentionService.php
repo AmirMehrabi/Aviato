@@ -47,7 +47,7 @@ class VmWalletRetentionService
                 if (! $locked->wallet_retention_expires_at) {
                     $locked->forceFill([
                         'wallet_depleted_at' => now(),
-                        'wallet_retention_expires_at' => now()->addDays(AppSetting::customerWalletRetentionDays()),
+                        'wallet_retention_expires_at' => now()->addDays((int) app(WorkspaceProtectionSettings::class)->value($locked->project, 'wallet_retention_days')),
                         'wallet_retention_notices' => [],
                     ])->save();
                 }

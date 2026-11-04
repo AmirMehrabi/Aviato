@@ -33,6 +33,7 @@ use App\Services\VmActivityRecorder;
 use App\Services\VmOperationService;
 use App\Services\VmUpgradeService;
 use App\Services\WalletService;
+use App\Services\WorkspaceProtectionSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -252,7 +253,7 @@ class ServerController extends Controller
         $customer = $request->user('customer');
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canManageVms($activeProject, $customer), 404);
-        $quota = $this->quota->snapshot($activeProject->owner);
+        $quota = $this->quota->snapshot($activeProject->owner, $activeProject);
         $wallet = $this->wallets->walletFor($activeProject->owner);
         $quotaBlock = $this->quotaBlock($activeProject, $customer, $quota);
         $this->syncProxmoxLocations();
@@ -307,7 +308,7 @@ class ServerController extends Controller
         $customer = $request->user('customer');
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->projects->canManageVms($activeProject, $customer), 404);
-        $quota = $this->quota->snapshot($activeProject->owner);
+        $quota = $this->quota->snapshot($activeProject->owner, $activeProject);
         $wallet = $this->wallets->walletFor($activeProject->owner);
 
         $data = $request->validate([
@@ -472,6 +473,14 @@ class ServerController extends Controller
             return [
                 'title' => 'این فضای کاری هنوز آماده ساخت ماشین نیست',
                 'message' => "سقف ساخت ماشین «{$project->name}» به حساب مالک آن، {$ownerName}، وابسته است. مالک فضای کاری باید کد ملی حساب خود را تأیید کند. حساب شما مشکلی ندارد و لازم نیست پروفایل خود را تغییر دهید.",
+                'show_profile_action' => false,
+            ];
+        }
+
+        if ($quota['blocking_code'] === 'workspace_limit_reached') {
+            return [
+                'title' => 'سقف ساخت ماشین این فضای کاری تکمیل شده است',
+                'message' => 'سقف سفارشی این فضای کاری تکمیل شده است. برای افزایش سقف با پشتیبانی تماس بگیرید یا فضای کاری دیگری را انتخاب کنید.',
                 'show_profile_action' => false,
             ];
         }
@@ -729,7 +738,7 @@ class ServerController extends Controller
             $this->wallets->charge($billingCustomer, $rebuildFee, 'هزینه بازسازی ماشین مجازی '.$server->name, $server, [
                 'category' => 'vm_rebuild_fee',
                 'creation_charge_percentage' => AppSetting::vmCreationChargePercentage(),
-                'rebuild_multiplier_percentage' => AppSetting::vmRebuildFeeMultiplierPercentage(),
+                'rebuild_multiplier_percentage' => app(WorkspaceProtectionSettings::class)->value($server->project, 'vm_rebuild_fee_multiplier_percentage'),
                 'monthly_price' => (int) ($server->bundle?->monthly_price ?? 0),
             ], allowNegative: false);
         }
@@ -1109,7 +1118,7 @@ class ServerController extends Controller
     {
         $monthlyPrice = (int) ($server->bundle?->monthly_price ?? 0);
 
-        return $monthlyPrice > 0 ? AppSetting::vmRebuildFeeAmount($monthlyPrice) : 0;
+        return $monthlyPrice > 0 ? app(WorkspaceProtectionSettings::class)->rebuildFee($server->project, $monthlyPrice) : 0;
     }
 
     private function statusLabel(?string $status): string

@@ -138,6 +138,7 @@ class AdminAccess
         }
         if (str_starts_with($name, 'admin.projects.')) {
             return [AdminAbility::ProjectsRead, ...match (true) {
+                $name === 'admin.projects.protection.update' => [AdminAbility::ProjectsManage, AdminAbility::SettingsManage],
                 $name === 'admin.projects.proforma' => [AdminAbility::BillingRead],
                 str_starts_with($name, 'admin.projects.wallet-alerts.') => [AdminAbility::BillingRead, AdminAbility::WalletManage],
                 default => $read ? [] : [AdminAbility::ProjectsManage],

@@ -1,3 +1,8 @@
+<p class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-600">این مقادیر پیش‌فرض سراسری هستند. برای تعیین استثنا، در صفحه هر فضای کاری بخش «محافظت فضای کاری» را باز کنید. مقادیر سفارشی با تغییر پیش‌فرض‌ها تغییر نمی‌کنند.
+    @adminRoute('admin.projects.index')
+    <a href="{{ route('admin.projects.index') }}" class="font-bold text-[#0069FF]">مشاهده فضاهای کاری</a>
+    @endadminRoute
+</p>
 <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
     <h2 class="font-black text-blue-950">هشدار موجودی کیف‌پول</h2>
     <p class="mt-2 text-xs leading-6 text-blue-900">درصد موجودی مؤثر نسبت به هزینه ماهانه همه منابعی که از کیف‌پول مالک پرداخت می‌شوند. این درصدها برای همه فضاهای کاری پیش‌فرض هستند و در مدیریت هر فضای کاری قابل تغییرند.</p>

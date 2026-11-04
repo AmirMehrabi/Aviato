@@ -98,6 +98,25 @@ class VmWalletRetentionTest extends TestCase
         $this->assertTrue($other->fresh()->wallet_retention_expires_at->equalTo(now()->addDay()));
     }
 
+    public function test_workspace_retention_override_applies_only_to_new_deadlines(): void
+    {
+        $owner = Customer::factory()->create();
+        $project = $owner->ensureDefaultProject();
+        $owner->wallet()->update(['balance' => -100000]);
+        $project->forceFill(['protection_overrides' => ['wallet_retention_days' => 14]])->save();
+        $vm = $this->machine($owner, ['project_id' => $project->id]);
+        $service = app(VmWalletRetentionService::class);
+        $service->reconcile($owner, $vm);
+        $deadline = $vm->fresh()->wallet_retention_expires_at;
+        $this->assertTrue($deadline->equalTo(now()->addDays(14)));
+        $project->forceFill(['protection_overrides' => ['wallet_retention_days' => 2]])->save();
+        $service->reconcile($owner, $vm->fresh());
+        $this->assertTrue($vm->fresh()->wallet_retention_expires_at->equalTo($deadline));
+        $newVm = $this->machine($owner, ['project_id' => $project->id]);
+        $service->reconcile($owner, $newVm);
+        $this->assertTrue($newVm->fresh()->wallet_retention_expires_at->equalTo(now()->addDays(2)));
+    }
+
     public function test_unsettled_usage_and_zero_balance_start_retention_and_admin_exemption_clears_it(): void
     {
         $owner = Customer::factory()->create();

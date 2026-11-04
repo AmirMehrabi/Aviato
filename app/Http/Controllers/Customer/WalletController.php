@@ -13,6 +13,7 @@ use App\Services\ProjectAccessService;
 use App\Services\UsageBalanceService;
 use App\Services\VmWalletRetentionService;
 use App\Services\WalletService;
+use App\Services\WorkspaceProtectionSettings;
 use App\Services\WorkspaceWalletAlertService;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
@@ -203,7 +204,7 @@ class WalletController extends Controller
         $wallet = $this->wallets->walletFor($activeProject->owner);
         $effectiveBalance = $this->usageBalances->effectiveBalance($activeProject->owner);
         $monthlyEstimate = $this->walletAlerts->snapshot($activeProject->owner)['monthly_cost'];
-        $shutdownAt = -max(1, (int) ceil($monthlyEstimate * AppSetting::customerWalletShutdownPercentage() / 100));
+        $shutdownAt = -max(1, (int) ceil($monthlyEstimate * app(WorkspaceProtectionSettings::class)->value($activeProject, 'wallet_shutdown_percentage') / 100));
 
         return view('customer.suspension.notice', [
             'customer' => $customer,

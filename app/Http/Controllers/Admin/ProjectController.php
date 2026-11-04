@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateWorkspaceProtectionRequest;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectMember;
@@ -258,6 +259,21 @@ class ProjectController extends Controller
         $member->delete();
 
         return back()->with('status', 'عضو از فضای کاری حذف شد.');
+    }
+
+    public function updateProtection(UpdateWorkspaceProtectionRequest $request, Project $project): RedirectResponse
+    {
+        $overrides = [];
+        foreach ($request->validated('protection') as $key => $field) {
+            if ($field['mode'] === 'custom') {
+                $overrides[$key] = $key === 'vm_rebuild_fee_multiplier_percentage' ? (float) $field['value'] : (int) $field['value'];
+            }
+        }
+        $project->forceFill(['protection_overrides' => $overrides ?: null])->save();
+
+        return redirect()->to(route('admin.projects.show', $project).'#protection')
+            ->with('protection_saved', true)
+            ->with('status', 'تنظیمات محافظت فضای کاری ذخیره شد.');
     }
 
     public function updateWalletAlerts(Request $request, Project $project): RedirectResponse

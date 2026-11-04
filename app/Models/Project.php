@@ -86,6 +86,7 @@ class Project extends Model
     {
         return [
             'is_default' => 'boolean',
+            'protection_overrides' => 'array',
             'wallet_alert_thresholds' => 'array',
             'wallet_alert_recipient_ids' => 'array',
         ];

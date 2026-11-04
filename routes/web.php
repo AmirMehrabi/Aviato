@@ -309,6 +309,7 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::get('workspaces/{project}', [AdminProjectController::class, 'show'])->name('admin.projects.show');
         Route::get('workspaces/{project}/proforma', [AdminProjectController::class, 'proforma'])->name('admin.projects.proforma');
         Route::patch('workspaces/{project}', [AdminProjectController::class, 'update'])->name('admin.projects.update');
+        Route::patch('workspaces/{project}/protection', [AdminProjectController::class, 'updateProtection'])->name('admin.projects.protection.update');
         Route::patch('workspaces/{project}/wallet-alerts', [AdminProjectController::class, 'updateWalletAlerts'])->name('admin.projects.wallet-alerts.update');
         Route::post('workspaces/{project}/wallet-alerts/send', [AdminProjectController::class, 'sendWalletAlert'])->name('admin.projects.wallet-alerts.send');
         Route::post('workspaces/{project}/members', [AdminProjectController::class, 'storeMember'])->name('admin.projects.members.store');
