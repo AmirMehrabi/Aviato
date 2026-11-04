@@ -82,9 +82,9 @@ task('deploy:healthcheck', function () {
     try {
         run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
         // Check the local HTTPS vhost with the correct TLS hostname.
-        run("curl --fail --silent --show-error --noproxy '*' --max-time 15 --resolve aviato.ir:443:127.0.0.1 https://aviato.ir/up > /dev/null");
+        run("curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --noproxy '*' --max-time 15 --resolve aviato.ir:443:127.0.0.1 https://aviato.ir/up > /dev/null");
         foreach (['admin.aviato.ir', 'my.aviato.ir'] as $portal) {
-            run("curl --fail --silent --show-error --noproxy '*' --max-time 15 --resolve {$portal}:443:127.0.0.1 https://{$portal}/up > /dev/null");
+            run("curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --noproxy '*' --max-time 15 --resolve {$portal}:443:127.0.0.1 https://{$portal}/up > /dev/null");
         }
         run('rm -f {{deploy_path}}/.dep/previous_current');
     } catch (\Throwable $exception) {
