@@ -16,3 +16,5 @@ Logs: `sudo journalctl -u aviato-deploy -f`. Deployment tooling checkout: `/opt/
 `composer deploy` remains available from a clean local master matching origin/master as a manual backup. Avoid starting it during a webhook deployment; Deployer's deployment lock protects against simultaneous releases. To pause automatic deployments use `sudo systemctl stop aviato-deploy`.
 
 If the public hostname returns a browser challenge (HTTP 467), exempt `/hooks/github/deploy` from the CDN/WAF browser challenge before testing GitHub deliveries. Signature validation remains required.
+
+To verify the webhook, push a documentation change to `master`, check GitHub’s Recent Deliveries for HTTP 202, then follow the production service logs until the release health checks pass. A 202 response means the deployment was queued, not that it has finished.
