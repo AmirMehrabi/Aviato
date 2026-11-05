@@ -23,3 +23,5 @@ An independent Python/systemd worker reads private config and a SQLite outbox un
 Events deduplicate by commit/event/recipient, so automatic retries do not repeatedly alert for the same failure. Recovery is a separate optional event and can accompany success. Failed requests retry with exponential backoff capped at an hour, stopping at the configured limit. Provider acceptance records its message ID; it does not prove handset delivery. A provider timeout after acceptance may produce a duplicate on retry.
 
 Logs: `sudo journalctl -u aviato-deploy-sms -f`. The UI shows 100 latest sends; the outbox retains history. No real test SMS is sent as part of installation.
+
+For an end-to-end success test, enable the master switch plus Started and Success, then push a documentation-only commit to master. The Started message identifies the previously active release; Success identifies the new release after all checks finish. Inspect both provider message IDs in admin history.
