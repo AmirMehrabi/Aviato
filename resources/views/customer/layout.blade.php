@@ -43,7 +43,14 @@
         $activeWalletRisk = $workspaceWalletRisks[$activeProject->id] ?? null;
         $workspaceSelectorRiskTone = $activeWalletRisk['tone'] ?? (collect($workspaceWalletRisks)->contains(fn (array $risk): bool => $risk['tone'] !== 'warning') ? 'critical' : 'warning');
         $workspaceSelectorRiskLabel = $activeWalletRisk['label'] ?? (count($workspaceWalletRisks).' فضای کاری نیازمند توجه');
-        $activeNav = $activeNav ?? 'dashboard';
+        $activeNav = $activeNav ?? match (request()->route()?->getName()) {
+            'customer.reseller.dashboard' => 'reseller',
+            'customer.reseller.customers' => 'reseller-customers',
+            'customer.reseller.commissions' => 'reseller-commissions',
+            'customer.reseller.referral' => 'reseller-referral',
+            'customer.reseller.withdrawals' => 'reseller-withdrawals',
+            default => 'dashboard',
+        };
         $newWorkspaceNotification = $customer->unreadNotifications()
             ->where('type', \App\Notifications\WorkspaceAddedNotification::class)
             ->oldest()
@@ -59,13 +66,13 @@
                 ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z'],
             ],
             'زیرساخت' => [
-                ...($canViewColocation ? [
-                    ['key' => 'colocation', 'label' => 'کولوکیشن', 'route' => route('customer.colocation.index', [], false), 'icon' => 'M4 3h16v18H4V3Zm0 6h16M4 15h16M8 6h.01M8 12h.01M8 18h.01'],
-                ] : []),
                 ...($canViewVms ? [
                     ['key' => 'servers', 'label' => 'ماشین‌های مجازی', 'route' => route('customer.servers.index', [], false), 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
                     ['key' => 'backups', 'label' => 'پشتیبان‌گیری', 'route' => route('customer.backups.index', [], false), 'icon' => 'M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 6.5 19H8'],
                     ['key' => 'monitoring', 'label' => 'پایش', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M3 12h4l3-8 4 16 3-8h4'],
+                ] : []),
+                ...($canViewColocation ? [
+                    ['key' => 'colocation', 'label' => 'کولوکیشن', 'route' => route('customer.colocation.index', [], false), 'icon' => 'M4 3h16v18H4V3Zm0 6h16M4 15h16M8 6h.01M8 12h.01M8 18h.01'],
                 ] : []),
             ],
             'دامنه و DNS' => [
@@ -79,11 +86,8 @@
             'امور مالی' => [
                 ...($canViewBilling ? [
                     ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M19 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6M16 13h5v4h-5a2 2 0 0 1 0-4Z'],
-                    ['key' => 'invoices', 'label' => 'صورتحساب‌ها و پرداخت‌ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
+                    ['key' => 'invoices', 'label' => 'صورتحساب‌ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
                 ] : []),
-            ],
-            'پشتیبانی' => [
-                ['key' => 'tickets', 'label' => 'درخواست‌های پشتیبانی', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
             ],
             ...(auth('customer')->check() && auth('customer')->user()->isReseller() ? [
                 'فروشندگی' => [
@@ -94,6 +98,9 @@
                     ['key' => 'reseller-withdrawals', 'label' => 'برداشت‌ها', 'route' => route('customer.reseller.withdrawals', [], false), 'icon' => 'M3 6h18v12H3V6Zm0 4h18M7 15h2M15 14l2 2 2-2M17 11v5'],
                 ],
             ] : []),
+            'پشتیبانی' => [
+                ['key' => 'tickets', 'label' => 'پشتیبانی', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
+            ],
         ];
         $navGroups = array_filter($navGroups, fn (array $items): bool => $items !== []);
         $searchBaseItems = [
@@ -233,7 +240,7 @@
                 openSearch();
             }
         "
-        class="min-h-screen lg:grid lg:grid-cols-[230px_minmax(0,1fr)]"
+        class="min-h-screen lg:grid lg:grid-cols-[260px_minmax(0,1fr)]"
     >
         <div
             x-cloak
@@ -245,17 +252,16 @@
         ></div>
 
         <aside
-            class="pointer-events-none invisible fixed inset-y-0 right-0 z-40 flex w-[min(86vw,280px)] translate-x-full flex-col border-l border-white/10 bg-[#031B4E] px-4 py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:pointer-events-auto lg:visible lg:sticky lg:top-0 lg:bottom-auto lg:right-auto lg:h-screen lg:w-[230px] lg:translate-x-0 lg:px-0 lg:shadow-none"
+            class="pointer-events-none invisible fixed inset-y-0 right-0 z-40 flex h-dvh w-[min(86vw,280px)] translate-x-full flex-col border-l border-white/10 bg-[#031B4E] px-3 py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:pointer-events-auto lg:visible lg:sticky lg:top-0 lg:bottom-auto lg:right-auto lg:w-[260px] lg:translate-x-0 lg:shadow-none"
             :class="{ '!pointer-events-auto !visible !translate-x-0': sidebarOpen }"
             aria-label="منوی مشتری"
         >
-            <div class="flex items-center justify-between lg:px-4">
-                <a href="{{ route('dashboard', [], false) }}" class="flex items-center gap-2.5">
+            <div class="flex shrink-0 items-center justify-between px-2">
+                <a href="{{ route('dashboard', [], false) }}" class="flex items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
                     <img src="{{ asset("assets/images/aviato_icon_color.png") }}" class="w-10" alt="Aviato Logo">
-                    {{-- <span class="grid size-9 place-items-center rounded-full border border-white/15 bg-white/10 text-base font-black text-white shadow-sm shadow-black/20">آ</span> --}}
                     <span>
-                        <span class="block text-base font-black leading-5 text-white">آویاتو</span>
-                        <span class="block text-[11px] font-bold leading-4 text-[#8FA6D2]">کنسول ابری</span>
+                        <span class="block text-lg font-bold leading-6 text-white">آویاتو</span>
+                        <span class="block text-[11px] font-medium leading-5 text-[#9DB4DC]">کنسول ابری</span>
                     </span>
                 </a>
                 <button
@@ -271,27 +277,27 @@
                 </button>
             </div>
 
-            <div class="relative mt-7 px-3 pt-2" @click.outside="workspaceOpen = false">
+            <div class="relative mt-5 shrink-0" @click.outside="workspaceOpen = false">
                 <button
                     type="button"
                     @click="workspaceOpen = !workspaceOpen; walletOpen = false; profileOpen = false; searchOpen = false"
-                    class="group w-full rounded-xl border border-white/10 bg-[#08245A] p-3 text-right transition hover:border-[#5B8DDA] hover:bg-[#0A2A66]"
+                    class="group w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2.5 text-right transition hover:border-[#5B8DDA] hover:bg-[#0A2A66] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#69A9FF]"
                     :aria-expanded="workspaceOpen.toString()"
                     aria-controls="customer-workspace-menu"
+                    aria-label="انتخاب فضای کاری: {{ $activeProject->name }}{{ $workspaceWalletRisks !== [] ? '، '.$workspaceSelectorRiskLabel : '' }}"
                 >
                     <span class="flex items-start gap-2.5">
                         <span class="min-w-0 flex-1">
-                            <span class="flex flex-wrap items-center gap-2 text-[10px] font-black text-[#8FA6D2]">
-                                انتخاب فضای کاری
+                            <span class="flex items-center gap-2">
+                                <span class="min-w-0 flex-1 truncate text-sm font-semibold leading-6 text-white" title="{{ $activeProject->name }}">{{ $activeProject->name }}</span>
                                 @if($workspaceWalletRisks !== [])
-                                    <span class="inline-flex items-center gap-1 font-black {{ $workspaceSelectorRiskTone === 'warning' ? 'text-amber-300' : 'text-rose-300' }}">
-                                        <span class="size-1.5 rounded-full {{ $workspaceSelectorRiskTone === 'warning' ? 'bg-amber-300' : 'bg-rose-400' }}" aria-hidden="true"></span>
-                                        {{ $workspaceSelectorRiskLabel }}
+                                    <span class="shrink-0" title="{{ $workspaceSelectorRiskLabel }}">
+                                        <span class="block size-1.5 rounded-full {{ $workspaceSelectorRiskTone === 'warning' ? 'bg-amber-300' : 'bg-rose-400' }}" aria-hidden="true"></span>
+                                        <span class="sr-only">{{ $workspaceSelectorRiskLabel }}</span>
                                     </span>
                                 @endif
                             </span>
-                            <span class="mt-1 block text-sm font-black leading-6 text-white" style="overflow-wrap: anywhere">{{ $activeProject->name }}</span>
-                            <span class="mt-1 block truncate text-[10px] font-bold text-[#9DB4DC]">{{ $activeWorkspaceRole }} · مالک: {{ $activeProject->owner?->name }}</span>
+                            <span class="mt-0.5 block text-xs font-medium text-[#9DB4DC]">{{ $activeWorkspaceRole }}</span>
                         </span>
                         <svg class="mt-1 size-4 shrink-0 text-[#8FA6D2] transition" :class="workspaceOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -299,7 +305,7 @@
                     </span>
                 </button>
 
-                <div id="customer-workspace-menu" x-cloak x-show="workspaceOpen" x-transition class="absolute inset-x-3 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl shadow-slate-950/25">
+                <div id="customer-workspace-menu" x-cloak x-show="workspaceOpen" x-transition class="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 text-right shadow-2xl shadow-slate-950/25">
                     <div class="max-h-64 space-y-1 overflow-y-auto">
                         @foreach($projects as $project)
                             @php
@@ -337,75 +343,59 @@
                 </div>
             </div>
 
-            <div class="customer-sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
-                <nav class="mt-4 space-y-6 text-sm font-bold" aria-label="بخش‌های پنل مشتری">
+            <div class="customer-sidebar-scroll mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
+                <nav class="space-y-4 text-sm font-medium" aria-label="بخش‌های پنل مشتری">
                     @foreach ($navGroups as $group => $items)
-                        <div>
-                            <p class="px-4 text-[10px] font-black text-[#5F79AA]">{{ $group }}</p>
-                            <div class="mt-2 space-y-0.5">
-                                @foreach ($items as $item)
-                                    @php
-                                        $isActive = $activeNav === $item['key'];
-                                    @endphp
-                                    <a
-                                        href="{{ $item['route'] ?: '#' }}"
-                                        @if (! $item['route']) aria-disabled="true" @endif
-                                        @click="if (window.innerWidth < 1024) sidebarOpen = false"
-                                        class="flex items-center gap-2.5 px-3 py-2 transition {{ $isActive ? 'bg-white/90 text-[#031B4E] shadow-sm shadow-black/10' : ($item['route'] ? 'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' : 'cursor-default text-[#6F86B5] opacity-70') }}"
-                                    >
-                                        <svg class="size-[17px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                            <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                        <span>{{ $item['label'] }}</span>
-                                        @if ($item['key'] === 'invoices' && ($invoiceCount ?? null))
-                                            <span class="mr-auto rounded px-1.5 py-0.5 text-[10px] font-black {{ $isActive ? 'bg-[#E5F0FF] text-[#0069FF]' : 'bg-white/10 text-[#C7D4EA]' }}">{{ $invoiceCount }}</span>
-                                        @endif
-                                        @if ($item['key'] === 'tickets')
-                                            <span x-show="ticketUnreadCount > 0" x-text="ticketUnreadCount.toLocaleString('fa-IR')" class="mr-auto rounded-full bg-[#0069FF] px-2 py-0.5 text-[10px] font-black text-white"></span>
-                                        @endif
-                                    </a>
-                                @endforeach
+                        @if ($group === 'فروشندگی')
+                            <details class="group/reseller" @if (str_starts_with($activeNav, 'reseller')) open @endif>
+                                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2.5 text-[#C7D4EA] transition hover:bg-[#0A2A66] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#69A9FF] [&::-webkit-details-marker]:hidden">
+                                    <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 10h16M5 10l1-6h12l1 6M6 10v10h12V10M9 20v-6h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <span>فروشندگی</span>
+                                    <svg class="mr-auto size-4 shrink-0 transition-transform group-open/reseller:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </summary>
+                                <div class="mt-1 mr-5 space-y-0.5 border-r border-white/10 pr-2" aria-label="بخش‌های فروشندگی">
+                                    @foreach ($items as $item)
+                                        @include('customer.partials.sidebar-link')
+                                    @endforeach
+                                </div>
+                            </details>
+                        @else
+                            <div>
+                                @if (! in_array($group, ['نمای کلی', 'پشتیبانی']))
+                                    <p class="mb-1 px-3 text-[11px] font-medium leading-5 text-[#9DB4DC]">{{ $group }}</p>
+                                @endif
+                                <div class="space-y-0.5">
+                                    @foreach ($items as $item)
+                                        @include('customer.partials.sidebar-link')
+                                    @endforeach
+                                </div>
                             </div>
-                        </div>
+                        @endif
                     @endforeach
                 </nav>
-
-                <div class="mt-5 border-white/10 pt-4 lg:px-3">
-                    <div class="flex flex-wrap items-center justify-between gap-2 px-3">
-                        <p class="text-[10px] font-black text-[#5F79AA]">مصرف</p>
-                        @if($canViewBilling && $activeWalletRisk)
-                            <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-black {{ $activeWalletRisk['tone'] === 'warning' ? 'bg-amber-400/15 text-amber-200' : 'bg-rose-400/15 text-rose-200' }}">
-                                <span class="size-1.5 rounded-full {{ $activeWalletRisk['tone'] === 'warning' ? 'bg-amber-300' : 'bg-rose-400' }}" aria-hidden="true"></span>
-                                {{ $activeWalletRisk['label'] }}
-                            </span>
-                        @endif
-                    </div>
-                    <div class="mt-2 rounded-md border border-white/10 bg-white/[0.06] p-3">
-                        @if($canViewBilling)
-                        <p class="mb-1 text-[11px] font-bold text-slate-300">موجودی قابل استفاده</p>
-                        <p class="truncate text-lg font-black {{ $activeWalletRisk && $activeWalletRisk['tone'] !== 'warning' ? 'text-rose-200' : ($balanceIsNegative ? 'text-red-200' : 'text-white') }}">{{ $wallets->formatAvailableBalance($effectiveWalletBalance) }}</p>
-                        @if($activeWalletRisk)
-                            <p class="mt-1 text-[11px] font-bold leading-5 {{ $activeWalletRisk['tone'] === 'warning' ? 'text-amber-200' : 'text-rose-200' }}">
-                                {{ $activeWalletRisk['tone'] === 'depleted' ? 'اعتبار قابل استفاده پایان یافته است.' : 'اعتبار قابل استفاده: '.number_format($activeWalletRisk['percent'], 0).'٪ هزینه ماهانه' }}
-                            </p>
-                        @endif
-                        <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="mt-3 inline-flex w-full items-center justify-center rounded-md bg-[#00A67E] px-3 py-2 text-sm font-black text-white transition hover:bg-[#008F6E]">
-                            افزایش اعتبار
-                        </a>
-                        @else
-                            <p class="text-xs font-black text-white">دسترسی مالی ندارید</p>
-                            <p class="mt-2 truncate text-[11px] font-bold text-[#9DB4DC]">{{ $activeProject->owner?->name }}</p>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- <div class="mt-5 border-t border-white/10 px-1 py-4 text-xs leading-6 text-[#8FA6D2]">
-                    مصرف PAYG از کیف پول کسر می شود و صورتحساب ماهانه برای بایگانی صادر می گردد.
-                </div> -->
-
             </div>
 
-            <div class="relative mt-5 shrink-0 border-t border-white/10 px-3 pt-3" @click.outside="profileOpen = false" @focusout="if (!$el.contains($event.relatedTarget)) profileOpen = false">
+            @if($canViewBilling)
+                <div class="mt-3 shrink-0 rounded-xl border border-white/10 bg-white/[0.03] p-3" aria-label="موجودی فضای کاری">
+                    <p class="text-[11px] font-medium text-[#9DB4DC]">موجودی کیف پول</p>
+                    <div class="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+                        <p class="min-w-0 break-words text-sm font-semibold leading-6 {{ $activeWalletRisk && $activeWalletRisk['tone'] !== 'warning' ? 'text-rose-200' : ($balanceIsNegative ? 'text-red-200' : 'text-white') }}">{{ $wallets->formatAvailableBalance($effectiveWalletBalance) }}</p>
+                        <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-[#168BFF] px-2 py-1 text-[11px] font-semibold text-[#69B8FF] transition hover:bg-[#0069FF]/20 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#69A9FF]">
+                            افزایش اعتبار
+                        </a>
+                    </div>
+                    @if($activeWalletRisk)
+                        <details class="mt-2 border-t border-white/10 pt-2 {{ $activeWalletRisk['tone'] === 'warning' ? 'text-amber-200' : 'text-rose-200' }}">
+                            <summary class="cursor-pointer rounded text-[11px] font-medium leading-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#69A9FF]">{{ $activeWalletRisk['label'] }}</summary>
+                            <p class="mt-1 text-[11px] leading-5">
+                                {{ $activeWalletRisk['tone'] === 'depleted' ? 'اعتبار قابل استفاده پایان یافته است.' : 'اعتبار قابل استفاده: '.number_format($activeWalletRisk['percent'], 0).'٪ هزینه ماهانه' }}
+                            </p>
+                        </details>
+                    @endif
+                </div>
+            @endif
+
+            <div class="relative mt-3 shrink-0 border-t border-white/15 pt-2" @click.outside="profileOpen = false" @focusout="if (!$el.contains($event.relatedTarget)) profileOpen = false">
                 <button
                     type="button"
                     class="hidden w-full items-center gap-3 rounded-xl px-2 py-2.5 text-right transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:flex {{ $activeNav === 'profile' ? 'bg-white/10' : '' }}"
@@ -416,8 +406,8 @@
                 >
                     <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0069FF] text-sm font-black text-white">{{ $customerInitial }}</span>
                     <span class="min-w-0 flex-1">
-                        <span class="block text-[10px] font-bold text-[#9DB4DC]">حساب کاربری</span>
-                        <span class="block truncate text-sm font-black text-white">{{ $customer->name }}</span>
+                        <span class="block truncate text-sm font-semibold text-white">{{ $customer->name }}</span>
+                        <span class="mt-0.5 block text-[11px] font-medium text-[#9DB4DC]">حساب کاربری</span>
                     </span>
                     <svg class="size-4 shrink-0 text-[#9DB4DC] transition-transform" :class="profileOpen ? '' : 'rotate-180'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
