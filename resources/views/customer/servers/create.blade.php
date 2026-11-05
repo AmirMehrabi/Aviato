@@ -57,7 +57,7 @@
         x-data="customerVmCreate({
             walletBalance: @js($wallet->balance),
             walletBalanceLabel: @js($wallets->format($wallet->balance)),
-            walletUrl: @js(route('customer.wallet.show', [], false)),
+            walletUrl: @js(route('customer.wallet.show', ['topup' => 1, 'return_to' => 'create-server'], false)),
             profileUrl: @js(route('customer.profile.show', [], false)),
             quota: @js($quota),
             namePeriod: @js(now()->format('ym')),

@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -610,20 +611,47 @@ class CustomerWalletBillingTest extends TestCase
         $customer = Customer::factory()->create();
         $this->enableMellatGateway();
         $this->fakeMellatClient();
-        AppSetting::setValue(AppSetting::WALLET_MINIMUM_TOP_UP_TOMAN, 10000, 'integer', 'billing');
+        AppSetting::setValue(AppSetting::WALLET_MINIMUM_TOP_UP_TOMAN, 500000, 'integer', 'billing');
 
         $this->actingAs($customer, 'customer')->get($this->customerBaseUrl.'/wallet?tab=top-up')
-            ->assertOk()->assertViewHas('minimumTopUpToman', 10000)
-            ->assertSee('حداقل ۱۰,۰۰۰')
-            ->assertViewHas('topUpPresets', fn ($presets) => in_array(10000, $presets, true));
+            ->assertOk()->assertViewHas('minimumTopUpToman', 500000)
+            ->assertSee('حداقل ۵۰۰,۰۰۰')
+            ->assertViewHas('topUpPresets', fn ($presets) => in_array(500000, $presets, true));
         $this->post($this->customerBaseUrl.'/wallet/top-ups', [
-            'amount_toman' => 9999, 'gateway' => 'mellat',
+            'amount_toman' => 499999, 'gateway' => 'mellat',
         ])->assertSessionHasErrors('amount_toman');
         $this->assertDatabaseCount('payments', 0);
         $this->post($this->customerBaseUrl.'/wallet/top-ups', [
-            'amount_toman' => 10000, 'gateway' => 'mellat',
+            'amount_toman' => 500000, 'gateway' => 'mellat',
         ])->assertRedirect($this->customerBaseUrl.'/wallet/payments/1/gateway');
-        $this->assertDatabaseHas('payments', ['customer_id' => $customer->id, 'amount' => 100000]);
+        $this->assertDatabaseHas('payments', ['customer_id' => $customer->id, 'amount' => 5000000]);
+    }
+
+    public function test_legacy_low_minimum_cannot_allow_top_ups_below_250000_toman(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+        AppSetting::setValue(AppSetting::WALLET_MINIMUM_TOP_UP_TOMAN, 10000, 'integer', 'billing');
+
+        $this->actingAs($customer, 'customer')->get($this->customerBaseUrl.'/wallet?topup=1')
+            ->assertOk()
+            ->assertViewHas('selectedTab', 'top-up')
+            ->assertViewHas('minimumTopUpToman', 250000)
+            ->assertSee('حداقل ۲۵۰,۰۰۰')
+            ->assertViewHas('topUpPresets', fn ($presets) => min($presets) === 250000);
+
+        foreach ([10000, 249999, '۲۴۹٬۹۹۹'] as $amount) {
+            $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+                'amount_toman' => $amount, 'gateway' => 'mellat',
+            ])->assertSessionHasErrors('amount_toman');
+        }
+        $this->assertDatabaseCount('payments', 0);
+
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+            'amount_toman' => '۲۵۰٬۰۰۰', 'gateway' => 'mellat',
+        ])->assertRedirect($this->customerBaseUrl.'/wallet/payments/1/gateway');
+        $this->assertDatabaseHas('payments', ['customer_id' => $customer->id, 'amount' => 2500000]);
     }
 
     public function test_wallet_top_up_rejects_amount_below_minimum(): void
@@ -701,7 +729,7 @@ class CustomerWalletBillingTest extends TestCase
         $this->get($this->customerBaseUrl.'/wallet?tab=top-up')
             ->assertOk()
             ->assertViewHas('recommendedTopUpToman', 300000)
-            ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000, 300000])
+            ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 300000])
             ->assertSee('برآورد ماهانه')
             ->assertSee('۳۰۰,۰۰۰');
 
@@ -718,7 +746,7 @@ class CustomerWalletBillingTest extends TestCase
             ->assertOk()
             ->assertViewHas('projectMonthlyEstimate', 3400000)
             ->assertViewHas('recommendedTopUpToman', 340000)
-            ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000, 340000])
+            ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 340000])
             ->assertSee('برآورد ماهانه')
             ->assertSee('۳۴۰,۰۰۰');
     }
@@ -1499,6 +1527,100 @@ class CustomerWalletBillingTest extends TestCase
 
         $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->fresh()->status);
         $this->assertNull($vm->fresh()->wallet_restriction);
+    }
+
+    public function test_top_up_failure_restores_selection_and_success_returns_to_the_original_task(): void
+    {
+        $customer = Customer::factory()->create();
+        $project = $customer->ensureDefaultProject();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+        $this->actingAs($customer, 'customer');
+
+        $this->get($this->customerBaseUrl.'/wallet?topup=1&return_to=create-server')
+            ->assertOk()
+            ->assertViewHas('returnAction', ['url' => '/servers/create', 'label' => 'ادامه ساخت سرور'])
+            ->assertViewHas('topUpPresets', [250000, 500000, 1000000, 2500000]);
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+            'amount_toman' => 500000, 'gateway' => 'mellat', 'project_id' => $project->id,
+        ])->assertRedirect();
+        $payment = Payment::latest('id')->firstOrFail();
+        $this->assertSame($project->id, data_get($payment->gateway_payload, '_aviato_wallet_journey.project_id'));
+        $payment->update(['status' => Payment::STATUS_FAILED]);
+        $this->withSession([
+            'wallet.retry_codes.'.$payment->id => 'AVT-RETRY-FIXTURE',
+            'wallet.top_up.'.$customer->id.'.'.$project->id.'.return_action' => null,
+        ]);
+
+        $this->get($this->customerBaseUrl.'/wallet?payment_id='.$payment->id)
+            ->assertOk()->assertSee('تلاش دوباره برای پرداخت');
+        $this->get($this->customerBaseUrl.'/wallet?topup=1&retry='.$payment->id)
+            ->assertOk()
+            ->assertViewHas('selectedTab', 'top-up')
+            ->assertViewHas('retryAmountToman', 500000)
+            ->assertViewHas('retryGateway', 'mellat')
+            ->assertViewHas('retryCode', 'AVT-RETRY-FIXTURE')
+            ->assertSessionHas('wallet.top_up.'.$customer->id.'.'.$project->id.'.return_action', ['url' => '/servers/create', 'label' => 'ادامه ساخت سرور']);
+
+        $payment->update(['status' => Payment::STATUS_SUCCESSFUL]);
+        $this->get($this->customerBaseUrl.'/wallet?payment_id='.$payment->id)
+            ->assertOk()->assertSee('ادامه ساخت سرور')->assertSee('مشاهده رسید پرداخت')
+            ->assertDontSee('تلاش دوباره برای پرداخت')
+            ->assertSessionMissing('wallet.retry_codes.'.$payment->id);
+    }
+
+    public function test_wallet_retry_and_return_actions_cannot_cross_customers_or_workspaces(): void
+    {
+        $customer = Customer::factory()->create();
+        $other = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+        $this->actingAs($other, 'customer')
+            ->post($this->customerBaseUrl.'/wallet/top-ups', ['amount_toman' => 500000, 'gateway' => 'mellat'])
+            ->assertRedirect();
+        $payment = Payment::latest('id')->firstOrFail();
+        $payment->update(['status' => Payment::STATUS_CANCELLED]);
+
+        $this->actingAs($customer, 'customer')
+            ->get($this->customerBaseUrl.'/wallet?topup=1&retry='.$payment->id)
+            ->assertOk()->assertViewHas('retryAmountToman', null)->assertViewHas('paymentNotice', null);
+        $this->get($this->customerBaseUrl.'/wallet?topup=1&return_to=https://example.com')
+            ->assertOk()->assertViewHas('returnAction', null);
+        $this->withHeaders(['referer' => 'https://example.com/servers/create'])
+            ->get($this->customerBaseUrl.'/wallet?topup=1')
+            ->assertOk()->assertViewHas('returnAction', null);
+
+        $this->actingAs($other, 'customer');
+        $anotherProject = $other->ownedProjects()->create(['name' => 'Separate workspace']);
+        $anotherProject->members()->create(['customer_id' => $other->id, 'role' => ProjectMember::ROLE_OWNER]);
+        $this->withSession([ProjectAccessService::SESSION_KEY => $anotherProject->id])
+            ->get($this->customerBaseUrl.'/wallet?topup=1&retry='.$payment->id)
+            ->assertOk()->assertViewHas('retryAmountToman', null)->assertViewHas('paymentNotice', null);
+    }
+
+    public function test_top_up_keeps_the_original_server_tab_as_the_return_destination(): void
+    {
+        $customer = Customer::factory()->create();
+        $path = '/servers/'.(string) Str::uuid().'/upgrade';
+        $this->actingAs($customer, 'customer')
+            ->withHeaders(['referer' => $this->customerBaseUrl.$path])
+            ->get($this->customerBaseUrl.'/wallet?topup=1')
+            ->assertOk()
+            ->assertViewHas('returnAction', ['url' => $path, 'label' => 'بازگشت به مدیریت سرور']);
+    }
+
+    public function test_wallet_retry_uses_an_available_gateway_when_the_previous_one_is_disabled(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+        $this->actingAs($customer, 'customer')
+            ->post($this->customerBaseUrl.'/wallet/top-ups', ['amount_toman' => 500000, 'gateway' => 'mellat'])
+            ->assertRedirect();
+        $payment = Payment::latest('id')->firstOrFail();
+        $payment->update(['status' => Payment::STATUS_CANCELLED, 'provider' => 'disabled-gateway']);
+        $this->get($this->customerBaseUrl.'/wallet?topup=1&retry='.$payment->id)
+            ->assertOk()->assertViewHas('retryAmountToman', 500000)->assertViewHas('retryGateway', 'mellat');
     }
 
     private function enableMellatGateway(): void

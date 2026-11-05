@@ -197,9 +197,11 @@ class AppSetting extends Model
 
     public const WALLET_MINIMUM_TOP_UP_TOMAN = 'wallet.minimum_top_up_toman';
 
+    public const WALLET_MINIMUM_TOP_UP_FLOOR_TOMAN = 250000;
+
     public static function walletMinimumTopUpToman(): int
     {
-        return max(1, min(50000000, (int) static::getValue(self::WALLET_MINIMUM_TOP_UP_TOMAN, 250000)));
+        return max(self::WALLET_MINIMUM_TOP_UP_FLOOR_TOMAN, min(50000000, (int) static::getValue(self::WALLET_MINIMUM_TOP_UP_TOMAN, self::WALLET_MINIMUM_TOP_UP_FLOOR_TOMAN)));
     }
 
     public const TAX_ENABLED = 'tax.enabled';

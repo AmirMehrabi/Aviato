@@ -271,7 +271,7 @@ class SettingController extends Controller
                 'company_postal_code' => ['nullable', 'string', 'max:30'],
             ],
             'billing' => [
-                'wallet_minimum_top_up_toman' => ['sometimes', 'required', 'integer', 'min:1', 'max:50000000'],
+                'wallet_minimum_top_up_toman' => ['sometimes', 'required', 'integer', 'min:'.AppSetting::WALLET_MINIMUM_TOP_UP_FLOOR_TOMAN, 'max:50000000'],
                 'vm_extra_disk_enabled' => ['required', 'boolean'],
                 'tax_enabled' => ['required', 'boolean'],
                 'tax_rate_percentage' => ['required', 'numeric', 'min:0', 'max:100'],

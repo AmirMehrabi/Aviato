@@ -1,4 +1,9 @@
-<section class="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5" aria-labelledby="promotion-label">
+<section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="promotion-toggle">
+    <button id="promotion-toggle" type="button" @click="promotionOpen = !promotionOpen" :aria-expanded="promotionOpen.toString()" aria-controls="wallet-promotion-panel" class="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl px-5 py-4 text-right text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600">
+        <span>کد هدیه یا پاداش دارید؟ <span class="font-normal text-slate-400">(اختیاری)</span></span>
+        <svg class="size-4 shrink-0 transition-transform" :class="promotionOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div id="wallet-promotion-panel" x-show="promotionOpen" x-cloak class="border-t border-slate-100 p-5">
     <form method="POST" action="{{ route('customer.gift-cards.redeem', [], false) }}" @submit="submitGift($event)">
         @csrf
         <input type="hidden" name="project_id" value="{{ $activeProject->id }}">
@@ -25,4 +30,5 @@
         </div>
         <button type="submit" x-show="isInstant" x-cloak :disabled="!canRedeem" class="mt-4 min-h-12 w-full rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto" x-text="submitting ? 'در حال افزودن اعتبار…' : `افزودن ${formatRial(promotion?.credit_amount || 0)} اعتبار هدیه`">افزودن اعتبار هدیه</button>
     </form>
+    </div>
 </section>

@@ -82,16 +82,16 @@ class AdminSettingsHubTest extends TestCase
             'vm_creation_charge_enabled' => 0, 'vm_creation_charge_percentage' => 0,
             'vm_extra_disk_enabled' => 0,
         ];
-        $this->patch('https://admin.localhost/settings/billing', $billing + ['wallet_minimum_top_up_toman' => 10000])
+        $this->patch('https://admin.localhost/settings/billing', $billing + ['wallet_minimum_top_up_toman' => 500000])
             ->assertSessionHasNoErrors();
-        $this->assertSame(10000, AppSetting::walletMinimumTopUpToman());
+        $this->assertSame(500000, AppSetting::walletMinimumTopUpToman());
         $this->get('https://admin.localhost/settings/billing')
-            ->assertOk()->assertViewHas('walletMinimumTopUpToman', 10000);
+            ->assertOk()->assertViewHas('walletMinimumTopUpToman', 500000);
 
-        foreach ([0, -1, 1.5, 50000001, ''] as $amount) {
+        foreach ([0, -1, 1.5, 10000, 249999, 50000001, ''] as $amount) {
             $this->patch('https://admin.localhost/settings/billing', $billing + ['wallet_minimum_top_up_toman' => $amount])
                 ->assertSessionHasErrors('wallet_minimum_top_up_toman');
-            $this->assertSame(10000, AppSetting::walletMinimumTopUpToman());
+            $this->assertSame(500000, AppSetting::walletMinimumTopUpToman());
         }
     }
 

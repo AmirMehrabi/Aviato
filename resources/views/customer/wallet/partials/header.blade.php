@@ -1,14 +1,20 @@
     <div class="w-full bg-white border-b border-slate-200">
-        <div class="mx-auto max-w-7xl px-4 pt-7 md:px-6 lg:px-8">
+        <div class="w-full px-4 pt-7 md:px-6 lg:px-8">
             <div class="flex flex-wrap items-start justify-between gap-4 pb-7">
                 <div>
                     <h1 class="text-3xl font-black text-slate-950">کیف پول</h1>
                     <p class="mt-2 text-sm text-slate-500">موجودی مشترک فضاهای کاری و هزینه تخمینی خدمات</p>
                 </div>
-                @if ($canTopUp)
+                @if ($canTopUp && $selectedTab !== 'top-up')
                     <a href="{{ route('customer.wallet.show', ['tab' => 'top-up'], false) }}" class="inline-flex min-h-11 items-center rounded-xl bg-[#0069FF] px-5 text-sm font-black text-white hover:bg-[#0050D0]">افزایش موجودی</a>
                 @endif
             </div>
+            @if ($selectedTab === 'top-up')
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+                    <p class="text-slate-500">کیف پول {{ $activeProject->owner?->name }} · فضای کاری {{ $activeProject->name }}</p>
+                    <p class="text-slate-500">موجودی قابل استفاده <strong class="mr-2 font-bold {{ $effectiveBalance < 0 ? 'text-rose-600' : 'text-slate-950' }}">{{ $wallets->formatAvailableBalance($effectiveBalance) }}</strong></p>
+                </div>
+            @else
             <dl class="grid gap-3 pb-7 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ([
                     ['label' => 'موجودی قابل استفاده', 'value' => $wallets->formatAvailableBalance($effectiveBalance), 'tone' => $effectiveBalance < 0 ? 'text-rose-600' : 'text-slate-950'],
@@ -26,6 +32,7 @@
                 @if ($networkEstimate['pending'])
                     <p class="pb-4 text-xs leading-6 text-amber-700">در حال محاسبه برآورد شبکه؛ برای برخی سرورها هنوز یک روز کامل داده نهایی موجود نیست و هزینه شبکه آن‌ها در برآورد لحاظ نشده است.</p>
                 @endif
+            @endif
             @endif
             <nav class="flex gap-8 overflow-x-auto" aria-label="بخش‌های کیف پول">
                 @foreach ($tabItems as $item)

@@ -58,7 +58,23 @@ class WalletController extends Controller
         }
         $retentionNotice = app(VmWalletRetentionService::class)->customerNotice($activeProject);
         $restoreAmountToman = $request->boolean('restore') ? ($retentionNotice['top_up_toman'] ?? null) : null;
-        $paymentNotice = $this->paymentNotice($request, $activeProject->owner->id);
+        $paymentNotice = $this->paymentNotice($request, $activeProject->owner->id, $activeProject->id);
+        $journeyKey = 'wallet.top_up.'.$customer->id.'.'.$activeProject->id;
+        $returnAction = $request->session()->get($journeyKey.'.return_action');
+        if ($selectedTab === 'top-up' && ! $paymentNotice) {
+            $capturedAction = $this->topUpReturnAction($request);
+            $refererPath = parse_url($request->headers->get('referer', ''), PHP_URL_PATH);
+            if ($capturedAction || ($refererPath && $refererPath !== route('customer.wallet.show', [], false))) {
+                $returnAction = $capturedAction;
+            }
+            $request->session()->put($journeyKey.'.return_action', $returnAction);
+        }
+        $retryPayment = $request->has('retry') && ! empty($paymentNotice['retry_url']);
+        if ($retryPayment) {
+            $selectedTab = 'top-up';
+            $returnAction = $paymentNotice['return_action'] ?? null;
+            $request->session()->put($journeyKey.'.return_action', $returnAction);
+        }
         $transactions = $wallet->transactions()
             ->with('reference')
             ->where(function ($query) use ($activeProject): void {
@@ -98,12 +114,19 @@ class WalletController extends Controller
                 ? $roundedMonthlyEstimateToman
                 : null;
         $topUpPresets = array_values(array_unique(array_filter(
-            [$minimumTopUpToman, 250000, 500000, 1000000, 2500000],
+            [$minimumTopUpToman, 500000, 1000000, 2500000],
             fn (int $amount): bool => $amount >= $minimumTopUpToman,
         )));
-        $lastPreset = $recommendedTopUpToman ?? max($minimumTopUpToman, 10000000);
-        $topUpPresets = array_values(array_filter($topUpPresets, fn (int $amount): bool => $amount !== $lastPreset));
-        $topUpPresets[] = $lastPreset;
+        if ($recommendedTopUpToman !== null) {
+            $topUpPresets = array_values(array_filter($topUpPresets, fn (int $amount): bool => $amount !== $recommendedTopUpToman));
+            $topUpPresets = array_slice($topUpPresets, 0, 3);
+            $topUpPresets[] = $recommendedTopUpToman;
+        }
+        $availablePaymentGateways = $this->paymentGateways->available();
+        $defaultPaymentGateway = AppSetting::defaultPaymentGateway();
+        if (! array_key_exists($defaultPaymentGateway, $availablePaymentGateways)) {
+            $defaultPaymentGateway = array_key_first($availablePaymentGateways) ?? '';
+        }
 
         return view('customer.wallet.show', [
             'customer' => $customer,
@@ -128,8 +151,13 @@ class WalletController extends Controller
             'canTopUp' => $this->projects->canViewBilling($activeProject, $customer),
             'minimumTopUpToman' => $minimumTopUpToman,
             'topUpPresets' => $topUpPresets,
-            'availablePaymentGateways' => $this->paymentGateways->available(),
-            'defaultPaymentGateway' => AppSetting::defaultPaymentGateway(),
+            'availablePaymentGateways' => $availablePaymentGateways,
+            'defaultPaymentGateway' => $defaultPaymentGateway,
+            'retryAmountToman' => $retryPayment ? $paymentNotice['retry_amount'] : null,
+            'retryGateway' => $retryPayment && array_key_exists($paymentNotice['retry_gateway'], $availablePaymentGateways) ? $paymentNotice['retry_gateway'] : $defaultPaymentGateway,
+            'retryCode' => $retryPayment ? $request->session()->get('wallet.retry_codes.'.$paymentNotice['payment_id'], '') : '',
+            'returnAction' => $paymentNotice ? ($paymentNotice['return_action'] ?? null) : $returnAction,
+            'currentBalanceRial' => AppSetting::currency() === 'IRR' ? $effectiveBalance : $effectiveBalance * 10,
             'paymentNotice' => $paymentNotice,
         ]);
     }
@@ -218,12 +246,41 @@ class WalletController extends Controller
         ]);
     }
 
-    /**
-     * @return array{tone: string, message: string, receipt_url?: string}|null
-     */
-    private function paymentNotice(Request $request, int $ownerCustomerId): ?array
+    private function topUpReturnAction(Request $request): ?array
     {
-        $paymentId = $request->integer('payment_id');
+        $destinations = [
+            'create-server' => ['url' => route('customer.servers.create', [], false), 'label' => 'ادامه ساخت سرور'],
+            'servers' => ['url' => route('customer.servers.index', [], false), 'label' => 'بازگشت به سرورها'],
+            'backups' => ['url' => route('customer.backups.index', [], false), 'label' => 'بازگشت به پشتیبان‌گیری'],
+            'domains' => ['url' => route('customer.domains.index', [], false), 'label' => 'بازگشت به دامنه‌ها'],
+        ];
+        $destination = $request->query('return_to');
+        if (is_string($destination) && isset($destinations[$destination])) {
+            return $destinations[$destination];
+        }
+        $referer = $request->headers->get('referer', '');
+        if (parse_url($referer, PHP_URL_HOST) !== $request->getHost()) {
+            return null;
+        }
+        $path = parse_url($referer, PHP_URL_PATH);
+        foreach ($destinations as $action) {
+            if ($action['url'] === $path) {
+                return $action;
+            }
+        }
+        if (is_string($path) && preg_match('~^/servers/[0-9a-f-]{36}(?:/(?:overview|resources|billing|upgrade|rebuild|activity))?$~i', $path)) {
+            return ['url' => $path, 'label' => 'بازگشت به مدیریت سرور'];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function paymentNotice(Request $request, int $ownerCustomerId, int $projectId): ?array
+    {
+        $paymentId = $request->integer('payment_id') ?: $request->integer('retry');
 
         if ($paymentId <= 0) {
             return null;
@@ -238,6 +295,14 @@ class WalletController extends Controller
             return null;
         }
 
+        $journey = data_get($payment->gateway_payload, '_aviato_wallet_journey', []);
+        if ($journey && ((int) ($journey['project_id'] ?? 0) !== $projectId || (int) ($journey['actor_id'] ?? 0) !== $request->user('customer')->id)) {
+            return null;
+        }
+        $returnAction = $journey['return_action'] ?? null;
+        if ($payment->isSuccessful()) {
+            $request->session()->forget('wallet.retry_codes.'.$payment->id);
+        }
         $promotionException = PromotionException::query()->where('payment_id', $payment->id)->where('status', 'open')->exists();
 
         return match ($payment->status) {
@@ -248,14 +313,23 @@ class WalletController extends Controller
                     : ($payment->promotion_bonus_amount > 0
                         ? 'پرداخت تایید شد و مبلغ اصلی به همراه پاداش کارت هدیه به کیف پول افزوده شد.'
                         : 'پرداخت با موفقیت تایید شد و کیف پول شما شارژ شد.'),
+                'return_action' => $returnAction,
                 'receipt_url' => route('customer.payments.receipt.show', $payment, false),
                 'promotion_success' => $payment->promotion_bonus_amount > 0 && ! $promotionException,
             ],
             Payment::STATUS_FAILED, Payment::STATUS_CANCELLED => [
                 'tone' => 'error',
-                'message' => 'پرداخت تایید نشد و مبلغی به کیف پول اضافه نشد.',
+                'message' => $payment->status === Payment::STATUS_CANCELLED
+                    ? 'پرداخت لغو شد و مبلغی به کیف پول اضافه نشد. می‌توانید با همان مبلغ دوباره تلاش کنید.'
+                    : 'پرداخت تایید نشد و مبلغی به کیف پول اضافه نشد. می‌توانید دوباره تلاش کنید یا درگاه دیگری انتخاب کنید.',
+                'retry_url' => $payment->type === Payment::TYPE_TOP_UP ? route('customer.wallet.show', ['topup' => 1, 'retry' => $payment->id], false) : null,
+                'retry_amount' => intdiv($payment->amount, 10),
+                'retry_gateway' => $payment->provider,
+                'payment_id' => $payment->id,
+                'return_action' => $returnAction,
             ],
             default => [
+                'return_action' => $returnAction,
                 'tone' => 'pending',
                 'message' => 'نتیجه پرداخت دریافت شد، اما تایید نهایی هنوز انجام نشده است. لطفا چند دقیقه دیگر وضعیت کیف پول را بررسی کنید.',
             ],

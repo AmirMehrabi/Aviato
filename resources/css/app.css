@@ -199,3 +199,24 @@
         to { opacity: 1; transform: translateY(0); }
     }
 }
+
+@layer components {
+    .wallet-payment-summary {
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    @media (min-width: 1024px) {
+        .wallet-payment-summary {
+            padding-bottom: 1.5rem;
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wallet-top-up *,
+    .wallet-top-up *::before,
+    .wallet-top-up *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}

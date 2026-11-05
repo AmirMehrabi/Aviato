@@ -89,6 +89,16 @@ class PaymentController extends Controller
                 ->withInput();
         }
 
+        $journeyKey = 'wallet.top_up.'.$customer->id.'.'.$activeProject->id;
+        $payment->update(['gateway_payload' => array_merge($payment->gateway_payload ?? [], [
+            '_aviato_wallet_journey' => [
+                'project_id' => $activeProject->id,
+                'actor_id' => $customer->id,
+                'return_action' => $request->session()->get($journeyKey.'.return_action'),
+            ],
+        ])]);
+        $request->session()->put('wallet.retry_codes.'.$payment->id, $data['promotion_code'] ?? '');
+
         if ($payment->promotion_code_id) {
             $request->session()->put('elecomp_attribution', [
                 'promotion_code_id' => $payment->promotion_code_id,

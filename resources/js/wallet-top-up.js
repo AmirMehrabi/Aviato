@@ -13,6 +13,9 @@ export function walletTopUp(config) {
         checking: false,
         codeError: '',
         requestVersion: 0,
+        promotionOpen: Boolean(config.openPromotion || config.initialCode),
+        summaryOpen: false,
+        currentBalanceRial: Number(config.currentBalanceRial || 0),
         init() {
             const initialAmount = this.normalizeDigits(config.initialAmount || '');
             if (initialAmount) {
@@ -25,18 +28,26 @@ export function walletTopUp(config) {
                 }
             }
             this.$nextTick(() => {
-                const code = sessionStorage.getItem('aviato.gift_card_code');
+                let code = '';
+                try {
+                    code = sessionStorage.getItem('aviato.gift_card_code') || '';
+                    sessionStorage.removeItem('aviato.gift_card_code');
+                    sessionStorage.removeItem('aviato.gift_card_type');
+                } catch (error) {
+                    // Manual code entry remains available when browser storage is disabled.
+                }
                 if (!code || !this.$refs.promotionCode) return;
+                this.promotionOpen = true;
                 this.setCode(code);
                 this.checkCode();
-                this.$refs.promotionCode.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                this.$refs.promotionCode.focus();
-                sessionStorage.removeItem('aviato.gift_card_code');
-                sessionStorage.removeItem('aviato.gift_card_type');
+                this.$nextTick(() => {
+                    this.$refs.promotionCode.scrollIntoView({
+                        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+                        block: 'center',
+                    });
+                    this.$refs.promotionCode.focus({ preventScroll: true });
+                });
             });
-            if (config.focusTopUp) {
-                this.$nextTick(() => this.$el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-            }
         },
         setCode(value) {
             this.code = value;
@@ -135,8 +146,16 @@ export function walletTopUp(config) {
                 ? `${new Intl.NumberFormat('fa-IR').format(this.promotion.percentage)}٪ اعتبار اضافه هنگام شارژ`
                 : `${this.formatRial(this.promotion.credit_amount)} اعتبار هدیه`;
         },
+        get projectedBalanceRial() { return this.currentBalanceRial + Number(this.amount) * 10 + this.bonusAmount; },
         get formattedCustomAmount() { return this.customAmount ? this.formatAmount(this.customAmount) : ''; },
         get amountLabel() { return this.amount ? `${this.formatAmount(this.amount)} تومان` : 'مبلغی انتخاب نشده'; },
+        get amountError() {
+            if (!this.amount) return '';
+            const amount = Number(this.amount);
+            if (amount < Number(config.minimumTopUpToman)) return `حداقل مبلغ شارژ ${this.formatAmount(config.minimumTopUpToman)} تومان است.`;
+            if (amount > 50000000) return 'حداکثر مبلغ شارژ ۵۰٬۰۰۰٬۰۰۰ تومان است.';
+            return '';
+        },
         get canSubmit() {
             const amount = Number(this.amount);
             return !this.submitting && !this.checking && !this.isInstant && amount >= Number(config.minimumTopUpToman) && amount <= 50000000
@@ -149,6 +168,7 @@ export function walletTopUp(config) {
             if (this.hasCode && !this.codeChecked) return 'ابتدا کد را بررسی یا حذف کنید';
             if (!this.minimumMet) return 'حداقل مبلغ هدیه را انتخاب کنید';
             if (!this.amount) return 'ابتدا مبلغ را انتخاب کنید';
+            if (this.amountError) return this.amountError;
             if (!this.canSubmit) return 'مبلغ و درگاه پرداخت را بررسی کنید';
             return this.codeChecked ? 'پرداخت و دریافت اعتبار' : 'پرداخت و افزایش موجودی';
         },
