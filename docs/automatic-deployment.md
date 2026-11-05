@@ -4,7 +4,7 @@ Pushes to `AmirMehrabi/Aviato` branch `master` deploy through an independent rec
 
 Add a repository webhook in GitHub Settings → Webhooks:
 
-- Payload URL: `https://admin.aviato.ir/hooks/github/deploy`
+- Payload URL: `https://aviato.ir/hooks/github/deploy`
 - Content type: `application/json`
 - Secret: retrieve on production with `sudo cat /etc/aviato-deploy/secret` (do not commit it).
 - SSL verification: enabled.
