@@ -27,4 +27,15 @@ if [[ "$local_revision" != "$remote_revision" ]]; then
 fi
 
 echo "Deploying ${local_revision} to production (${AVIATO_DEPLOY_HOST:-5.202.19.100}:${AVIATO_DEPLOY_PORT:-2220})."
+notify() {
+    ssh -p "${AVIATO_DEPLOY_PORT:-2220}" "deploy@${AVIATO_DEPLOY_HOST:-5.202.19.100}" \
+        "python3 /opt/aviato-deployer/ops/webhook/notify.py '$1' '$local_revision' \$(basename \$(readlink -f /var/www/html/aviato/current))" || true
+}
+notify started
+set +e
 vendor/bin/dep deploy production --revision="$local_revision" -vvv
+result=$?
+set -e
+ssh -p "${AVIATO_DEPLOY_PORT:-2220}" "deploy@${AVIATO_DEPLOY_HOST:-5.202.19.100}" \
+    "bash /opt/aviato-deployer/ops/webhook/report-result '$result' '$local_revision'" || true
+exit "$result"

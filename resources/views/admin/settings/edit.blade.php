@@ -16,6 +16,9 @@
         </div>
 
         <div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            @adminRoute('admin.settings.deployment-sms.index')
+            <a href="{{ route('admin.settings.deployment-sms.index') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="font-black">پیامک استقرار</h2><p class="mt-3 text-sm text-slate-500">گیرندگان، رویدادها، قالب‌ها و تاریخچه ارسال پیامک استقرار</p></a>
+            @endadminRoute
             @foreach ($sections as $key => $section)
 
 @adminRoute('admin.settings.section')

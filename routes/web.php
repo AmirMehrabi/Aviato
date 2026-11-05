@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\CloudImageController;
 use App\Http\Controllers\Admin\ColocationController as AdminColocationController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DeploymentSmsController;
 use App\Http\Controllers\Admin\DomainCommerceController;
 use App\Http\Controllers\Admin\DomainSettingsController;
 use App\Http\Controllers\Admin\HetznerAccountController;
@@ -236,6 +237,9 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
             Route::get('accounting/export', [DomainCommerceController::class, 'export'])->middleware('admin.ability:billing.export')->name('accounting.export');
         });
 
+        Route::get('settings/deployment-sms', [DeploymentSmsController::class, 'index'])->name('admin.settings.deployment-sms.index');
+        Route::patch('settings/deployment-sms', [DeploymentSmsController::class, 'update'])->name('admin.settings.deployment-sms.update');
+        Route::post('settings/deployment-sms/actions', [DeploymentSmsController::class, 'action'])->middleware('throttle:10,1')->name('admin.settings.deployment-sms.action');
         Route::get('settings/notifications', [NotificationTemplateController::class, 'index'])->name('admin.settings.notifications.index');
         Route::patch('settings/notifications/templates', [NotificationTemplateController::class, 'update'])->name('admin.settings.notifications.update');
         Route::patch('settings/notifications/branding', [NotificationTemplateController::class, 'branding'])->name('admin.settings.notifications.branding');

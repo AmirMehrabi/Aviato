@@ -3,9 +3,18 @@ set -euo pipefail
 exec 9>/var/lib/aviato-deploy/deploy.lock
 flock 9
 cd /opt/aviato-deployer
+revision="${1:-unknown}"
+notify() { python3 /opt/aviato-deployer/ops/webhook/notify.py "$1" "$revision" "$(basename "$(readlink -f /var/www/html/aviato/current)")" || true; }
+on_exit() {
+    result=$?
+    bash /opt/aviato-deployer/ops/webhook/report-result "$result" "$revision" || true
+    exit "$result"
+}
+trap on_exit EXIT
 git fetch origin master
 revision=$(git rev-parse origin/master)
 # Coalesce older deliveries to the current master; never execute a payload as code.
 git reset --hard "$revision"
+notify started
 composer install --no-interaction --prefer-dist --no-progress
 vendor/bin/dep deploy local --revision="$revision" -v

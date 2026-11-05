@@ -50,7 +50,7 @@ class ConfigureWalletSms extends Command
                     throw new RuntimeException('Listing incomplete.');
                 }
             }
-            foreach (WalletSmsTemplates::definitions() as $template) {
+            foreach ($this->templates() as $template) {
                 $found = $existing->first(fn ($item) => strcasecmp($item['name'] ?? '', $template['name']) === 0);
                 if ($found) {
                     $id = $found['id'] ?? $found['templateid'] ?? null;
@@ -87,6 +87,11 @@ class ConfigureWalletSms extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    protected function templates(): array
+    {
+        return WalletSmsTemplates::definitions();
     }
 
     private function request(string $url, array $payload, bool $read = false): array

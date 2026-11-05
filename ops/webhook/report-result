@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Independent completion reporting shared by webhook and manual deployment.
+set -u
+result="$1"
+revision="$2"
+active=$(readlink -f /var/www/html/aviato/current)
+release=$(basename "$active")
+notify() { python3 /opt/aviato-deployer/ops/webhook/notify.py "$1" "$revision" "$release" || true; }
+if [[ "$result" == 0 ]]; then
+    notify success
+    if [[ -f /var/lib/aviato-deploy/sms-failed ]]; then notify recovery; fi
+    python3 -c "from pathlib import Path; Path('/var/lib/aviato-deploy/sms-failed').unlink(missing_ok=True)"
+else
+    notify failure
+    touch /var/lib/aviato-deploy/sms-failed
+    if [[ -f /var/www/html/aviato/.dep/previous_current ]] && [[ "$(cat /var/www/html/aviato/.dep/previous_current)" == "$active" ]]; then notify rollback; fi
+fi

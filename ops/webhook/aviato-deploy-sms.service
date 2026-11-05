@@ -1,0 +1,15 @@
+[Unit]
+Description=Aviato independent deployment SMS sender
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=deploy
+Group=aviato-app
+ExecStart=/usr/bin/python3 /opt/aviato-deployer/ops/webhook/notify.py worker
+Restart=always
+RestartSec=5
+UMask=0007
+
+[Install]
+WantedBy=multi-user.target
