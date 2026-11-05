@@ -8,9 +8,6 @@
     @click="if (window.innerWidth < 1024) sidebarOpen = false"
     class="relative flex min-h-[42px] items-center gap-3 overflow-hidden rounded-lg px-3 py-2.5 leading-5 transition focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#69A9FF] {{ $isActive ? 'bg-[#234995] font-semibold text-white' : ($item['route'] ? 'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' : 'cursor-default text-[#9DB4DC] opacity-70') }}"
 >
-    @if ($isActive)
-        <span class="absolute inset-y-2 right-0 w-[3px] rounded-l-full bg-[#168BFF]" aria-hidden="true"></span>
-    @endif
     <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
         <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
