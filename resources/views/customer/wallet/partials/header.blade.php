@@ -34,6 +34,7 @@
                 @endif
             @endif
             @endif
+            <p class="pb-4 text-xs leading-6 text-slate-500">مانده ثبت‌شده: {{ $wallets->format($wallet->balance) }} · کارکرد تسویه‌نشده: {{ $wallets->format($pendingUsage) }}. موجودی قابل استفاده برابر با مانده ثبت‌شده منهای کارکرد تسویه‌نشده است و بدون گرد کردن نمایش داده می‌شود.</p>
             <nav class="flex gap-8 overflow-x-auto" aria-label="بخش‌های کیف پول">
                 @foreach ($tabItems as $item)
                     <a href="{{ route('customer.wallet.show', ['tab' => $item['key']], false) }}" @if($selectedTab === $item['key']) aria-current="page" @endif class="whitespace-nowrap border-b-2 py-4 text-sm {{ $selectedTab === $item['key'] ? 'border-[#0069FF] font-black text-[#0069FF]' : 'border-transparent font-bold text-slate-500 hover:text-slate-800' }}">{{ $item['label'] }}</a>

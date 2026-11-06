@@ -4,7 +4,7 @@
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <p class="break-words font-bold text-slate-950">{{ $transaction->description ?: 'بدون توضیح' }}</p>
-                    <p class="mt-1 text-xs text-slate-500">{{ \App\Support\Jalali::format($transaction->created_at) }}</p>
+                    <p class="mt-1 text-xs text-slate-500"><bdi>{{ $transaction->created_at->format('Y-m-d H:i') }}</bdi></p>
                 </div>
                 <p class="shrink-0 text-sm font-black {{ $transaction->amount >= 0 ? 'text-emerald-700' : 'text-rose-600' }}">{{ $wallets->format($transaction->amount) }}</p>
             </div>
@@ -24,7 +24,7 @@
     <table class="w-full min-w-[720px] text-right text-sm">
         <thead class="bg-slate-50 text-xs font-bold text-slate-500">
             <tr>
-                <th scope="col" class="px-5 py-4">تاریخ</th>
+                <th scope="col" class="px-5 py-4">تاریخ (میلادی)</th>
                 <th scope="col" class="px-5 py-4">شرح</th>
                 <th scope="col" class="px-5 py-4">نوع</th>
                 <th scope="col" class="px-5 py-4 text-left">مبلغ</th>
@@ -41,11 +41,11 @@
                     ][$transaction->type] ?? $transaction->type;
                 @endphp
                 <tr class="align-top hover:bg-slate-50/70">
-                    <td class="whitespace-nowrap px-5 py-4 text-slate-500">{{ \App\Support\Jalali::format($transaction->created_at) }}</td>
+                    <td class="whitespace-nowrap px-5 py-4 text-slate-500"><bdi>{{ $transaction->created_at->format('Y-m-d H:i') }}</bdi></td>
                     <td class="min-w-64 px-5 py-4">
                         <div class="font-bold text-slate-950">{{ $transaction->description ?: 'بدون توضیح' }}</div>
                         @if (($meta['category'] ?? null) === 'payg_usage' && !empty($meta['period_start']) && !empty($meta['period_end']))
-                            <div class="mt-1 text-xs text-slate-500">از {{ \App\Support\Jalali::format(\Carbon\CarbonImmutable::parse($meta['period_start'])) }} تا {{ \App\Support\Jalali::format(\Carbon\CarbonImmutable::parse($meta['period_end'])) }}</div>
+                            <div class="mt-1 text-xs text-slate-500">از <bdi>{{ \Carbon\CarbonImmutable::parse($meta['period_start'])->format('Y-m-d H:i') }}</bdi> تا <bdi>{{ \Carbon\CarbonImmutable::parse($meta['period_end'])->format('Y-m-d H:i') }}</bdi></div>
                         @endif
                         @if ($transaction->reference instanceof \App\Models\Payment && $transaction->reference->type === \App\Models\Payment::TYPE_TOP_UP && $transaction->reference->isSuccessful())
                             <a href="{{ route('customer.payments.receipt.show', $transaction->reference, false) }}" class="mt-2 inline-block text-xs font-black text-[#0069FF] hover:underline">مشاهده رسید پرداخت</a>

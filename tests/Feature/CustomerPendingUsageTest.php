@@ -16,7 +16,7 @@ class CustomerPendingUsageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_customer_sees_only_available_balance_before_settlement(): void
+    public function test_customer_sees_available_balance_and_wallet_explains_pending_usage(): void
     {
         $this->freezeTime();
         $owner = $this->customerWithPendingNetworkUsage();
@@ -38,10 +38,10 @@ class CustomerPendingUsageTest extends TestCase
             ->assertSeeInOrder([
                 'موجودی قابل استفاده', $wallets->formatAvailableBalance(80000),
             ])
-            ->assertDontSee('کارکرد تسویه‌نشده')
-            ->assertDontSee('موجودی ثبت‌شده')
-            ->assertDontSee($wallets->format(420000))
-            ->assertDontSee($wallets->format(500000));
+            ->assertSee('کارکرد تسویه‌نشده')
+            ->assertSee('مانده ثبت‌شده')
+            ->assertSee($wallets->format(420000))
+            ->assertSee($wallets->format(500000));
     }
 
     public function test_settlement_clears_pending_usage_without_reducing_available_balance_again(): void

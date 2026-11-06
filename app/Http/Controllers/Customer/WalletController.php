@@ -15,12 +15,10 @@ use App\Services\VmWalletRetentionService;
 use App\Services\WalletService;
 use App\Services\WorkspaceProtectionSettings;
 use App\Services\WorkspaceWalletAlertService;
-use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Morilog\Jalali\Jalalian;
 
 class WalletController extends Controller
 {
@@ -47,13 +45,16 @@ class WalletController extends Controller
                 WalletTransaction::TYPE_ADJUSTMENT,
                 WalletTransaction::TYPE_DEBIT,
             ])],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d'],
+            'search' => ['nullable', 'string', 'max:255'],
         ]);
         $selectedType = $filters['type'] ?? 'all';
         $selectedTab = $request->query('tab');
         $selectedTab = in_array($selectedTab, ['overview', 'top-up', 'transactions'], true) ? $selectedTab : 'overview';
         if ($request->boolean('topup') || $request->boolean('gift_card') || $request->session()->has('errors')) {
             $selectedTab = 'top-up';
-        } elseif ($selectedType !== 'all' || $request->has('page')) {
+        } elseif ($selectedType !== 'all' || $request->hasAny(['page', 'from', 'to', 'search'])) {
             $selectedTab = 'transactions';
         }
         $retentionNotice = app(VmWalletRetentionService::class)->customerNotice($activeProject);
@@ -82,6 +83,9 @@ class WalletController extends Controller
                     ->orWhereNull('metadata->project_id');
             })
             ->when($selectedType !== 'all', fn ($query) => $query->where('type', $selectedType))
+            ->when($filters['from'] ?? null, fn ($query, $from) => $query->whereDate('created_at', '>=', $from))
+            ->when($filters['to'] ?? null, fn ($query, $to) => $query->whereDate('created_at', '<=', $to))
+            ->when($filters['search'] ?? null, fn ($query, $search) => $query->where('description', 'like', '%'.$search.'%'))
             ->paginate(12)
             ->withQueryString();
 
@@ -138,8 +142,12 @@ class WalletController extends Controller
             'transactions' => $transactions,
             'restoreAmountToman' => $restoreAmountToman,
             'selectedType' => $selectedType,
+            'transactionFilters' => $filters,
             'selectedTab' => $selectedTab,
             'effectiveBalance' => $effectiveBalance,
+            'pendingUsage' => $wallet->balance - $effectiveBalance,
+            'activityMonthStart' => $monthStart,
+            'activityThrough' => now(),
             'monthlyEstimate' => $monthlyEstimate,
             'networkEstimate' => $networkEstimate,
             'projectMonthlyEstimate' => $projectMonthlyEstimate,
@@ -178,28 +186,15 @@ class WalletController extends Controller
                 WalletTransaction::TYPE_ADJUSTMENT,
                 WalletTransaction::TYPE_DEBIT,
             ])],
-            'from' => ['nullable', 'string', 'max:15'],
-            'to' => ['nullable', 'string', 'max:15'],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d'],
             'search' => ['nullable', 'string', 'max:255'],
         ]);
 
         $selectedType = $filters['type'] ?? 'all';
 
-        $parseDate = function (?string $value, ?Carbon $fallback): ?Carbon {
-            if (! $value) {
-                return $fallback;
-            }
-            try {
-                return str_contains($value, '/')
-                    ? Jalalian::fromFormat('Y/m/d', $value)->toCarbon()
-                    : Carbon::parse($value);
-            } catch (\Throwable) {
-                return $fallback;
-            }
-        };
-
-        $from = $parseDate($filters['from'] ?? null, null);
-        $to = $parseDate($filters['to'] ?? null, null);
+        $from = $filters['from'] ?? null;
+        $to = $filters['to'] ?? null;
 
         $transactions = $wallet->transactions()
             ->with('reference')

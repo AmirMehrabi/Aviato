@@ -72,8 +72,8 @@ class NetworkMonthlyEstimateTest extends TestCase
             ->assertOk()->assertViewHas('networkEstimate', ['amount' => 468000, 'pending' => false, 'included' => true])
             ->assertViewHas('monthlyEstimate', 500000)
             ->assertSee('روزانه به‌روزرسانی می‌شود')
-            ->assertDontSee('کارکرد تسویه‌نشده')
-            ->assertDontSee('موجودی ثبت‌شده');
+            ->assertSee('کارکرد تسویه‌نشده')
+            ->assertSee('مانده ثبت‌شده');
         $this->assertDatabaseCount('wallet_transactions', 0);
         $this->assertDatabaseCount('usage_accruals', 0);
     }

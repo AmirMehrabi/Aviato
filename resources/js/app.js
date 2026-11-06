@@ -43,7 +43,6 @@ import RFB from '@novnc/novnc';
 import { Editor } from '@toast-ui/editor';
 import '@toast-ui/editor/dist/toastui-editor.css';
 import { Chart, registerables } from 'chart.js';
-import PersianDate from 'persian-date';
 
 Chart.register(...registerables);
 window.Chart = Chart;
@@ -499,10 +498,6 @@ window.walletTransactions = function walletTransactions(config) {
         html: config.html || '',
         hasPages: config.hasPages || false,
 
-        pickerTarget: null,
-        pickerYear: 0,
-        pickerMonth: 0,
-
         async load() {
             this.loading = true;
 
@@ -574,90 +569,6 @@ window.walletTransactions = function walletTransactions(config) {
             this.to = '';
             this.page = 1;
             this.load();
-        },
-
-        openPicker(target) {
-            if (this.pickerTarget === target) {
-                this.pickerTarget = null;
-                return;
-            }
-
-            this.pickerTarget = target;
-
-            const value = this[target];
-
-            if (value) {
-                const parts = value.split('/');
-
-                if (parts.length === 3) {
-                    this.pickerYear = parseInt(parts[0]);
-                    this.pickerMonth = parseInt(parts[1]);
-                    return;
-                }
-            }
-
-            const now = new PersianDate();
-            this.pickerYear = now.year();
-            this.pickerMonth = now.month();
-        },
-
-        closePicker() {
-            this.pickerTarget = null;
-        },
-
-        selectDate(day) {
-            const value = `${this.pickerYear}/${String(this.pickerMonth).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
-
-            this[this.pickerTarget] = value;
-            this.pickerTarget = null;
-            this.page = 1;
-            this.load();
-        },
-
-        prevCalendarMonth() {
-            let y = this.pickerYear;
-            let m = this.pickerMonth - 1;
-
-            if (m < 1) { m = 12; y--; }
-            this.pickerYear = y;
-            this.pickerMonth = m;
-        },
-
-        nextCalendarMonth() {
-            let y = this.pickerYear;
-            let m = this.pickerMonth + 1;
-
-            if (m > 12) { m = 1; y++; }
-            this.pickerYear = y;
-            this.pickerMonth = m;
-        },
-
-        get calendarWeeks() {
-            const start = new PersianDate([this.pickerYear, this.pickerMonth, 1]);
-            const daysInMonth = start.daysInMonth();
-            const startWeekday = start.day();
-            const weeks = [];
-            let week = new Array(7).fill(null);
-            let dayIndex = startWeekday - 1;
-
-            for (let d = 1; d <= daysInMonth; d++) {
-                week[dayIndex] = d;
-                dayIndex++;
-
-                if (dayIndex === 7) {
-                    weeks.push(week);
-                    week = new Array(7).fill(null);
-                    dayIndex = 0;
-                }
-            }
-
-            if (dayIndex > 0) weeks.push(week);
-
-            return weeks;
-        },
-
-        get calendarMonthName() {
-            return new PersianDate([this.pickerYear, this.pickerMonth, 1]).format('MMMM');
         },
     };
 };
