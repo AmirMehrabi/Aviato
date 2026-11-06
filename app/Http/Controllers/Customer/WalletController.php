@@ -15,6 +15,7 @@ use App\Services\VmWalletRetentionService;
 use App\Services\WalletService;
 use App\Services\WorkspaceProtectionSettings;
 use App\Services\WorkspaceWalletAlertService;
+use App\Support\Jalali;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -89,13 +90,13 @@ class WalletController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $monthStart = now()->startOfMonth();
+        [$monthStart, $monthEnd] = Jalali::currentJalaliMonthRange();
         $baseQuery = $wallet->transactions()
             ->where(function ($query) use ($activeProject): void {
                 $query->where('metadata->project_id', $activeProject->id)
                     ->orWhereNull('metadata->project_id');
             })
-            ->where('created_at', '>=', $monthStart);
+            ->whereBetween('created_at', [$monthStart, $monthEnd]);
         $walletSnapshot = $this->walletAlerts->snapshot($activeProject->owner);
         $estimates = app(NetworkMonthlyEstimateService::class);
         $networkEstimate = $estimates->forOwner($activeProject->owner);

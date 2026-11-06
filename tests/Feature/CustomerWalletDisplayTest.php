@@ -12,7 +12,7 @@ class CustomerWalletDisplayTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_wallet_activity_uses_gregorian_month_at_the_boundary(): void
+    public function test_wallet_activity_uses_jalali_month_across_gregorian_month_boundary(): void
     {
         $this->travelTo(now()->setDateTime(2026, 11, 1, 12, 0));
         $customer = Customer::factory()->create();
@@ -21,9 +21,31 @@ class CustomerWalletDisplayTest extends TestCase
 
         $this->actingAs($customer, 'customer')->get('https://cp.localhost/wallet')
             ->assertOk()
-            ->assertViewHas('monthlyCharges', 315656)
-            ->assertSee('فعالیت این ماه میلادی')
-            ->assertSee('2026-11-01');
+            ->assertViewHas('monthlyCharges', 3156443)
+            ->assertSee('فعالیت‌های این ماه')
+            ->assertSee('1405/08/01')
+            ->assertSee('1405/08/10');
+    }
+
+    public function test_wallet_activity_includes_only_transactions_inside_current_jalali_month(): void
+    {
+        $this->travelTo(now()->setDateTime(2026, 11, 21, 23, 59, 59));
+        $customer = Customer::factory()->create();
+        $this->transaction($customer, '2026-10-22 23:59:59', -100, 'Previous Jalali month');
+        $this->transaction($customer, '2026-10-23 00:00:00', -200, 'First second of Aban');
+        $this->transaction($customer, '2026-11-21 23:59:59', -300, 'Last second of Aban');
+        $this->transaction($customer, '2026-11-22 00:00:00', -400, 'Next Jalali month');
+        $this->transaction($customer, '2026-10-22 23:59:59', 500, 'Previous credit');
+        $this->transaction($customer, '2026-10-23 00:00:00', 600, 'Current credit');
+        $this->transaction($customer, '2026-11-22 00:00:00', 700, 'Next credit');
+
+        $this->actingAs($customer, 'customer')->get('https://cp.localhost/wallet')
+            ->assertOk()
+            ->assertViewHas('monthlyCharges', 500)
+            ->assertViewHas('monthlyCredits', 600)
+            ->assertSee('فعالیت‌های این ماه')
+            ->assertSee('1405/08/01')
+            ->assertSee('1405/08/30');
     }
 
     public function test_wallet_displays_exact_balance_and_pending_usage(): void

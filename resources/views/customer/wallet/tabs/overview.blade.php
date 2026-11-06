@@ -12,8 +12,8 @@
                 @endif
             </div>
             <div class="rounded-2xl border border-slate-200 bg-white p-6">
-                <h2 class="text-lg font-black text-slate-950">فعالیت این ماه میلادی</h2>
-                <p class="mt-2 text-xs leading-6 text-slate-500">بر اساس تاریخ ثبت تراکنش از <bdi>{{ $activityMonthStart->format('Y-m-d') }}</bdi> تا <bdi>{{ $activityThrough->format('Y-m-d') }}</bdi> (به وقت تهران)</p>
+                <h2 class="text-lg font-black text-slate-950">فعالیت‌های این ماه</h2>
+                <p class="mt-2 text-xs leading-6 text-slate-500">بر اساس تاریخ ثبت تراکنش از <bdi>{{ \App\Support\Jalali::format($activityMonthStart, 'Y/m/d') }}</bdi> تا <bdi>{{ \App\Support\Jalali::format($activityThrough, 'Y/m/d') }}</bdi> (به وقت تهران)</p>
                 <dl class="mt-5 space-y-5 text-sm">
                     <div class="flex justify-between gap-3"><dt class="text-slate-600">شارژها</dt><dd class="font-black text-emerald-700">{{ $wallets->format($monthlyCredits) }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-600">کسرها</dt><dd class="font-black text-rose-600">{{ $wallets->format($monthlyCharges) }}</dd></div>
