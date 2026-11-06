@@ -32,7 +32,7 @@ export function serializeValues(type, values) {
 export function cloudDns(options) {
     return {
         ...options, types: recordTypes, search: '', filter: '', type: 'A', name: '@', ttl: 300, sort: 'type', ascending: true, previousType: 'A',
-        connection: options.connection || {}, recordsStale: false, pollTimer: null, statusError: '', refreshing: false, recordsReviewed: false, emptyDomain: false, dnssecReviewed: false, importText: '', importPreview: null, previewBusy: false, importError: '', fileError: '', values: [{ value: '' }], editing: false, busy: false, notice: '', error: '', deleting: null,
+        connection: options.connection || {}, recordsStale: false, pollTimer: null, statusError: '', refreshing: false, recordsReviewed: false, emptyDomain: false, dnssecReviewed: false, importText: '', importPreview: null, previewBusy: false, importError: '', fileError: '', values: [{ value: '' }], editorOpen: false, editorInline: false, editingRecord: null, ttlChoice: '300', editing: false, busy: false, notice: '', error: '', deleting: null,
         get meta() { return this.types[this.type] || this.types.A; },
         get filtered() {
             const query = this.search.trim().toLowerCase();
@@ -48,16 +48,55 @@ export function cloudDns(options) {
             if (!this.name || this.name === this.defaultName(this.previousType)) this.name = this.defaultName(this.type);
             this.previousType = this.type;
         },
-        sortBy(key) { this.ascending = this.sort === key ? !this.ascending : true; this.sort = key; },
+        sortBy(key) { this.parkEditor(); this.ascending = this.sort === key ? !this.ascending : true; this.sort = key; },
         typeClass(type) {
             return { A: 'bg-blue-600 text-white', AAAA: 'bg-indigo-600 text-white', CNAME: 'bg-violet-600 text-white', MX: 'bg-amber-500 text-slate-950', TXT: 'bg-slate-700 text-white', CAA: 'bg-emerald-600 text-white', SRV: 'bg-cyan-700 text-white', NS: 'bg-orange-600 text-white' }[type];
         },
         ttlLabel(ttl) { return ttl % 3600 === 0 ? `${ttl / 3600} ساعت` : ttl % 60 === 0 ? `${ttl / 60} دقیقه` : `${ttl} ثانیه`; },
         openEditor(record = null) {
-            this.editing = !!record; this.error = ''; this.busy = false;
+            this.editing = !!record; this.error = ''; this.fieldErrors = {}; this.busy = false;
             this.type = record?.type || 'A'; this.previousType = this.type; this.name = record ? this.shortName(record.name) : '@'; this.ttl = record?.ttl || 300;
             this.values = record ? record.records.map(v => parseValue(record.type, v)) : [this.blank()];
-            this.$refs.editor.showModal();
+            this.editingRecord = record;
+            this.ttlChoice = [300, 600, 1800, 3600, 86400].includes(Number(this.ttl)) ? String(this.ttl) : 'custom';
+            this.editorTrigger = document.activeElement;
+            this.editorOpen = true;
+            this.$nextTick(() => { this.placeEditor(); this.$refs.editor.querySelector('input:not([type="hidden"]):not([readonly]), textarea')?.focus(); });
+        },
+        // Move the shared form before filtering or sorting can remove its row.
+        parkEditor() {
+            if (!this.editorOpen || !this.editorInline) return;
+            this.$refs.editor.close();
+            window.Alpine.mutateDom(() => this.$refs.editorHome.append(this.$refs.editor));
+        },
+        placeEditor() {
+            if (!this.editorOpen) return;
+            const editor = this.$refs.editor;
+            const inline = window.matchMedia('(min-width: 640px)').matches;
+            const host = inline ? (this.editingRecord && this.filtered.some(r => r.id === this.editingRecord.id)
+                ? document.getElementById(`dns-editor-host-${this.editingRecord.id}`) : this.$refs.editorTop) : this.$refs.editorHome;
+            if (!host) return;
+            if (editor.parentElement !== host || this.editorInline !== inline) {
+                if (editor.open) editor.close();
+                window.Alpine.mutateDom(() => host.append(editor));
+                this.editorInline = inline;
+            }
+            if (!editor.open) {
+                if (inline) editor.show();
+                else editor.showModal();
+            }
+        },
+        closeEditor() {
+            this.$refs.editor.close();
+            this.editorOpen = false;
+            window.Alpine.mutateDom(() => this.$refs.editorHome.append(this.$refs.editor));
+            this.editorTrigger?.focus();
+        },
+        confirmDelete() {
+            if (!this.editingRecord) return;
+            this.deleting = this.editingRecord;
+            this.closeEditor();
+            this.$refs.deleter.showModal();
         },
         async refreshStatus() {
             if (!this.statusUrl || this.refreshing) return;
@@ -93,14 +132,19 @@ export function cloudDns(options) {
         destroy() { if (this.pollTimer) clearInterval(this.pollTimer); },
         init() {
             this.importText = this.old?.zone_file || '';
+            for (const key of ['search', 'filter', 'sort', 'ascending']) this.$watch(key, () => this.$nextTick(() => this.placeEditor()));
             if (this.statusUrl) this.pollTimer = setInterval(() => { if (!document.hidden && !this.connection.healthy) this.refreshStatus(); }, 15000);
             if (this.old?.zone_file) this.$nextTick(() => this.$refs.importer?.showModal());
             if (this.old?.type && this.types[this.old.type]) {
                 this.$nextTick(() => {
                     this.openEditor(); this.type = this.old.type; this.previousType = this.type; this.name = this.old.name || '@'; this.ttl = this.old.ttl || 300;
                     this.editing = this.old.editor_mode === 'edit';
+                    this.editingRecord = this.editing ? this.records.find(r => r.type === this.type && r.name.toLowerCase() === `${this.fqdn.replace(/\.$/, '')}.`.toLowerCase()) || null : null;
+                    this.ttlChoice = [300, 600, 1800, 3600, 86400].includes(Number(this.ttl)) ? String(this.ttl) : 'custom';
+                    this.$nextTick(() => this.placeEditor());
                     this.values = (this.old.content || '').split('\n').map(v => parseValue(this.type, v));
                     this.error = this.validation || '';
+                    this.fieldErrors = options.fieldErrors || {};
                 });
             }
         },

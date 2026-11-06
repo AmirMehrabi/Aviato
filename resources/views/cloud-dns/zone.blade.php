@@ -9,7 +9,7 @@
         'deleteUrl' => route($prefix.'records.destroy', [$zone, $record->id], false),
     ])->values();
 @endphp
-<div class="space-y-6" x-data="cloudDns({{ \Illuminate\Support\Js::from(['zone' => $zone->name, 'records' => $dnsRecords, 'old' => session()->getOldInput(), 'validation' => implode(' ', $errors->all()), 'connection' => $zone->connectionState(), 'statusUrl' => route($prefix.'status', $zone, false), 'previewUrl' => route($prefix.'import.preview', $zone, false)]) }})">
+<div @resize.window="placeEditor()" class="space-y-6" x-data="cloudDns({{ \Illuminate\Support\Js::from(['zone' => $zone->name, 'records' => $dnsRecords, 'old' => session()->getOldInput(), 'validation' => implode(' ', $errors->all()), 'fieldErrors' => $errors->messages(), 'connection' => $zone->connectionState(), 'statusUrl' => route($prefix.'status', $zone, false), 'previewUrl' => route($prefix.'import.preview', $zone, false)]) }})">
     <div x-cloak x-show="notice" x-text="notice" role="status" class="fixed bottom-6 left-6 z-50 max-w-sm rounded-xl bg-slate-900 px-5 py-3 text-sm text-white shadow-lg"></div>
     @include('cloud-dns.messages', ['modalErrors' => $editable && (in_array(old('type'), $types, true) || old('zone_file'))])
     <div class="flex flex-wrap items-center justify-between gap-4"><div><a href="{{ route($prefix.'index', [], false) }}" class="text-sm font-bold text-[#0069FF]">بازگشت به دامنه‌ها</a><h1 class="mt-3 font-mono text-2xl font-black" dir="ltr">{{ $zone->name }}</h1>@if($admin)<p class="mt-2 text-sm text-slate-500">{{ $zone->project->owner?->name }} · {{ $zone->project->name }}</p>@endif</div><div class="flex items-center gap-3"><span class="rounded-full bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900" x-text="connection.label">{{ $zone->connectionState()['label'] }}</span><span class="text-xs text-slate-500">طرح رایگان</span></div></div>
@@ -26,7 +26,7 @@
         @include('cloud-dns.records')
         @if($zone->last_error)<p role="alert" class="rounded-xl bg-amber-50 p-4 text-sm leading-7 text-amber-900">انتشار تغییرات کامل نشد؛ در صورت تداوم مشکل با پشتیبانی تماس بگیرید.</p>@endif
         @if($zone->verified_at)
-            <details id="dns-connection-details" class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
+            <details id="dns-connection-details" class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4" :open="!connection.connected">
                 <summary class="cursor-pointer text-sm font-bold text-slate-600">نیم‌سرورها و بررسی اتصال دامنه</summary>
                 <div class="mt-4">@include('cloud-dns.setup')</div>
             </details>

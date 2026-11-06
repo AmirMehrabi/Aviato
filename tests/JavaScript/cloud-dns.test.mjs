@@ -57,9 +57,12 @@ test('root NS is rejected before submitting', () => {
     state.save({ target: { submit() { assert.fail('Must reject root NS'); } } });
     assert.match(state.error, /NS/);
 });
-test('adding another NS opens existing set and preserves nameservers', () => {
+test('adding another NS opens existing set and preserves nameservers', (t) => {
+    const originalDocument = globalThis.document;
+    t.after(() => { if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument; });
     const state = cloudDns({ zone: 'example.com', records: [{ name: 'blog.example.com.', type: 'NS', ttl: 600, records: ['ns1.example.net.'] }] });
-    state.$refs = { editor: { showModal() {} } };
+    state.$nextTick = () => {};
+    globalThis.document = { activeElement: null };
     state.type = 'NS'; state.name = 'blog.example.com'; state.values = [{ value: 'ns2.example.net' }];
     state.save({ target: { submit() { assert.fail('Must review merged set'); } } });
     assert.equal(state.editing, true); assert.equal(state.ttl, 600);
@@ -88,4 +91,26 @@ test('status polling flags changed records and preserves last state on failure',
         assert.equal(state.refreshing, false);
         assert.ok(state.statusError);
     } finally { globalThis.fetch = originalFetch; }
+});
+
+test('editing preserves multiple values and a custom TTL, then adding starts fresh', (t) => {
+    const originalDocument = globalThis.document;
+    globalThis.document = { activeElement: null };
+    t.after(() => { if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument; });
+    const record = { id: 42, type: 'MX', name: 'example.com.', ttl: 720, records: ['10 mx1.example.com.', '20 mx2.example.com.'] };
+    const state = cloudDns({ zone: 'example.com', records: [record] });
+    state.$nextTick = () => {};
+    state.openEditor(record);
+    assert.equal(state.editingRecord.id, 42);
+    assert.equal(state.ttl, 720);
+    assert.equal(state.ttlChoice, 'custom');
+    assert.equal(serializeValues(state.type, state.values), record.records.join('\n'));
+    state.openEditor();
+    assert.equal(state.editingRecord, null);
+    assert.equal(state.editing, false);
+    assert.equal(state.type, 'A');
+    assert.equal(state.name, '@');
+    assert.equal(state.ttl, 300);
+    assert.equal(state.ttlChoice, '300');
+    assert.equal(state.values[0].value, '');
 });

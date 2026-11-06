@@ -1,8 +1,5 @@
 @if($editable)
-    <div class="flex items-center gap-2">
-        <x-admin.icon-action label="ویرایش رکورد" icon="edit" tone="primary" @click="openEditor(record)" x-bind:aria-label="'ویرایش ' + record.type + ' ' + record.name" />
-        <x-admin.icon-action label="حذف رکورد" icon="delete" tone="danger" @click="deleting = record; $refs.deleter.showModal()" x-bind:aria-label="'حذف ' + record.type + ' ' + record.name" />
-    </div>
+    <button type="button" @click="openEditor(record)" :aria-label="'ویرایش ' + record.type + ' ' + record.name" :aria-expanded="editorOpen && editingRecord?.id === record.id" class="rounded-lg px-3 py-2 text-sm font-medium text-[#0069FF] hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600">ویرایش</button>
 @else
     <span class="text-xs text-slate-400">فقط مشاهده</span>
 @endif
