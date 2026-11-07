@@ -157,7 +157,8 @@ class CustomerServerTabsTest extends TestCase
         $this->actingAs($customer, 'customer')->get($this->base.'/servers/'.$vm->uuid)
             ->assertOk()->assertSee(route('customer.servers.stop', $vm, false))
             ->assertSee(route('customer.servers.force-stop', $vm, false))
-            ->assertSee('سیستم‌عامل به‌صورت عادی خاموش می‌شود.')
+            ->assertDontSee('سیستم‌عامل به‌صورت عادی خاموش می‌شود.')
+            ->assertDontSee('درخواست راه‌اندازی مجدد از سیستم‌عامل.')
             ->assertSee('عملیات بیشتر')->assertSee('<dialog', false)
             ->assertSee('اطلاعات ذخیره‌نشده ممکن است از بین برود.')
             ->assertDontSee('سرور پاسخ نمی‌دهد؟')->assertDontSee('درخواست‌های سرور');

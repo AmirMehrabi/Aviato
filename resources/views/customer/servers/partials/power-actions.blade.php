@@ -1,4 +1,4 @@
-<div class="flex flex-wrap items-start gap-3" x-data="{ menuOpen: false }"
+<div class="flex flex-wrap items-center gap-2" x-data="{ menuOpen: false }"
     @vm-force-stop.window="if ($event.detail === @js($server->uuid)) $refs.forceStopDialog.showModal()">
     <div>
         <form method="POST" action="{{ $server->isRunning() ? route('customer.servers.stop', $server, false) : route('customer.servers.start', $server, false) }}"
@@ -9,7 +9,6 @@
                 <span x-text="confirming ? 'برای تأیید دوباره بزنید' : @js($server->isRunning() ? 'خاموش کردن' : 'روشن کردن')">{{ $server->isRunning() ? 'خاموش کردن' : 'روشن کردن' }}</span>
             </button>
         </form>
-        @if ($server->isRunning())<p class="mt-2 max-w-48 text-[11px] leading-5 text-slate-500">سیستم‌عامل به‌صورت عادی خاموش می‌شود.</p>@endif
     </div>
     @if ($server->isRunning())
         <div>
@@ -21,7 +20,6 @@
                     <span x-text="confirming ? 'برای تأیید دوباره بزنید' : 'راه‌اندازی مجدد'">راه‌اندازی مجدد</span>
                 </button>
             </form>
-            <p class="mt-2 max-w-48 text-[11px] leading-5 text-slate-500">درخواست راه‌اندازی مجدد از سیستم‌عامل.</p>
         </div>
         <div class="relative" @click.outside="menuOpen = false" @keydown.escape.stop="menuOpen = false">
             <button type="button" @click="menuOpen = !menuOpen" :aria-expanded="menuOpen" aria-controls="vm-power-more" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">عملیات بیشتر <span aria-hidden="true">⌄</span></button>
