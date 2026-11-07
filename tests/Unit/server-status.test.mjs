@@ -78,3 +78,13 @@ test('polling retries after failure and skips hidden pages and overlapping reque
     await retry;
     assert.equal(state.reloads, 1);
 });
+
+
+test('detail refreshes progress when the same active operation is updated', async () => {
+    const state = setup();
+    const component = customerServerDetailStatus({ ...config, operation: 4, operationUpdatedAt: '2026-11-07T06:00:00Z' });
+    const request = component.refresh();
+    respond(state.requests[0], [server({ operation_id: 4, operation_updated_at: '2026-11-07T06:01:00Z', action_pending: true })]);
+    await request;
+    assert.equal(state.reloads, 1);
+});

@@ -83,6 +83,7 @@ export function customerServerDetailStatus(config) {
                 const next = data.servers?.find((server) => server.id === config.id);
                 if (next && (next.status !== config.status
                     || next.operation_id !== config.operation
+                    || next.operation_updated_at !== config.operationUpdatedAt
                     || next.password_reset_status !== config.passwordResetStatus
                     || next.provisioning_pending !== config.provisioningPending
                     || (config.pending && !next.action_pending))) {

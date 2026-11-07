@@ -7,7 +7,7 @@
         ['key' => 'upgrade', 'label' => 'ارتقا', 'href' => route('customer.servers.tab', [$server, 'tab' => 'upgrade'], false)],
         ['key' => 'rebuild', 'label' => 'بازسازی', 'href' => route('customer.servers.tab', [$server, 'tab' => 'rebuild'], false)],
         ['key' => 'delete', 'label' => 'حذف', 'href' => route('customer.servers.tab', [$server, 'tab' => 'delete'], false)],
-        ['key' => 'activity', 'label' => 'فعالیت', 'href' => route('customer.servers.tab', [$server, 'tab' => 'activity'], false)],
+        ['key' => 'activity', 'label' => 'فعالیت‌ها', 'href' => route('customer.servers.tab', [$server, 'tab' => 'activity'], false)],
     ];
     $consoleReady = $server->isProxmox() && ! $server->isLxc() && $server->proxmoxServer && $server->node && $server->vmid && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $server->isLifecycleLocked();
     $providerReady = $server->isHetzner()
@@ -15,6 +15,8 @@
         : ($server->proxmoxServer && $server->node && $server->vmid);
     $powerReady = ($canManageServer ?? false) && ! $server->isLxc() && ! $server->isActionLocked() && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && $providerReady && ($server->isRunning() || ! $customer->isSuspended());
     $actionPending = $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && ! $server->delete_failed_at && ! $server->deleteAttemptIsStale());
+    $pendingOperation = $server->operations()->whereNotNull('active_vm_id')->first();
+    $latestPowerOperation = $server->operations()->where('action', '!=', 'upgrade')->latest('id')->first();
     $locationName = $server->infrastructureLocation?->name ?: $server->proxmoxServer?->name ?: '—';
 @endphp
 <div class="w-full min-w-0 bg-white"
@@ -23,7 +25,8 @@
         id: @js($server->uuid),
         pending: @js($actionPending),
         status: @js($server->status),
-        operation: @js(($server->operations()->whereNotNull('active_vm_id')->first())?->id),
+        operation: @js($pendingOperation?->id),
+        operationUpdatedAt: @js($pendingOperation?->updated_at?->toISOString()),
         passwordResetStatus: @js($server->password_reset_status),
         provisioningPending: @js($server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING),
     })">
@@ -73,26 +76,7 @@
                 </div>
             </div>
             @if ($powerReady)
-                <div class="flex flex-wrap items-center gap-3">
-                    <form method="POST" action="{{ $server->isRunning() ? route('customer.servers.stop', $server, false) : route('customer.servers.start', $server, false) }}" x-data="{ confirming: false }" @submit.prevent="if (confirming) $el.submit(); else confirming = true">
-                        @csrf
-                        @if ($server->isRunning())<input type="hidden" name="power_generation" value="{{ (int) data_get($server->desired_state, 'power_generation', 0) }}">@endif
-                        <button type="submit" class="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-black transition {{ $server->isRunning() ? 'border border-red-200 bg-red-50 text-red-600 hover:bg-red-100' : 'bg-[#0069FF] text-white hover:bg-[#0050D0]' }}">
-                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2v10M5.6 5.6a9 9 0 1 0 12.8 0"/></svg>
-                            <span x-text="confirming ? 'برای تأیید دوباره بزنید' : @js($server->isRunning() ? 'خاموش کردن اجباری' : 'روشن کردن')">{{ $server->isRunning() ? 'خاموش کردن اجباری' : 'روشن کردن' }}</span>
-                        </button>
-                    </form>
-                    @if ($server->isRunning())
-                        <form method="POST" action="{{ route('customer.servers.restart', $server, false) }}" x-data="{ confirming: false }" @submit.prevent="if (confirming) $el.submit(); else confirming = true">
-                            @csrf
-                            <input type="hidden" name="power_generation" value="{{ (int) data_get($server->desired_state, 'power_generation', 0) }}">
-                            <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">
-                                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3M20 4v7h-7"/></svg>
-                                <span x-text="confirming ? 'برای تأیید دوباره بزنید' : 'ری‌استارت'">ری‌استارت</span>
-                            </button>
-                        </form>
-                    @endif
-                </div>
+                @include('customer.servers.partials.power-actions')
             @endif
         </div>
         <nav class="mx-auto max-w-7xl overflow-x-auto" aria-label="بخش‌های سرور">
@@ -105,15 +89,4 @@
     </header>
 </div>
 
-@if (($canManageServer ?? false) && ! $server->isLxc() && ! $server->isActionLocked() && $server->isRunning() && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY)
-    <details class="mx-auto my-4 max-w-7xl rounded-xl border border-slate-200 p-4 text-sm">
-        <summary class="cursor-pointer font-bold text-slate-700">سرور پاسخ نمی‌دهد؟</summary>
-        <p class="mt-3 leading-7 text-slate-600">ابتدا راه‌اندازی مجدد را امتحان کنید. اگر درخواست قبلی پایان یافته ولی سرور همچنان پاسخ نمی‌دهد، می‌توانید آن را اجباری خاموش کنید. اطلاعات ذخیره‌نشده ممکن است از بین بروند. پس از خاموش شدن، سرور را دوباره روشن کنید.</p>
-        <form method="POST" action="{{ route('customer.servers.force-stop', $server, false) }}" class="mt-3 flex flex-wrap items-center gap-3">
-            @csrf
-            <input type="hidden" name="power_generation" value="{{ (int) data_get($server->desired_state, 'power_generation', 0) }}">
-            <label class="flex items-center gap-2"><input type="checkbox" name="confirm_force_stop" value="1" required>خطر از دست رفتن اطلاعات ذخیره‌نشده را می‌پذیرم.</label>
-            <button class="rounded-lg bg-red-700 px-4 py-2 font-bold text-white" type="submit">خاموش کردن اجباری</button>
-        </form>
-    </details>
-@endif
+@include('customer.servers.partials.operation-banner')

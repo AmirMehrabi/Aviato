@@ -30,6 +30,7 @@ use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmActivityRecorder;
+use App\Services\VmActivityTimeline;
 use App\Services\VmOperationService;
 use App\Services\VmUpgradeService;
 use App\Services\WalletService;
@@ -224,6 +225,7 @@ class ServerController extends Controller
                 'status_label' => $server->customerStatusLabel(),
                 'operation_label' => ($operation = $server->operations()->whereNotNull('active_vm_id')->first()) ? $operation->label().' · '.$operation->customerStatus() : null,
                 'operation_id' => $operation?->id,
+                'operation_updated_at' => $operation?->updated_at?->toISOString(),
                 'status_class' => $this->statusClass($server->status),
                 'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),
@@ -622,7 +624,7 @@ class ServerController extends Controller
 
         return view('customer.servers.detail', [
             'tab' => $tab,
-            'activities' => $tab === 'activity' ? $server->activities()->latest()->paginate(20) : null,
+            'activities' => $tab === 'activity' ? app(VmActivityTimeline::class)->forVm($server) : null,
             'billingWallet' => $tab === 'billing' && $this->projects->canViewBilling($server->project, $customer)
                 ? $this->wallets->walletFor($server->project?->owner ?? $server->customer)
                 : null,
@@ -894,7 +896,7 @@ class ServerController extends Controller
             return back()->with('error', 'اطلاعات زیرساخت برای خاموش کردن سرور کامل نیست.');
         }
 
-        app(VmOperationService::class)->request($server, 'force-stop', 'customer', $customer->id, $currentGeneration);
+        app(VmOperationService::class)->request($server, 'shutdown', 'customer', $customer->id, $currentGeneration);
 
         return back()->with('status', 'درخواست ثبت شد. پیشرفت آن را در همین صفحه دنبال کنید.');
     }

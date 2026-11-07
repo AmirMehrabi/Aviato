@@ -76,8 +76,10 @@ class CustomerServerPowerActionsTest extends TestCase
         $this->mock(ProxmoxService::class, function ($mock): void {
             $mock->shouldReceive('vmConfig')->twice()->andReturn([]);
             $mock->shouldReceive('taskStatus')->once()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
-            $mock->shouldNotReceive('shutdownVm');
-            $mock->shouldReceive('stopVm')->once()->andReturn(['task_id' => 'UPID:stop']);
+            $mock->shouldNotReceive('stopVm');
+            $mock->shouldReceive('shutdownVm')->once()->withArgs(function ($server, $node, $vmid, $fallback, $context, $forceOnTimeout): bool {
+                return ! $fallback && ! $forceOnTimeout;
+            })->andReturn(['task_id' => 'UPID:shutdown']);
 
             $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
         });
@@ -91,7 +93,7 @@ class CustomerServerPowerActionsTest extends TestCase
 
         $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
         $this->assertSame(3, data_get($vm->desired_state, 'power_generation'));
-        $this->assertSame('customer_force-stop', data_get($vm->desired_state, 'power_intent_source'));
+        $this->assertSame('customer_stop', data_get($vm->desired_state, 'power_intent_source'));
         $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'power', 'outcome' => 'succeeded']);
     }
 
@@ -214,6 +216,44 @@ class CustomerServerPowerActionsTest extends TestCase
         $this->actingAs($customer, 'customer')->post($url, ['power_generation' => 0])->assertSessionHasErrors('confirm_force_stop');
         $this->actingAs($customer, 'customer')->post($url, ['power_generation' => 0, 'confirm_force_stop' => 1])->assertRedirect()->assertSessionHas('status');
         $this->assertDatabaseHas('vm_operations', ['action' => 'force-stop', 'parent_id' => $parent->id, 'status' => 'queued']);
+    }
+
+    public function test_confirmed_force_stop_uses_proxmox_stop_without_graceful_shutdown(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfig')->twice()->andReturn([]);
+            $mock->shouldNotReceive('shutdownVm');
+            $mock->shouldReceive('stopVm')->once()->andReturn(['task_id' => 'stop-task']);
+            $mock->shouldReceive('taskStatus')->once()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
+        });
+        $this->actingAs($customer, 'customer')->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/force-stop', [
+            'power_generation' => 0, 'confirm_force_stop' => 1,
+        ])->assertRedirect()->assertSessionHas('status');
+        $this->assertSame('stopped', $vm->fresh()->status);
+        $this->assertDatabaseHas('vm_operations', ['virtual_machine_id' => $vm->id, 'action' => 'force-stop', 'status' => 'succeeded']);
+    }
+
+    public function test_normal_shutdown_failure_does_not_automatically_force_stop(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfig')->once()->andReturn([]);
+            $mock->shouldReceive('shutdownVm')->once()->withArgs(function ($server, $node, $vmid, $fallback, $context, $forceOnTimeout): bool {
+                return ! $fallback && ! $forceOnTimeout;
+            })->andReturn(['task_id' => 'shutdown-task']);
+            $mock->shouldNotReceive('stopVm');
+            $mock->shouldReceive('taskStatus')->once()->andReturn(['status' => 'stopped', 'exitstatus' => 'VM quit/powerdown failed - got timeout']);
+        });
+        $this->actingAs($customer, 'customer')->post($this->customerBaseUrl.'/servers/'.$vm->uuid.'/stop', [
+            'power_generation' => 0,
+        ])->assertRedirect();
+        $this->assertSame('running', $vm->fresh()->status);
+        $this->assertFalse($vm->fresh()->isActionLocked());
+        $this->assertDatabaseHas('vm_operations', ['virtual_machine_id' => $vm->id, 'action' => 'shutdown', 'status' => 'failed']);
     }
 
     public function test_stuck_power_operation_does_not_suspend_usage_billing(): void
