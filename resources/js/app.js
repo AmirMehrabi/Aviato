@@ -1,3 +1,6 @@
+import { customerServerStatus, customerServerDetailStatus } from './server-status';
+window.customerServerStatus = customerServerStatus;
+window.customerServerDetailStatus = customerServerDetailStatus;
 import { corporateApplication } from './corporate-application';
 window.corporateApplication = corporateApplication;
 import { cloudDns } from './cloud-dns';

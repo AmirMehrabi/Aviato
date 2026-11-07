@@ -18,8 +18,15 @@
     $locationName = $server->infrastructureLocation?->name ?: $server->proxmoxServer?->name ?: '—';
 @endphp
 <div class="w-full min-w-0 bg-white"
-    x-data="{ pending: @js($actionPending), async poll() { if (!this.pending) return; try { const response = await fetch(@js(route('customer.servers.statuses', [], false)) + '?ids[]=' + encodeURIComponent(@js($server->uuid)), { headers: { Accept: 'application/json' } }); if (response.ok) { const data = await response.json(); const next = data.servers?.[0]; if (next && !next.action_pending && !next.provisioning_pending) { window.location.reload(); return; } } } catch (error) {} setTimeout(() => this.poll(), 5000); } }"
-    x-init="poll()">
+    x-data="customerServerDetailStatus({
+        url: @js(route('customer.servers.statuses', [], false)),
+        id: @js($server->uuid),
+        pending: @js($actionPending),
+        status: @js($server->status),
+        operation: @js(($server->operations()->whereNotNull('active_vm_id')->first())?->id),
+        passwordResetStatus: @js($server->password_reset_status),
+        provisioningPending: @js($server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING),
+    })">
     <div class="border-b border-slate-200 px-4 py-3 md:px-6 lg:px-8">
         <nav class="mx-auto flex max-w-7xl flex-wrap items-center gap-2 text-[11px] font-black text-slate-400" aria-label="مسیر صفحه">
             <a href="{{ route('dashboard', [], false) }}" class="transition hover:text-[#0069FF]">کنسول ابری</a>

@@ -223,6 +223,7 @@ class ServerController extends Controller
                 'status' => $server->status,
                 'status_label' => $server->customerStatusLabel(),
                 'operation_label' => ($operation = $server->operations()->whereNotNull('active_vm_id')->first()) ? $operation->label().' · '.$operation->customerStatus() : null,
+                'operation_id' => $operation?->id,
                 'status_class' => $this->statusClass($server->status),
                 'provisioning_label' => $this->provisioningLabelForVm($server),
                 'provisioning_class' => $this->provisioningClass($server->provisioning_status),

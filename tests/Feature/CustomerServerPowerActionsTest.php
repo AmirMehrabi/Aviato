@@ -373,6 +373,25 @@ class CustomerServerPowerActionsTest extends TestCase
         $this->assertSame('succeeded', $operation->fresh()->status);
     }
 
+    public function test_status_poll_exposes_operation_completion_even_when_power_state_is_unchanged(): void
+    {
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer);
+        $operation = app(VmOperationService::class)->request($vm, 'restart', 'customer', $customer->id);
+        $url = $this->customerBaseUrl.'/servers/statuses?ids[]='.$vm->uuid;
+        $this->actingAs($customer, 'customer')->getJson($url)
+            ->assertOk()
+            ->assertJsonPath('servers.0.status', 'running')
+            ->assertJsonPath('servers.0.operation_id', $operation->id)
+            ->assertJsonPath('servers.0.action_pending', true);
+        app(VmOperationService::class)->finish($operation, false);
+        $this->getJson($url)->assertOk()
+            ->assertJsonPath('servers.0.status', 'running')
+            ->assertJsonPath('servers.0.operation_id', null)
+            ->assertJsonPath('servers.0.action_pending', false);
+    }
+
     /** @param array<string, mixed> $overrides */
     private function vm(Customer $customer, array $overrides = []): VirtualMachine
     {
