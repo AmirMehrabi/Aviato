@@ -62,6 +62,51 @@ class CustomerPendingUsageTest extends TestCase
             ->assertViewHas('effectiveBalance', 80000);
     }
 
+    public function test_default_settlement_catches_late_usage_without_double_charging_or_settling_today(): void
+    {
+        $this->freezeTime();
+        $owner = $this->customerWithPendingNetworkUsage();
+        $today = UsageAccrual::query()->firstOrFail();
+        $old = $today->replicate()->fill([
+            'service_date' => now()->subDays(10)->toDateString(),
+            'resource_id' => 2,
+            'amount' => 10000,
+        ]);
+        $old->save();
+        $yesterday = $today->replicate()->fill([
+            'service_date' => now()->subDay()->toDateString(),
+            'resource_id' => 3,
+            'amount' => 20000,
+        ]);
+        $yesterday->save();
+        $balances = app(UsageBalanceService::class);
+        $available = $balances->effectiveBalance($owner);
+
+        $this->artisan('billing:settle-usage')->assertSuccessful();
+        $this->assertNotNull($old->refresh()->settled_at);
+        $this->assertNotNull($yesterday->refresh()->settled_at);
+        $this->assertNull($today->refresh()->settled_at);
+        $this->assertSame($available, $balances->effectiveBalance($owner));
+
+        // Network usage can arrive after this service date was already settled.
+        $late = $old->replicate()->fill([
+            'resource_id' => 4,
+            'amount' => 5000,
+            'settled_at' => null,
+            'usage_settlement_id' => null,
+        ]);
+        $late->save();
+        $available = $balances->effectiveBalance($owner);
+        $this->artisan('billing:settle-usage')->assertSuccessful();
+        $this->artisan('billing:settle-usage')->assertSuccessful();
+
+        $this->assertNotNull($late->refresh()->settled_at);
+        $this->assertNull($today->refresh()->settled_at);
+        $this->assertSame(465000, $owner->wallet()->firstOrFail()->balance);
+        $this->assertSame($available, $balances->effectiveBalance($owner));
+        $this->assertSame(3, $owner->walletTransactions()->count());
+    }
+
     public function test_pending_usage_warns_customer_even_when_recorded_wallet_balance_is_positive(): void
     {
         $owner = $this->customerWithPendingNetworkUsage();

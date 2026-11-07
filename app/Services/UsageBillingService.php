@@ -265,6 +265,27 @@ class UsageBillingService
     /**
      * @return Collection<int, UsageSettlement>
      */
+    public function settlePendingUsage(): Collection
+    {
+        $settlements = new Collection;
+        $dates = UsageAccrual::query()
+            ->whereNull('settled_at')
+            ->whereDate('service_date', '<', now()->toDateString())
+            ->select('service_date')
+            ->distinct()
+            ->orderBy('service_date')
+            ->pluck('service_date');
+
+        foreach ($dates as $date) {
+            $settlements = $settlements->merge($this->settleDate($date));
+        }
+
+        return $settlements;
+    }
+
+    /**
+     * @return Collection<int, UsageSettlement>
+     */
     public function settleDate(CarbonInterface|string $date): Collection
     {
         $serviceDate = CarbonImmutable::parse($date)->toDateString();

@@ -91,13 +91,13 @@ Artisan::command('promotions:release-reservations', function (PromotionService $
 Schedule::command('promotions:release-reservations')->everyMinute()->withoutOverlapping();
 
 Artisan::command('billing:settle-usage {--date= : Service date to settle in YYYY-MM-DD format}', function (UsageBillingService $billing) {
-    $date = $this->option('date') ?: now()->subDay()->toDateString();
-    $settlements = $billing->settleDate($date);
+    $date = $this->option('date');
+    $settlements = $date ? $billing->settleDate($date) : $billing->settlePendingUsage();
 
     $this->info(sprintf(
         'Settled %d customer/project usage group(s) for %s, totaling %d IRR.',
         $settlements->count(),
-        $date,
+        $date ?: 'all past service dates',
         $settlements->sum('amount'),
     ));
 })->purpose('Create daily aggregate wallet charges from hourly usage accruals');
@@ -473,7 +473,7 @@ Schedule::call(function (): void {
 Schedule::command('network-usage:retry')->everyMinute()->withoutOverlapping();
 Schedule::command('metering-inventory:refresh')->everyMinute()->withoutOverlapping();
 Schedule::command('api:prune-logs')->dailyAt('00:30');
-Schedule::command('billing:settle-usage')->dailyAt('00:05');
+Schedule::command('billing:settle-usage')->hourlyAt(5)->withoutOverlapping();
 Schedule::command('hetzner:sync-catalog')->hourlyAt(5);
 Schedule::command('billing:generate-monthly-invoices')
     ->timezone('Asia/Tehran')
