@@ -32,7 +32,7 @@ class PaymentService
         }
 
         $provider ??= AppSetting::defaultPaymentGateway();
-        $availableGateways = $this->gateways->available();
+        $availableGateways = $this->gateways->available($redeemer ?? $customer);
 
         if (! array_key_exists($provider, $availableGateways)) {
             throw ValidationException::withMessages([

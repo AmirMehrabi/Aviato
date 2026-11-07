@@ -38,6 +38,12 @@ class CustomerWalletBillingTest extends TestCase
 
     private string $customerBaseUrl = 'https://cp.localhost';
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['payments.wallet_test_email' => null, 'payments.public_gateways' => null]);
+    }
+
     public function test_customer_can_complete_mellat_top_up_flow_once(): void
     {
         $customer = Customer::factory()->create();
@@ -604,6 +610,60 @@ class CustomerWalletBillingTest extends TestCase
             'customer_id' => $customer->id,
             'amount' => 12500000,
         ]);
+    }
+
+    public function test_private_wallet_account_gets_small_preset_and_hesabro_only(): void
+    {
+        config(['payments.wallet_test_email' => 'aut0run2011@gmail.com', 'payments.public_gateways' => 'mellat']);
+        $customer = Customer::factory()->create(['email' => 'aut0run2011@gmail.com']);
+        $this->enableMellatGateway();
+        $this->enableHesabroGateway();
+        Http::preventStrayRequests();
+        Http::fake(fn ($request) => Http::response([
+            'amount' => $request['amount'],
+            'callback_url' => $request['callback_url'],
+            'go_to_ipg_url' => 'https://payments.example/pay/private-test',
+        ]));
+
+        $this->actingAs($customer, 'customer')->get($this->customerBaseUrl.'/wallet?tab=top-up')
+            ->assertOk()
+            ->assertViewHas('minimumTopUpToman', 1000)
+            ->assertViewHas('topUpPresets', fn ($presets) => in_array(1000, $presets, true) && in_array(250000, $presets, true))
+            ->assertViewHas('availablePaymentGateways', fn ($gateways) => array_keys($gateways) === ['hesabro']);
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+            'amount_toman' => 1000, 'gateway' => 'mellat',
+        ])->assertSessionHasErrors('gateway');
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+            'amount_toman' => 999, 'gateway' => 'hesabro',
+        ])->assertSessionHasErrors('amount_toman');
+        $this->assertDatabaseCount('payments', 0);
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+            'amount_toman' => 1000, 'gateway' => 'hesabro',
+        ])->assertRedirect($this->customerBaseUrl.'/wallet/payments/1/gateway');
+        $this->assertDatabaseHas('payments', ['customer_id' => $customer->id, 'amount' => 10000, 'provider' => 'hesabro']);
+    }
+
+    public function test_other_customers_keep_normal_minimum_and_cannot_use_private_gateway(): void
+    {
+        config(['payments.wallet_test_email' => 'aut0run2011@gmail.com', 'payments.public_gateways' => 'mellat']);
+        $customer = Customer::factory()->create();
+        $this->enableMellatGateway();
+        $this->enableHesabroGateway();
+        $this->actingAs($customer, 'customer')->get($this->customerBaseUrl.'/wallet?tab=top-up')
+            ->assertOk()
+            ->assertViewHas('minimumTopUpToman', 250000)
+            ->assertViewHas('topUpPresets', fn ($presets) => ! in_array(1000, $presets, true))
+            ->assertViewHas('availablePaymentGateways', fn ($gateways) => array_keys($gateways) === ['mellat']);
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+            'amount_toman' => 1000, 'gateway' => 'mellat',
+        ])->assertSessionHasErrors('amount_toman');
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', [
+            'amount_toman' => 250000, 'gateway' => 'hesabro',
+        ])->assertSessionHasErrors('gateway');
+        $this->assertDatabaseCount('payments', 0);
+
+        $this->expectException(ValidationException::class);
+        app(PaymentService::class)->createTopUp($customer, 2500000, provider: 'hesabro');
     }
 
     public function test_wallet_uses_configured_minimum_for_display_and_payment_validation(): void

@@ -112,14 +112,14 @@ class WalletController extends Controller
             ? (int) ceil($projectMonthlyEstimate / 10)
             : $projectMonthlyEstimate;
         $roundedMonthlyEstimateToman = intdiv($projectMonthlyEstimateToman + 999, 1000) * 1000;
-        $minimumTopUpToman = AppSetting::walletMinimumTopUpToman();
+        $minimumTopUpToman = $customer->walletMinimumTopUpToman();
         $recommendedTopUpToman = $activeProject->virtualMachines()->notDeleted()->exists()
             && $roundedMonthlyEstimateToman >= $minimumTopUpToman
             && $roundedMonthlyEstimateToman <= 50000000
                 ? $roundedMonthlyEstimateToman
                 : null;
         $topUpPresets = array_values(array_unique(array_filter(
-            [$minimumTopUpToman, 500000, 1000000, 2500000],
+            [AppSetting::walletMinimumTopUpToman(), 500000, 1000000, 2500000],
             fn (int $amount): bool => $amount >= $minimumTopUpToman,
         )));
         if ($recommendedTopUpToman !== null) {
@@ -127,7 +127,10 @@ class WalletController extends Controller
             $topUpPresets = array_slice($topUpPresets, 0, 3);
             $topUpPresets[] = $recommendedTopUpToman;
         }
-        $availablePaymentGateways = $this->paymentGateways->available();
+        if ($customer->isWalletTestCustomer()) {
+            array_unshift($topUpPresets, 1000);
+        }
+        $availablePaymentGateways = $this->paymentGateways->available($customer);
         $defaultPaymentGateway = AppSetting::defaultPaymentGateway();
         if (! array_key_exists($defaultPaymentGateway, $availablePaymentGateways)) {
             $defaultPaymentGateway = array_key_first($availablePaymentGateways) ?? '';

@@ -33,6 +33,18 @@ class Customer extends Authenticatable
         });
     }
 
+    public function isWalletTestCustomer(): bool
+    {
+        $email = trim((string) config('payments.wallet_test_email'));
+
+        return $email !== '' && strcasecmp($email, (string) $this->email) === 0;
+    }
+
+    public function walletMinimumTopUpToman(): int
+    {
+        return $this->isWalletTestCustomer() ? 1000 : AppSetting::walletMinimumTopUpToman();
+    }
+
     public function wallet(): HasOne
     {
         return $this->hasOne(Wallet::class);

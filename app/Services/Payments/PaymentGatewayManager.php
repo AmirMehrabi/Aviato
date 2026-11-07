@@ -3,6 +3,7 @@
 namespace App\Services\Payments;
 
 use App\Models\AppSetting;
+use App\Models\Customer;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Validation\ValidationException;
 
@@ -53,13 +54,19 @@ class PaymentGatewayManager
     /**
      * @return array<string, string>
      */
-    public function available(): array
+    public function available(?Customer $customer = null): array
     {
         if (! AppSetting::paymentsEnabled()) {
             return [];
         }
 
+        $publicGateways = config('payments.public_gateways');
+        $allowed = $customer?->isWalletTestCustomer()
+            ? ['hesabro']
+            : ($publicGateways === null ? array_keys($this->gateways) : array_map('trim', explode(',', $publicGateways)));
+
         return collect($this->gateways)
+            ->only($allowed)
             ->mapWithKeys(function (string $class, string $provider): array {
                 $gateway = $this->container->make($class);
 
