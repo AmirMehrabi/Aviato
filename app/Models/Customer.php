@@ -35,9 +35,9 @@ class Customer extends Authenticatable
 
     public function isWalletTestCustomer(): bool
     {
-        $email = trim((string) config('payments.wallet_test_email'));
+        $emails = array_filter(array_map('trim', explode(',', (string) config('payments.wallet_test_email'))));
 
-        return $email !== '' && strcasecmp($email, (string) $this->email) === 0;
+        return in_array(strtolower((string) $this->email), array_map('strtolower', $emails), true);
     }
 
     public function walletMinimumTopUpToman(): int

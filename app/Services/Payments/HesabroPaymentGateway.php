@@ -3,6 +3,7 @@
 namespace App\Services\Payments;
 
 use App\Models\AppSetting;
+use App\Models\CorporateProfile;
 use App\Models\Payment;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -135,6 +136,13 @@ class HesabroPaymentGateway implements PaymentGatewayInterface
     private function username(Payment $payment): string
     {
         $customer = $payment->customer;
+        $corporate = CorporateProfile::where('customer_id', $customer->id)
+            ->where('approved_at', '<=', now())
+            ->first();
+        if ($corporate !== null && trim((string) $corporate->national_id) !== '') {
+            return trim((string) $corporate->national_id);
+        }
+
         $username = trim((string) $customer->phone);
 
         if ($username === '') {

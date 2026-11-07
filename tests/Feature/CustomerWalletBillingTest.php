@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\AppSetting;
+use App\Models\CorporateProfile;
+use App\Models\CorporateRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -823,6 +825,62 @@ class CustomerWalletBillingTest extends TestCase
             ->assertSee('درگاه پرداخت را انتخاب کنید')
             ->assertSee('بانک ملت')
             ->assertSee('حسابرو');
+    }
+
+    public function test_hesabro_uses_verified_company_national_id_before_billing_effective_date(): void
+    {
+        $customer = Customer::factory()->create(['phone' => null]);
+        $this->enableHesabroGateway();
+        $request = CorporateRequest::create([
+            'customer_id' => $customer->id, 'national_id' => '00123456789',
+            'status' => 'approved', 'company' => [], 'registry_result' => [], 'looked_up_at' => now(),
+        ]);
+        CorporateProfile::create([
+            'customer_id' => $customer->id, 'corporate_request_id' => $request->id,
+            'national_id' => '00123456789', 'company' => [], 'approved_at' => now(),
+            'billing_effective_at' => now()->addMonth(),
+        ]);
+        Http::preventStrayRequests();
+        Http::fake(fn ($request) => Http::response([
+            'amount' => $request['amount'], 'callback_url' => $request['callback_url'],
+            'go_to_ipg_url' => 'https://payments.example/pay/company',
+        ]));
+        $payment = app(PaymentService::class)->createTopUp($customer, 1000000, provider: 'hesabro');
+        $this->assertSame('00123456789', $payment->gateway_payload['username']);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '?username=00123456789'));
+    }
+
+    public function test_hesabro_uses_phone_for_unapproved_corporate_application(): void
+    {
+        $customer = Customer::factory()->create(['phone' => '09123456789']);
+        $this->enableHesabroGateway();
+        CorporateRequest::create([
+            'customer_id' => $customer->id, 'national_id' => '00123456789',
+            'status' => 'pending', 'company' => [], 'registry_result' => [], 'looked_up_at' => now(),
+        ]);
+        Http::preventStrayRequests();
+        Http::fake(fn ($request) => Http::response([
+            'amount' => $request['amount'], 'callback_url' => $request['callback_url'],
+            'go_to_ipg_url' => 'https://payments.example/pay/personal',
+        ]));
+        $payment = app(PaymentService::class)->createTopUp($customer, 1000000, provider: 'hesabro');
+        $this->assertSame('09123456789', $payment->gateway_payload['username']);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '?username=09123456789'));
+    }
+
+    public function test_multiple_private_wallet_accounts_have_identical_access(): void
+    {
+        config(['payments.wallet_test_email' => 'aut0run2011@gmail.com, ali.zahedi.7953@gmail.com', 'payments.public_gateways' => 'mellat']);
+        $this->enableMellatGateway();
+        $this->enableHesabroGateway();
+        foreach (['aut0run2011@gmail.com', 'ali.zahedi.7953@gmail.com'] as $email) {
+            $customer = Customer::factory()->create(['email' => $email]);
+            $this->actingAs($customer, 'customer')->get($this->customerBaseUrl.'/wallet?tab=top-up')
+                ->assertOk()->assertViewHas('minimumTopUpToman', 1000)
+                ->assertViewHas('topUpPresets', fn ($presets) => in_array(1000, $presets, true))
+                ->assertViewHas('availablePaymentGateways', fn ($gateways) => array_keys($gateways) === ['hesabro']);
+        }
+        $this->assertFalse((new Customer(['email' => 'someone@example.com']))->isWalletTestCustomer());
     }
 
     public function test_customer_can_choose_hesabro_and_receive_payment_link(): void

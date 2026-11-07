@@ -1,7 +1,7 @@
 <?php
 
 return [
-    // Optional private wallet testing account; leave unset for normal global gateway behavior.
+    // Optional comma-separated private wallet testing accounts; leave unset for normal global gateway behavior.
     'wallet_test_email' => env('WALLET_TEST_EMAIL'),
     'public_gateways' => env('PAYMENTS_PUBLIC_GATEWAYS'),
 
