@@ -82,7 +82,26 @@ class ProcessVmOperation implements ShouldQueue
                 $operation->update(['task_id' => $task, 'status' => $task ? 'running' : 'checking']);
             }
             if (! $operation->task_id) {
-                return; // Unknown submission result stays locked for support to investigate.
+                // Start can be a successful no-op when the provider already has the VM running.
+                // Recover interrupted submissions by observing state without resubmitting.
+                // A running VM alone cannot prove that a restart completed.
+                if ($operation->action === 'restart') {
+                    return;
+                }
+                if ($vm->isHetzner()) {
+                    $remote = $hetzner->server($vm->infrastructureLocation->hetznerAccount, $vm->remote_id);
+                    $expected = $operation->action === 'start' ? 'running' : 'off';
+                    $config = [];
+                } else {
+                    $remote = $proxmox->vmStatus($vm->proxmoxServer, $node, $vmid);
+                    $expected = $operation->action === 'start' ? 'running' : 'stopped';
+                    $config = $proxmox->vmConfig($vm->proxmoxServer, $node, $vmid);
+                }
+                if (($remote['status'] ?? null) === $expected && empty($config['lock'])) {
+                    $operations->finish($operation, true);
+                }
+
+                return;
             }
             if ($vm->isHetzner()) {
                 $task = $hetzner->actionStatus($vm->infrastructureLocation->hetznerAccount, $operation->task_id);
@@ -121,7 +140,7 @@ class ProcessVmOperation implements ShouldQueue
             }
         } catch (Throwable $exception) {
             report($exception);
-            if (isset($operation) && $operation?->active_vm_id) {
+            if (isset($operation) && $operation?->active_vm_id && $operation->status !== 'queued') {
                 $operation->update(['status' => 'checking']);
             }
         } finally {

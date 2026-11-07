@@ -893,7 +893,7 @@ class ServerController extends Controller
             return back()->with('error', 'اطلاعات زیرساخت برای خاموش کردن سرور کامل نیست.');
         }
 
-        app(VmOperationService::class)->request($server, 'shutdown', 'customer', $customer->id, $currentGeneration);
+        app(VmOperationService::class)->request($server, 'force-stop', 'customer', $customer->id, $currentGeneration);
 
         return back()->with('status', 'درخواست ثبت شد. پیشرفت آن را در همین صفحه دنبال کنید.');
     }

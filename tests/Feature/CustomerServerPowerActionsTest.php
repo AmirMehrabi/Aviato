@@ -76,7 +76,8 @@ class CustomerServerPowerActionsTest extends TestCase
         $this->mock(ProxmoxService::class, function ($mock): void {
             $mock->shouldReceive('vmConfig')->twice()->andReturn([]);
             $mock->shouldReceive('taskStatus')->once()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
-            $mock->shouldReceive('shutdownVm')->once()->andReturn(['task_id' => 'UPID:shutdown']);
+            $mock->shouldNotReceive('shutdownVm');
+            $mock->shouldReceive('stopVm')->once()->andReturn(['task_id' => 'UPID:stop']);
 
             $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
         });
@@ -90,7 +91,7 @@ class CustomerServerPowerActionsTest extends TestCase
 
         $this->assertSame(VirtualMachine::STATUS_STOPPED, $vm->status);
         $this->assertSame(3, data_get($vm->desired_state, 'power_generation'));
-        $this->assertSame('customer_stop', data_get($vm->desired_state, 'power_intent_source'));
+        $this->assertSame('customer_force-stop', data_get($vm->desired_state, 'power_intent_source'));
         $this->assertDatabaseHas('vm_activities', ['virtual_machine_id' => $vm->id, 'event' => 'power', 'outcome' => 'succeeded']);
     }
 
@@ -282,6 +283,94 @@ class CustomerServerPowerActionsTest extends TestCase
         $this->assertSame('failed', $operation->fresh()->status);
         $this->assertNull($operation->fresh()->active_vm_id);
         $this->assertSame('running', $vm->fresh()->status);
+    }
+
+    public function test_already_running_start_without_task_id_is_reconciled(): void
+    {
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, ['status' => 'stopped']);
+        $operation = app(VmOperationService::class)->request($vm, 'start', 'customer', $customer->id);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfig')->twice()->andReturn([]);
+            $mock->shouldReceive('startVm')->once()->andReturn(['task_id' => null, 'already_running' => true]);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
+            $mock->shouldNotReceive('taskStatus');
+        });
+        app()->call([new ProcessVmOperation($operation->id), 'handle']);
+        $this->assertSame('succeeded', $operation->fresh()->status);
+        $this->assertNull($operation->fresh()->active_vm_id);
+        $this->assertSame('running', $vm->fresh()->status);
+    }
+
+    public function test_existing_unknown_start_is_reconciled_without_resubmitting(): void
+    {
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, ['status' => 'stopped']);
+        $operation = app(VmOperationService::class)->request($vm, 'start', 'customer', $customer->id);
+        $operation->update(['status' => 'checking', 'started_at' => now()->subMinutes(15)]);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('startVm');
+            $mock->shouldReceive('vmConfig')->once()->andReturn([]);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
+        });
+        app()->call([new ProcessVmOperation($operation->id), 'handle']);
+        $this->assertSame('succeeded', $operation->fresh()->status);
+        $this->assertFalse($vm->fresh()->isActionLocked());
+    }
+
+    public function test_unknown_start_with_provider_lock_remains_pending(): void
+    {
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer, ['status' => 'stopped']);
+        $operation = app(VmOperationService::class)->request($vm, 'start', 'customer', $customer->id);
+        $operation->update(['status' => 'checking']);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('startVm');
+            $mock->shouldReceive('vmConfig')->once()->andReturn(['lock' => 'backup']);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'running']);
+        });
+        app()->call([new ProcessVmOperation($operation->id), 'handle']);
+        $this->assertSame('checking', $operation->fresh()->status);
+        $this->assertTrue($vm->fresh()->isActionLocked());
+    }
+
+    public function test_unknown_force_stop_is_confirmed_from_stopped_state_without_resubmitting(): void
+    {
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer);
+        $operation = app(VmOperationService::class)->request($vm, 'force-stop', 'customer', $customer->id);
+        $operation->update(['status' => 'checking']);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldNotReceive('stopVm');
+            $mock->shouldReceive('vmConfig')->once()->andReturn([]);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
+        });
+        app()->call([new ProcessVmOperation($operation->id), 'handle']);
+        $this->assertSame('succeeded', $operation->fresh()->status);
+        $this->assertSame('stopped', $vm->fresh()->status);
+    }
+
+    public function test_preflight_failure_can_retry_before_power_request_is_submitted(): void
+    {
+        Queue::fake();
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer);
+        $operation = app(VmOperationService::class)->request($vm, 'force-stop', 'customer', $customer->id);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfig')->once()->andThrow(new \RuntimeException('Connection timed out'));
+            $mock->shouldReceive('vmConfig')->twice()->andReturn([]);
+            $mock->shouldReceive('stopVm')->once()->andReturn(['task_id' => 'stop-task']);
+            $mock->shouldReceive('taskStatus')->once()->andReturn(['status' => 'stopped', 'exitstatus' => 'OK']);
+            $mock->shouldReceive('vmStatus')->once()->andReturn(['status' => 'stopped']);
+        });
+        app()->call([new ProcessVmOperation($operation->id), 'handle']);
+        $this->assertSame('queued', $operation->fresh()->status);
+        app()->call([new ProcessVmOperation($operation->id), 'handle']);
+        $this->assertSame('succeeded', $operation->fresh()->status);
     }
 
     /** @param array<string, mixed> $overrides */

@@ -72,7 +72,7 @@
                         @if ($server->isRunning())<input type="hidden" name="power_generation" value="{{ (int) data_get($server->desired_state, 'power_generation', 0) }}">@endif
                         <button type="submit" class="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-black transition {{ $server->isRunning() ? 'border border-red-200 bg-red-50 text-red-600 hover:bg-red-100' : 'bg-[#0069FF] text-white hover:bg-[#0050D0]' }}">
                             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2v10M5.6 5.6a9 9 0 1 0 12.8 0"/></svg>
-                            <span x-text="confirming ? 'برای تأیید دوباره بزنید' : @js($server->isRunning() ? 'خاموش کردن' : 'روشن کردن')">{{ $server->isRunning() ? 'خاموش کردن' : 'روشن کردن' }}</span>
+                            <span x-text="confirming ? 'برای تأیید دوباره بزنید' : @js($server->isRunning() ? 'خاموش کردن اجباری' : 'روشن کردن')">{{ $server->isRunning() ? 'خاموش کردن اجباری' : 'روشن کردن' }}</span>
                         </button>
                     </form>
                     @if ($server->isRunning())
