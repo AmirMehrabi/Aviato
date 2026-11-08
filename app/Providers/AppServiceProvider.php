@@ -63,6 +63,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('public-domain-search', fn (Request $request) => [
+            Limit::perMinute(10)->by('domain-search-minute:'.$request->ip()),
+            Limit::perHour(60)->by('domain-search-hour:'.$request->ip()),
+        ]);
+
         RateLimiter::for('corporate-start', fn (Request $request) => Limit::perHour(5)->by($request->user('customer')->id));
         RateLimiter::for('corporate-submit', fn (Request $request) => Limit::perHour(10)->by($request->user('customer')->id));
 

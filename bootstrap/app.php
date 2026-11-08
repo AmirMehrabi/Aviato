@@ -12,6 +12,7 @@ use App\Http\Middleware\LogApiRequest;
 use App\Http\Middleware\MeteringInventoryAuth;
 use App\Http\Middleware\NoStoreResponse;
 use App\Models\ApiRequestLog;
+use App\Services\Domains\DomainProviderBusy;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -68,6 +70,22 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (DomainProviderBusy $exception, Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage(), 'retry_after' => $exception->retryAfter], 429)
+                    ->header('Retry-After', (string) $exception->retryAfter)->header('Cache-Control', 'no-store');
+            }
+
+            return back()->withInput()->withErrors(['domain' => $exception->getMessage()]);
+        });
+        $exceptions->render(function (RuntimeException $exception, Request $request) {
+            if ($request->routeIs('marketing.domains.check') && ! $exception instanceof HttpExceptionInterface) {
+                report($exception);
+
+                return response()->json(['message' => 'در حال حاضر بررسی دامنه امکان‌پذیر نیست. کمی بعد دوباره تلاش کنید.'], 503)
+                    ->header('Cache-Control', 'no-store');
+            }
+        });
         $exceptions->dontFlash([
             'code',
             'promotion_code',
@@ -78,6 +96,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'login_password_confirmation',
         ]);
         $exceptions->shouldRenderJsonWhen(fn (Request $request): bool => $request->is('api/*')
+            || $request->routeIs('marketing.domains.check')
             || ($request->routeIs('customer.domains.*', 'customer.alias.*.customer.domains.*') && $request->expectsJson()));
         $exceptions->render(function (AuthenticationException $exception, Request $request) {
             if (! $request->is('api/*')) {

@@ -42,6 +42,7 @@ class DomainProviderRoutingTest extends TestCase
         parent::setUp();
         $this->travelTo(now()->setDate(2026, 10, 26)->setTime(10, 0));
         Cache::flush();
+        config(['domain-search.reseller_world.burst' => 100, 'domain-search.irpower.burst' => 100]);
         Queue::fake();
         Http::preventStrayRequests();
         AppSetting::setValue(AppSetting::DOMAIN_RESELLER_TOKEN, 'world-test-key', 'string', 'domains');
@@ -232,7 +233,7 @@ class DomainProviderRoutingTest extends TestCase
     {
         $this->offer('irpower', 'register', 1350000, 'ir');
         $this->offer('irpower', 'renew', 1350000, 'ir');
-        $this->mock(IrnicWhoisService::class)->shouldReceive('check')->with('example.ir')->andReturn(['domain' => 'example.ir', 'available' => true, 'premium' => false, 'preliminary' => true, 'checked_at' => now()->toIso8601String()]);
+        $this->mock(IrnicWhoisService::class)->shouldReceive('check')->with('example.ir', \Mockery::type('bool'))->andReturn(['domain' => 'example.ir', 'available' => true, 'premium' => false, 'preliminary' => true, 'checked_at' => now()->toIso8601String()]);
         $this->actingAs($this->customer, 'customer')->postJson('https://cp.localhost/domains/check', ['domain' => 'example.ir'])->assertOk()->assertJsonPath('data.preliminary', true)->assertJsonStructure(['data' => ['retail']]);
         $this->post('https://cp.localhost/domains/orders', ['domain' => 'example.ir', 'period' => 1])->assertRedirect();
         $order = DomainOrder::firstOrFail();
@@ -249,7 +250,7 @@ class DomainProviderRoutingTest extends TestCase
         $this->offer('irpower', 'renew', 1350000, 'ir');
         AppSetting::setValue(AppSetting::TAX_ENABLED, true, 'boolean', 'billing');
         AppSetting::setValue(AppSetting::TAX_RATE_PERCENTAGE, 10, 'integer', 'billing');
-        $this->mock(IrnicWhoisService::class)->shouldReceive('check')->with('example.ir')->andReturn(['domain' => 'example.ir', 'available' => true, 'premium' => false, 'preliminary' => true]);
+        $this->mock(IrnicWhoisService::class)->shouldReceive('check')->with('example.ir', \Mockery::type('bool'))->andReturn(['domain' => 'example.ir', 'available' => true, 'premium' => false, 'preliminary' => true]);
         $order = app(DomainOrderService::class)->create($this->customer, 'example.ir', 1);
         $order->update(['registrant' => array_fill_keys(['holder', 'admin', 'tech', 'billing'], 'ab123-irnic'), 'nameservers' => ['ns1.example.net', 'ns2.example.net'], 'consented_at' => now()]);
         app(WalletService::class)->credit($this->customer, 2000000, 'Fixture');

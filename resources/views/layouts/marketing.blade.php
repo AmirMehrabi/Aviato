@@ -132,28 +132,11 @@
         $activePage = $activePage ?? 'home';
         $darkHeaderTop = false;
         $marketingNavItems = config('marketing.navigation', []);
-        $solutionMenuItems = [
-            [
-                'key' => 'cloud',
-                'label' => 'سرور مجازی ابری',
-                'eyebrow' => 'Cloud VPS',
-                'route' => route('solutions'),
-                'title' => 'ماشین مجازی آماده برای سایت، اپلیکیشن و سرویس‌های آنلاین',
-                'body' => 'برای تیم‌هایی که می‌خواهند با منابع روشن، IP اختصاصی، تحویل قابل پیگیری و پشتیبانی فارسی سریع‌تر وارد مرحله اجرا شوند.',
-                'points' => ['تحویل از پنل مشتری', 'منابع و هزینه شفاف', 'مناسب وب، API، دیتابیس و تست'],
-                'cta' => 'مشاهده راهکار ابری',
-            ],
-            [
-                'key' => 'colocation',
-                'label' => 'Co-location',
-                'eyebrow' => 'Dedicated Hardware',
-                'route' => route('solutions.colocation'),
-                'title' => 'میزبانی تجهیزات شما در رک استاندارد دیتاسنتر',
-                'body' => 'برای سازمان‌هایی که مالک سرور، فایروال یا تجهیزات شبکه خودشان هستند و به برق پایدار، شبکه مطمئن، رک امن و دسترسی عملیاتی نیاز دارند.',
-                'points' => ['فضای رک و برق پایدار', 'اتصال شبکه و IP', 'هماهنگی نصب و دسترسی حضوری'],
-                'cta' => 'مشاهده Co-location',
-            ],
-        ];
+        $solutionMenuItems = collect(config('solutions'))->map(function ($solution) {
+            $solution['route'] = route($solution['route']);
+
+            return $solution;
+        })->values()->all();
     @endphp
 
     <div
@@ -254,6 +237,7 @@
                     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl shadow-slate-950/15 ring-1 ring-slate-100">
                         <div class="grid min-h-[25rem] grid-cols-[15rem_1fr]">
                             <div class="border-l border-slate-200 bg-slate-50 p-3">
+                                <a href="{{ route('solutions') }}" class="mb-3 block rounded-xl px-4 py-2 text-sm font-bold text-[#0069FF] hover:bg-white">همه راهکارها ←</a>
                                 <template x-for="solution in solutions" :key="solution.key">
                                     <a
                                         :href="solution.route"
@@ -319,8 +303,9 @@
                         </a>
                         @if ($item['key'] === 'solutions')
                             <div class="-mt-1 mb-2 grid gap-1 pr-4">
-                                <a href="{{ route('solutions') }}" @click="menuOpen = false" class="rounded-xl px-4 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-[#0069FF]">سرور مجازی ابری</a>
-                                <a href="{{ route('solutions.colocation') }}" @click="menuOpen = false" class="rounded-xl px-4 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-[#0069FF]">Co-location</a>
+                                @foreach ($solutionMenuItems as $solution)
+                                    <a href="{{ $solution['route'] }}" @click="menuOpen = false" class="rounded-xl px-4 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-[#0069FF]">{{ $solution['label'] }}</a>
+                                @endforeach
                             </div>
                         @endif
                     @endforeach
@@ -397,7 +382,9 @@
                         <a href="{{ route('home') }}" class="transition hover:text-[#2C67C9]">خانه</a>
                         <a href="{{ route('pricing') }}" class="transition hover:text-[#2C67C9]">قیمت‌گذاری</a>
                         <a href="{{ route('solutions') }}" class="transition hover:text-[#2C67C9]">راهکارهای ما</a>
-                        <a href="{{ route('solutions.colocation') }}" class="transition hover:text-[#2C67C9]">Co-location</a>
+                        @foreach ($solutionMenuItems as $solution)
+                            <a href="{{ $solution['route'] }}" class="transition hover:text-[#2C67C9]">{{ $solution['label'] }}</a>
+                        @endforeach
                         <a href="{{ route('status') }}" class="transition hover:text-[#2C67C9]">وضعیت سرویس‌ها</a>
                         <a href="{{ route('incidents.index') }}" class="transition hover:text-[#2C67C9]">گزارش رخدادها</a>
                         <a href="{{ route('blog') }}" class="transition hover:text-[#2C67C9]">بلاگ</a>

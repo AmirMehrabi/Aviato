@@ -28,6 +28,9 @@ class DomainManagementService
                 app(IrpowerProvider::class)->request('UpdateDomainNameServers', ['domain' => $domain->name] + app(IrpowerProvider::class)->nameserverPayload($nameservers));
                 $operation->update(['status' => 'pending']);
                 $this->reconcile($operation->fresh());
+            } catch (DomainProviderBusy $exception) {
+                $operation->update(['status' => $exception->requestSent ? 'uncertain' : 'failed']);
+                throw $exception;
             } catch (ProviderRejected $exception) {
                 $operation->update(['status' => 'failed', 'result_code' => (string) $exception->getCode()]);
             } catch (Throwable) {
@@ -42,6 +45,9 @@ class DomainManagementService
                 throw new \RuntimeException('No tracking id.');
             }
             $operation->update(['track_id' => (string) $result['trackId'], 'status' => 'pending']);
+        } catch (DomainProviderBusy $exception) {
+            $operation->update(['status' => $exception->requestSent ? 'uncertain' : 'failed']);
+            throw $exception;
         } catch (Throwable) {
             $operation->update(['status' => 'uncertain']);
         }

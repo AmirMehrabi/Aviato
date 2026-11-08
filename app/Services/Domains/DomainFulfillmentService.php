@@ -34,6 +34,10 @@ class DomainFulfillmentService
             try {
                 $this->orders->assertPurchasableForFulfillment($order);
                 $this->orders->validateSupplier($order);
+            } catch (DomainProviderBusy) {
+                // No failed purchase/refund for a temporary quota pause. The
+                // existing reconciliation schedule will resume the funded order.
+                return;
             } catch (Throwable $exception) {
                 $message = $exception instanceof ValidationException ? $exception->validator->errors()->first() : 'امکان تأیید قیمت یا موجودی دامنه نبود. مبلغ رزرو به کیف پول شما بازگشت.';
                 $this->orders->fail($order, $message);
@@ -96,6 +100,8 @@ class DomainFulfillmentService
             try {
                 $this->orders->assertPurchasableForFulfillment($order);
                 $this->orders->validateSupplier($order);
+            } catch (DomainProviderBusy) {
+                return;
             } catch (Throwable) {
                 $this->orders->fail($order, 'قیمت یا وضعیت دامنه پیش از ارسال قابل تأیید نبود. مبلغ رزرو به کیف پول بازگشت.');
 
@@ -122,6 +128,18 @@ class DomainFulfillmentService
                     throw new \RuntimeException('No tracking id.');
                 }
                 $operation->update(['track_id' => (string) $result['trackId'], 'status' => 'pending']);
+            } catch (DomainProviderBusy $exception) {
+                if (! $exception->requestSent) {
+                    // The local gate refused BEFORE sending: there is no remote
+                    // mutation to reconcile, so a later attempt is safe.
+                    $operation->delete();
+
+                    return null;
+                }
+                $operation->update(['status' => 'uncertain']);
+                $order->update(['status' => 'needs_review', 'customer_message' => 'نتیجه درخواست در حال بررسی است؛ دوباره پرداخت نکنید.']);
+
+                return null;
             } catch (Throwable) {
                 $operation->update(['status' => 'uncertain']);
                 $order->update(['status' => 'needs_review', 'customer_message' => 'نتیجه درخواست در حال پیگیری با سرویس‌دهنده است. مبلغ محفوظ است؛ دوباره پرداخت نکنید.']);
@@ -179,6 +197,8 @@ class DomainFulfillmentService
         try {
             $this->orders->assertPurchasableForFulfillment($order);
             $this->orders->validateSupplier($order);
+        } catch (DomainProviderBusy) {
+            return;
         } catch (Throwable $exception) {
             $this->orders->fail($order, $exception instanceof ValidationException ? $exception->validator->errors()->first() : 'امکان تأیید سفارش نبود. مبلغ رزرو به کیف پول شما بازگشت.');
 
@@ -195,6 +215,14 @@ class DomainFulfillmentService
         } catch (ProviderRejected $exception) {
             $operation->update(['status' => 'failed', 'result_code' => (string) $exception->getCode(), 'checked_at' => now()]);
             $this->orders->fail($order, 'سرویس‌دهنده انجام سفارش را تأیید نکرد. مبلغ رزرو به کیف پول شما بازگشت. برای بررسی شرایط دامنه با پشتیبانی تماس بگیرید.');
+        } catch (DomainProviderBusy $exception) {
+            if (! $exception->requestSent) {
+                $operation->delete();
+
+                return;
+            }
+            $operation->update(['status' => 'uncertain']);
+            $order->update(['status' => 'needs_review', 'customer_message' => 'نتیجه درخواست در حال بررسی است؛ دوباره پرداخت نکنید.']);
         } catch (Throwable) {
             $operation->update(['status' => 'uncertain']);
             $order->update(['status' => 'needs_review', 'customer_message' => 'نتیجه درخواست در حال پیگیری است. مبلغ محفوظ است؛ دوباره پرداخت یا سفارش ندهید. پس از تأیید، نتیجه همین‌جا نمایش داده می‌شود.']);

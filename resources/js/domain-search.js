@@ -4,13 +4,35 @@ export function domainSearch(config) {
         result: config.result || null,
         error: config.error || '',
         loading: false,
+        redirecting: false,
+        cooldown: 0,
+        cooldownTimer: null,
+        init() {
+            if (config.autoSearch && this.domain.trim() && !this.result) this.search();
+        },
+        destroy() {
+            clearInterval(this.cooldownTimer);
+        },
+        pause(seconds) {
+            this.cooldown = Math.max(1, Math.ceil(seconds));
+            clearInterval(this.cooldownTimer);
+            const until = Date.now() + this.cooldown * 1000;
+            this.cooldownTimer = setInterval(() => {
+                this.cooldown = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+                if (!this.cooldown) clearInterval(this.cooldownTimer);
+            }, 1000);
+        },
         get alternatives() {
             if (!this.result) return [];
             const label = this.result.domain.split('.')[0];
             return ['com', 'net', 'org', 'online'].map((tld) => `${label}.${tld}`).filter((name) => name !== this.result.domain);
         },
         async search(name = null) {
-            if (this.loading) return;
+            if (this.loading || this.redirecting) return;
+            if (this.cooldown) {
+                this.error = `لطفاً ${this.cooldown} ثانیه صبر کنید و دوباره جستجو کنید.`;
+                return;
+            }
             if (name !== null) this.domain = name;
             if (!this.domain.trim()) {
                 this.error = 'نام دامنه را وارد کنید.';
@@ -36,6 +58,11 @@ export function domainSearch(config) {
                 });
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
+                    if (response.status === 429) {
+                        const retry = response.headers.get('Retry-After');
+                        const seconds = /^\d+$/.test(retry || '') ? Number(retry) : Math.ceil((Date.parse(retry) - Date.now()) / 1000);
+                        this.pause(Number.isFinite(seconds) && seconds > 0 ? seconds : (data.retry_after || 60));
+                    }
                     const messages = {
                         401: 'نشست شما پایان یافته است. دوباره وارد حساب شوید.',
                         403: 'دسترسی دامنه برای حساب شما فعال نیست.',
@@ -43,14 +70,20 @@ export function domainSearch(config) {
                         409: 'فضای کاری تغییر کرده است. صفحه را تازه کنید و دوباره ادامه دهید.',
                         429: 'تعداد جستجوها زیاد است. کمی صبر کنید و دوباره تلاش کنید.',
                     };
-                    this.error = messages[response.status] || data.errors?.domain?.[0] || 'در حال حاضر بررسی دامنه امکان‌پذیر نیست. کمی بعد دوباره تلاش کنید.';
+                    this.error = (response.status === 503 ? data.message : messages[response.status]) || data.errors?.domain?.[0] || 'در حال حاضر بررسی دامنه امکان‌پذیر نیست. کمی بعد دوباره تلاش کنید.';
                     return;
                 }
                 if (typeof data.data?.available !== 'boolean') throw new Error('Invalid response');
                 this.result = data.data;
                 this.domain = this.result.domain;
-                this.$nextTick(() => this.$refs.result.focus());
+                if (config.publicSearch && data.continue_url) {
+                    this.redirecting = true;
+                    window.location.assign(data.continue_url);
+                    return;
+                }
+                this.$nextTick(() => this.$refs.result?.focus());
             } catch {
+                this.redirecting = false;
                 this.error = 'ارتباط برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.';
             } finally {
                 clearTimeout(timeout);

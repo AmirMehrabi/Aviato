@@ -7,6 +7,7 @@ use App\Http\Requests\Customer\CheckDomainRequest;
 use App\Models\AppSetting;
 use App\Services\Domains\DomainAvailabilityService;
 use App\Services\Domains\DomainPricingService;
+use App\Services\Domains\DomainProviderBusy;
 use App\Services\Domains\DomainWorkspaceService;
 use App\Services\Domains\UnsupportedDomainExtension;
 use App\Services\WalletService;
@@ -33,6 +34,8 @@ class DomainController extends Controller
             $result = $domains->check($request->validated('domain'));
         } catch (UnsupportedDomainExtension) {
             throw ValidationException::withMessages(['domain' => 'این پسوند در حال حاضر پشتیبانی نمی‌شود. پسوند دیگری مثل ‎.com یا ‎.net را امتحان کنید.']);
+        } catch (DomainProviderBusy $exception) {
+            throw $exception;
         } catch (RuntimeException) {
             $message = 'در حال حاضر بررسی دامنه امکان‌پذیر نیست. کمی بعد دوباره تلاش کنید.';
             if ($request->expectsJson()) {

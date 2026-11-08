@@ -1,7 +1,7 @@
 @extends('layouts.marketing')
 
 @section('title', 'آویاتو | از زمین تا ابر، با اطمینان')
-@section('description', 'خرید ماشین مجازی آویاتو با دیسک NVMe، IP اختصاصی، قیمت روشن و پشتیبانی فارسی برای راه اندازی سایت، فروشگاه و اپلیکیشن.')
+@section('description', 'سرور ابری، ثبت دامنه، مدیریت DNS و میزبانی تجهیزات؛ زیرساخت مورد نیاز پروژه شما در آویاتو.')
 
 @php
     $activePage = 'home';
@@ -9,18 +9,13 @@
     $marketingBundles = ($bundles ?? collect())->values();
     $recommendedIndex = $marketingBundles->count() > 1 ? 1 : null;
 
-    $planMeta = [
-        ['label' => 'شروع سبک', 'use' => 'برای سایت، وردپرس و پروژه های کوچک'],
-        ['label' => 'انتخاب پیشنهادی', 'use' => 'برای فروشگاه، اپلیکیشن و سرویس های در حال رشد'],
-        ['label' => 'منابع بیشتر', 'use' => 'برای دیتابیس، پردازش و سایت های پربازدید'],
-        ['label' => 'برای تیم ها', 'use' => 'برای پروژه هایی که به ظرفیت بالاتری نیاز دارند'],
-    ];
-
-    $currentCustomers = [
+    $currentCustomers = collect([
         ['name' => 'حسابرو', 'url' => 'https://hesabro.com', 'logo' => 'assets/images/customers/hesabro-logo.png', 'width' => 139, 'height' => 34],
         ['name' => 'کارخانه نوآوری کرمان', 'url' => 'https://kermanif.ir', 'logo' => 'assets/images/customers/kermanif-logo.png', 'width' => 82, 'height' => 82],
         ['name' => 'مبیت', 'url' => 'https://mobit.ir', 'logo' => 'assets/images/customers/mobit-logo.svg', 'width' => 918, 'height' => 256],
-    ];
+        ['name' => 'آوینوکس', 'url' => 'https://avinox.ir/', 'logo' => 'assets/images/customers/avinox-logo.svg', 'width' => 1255, 'height' => 159],
+        ['name' => 'پی‌بای', 'url' => 'https://paybuy.ir/', 'logo' => 'assets/images/customers/paybuy-logo.svg', 'width' => 32, 'height' => 32],
+    ])->random(3)->sortKeys()->values();
 
     $differenceRows = [
         ['title' => 'خرید بدون ابهام', 'body' => 'قبل از پرداخت می دانید چه منابعی می گیرید، هزینه چقدر است و سفارش از کجا پیگیری می شود.'],
@@ -28,39 +23,12 @@
         ['title' => 'پشتیبانی قابل فهم', 'body' => 'برای انتخاب پلن، شروع کار و رفع سوال های رایج، با تیم فنی در ارتباط هستید.'],
     ];
 
-    $useCases = [
-        ['title' => 'سایت و وردپرس', 'body' => 'سایت یا فروشگاه وردپرسی خود را با منابع مشخص میزبانی کنید و پلنی متناسب با بازدیدتان انتخاب کنید.', 'icon' => 'global-edit.svg'],
-        ['title' => 'اپلیکیشن و API', 'body' => 'بک‌اند و API را با IP اختصاصی اجرا کنید و تنظیمات سرور را متناسب با نیاز اپلیکیشن کنترل کنید.', 'icon' => 'bag-happy.svg'],
-        ['title' => 'دیتابیس و پردازش', 'body' => 'پایگاه داده و کارهای پردازشی را روی سروری با دیسک NVMe و منابع مشخص اجرا کنید.', 'icon' => 'data-2.svg'],
-        ['title' => 'تست و توسعه', 'body' => 'محیطی جدا برای آزمایش نسخه‌های جدید و بررسی تغییرات پیش از انتشار بسازید.', 'icon' => 'cloud-connection.svg'],
-    ];
-
-    $steps = [
-        ['number' => '01', 'title' => 'پلن را انتخاب کنید', 'body' => 'منابع، قیمت و تعداد IP را می بینید و پلن مناسب پروژه را انتخاب می کنید.', 'icon' => 'flash-circle.svg'],
-        ['number' => '02', 'title' => 'حساب را شارژ کنید', 'body' => 'در پنل مشتری ثبت نام می کنید، کیف پول را شارژ می کنید و سفارش را ثبت می کنید.', 'icon' => 'wallet-add.svg'],
-        ['number' => '03', 'title' => 'اطلاعات اتصال را بگیرید', 'body' => 'بعد از آماده شدن ماشین مجازی، IP و مشخصات اتصال در پنل نمایش داده می شود.', 'icon' => 'edit.svg'],
-    ];
-
-    $operations = [
-        ['title' => 'دیسک NVMe', 'body' => 'برای بارگذاری سریع تر سایت، فروشگاه، دیتابیس و ابزارهای کاری.'],
-        ['title' => 'IP اختصاصی', 'body' => 'برای دامنه، SSL، اتصال مستقیم و جدا نگه داشتن سرویس ها.'],
-        ['title' => 'بکاپ و فایروال', 'body' => 'برای کاهش ریسک و کنترل دسترسی های مهم ماشین مجازی.'],
-        ['title' => 'پشتیبانی فارسی', 'body' => 'برای انتخاب پلن، شروع کار و پاسخ به سوال های فنی رایج.'],
-    ];
-
-    $faqs = [
-        ['q' => 'بعد از خرید، ماشین مجازی چه زمانی آماده می شود؟', 'a' => 'بعد از ثبت سفارش و پرداخت، ساخت ماشین مجازی به صورت خودکار شروع می شود. وقتی سرور آماده شد، IP و اطلاعات اتصال را در پنل مشتری می بینید.'],
-        ['q' => 'برای سایت یا اپلیکیشنم کدام پلن بهتر است؟', 'a' => 'اگر تازه شروع کرده اید، معمولا یک پلن کوچک تر کافی است. برای فروشگاه، سایت پربازدید یا اپلیکیشنی که کاربر زیادی دارد، بهتر است پلنی انتخاب کنید که کمی فضای رشد هم داشته باشد.'],
-        ['q' => 'آیا دسترسی کامل به سرور دارم؟', 'a' => 'بله. سرور با دسترسی مدیریتی تحویل داده می شود و می توانید وب سرور، دیتابیس، Docker و ابزارهای مورد نیاز خودتان را نصب کنید.'],
-        ['q' => 'هزینه ها چطور پرداخت می شوند؟', 'a' => 'قیمت هر پلن قبل از سفارش مشخص است و پرداخت از کیف پول مشتری انجام می شود. قبل از خرید، منابع و هزینه ماهانه را می بینید.'],
-        ['q' => 'اگر بعدا منابع بیشتری لازم داشته باشم چه کنم؟', 'a' => 'لازم نیست از اول بزرگ ترین پلن را بخرید. وقتی پروژه بزرگ تر شد، می توانید پلن مناسب تری انتخاب کنید یا برای انتخاب مسیر بهتر از پشتیبانی کمک بگیرید.'],
-        ['q' => 'امنیت و نگهداری سرور با چه کسی است؟', 'a' => 'ما امکانات زیرساختی مثل IP اختصاصی، فایروال و بکاپ را فراهم می کنیم. نصب نرم افزارها، به روزرسانی سیستم عامل و نگهداری اپلیکیشن داخل سرور بر عهده شماست، مگر اینکه سرویس مدیریتی جداگانه داشته باشید.'],
-    ];
 @endphp
 
 @section('body_class', 'figma-marketing landing-page bg-white')
 
 @push('preloads')
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preload" as="image" type="image/webp" href="{{ Vite::asset('resources/images/landing-cloud-hero-mobile.webp') }}" media="(max-width: 767px)" fetchpriority="high">
     <link rel="preload" as="image" type="image/webp" href="{{ Vite::asset('resources/images/landing-cloud-hero.webp') }}" media="(min-width: 768px)" fetchpriority="high">
 @endpush
@@ -80,11 +48,11 @@
                     زیرساختی پایدار، برای <span class="text-[#0069FF]">اوجی</span> بی‌پایان
                 </h1>
                 <p class="mx-auto mt-4 max-w-2xl text-lg leading-8 text-[#000C1C] md:mx-0 md:mt-6 md:max-w-none md:text-[24px] md:leading-[44px]">
-                  از اولین راه‌اندازی تا اوج رشد، سرورهایی پایدار برای سرویس‌های همیشه‌روشن.
+                  از اولین راه‌اندازی تا اوج رشد، زیرساختی پایدار برای سرویس‌های همیشه‌روشن.
                 </p>
                 <div class="mt-4 flex flex-col justify-center gap-3 sm:flex-row md:mt-6 md:justify-start md:gap-4">
-                    <a href="#plans" class="inline-flex h-12 items-center justify-center rounded-lg bg-[#0069FF] px-8 text-base font-bold text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
-                        مشاهده پلن‌ها
+                    <a href="#services" class="inline-flex h-12 items-center justify-center rounded-lg bg-[#0069FF] px-8 text-base font-bold text-white shadow-lg shadow-[#0069FF]/20 transition hover:bg-[#0050D0]">
+                        انتخاب سرویس
                     </a>
                     <a href="{{ route('contact') }}" class="inline-flex h-12 items-center justify-center rounded-lg border border-[#0069FF] bg-white/70 px-8 text-base font-bold text-[#0069FF] backdrop-blur transition hover:bg-white">
                         مشاوره رایگان
@@ -95,9 +63,10 @@
     </section>
     
 
+
     <section class="landing-customers bg-white px-4 py-8 md:px-8 md:py-0 lg:mt-[18px] lg:px-10">
         <div class="mx-auto max-w-[1320px]">
-            <div class="grid gap-6 lg:grid-cols-[424px_852px] lg:items-start lg:gap-11">
+            <div class="grid gap-6 lg:grid-cols-[1fr_2fr] lg:items-start lg:gap-11">
                 <div class="text-center lg:text-right">
                     <h2 class="text-2xl font-bold leading-9 text-[#000C1C]">
                         همراهان آویاتو
@@ -122,11 +91,42 @@
         </div>
     </section>
 
-    <section id="plans" class="landing-plans bg-white px-4 py-14 md:px-8 md:py-20 lg:mt-[150px] lg:px-10">
+    <section id="services" class="scroll-mt-28 bg-white px-4 py-14 md:px-8 lg:px-10">
+        <div class="mx-auto max-w-[1320px]">
+            <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <p class="text-sm font-bold text-[#0069FF]">سرویس‌های آویاتو</p>
+                    <h2 class="mt-3 text-2xl font-bold leading-10 text-[#001739] md:text-3xl">قدم بعدی پروژه‌تان چیست؟</h2>
+                </div>
+                <a href="{{ route('solutions') }}" class="text-sm font-bold text-[#0069FF] hover:underline">همه راهکارها ←</a>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                @foreach ([
+                    ['cloud', 'اجرای سایت و اپلیکیشن با منابع مشخص و دسترسی مدیریتی.', 'مشاهده پلن‌ها', 'pricing', 'cpu.svg'],
+                    ['domains', 'نام پروژه‌تان را پیدا کنید و سفارش ثبت دامنه را پیگیری کنید.', 'جستجوی دامنه', 'customer.domains.index', 'global-edit.svg'],
+                    ['dns', 'رکوردهای دامنه، زیردامنه و ایمیل را از پنل مدیریت کنید.', 'مدیریت رکوردها', 'customer.cloud-dns.index', 'cloud-connection.svg'],
+                    ['colocation', 'فضای رک، برق و شبکه متناسب با تجهیزات خود را بررسی کنید.', 'مشاهده شرایط میزبانی', 'solutions.colocation', 'data-2.svg'],
+                ] as [$key, $body, $action, $destination, $icon])
+                    <article class="flex flex-col rounded-2xl border border-[#C6DEFF] bg-[#FAFCFF] p-6 transition hover:border-[#0069FF]">
+                        <div class="flex items-center justify-between gap-3">
+                            <img src="{{ asset('assets/icons/figma/'.$icon) }}" alt="" aria-hidden="true" class="size-9">
+                            <span class="text-xs text-slate-500" dir="ltr">{{ config('solutions.'.$key.'.eyebrow') }}</span>
+                        </div>
+                        <h3 class="mt-5 text-xl font-bold text-[#001739]">{{ config('solutions.'.$key.'.label') }}</h3>
+                        <p class="mb-6 mt-3 text-sm leading-8 text-[#002355]">{{ $body }}</p>
+                        <a href="{{ route($destination) }}" class="mt-auto text-sm font-bold text-[#0069FF] hover:underline">{{ $action }} ←</a>
+                    </article>
+                @endforeach
+            </div>
+            <p class="mt-4 text-xs leading-7 text-slate-500">جستجوی دامنه و مدیریت رکوردها در پنل مشتری انجام می‌شود.</p>
+        </div>
+    </section>
+
+    <section id="plans" class="landing-plans bg-white px-4 py-14 md:px-8 md:py-20 lg:mt-16 lg:px-10">
         <div class="mx-auto grid max-w-[1320px] gap-8 lg:grid-cols-[449px_minmax(0,861px)] lg:items-start lg:gap-[10px]">
             <div class="text-right lg:pt-10">
                 <a href="{{ route('pricing') }}" class="inline-flex flex-row-reverse items-center gap-2 text-[30px] font-bold leading-[44px] text-[#0046AA] md:text-[32px]">
-                    <span aria-hidden="true" class="text-2xl">←</span><span>با یک پلن شروع کنید</span>
+                    <span aria-hidden="true" class="text-2xl">←</span><span>سرور ابری متناسب با پروژه شما</span>
                 </a>
                 <p class="mt-4 text-lg leading-8 text-[#000C1C] md:text-xl">منابع، قیمت و مدت استفاده را شفاف می‌بینید تا با خیال راحت، پلنی متناسب با نیاز پروژه‌تان انتخاب کنید.</p>
                 <a href="{{ route('pricing') }}" class="mt-5 inline-flex h-11 items-center justify-center rounded-lg border border-[#0069FF] px-6 text-base text-[#0069FF] transition hover:bg-[#EEF5FF]">مشاهده همه پلن‌ها</a>
@@ -158,23 +158,45 @@
         </div>
     </section>
 
-    <section class="landing-usage mt-14 bg-white px-4 lg:mt-[150px] md:px-8 lg:px-10">
-        <div class="mx-auto grid max-w-[1320px] gap-8 lg:grid-cols-[422px_minmax(0,872px)] lg:items-start lg:gap-[26px]">
-            <div class="text-right lg:pt-1">
-                <h2 class="text-[28px] font-bold leading-[42px] text-[#001739]">کاربردهای رایج</h2>
-                <p class="mt-1 text-[20px] leading-9 text-[#000C1C]">برای راه‌اندازی انواع سرویس‌ها، منابع آماده و پایدار آویاتو را در اختیار دارید.</p>
-                <a href="{{ route('solutions') }}" class="mt-4 inline-flex h-11 items-center justify-center rounded-lg border border-[#0069FF] px-6 text-base text-[#0069FF] transition hover:bg-[#EEF5FF]">راهکارهای ما</a>
-            </div>
 
-            <div class="grid gap-2 sm:grid-cols-2">
-                @foreach ($useCases as $case)
-                    <article dir="rtl" class="flex min-h-[162px] flex-col items-start justify-center rounded-lg border border-[#C6DEFF] bg-[#FAFCFF] px-6 py-3 text-right {{ $loop->last ? 'border-[#003A8E] bg-white' : '' }}">
-                        <img loading="lazy" decoding="async" src="{{ asset('assets/icons/figma/'.$case['icon']) }}" alt="" class="size-[46px]" aria-hidden="true">
-                        <h3 class="mt-1 text-xl font-bold leading-8 text-[#001739]">{{ $case['title'] }}</h3>
-                        <p class="mt-1 text-base leading-7 text-[#002355]">{{ $case['body'] }}</p>
-                    </article>
-                @endforeach
-            </div>
+    <section class="mt-14 bg-[#F5F8FD] px-4 py-14 md:px-8 lg:px-10">
+        <div class="mx-auto grid max-w-[1320px] gap-6 lg:grid-cols-2">
+            <article class="rounded-3xl border border-[#C6DEFF] bg-white p-6 md:p-9">
+                <p class="text-sm font-bold text-[#0069FF]">ثبت دامنه</p>
+                <h2 class="mt-4 text-2xl font-bold leading-10 text-[#001739] md:text-3xl">نام پروژه بعدی‌تان را پیدا کنید.</h2>
+                <p class="mt-4 leading-8 text-[#002355]">نام مورد نظرتان را جستجو کنید و در صورت آزاد بودن، ثبت سفارش را با مشاهده قیمت در پنل مشتری ادامه دهید.</p>
+                <div class="mt-7" x-data="domainSearch({ publicSearch: true, url: @js(route('marketing.domains.check', [], false)) })">
+                    <form x-cloak @submit.prevent="search()" :aria-busy="loading">
+                        <label for="homepage-domain" class="block text-sm font-bold text-slate-700">نام دامنه</label>
+                        <input id="homepage-domain" x-ref="domain" x-model="domain" @input="result = null; error = ''" type="text" maxlength="253" required dir="ltr" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="example.com" :readonly="loading" aria-describedby="homepage-domain-help" class="mt-3 w-full rounded-xl border border-slate-300 bg-slate-50 p-4 text-left text-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                        <p id="homepage-domain-help" class="mt-2 text-xs leading-7 text-slate-500">نام دامنه را با پسوند وارد کنید. در صورت آزاد بودن و امکان خرید، به پنل مشتری منتقل می‌شوید.</p>
+                        <button type="submit" :disabled="loading || redirecting || cooldown > 0" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-bold text-white hover:bg-[#0050D0] disabled:cursor-wait disabled:opacity-60" x-text="redirecting ? 'در حال انتقال به پنل…' : (loading ? 'در حال بررسی…' : (cooldown ? 'جستجوی دوباره تا ' + cooldown + ' ثانیه دیگر' : 'جستجوی دامنه'))">جستجوی دامنه</button>
+                    </form>
+                    <div aria-live="polite" aria-atomic="true" class="mt-4 text-sm leading-8">
+                        <p x-show="redirecting" x-cloak class="text-slate-600">دامنه آماده ادامه سفارش است؛ در حال انتقال به پنل مشتری…</p>
+                        <p x-show="loading && !redirecting" x-cloak class="text-slate-600">در حال بررسی؛ این کار ممکن است چند ثانیه طول بکشد.</p>
+                        <p x-show="error" x-cloak x-text="error" class="text-red-700" role="alert"></p>
+                        <div x-show="result && !loading && !redirecting" x-cloak x-ref="result" tabindex="-1" class="rounded-xl bg-slate-50 p-4">
+                            <p class="break-all font-bold" dir="ltr" x-text="result?.domain"></p>
+                            <p x-text="!result?.available ? 'این دامنه در حال حاضر آزاد نیست؛ نام دیگری امتحان کنید.' : (result?.premium === true ? 'این دامنه ویژه است؛ برای بررسی قیمت با پشتیبانی تماس بگیرید.' : (result?.premium === null ? 'قیمت عادی یا ویژه این نام هنوز قابل تأیید نیست؛ کمی بعد دوباره بررسی کنید.' : 'دامنه آزاد است؛ در حال حاضر خرید آنلاین این پسوند فعال نیست.'))"></p>
+                            <p x-show="result?.preliminary" class="mt-2 text-xs text-slate-500">نتیجه ایرنیک اولیه است؛ ثبت نهایی به تأیید ایرنیک بستگی دارد.</p>
+                            <p class="mt-2 text-xs text-slate-500">جستجو نام دامنه را رزرو نمی‌کند.</p>
+                            <a x-show="result?.available" href="{{ route('contact') }}" class="font-bold text-[#0069FF]">تماس با پشتیبانی ←</a>
+                        </div>
+                    </div>
+                    <noscript><p class="mt-4 text-sm leading-8">برای جستجو در این صفحه جاوااسکریپت را فعال کنید، یا <a href="{{ route('customer.domains.index') }}" class="text-[#0069FF] underline">از پنل مشتری جستجو کنید</a>.</p></noscript>
+                </div>
+            </article>
+            <article class="rounded-3xl bg-[#07172D] p-6 text-white md:p-9">
+                <p class="text-sm font-bold text-blue-300">مدیریت DNS</p>
+                <h2 class="mt-4 text-2xl font-bold leading-10 md:text-3xl">دامنه‌تان را به سرویس‌ها متصل کنید.</h2>
+                <p class="mt-4 leading-8 text-slate-300">وب‌سایت، ایمیل و زیردامنه‌ها؛ رکوردهای هر سرویس را در یک پنل مدیریت کنید و وضعیت اتصال دامنه را ببینید.</p>
+                <div class="my-7 rounded-xl border border-white/15 bg-white/5 p-4">
+                    <p class="mb-3 text-xs text-slate-400">نمونه رکورد DNS</p>
+                    <div class="flex flex-wrap items-center gap-3 font-mono text-sm text-blue-100" dir="ltr"><span>app.example.com</span><span class="rounded bg-blue-400/15 px-2 py-1">A</span><span aria-hidden="true">→</span><span>192.0.2.10</span></div>
+                </div>
+                <a href="{{ route('customer.cloud-dns.index') }}" class="inline-flex rounded-lg bg-white px-5 py-3 text-sm font-bold text-[#07172D] hover:bg-blue-50">مدیریت رکوردها ←</a>
+            </article>
         </div>
     </section>
 
@@ -195,42 +217,15 @@
         </div>
     </section>
 
-    <section class="landing-before-payment mt-14 bg-white px-4 lg:mt-[150px] md:px-8 lg:px-10">
-        <div class="mx-auto max-w-[1320px] text-right">
-            <h2 class="text-[26px] font-bold leading-10 text-[#001739] md:text-[28px]">قبل از پرداخت، همه چیز باید شفاف باشد</h2>
-            <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0">
-                @foreach ($operations as $item)
-                    <article class="px-3 text-center">
-                        <h3 class="border-b border-[#003A8E] pb-2 text-xl font-bold leading-8 text-[#001739]">{{ $item['title'] }}</h3>
-                        <p class="mt-2 text-base leading-7 text-[#001739]">{{ $item['body'] }}</p>
-                    </article>
-                @endforeach
-            </div>
-        </div>
-    </section>
-
-    <section class="landing-start mt-14 bg-white px-4 lg:mt-[150px] md:px-8 lg:px-10">
-        <div class="mx-auto flex min-h-[376px] max-w-[1320px] flex-col justify-between gap-6 rounded-[28px] bg-[#003A8E] p-5 text-right text-[#FAFCFF] shadow-lg shadow-[#003A8E]/10 md:p-7">
-            <div>
-                <h2 class="text-2xl font-bold leading-9">مسیر شروع شما از اینجاست:</h2>
-                <div class="mt-3 grid gap-2">
-                    @foreach ($steps as $step)
-                    <div dir="rtl" class="flex items-center gap-2 text-right text-base leading-7 md:text-lg">
-                        <img loading="lazy" decoding="async" src="{{ asset('assets/icons/figma/'.$step['icon']) }}" alt="" aria-hidden="true" width="24" height="24" class="shrink-0">
-                        <p class="min-w-0 flex-1"><strong class="font-bold">{{ $step['title'] }}:</strong> {{ $step['body'] }}</p>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            <div class="flex flex-col gap-4 border-t border-[#AACDFF]/70 pt-4 md:flex-row md:items-center md:justify-between">
-                <p class="text-base font-bold leading-7 md:text-lg">برای انتخاب پلن مناسب یا شروع سفارش، تیم آویاتو همراه شماست.</p>
-                <a href="{{ route('contact') }}" class="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-[#E3EEFF] px-8 text-base text-[#0069FF] transition hover:bg-white">مشاوره رایگان</a>
-            </div>
+    <section class="mt-14 px-4 md:px-8 lg:px-10">
+        <div class="mx-auto flex max-w-[1320px] flex-col items-start justify-between gap-6 rounded-3xl bg-[#003A8E] p-7 text-white md:flex-row md:items-center md:p-10">
+            <div><h2 class="text-2xl font-bold leading-10">برای قدم بعدی، کنار شما هستیم.</h2><p class="mt-3 leading-8 text-blue-100">انتخاب سرور، ثبت دامنه یا میزبانی تجهیزات؛ نیاز پروژه‌تان را با ما مطرح کنید.</p></div>
+            <a href="{{ route('contact') }}" class="shrink-0 rounded-lg bg-white px-6 py-3 text-sm font-bold text-[#0069FF] hover:bg-blue-50">مشاوره رایگان ←</a>
         </div>
     </section>
 
     @if (! empty($latestPosts))
-    <section class="landing-blog mt-14 bg-white px-4 lg:mt-[150px] md:px-8 lg:px-10">
+    <section class="landing-blog mt-14 bg-white px-4 lg:mt-16 md:px-8 lg:px-10">
         <div class="mx-auto max-w-[1320px]">
             <div class="flex items-end justify-between gap-5">
                 <div class="text-right">

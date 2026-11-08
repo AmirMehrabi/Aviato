@@ -3,9 +3,11 @@
 
 @source '../views/layouts/marketing.blade.php';
 @source '../views/home.blade.php';
+@source '../views/customer/domains/access-needed.blade.php';
 @source '../views/pricing.blade.php';
 @source '../views/contact.blade.php';
 @source '../views/solutions.blade.php';
+@source '../views/solutions-service.blade.php';
 @source '../views/solutions-colocation.blade.php';
 @source '../views/changelog.blade.php';
 @source '../views/incidents';

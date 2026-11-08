@@ -7,7 +7,7 @@
 @php($activeNav = 'domains')
 
 @section('content')
-    <div class="mx-auto max-w-4xl space-y-6" x-data="domainSearch({ workspace: @js($activeProject->uuid), url: @js(route('customer.domains.check', [], false)), domain: @js(old('domain', request('domain', ''))), result: @js($result), error: @js(($lookupError ?? '') ?: $errors->first('domain')) })">
+    <div class="mx-auto max-w-4xl space-y-6" x-data="domainSearch({ workspace: @js($activeProject->uuid), autoSearch: @js(request('from') === 'homepage' && request()->filled('domain') && $canSearch), url: @js(route('customer.domains.check', [], false)), domain: @js(old('domain', request('domain', ''))), result: @js($result), error: @js(($lookupError ?? '') ?: $errors->first('domain')) })">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-slate-500">فضای کاری <strong class="text-slate-800">{{ $activeProject->name }}</strong></p>
             @if($canSearch && !$showSearch)<a href="{{ route('customer.domains.index', ['register' => 1], false) }}" class="domain-primary">ثبت دامنه جدید</a>@endif

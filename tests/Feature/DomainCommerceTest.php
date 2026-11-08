@@ -19,6 +19,8 @@ use App\Services\Domains\DomainManagementService;
 use App\Services\Domains\DomainOrderService;
 use App\Services\Domains\DomainPricingService;
 use App\Services\Domains\DomainProvider;
+use App\Services\Domains\DomainProviderBudget;
+use App\Services\Domains\DomainProviderBusy;
 use App\Services\HesabroAccountingService;
 use App\Services\Payments\PaymentGatewayInterface;
 use App\Services\Payments\PaymentGatewayManager;
@@ -45,6 +47,8 @@ class DomainCommerceTest extends TestCase
         parent::setUp();
         $this->travelTo(now()->setDate(2026, 10, 25)->setTime(10, 0));
         Cache::flush();
+        // Provider calls are faked and time is frozen; burst behavior has separate coverage.
+        config(['domain-search.reseller_world.burst' => 100, 'domain-search.irpower.burst' => 100]);
         Queue::fake();
         Http::preventStrayRequests();
         AppSetting::setValue(AppSetting::DOMAIN_RESELLER_TOKEN, 'test-secret', 'string', 'domains');
@@ -58,6 +62,43 @@ class DomainCommerceTest extends TestCase
             DomainProduct::create(['extension' => 'com', 'operation' => $operation, 'period' => 1, 'enabled' => true, 'supplier_price' => 8000000, 'retail_price' => 10000000, 'synced_at' => now()]);
         }
         $this->fakeProvider();
+    }
+
+    public function test_paid_order_waits_for_provider_capacity_then_completes_without_another_charge(): void
+    {
+        $order = $this->order(true);
+        app(DomainOrderService::class)->pay($order, null);
+        config(['domain-search.reseller_world.per_minute' => 1]);
+        app(DomainFulfillmentService::class)->process($order->fresh());
+        $this->assertSame('funded', $order->fresh()->status);
+        $this->assertSame(0, $order->operations()->count());
+
+        config(['domain-search.reseller_world.per_minute' => 30]);
+        $this->travel(61)->seconds();
+        app(DomainFulfillmentService::class)->process($order->fresh());
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame(1, $order->operations()->where('kind', 'register')->count());
+    }
+
+    public function test_local_gate_before_submission_does_not_leave_an_uncertain_operation(): void
+    {
+        $order = $this->order(true);
+        app(DomainOrderService::class)->pay($order, null);
+        $calls = 0;
+        $budget = \Mockery::mock(DomainProviderBudget::class)->makePartial();
+        $budget->shouldReceive('reserve')->andReturnUsing(function () use (&$calls): void {
+            if (++$calls === 2) {
+                throw new DomainProviderBusy(30);
+            }
+        });
+        $this->app->instance(DomainProviderBudget::class, $budget);
+        app(DomainFulfillmentService::class)->process($order->fresh());
+        $this->assertSame('processing', $order->fresh()->status);
+        $this->assertSame(0, $order->operations()->count());
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/contact/create'));
+        $this->app->forgetInstance(DomainProviderBudget::class);
+        app(DomainFulfillmentService::class)->process($order->fresh());
+        $this->assertSame('completed', $order->fresh()->status);
     }
 
     public function test_commerce_defaults_to_enabled_extensions_and_searches_the_full_catalog(): void

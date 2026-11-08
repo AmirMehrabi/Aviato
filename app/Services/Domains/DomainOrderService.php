@@ -112,7 +112,7 @@ class DomainOrderService
             }
             app(IrpowerProvider::class)->nameserverPayload($order->nameservers ?? []);
             if ($order->operation === 'register') {
-                $check = app(DomainAvailabilityService::class)->check($order->domain);
+                $check = app(DomainAvailabilityService::class)->check($order->domain, false);
                 if (! $check['available'] || $check['premium'] !== false) {
                     throw ValidationException::withMessages(['payment' => 'آزاد بودن یا قیمت عادی این دامنه قابل تأیید نیست. نام دیگری انتخاب کنید یا با پشتیبانی تماس بگیرید.']);
                 }

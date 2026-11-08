@@ -15,6 +15,8 @@ class DomainProvider
         if ($token === '') {
             throw new RuntimeException('Domain provider not configured.');
         }
+        $budget = app(DomainProviderBudget::class);
+        $budget->reserve('reseller_world');
         // Never retry mutations: the provider does not document idempotency keys.
         try {
             $response = Http::baseUrl(DomainAvailabilityService::BASE_URL)->withToken($token)
@@ -23,6 +25,7 @@ class DomainProvider
         } catch (ConnectionException) {
             throw new RuntimeException('Domain provider connection could not be confirmed.');
         }
+        $budget->observe('reseller_world', $response);
         if (! $response->successful() || ! is_array($response->json())) {
             throw new RuntimeException('Domain provider response could not be confirmed.');
         }

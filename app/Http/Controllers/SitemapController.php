@@ -20,10 +20,12 @@ class SitemapController extends Controller
             ->values()
             ->all();
 
-        $entries[] = [
-            'loc' => route('solutions.colocation'),
-            'lastmod' => null,
-        ];
+        foreach (config('solutions') as $solution) {
+            $entries[] = [
+                'loc' => route($solution['route']),
+                'lastmod' => null,
+            ];
+        }
 
         $entries[] = [
             'loc' => route('incidents.index'),

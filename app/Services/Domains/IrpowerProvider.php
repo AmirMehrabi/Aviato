@@ -19,6 +19,8 @@ class IrpowerProvider
         if ($key === '') {
             throw new RuntimeException('IRPOWER is not configured.');
         }
+        $budget = app(DomainProviderBudget::class);
+        $budget->reserve('irpower');
         // No retries: a lost response never gives permission to repeat a purchase.
         try {
             $response = Http::withHeaders(['X-Api-Key' => $key])->acceptJson()->asJson()
@@ -27,6 +29,7 @@ class IrpowerProvider
         } catch (ConnectionException) {
             throw new RuntimeException('IRPOWER connection could not be confirmed.');
         }
+        $budget->observe('irpower', $response);
         // Some provider responses prepend a UTF-8 BOM to otherwise valid JSON.
         $body = $response->body();
         $data = json_decode(str_starts_with($body, "\xEF\xBB\xBF") ? substr($body, 3) : $body, true);

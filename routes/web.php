@@ -77,6 +77,7 @@ use App\Http\Controllers\Customer\VmUpgradeController;
 use App\Http\Controllers\Customer\WalletController as CustomerWalletController;
 use App\Http\Controllers\ElecompController;
 use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\Marketing\DomainSearchController;
 use App\Http\Controllers\S3GatewayController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StatusController;
@@ -664,7 +665,13 @@ Route::get('/', function (WalletService $wallets, MarketingPosts $posts) {
         'wallets' => $wallets,
         'latestPosts' => $posts->latest(),
     ]);
-})->name('home');
+})->middleware('no-store')->name('home');
+
+Route::post('/domains/check', DomainSearchController::class)
+    ->middleware(['no-store', 'throttle:public-domain-search'])
+    ->name('marketing.domains.check');
+
+Route::redirect('/preview/home', '/')->name('preview.home');
 
 Route::get('/e', [ElecompController::class, 'index'])->middleware('no-store')->name('elecomp');
 Route::post('/e/claim', [ElecompController::class, 'claim'])->middleware('no-store')->name('elecomp.claim');
@@ -692,6 +699,12 @@ Route::get('/solutions', function (WalletService $wallets) {
         'wallets' => $wallets,
     ]);
 })->name('solutions');
+
+foreach (['cloud', 'domains', 'dns'] as $service) {
+    Route::get('/solutions/'.$service, fn () => view('solutions-service', [
+        'service' => config('solutions.'.$service),
+    ]))->name('solutions.'.$service);
+}
 
 Route::get('/solutions/co-location', fn () => view('solutions-colocation'))
     ->name('solutions.colocation');
