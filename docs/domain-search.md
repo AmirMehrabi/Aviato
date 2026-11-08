@@ -2,7 +2,9 @@
 
 The approved homepage includes the search form at `/`. The old `/preview/home`
 URL redirects to `/`. Its CSRF-protected POST endpoint is `/domains/check`. A successful, purchasable search returns
-a portal URL with `domain`, `register=1` and `from=homepage`. Authentication preserves
+formatted retail prices and a portal URL with `domain`, `register=1` and
+`from=homepage`. Results stay on the homepage until the visitor clicks the purchase
+button. Editing the input clears the previous result and purchase link. Authentication preserves
 that GET destination, and the portal automatically checks the selected domain once.
 The user still selects a registration period and confirms the existing checkout;
 searching never creates an order or takes payment.

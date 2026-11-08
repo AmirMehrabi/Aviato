@@ -4,7 +4,7 @@ export function domainSearch(config) {
         result: config.result || null,
         error: config.error || '',
         loading: false,
-        redirecting: false,
+        continueUrl: null,
         cooldown: 0,
         cooldownTimer: null,
         init() {
@@ -22,13 +22,17 @@ export function domainSearch(config) {
                 if (!this.cooldown) clearInterval(this.cooldownTimer);
             }, 1000);
         },
+        clearResult() {
+            this.result = null;
+            this.continueUrl = null;
+        },
         get alternatives() {
             if (!this.result) return [];
             const label = this.result.domain.split('.')[0];
             return ['com', 'net', 'org', 'online'].map((tld) => `${label}.${tld}`).filter((name) => name !== this.result.domain);
         },
         async search(name = null) {
-            if (this.loading || this.redirecting) return;
+            if (this.loading) return;
             if (this.cooldown) {
                 this.error = `لطفاً ${this.cooldown} ثانیه صبر کنید و دوباره جستجو کنید.`;
                 return;
@@ -41,7 +45,7 @@ export function domainSearch(config) {
             }
             this.loading = true;
             this.error = '';
-            this.result = null;
+            this.clearResult();
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 18000);
             try {
@@ -76,14 +80,9 @@ export function domainSearch(config) {
                 if (typeof data.data?.available !== 'boolean') throw new Error('Invalid response');
                 this.result = data.data;
                 this.domain = this.result.domain;
-                if (config.publicSearch && data.continue_url) {
-                    this.redirecting = true;
-                    window.location.assign(data.continue_url);
-                    return;
-                }
+                this.continueUrl = config.publicSearch ? (data.continue_url || null) : null;
                 this.$nextTick(() => this.$refs.result?.focus());
             } catch {
-                this.redirecting = false;
                 this.error = 'ارتباط برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.';
             } finally {
                 clearTimeout(timeout);

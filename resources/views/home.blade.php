@@ -168,20 +168,25 @@
                 <div class="mt-7" x-data="domainSearch({ publicSearch: true, url: @js(route('marketing.domains.check', [], false)) })">
                     <form x-cloak @submit.prevent="search()" :aria-busy="loading">
                         <label for="homepage-domain" class="block text-sm font-bold text-slate-700">نام دامنه</label>
-                        <input id="homepage-domain" x-ref="domain" x-model="domain" @input="result = null; error = ''" type="text" maxlength="253" required dir="ltr" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="example.com" :readonly="loading" aria-describedby="homepage-domain-help" class="mt-3 w-full rounded-xl border border-slate-300 bg-slate-50 p-4 text-left text-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
-                        <p id="homepage-domain-help" class="mt-2 text-xs leading-7 text-slate-500">نام دامنه را با پسوند وارد کنید. در صورت آزاد بودن و امکان خرید، به پنل مشتری منتقل می‌شوید.</p>
-                        <button type="submit" :disabled="loading || redirecting || cooldown > 0" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-bold text-white hover:bg-[#0050D0] disabled:cursor-wait disabled:opacity-60" x-text="redirecting ? 'در حال انتقال به پنل…' : (loading ? 'در حال بررسی…' : (cooldown ? 'جستجوی دوباره تا ' + cooldown + ' ثانیه دیگر' : 'جستجوی دامنه'))">جستجوی دامنه</button>
+                        <input id="homepage-domain" x-ref="domain" x-model="domain" @input="clearResult(); error = ''" type="text" maxlength="253" required dir="ltr" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="example.com" :readonly="loading" aria-describedby="homepage-domain-help" class="mt-3 w-full rounded-xl border border-slate-300 bg-slate-50 p-4 text-left text-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                        <p id="homepage-domain-help" class="mt-2 text-xs leading-7 text-slate-500">نام دامنه را با پسوند وارد کنید. در صورت آزاد بودن، قیمت را ببینید و برای ادامه روی خرید دامنه بزنید.</p>
+                        <button type="submit" :disabled="loading || cooldown > 0" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-bold text-white hover:bg-[#0050D0] disabled:cursor-wait disabled:opacity-60" x-text="loading ? 'در حال بررسی…' : (cooldown ? 'جستجوی دوباره تا ' + cooldown + ' ثانیه دیگر' : 'جستجوی دامنه')">جستجوی دامنه</button>
                     </form>
                     <div aria-live="polite" aria-atomic="true" class="mt-4 text-sm leading-8">
-                        <p x-show="redirecting" x-cloak class="text-slate-600">دامنه آماده ادامه سفارش است؛ در حال انتقال به پنل مشتری…</p>
-                        <p x-show="loading && !redirecting" x-cloak class="text-slate-600">در حال بررسی؛ این کار ممکن است چند ثانیه طول بکشد.</p>
+                        <p x-show="loading" x-cloak class="text-slate-600">در حال بررسی؛ این کار ممکن است چند ثانیه طول بکشد.</p>
                         <p x-show="error" x-cloak x-text="error" class="text-red-700" role="alert"></p>
-                        <div x-show="result && !loading && !redirecting" x-cloak x-ref="result" tabindex="-1" class="rounded-xl bg-slate-50 p-4">
+                        <div x-show="result && !loading" x-cloak x-ref="result" tabindex="-1" class="rounded-xl bg-slate-50 p-4">
                             <p class="break-all font-bold" dir="ltr" x-text="result?.domain"></p>
-                            <p x-text="!result?.available ? 'این دامنه در حال حاضر آزاد نیست؛ نام دیگری امتحان کنید.' : (result?.premium === true ? 'این دامنه ویژه است؛ برای بررسی قیمت با پشتیبانی تماس بگیرید.' : (result?.premium === null ? 'قیمت عادی یا ویژه این نام هنوز قابل تأیید نیست؛ کمی بعد دوباره بررسی کنید.' : 'دامنه آزاد است؛ در حال حاضر خرید آنلاین این پسوند فعال نیست.'))"></p>
+                            <p x-text="!result?.available ? 'این دامنه در حال حاضر آزاد نیست؛ نام دیگری امتحان کنید.' : (continueUrl ? 'این دامنه آزاد است و می‌توانید سفارش ثبت آن را ادامه دهید.' : (result?.premium === true ? 'این دامنه ویژه است؛ برای بررسی قیمت با پشتیبانی تماس بگیرید.' : (result?.premium === null ? 'قیمت عادی یا ویژه این نام هنوز قابل تأیید نیست؛ کمی بعد دوباره بررسی کنید.' : 'دامنه آزاد است؛ در حال حاضر خرید آنلاین این پسوند فعال نیست.')))"></p>
+                            <div x-show="result?.available && result?.retail && continueUrl" class="mt-4 border-t border-slate-200 pt-4">
+                                <p class="font-bold text-slate-900">ثبت یک‌ساله: <span x-text="result?.retail?.total"></span></p>
+                                <p x-show="result?.retail?.renewal" class="mt-2 text-xs text-slate-600">تمدید یک‌ساله با قیمت فعلی: <span x-text="result?.retail?.renewal"></span></p>
+                                <p class="mt-2 text-xs text-slate-500">قیمت شامل مالیات اعلام‌شده است؛ قیمت و موجودی پیش از پرداخت دوباره بررسی می‌شوند.</p>
+                                <a :href="continueUrl" class="mt-4 inline-flex rounded-lg bg-[#0069FF] px-5 py-3 text-sm font-bold text-white hover:bg-[#0050D0]">خرید دامنه ←</a>
+                            </div>
                             <p x-show="result?.preliminary" class="mt-2 text-xs text-slate-500">نتیجه ایرنیک اولیه است؛ ثبت نهایی به تأیید ایرنیک بستگی دارد.</p>
                             <p class="mt-2 text-xs text-slate-500">جستجو نام دامنه را رزرو نمی‌کند.</p>
-                            <a x-show="result?.available" href="{{ route('contact') }}" class="font-bold text-[#0069FF]">تماس با پشتیبانی ←</a>
+                            <a x-show="result?.available && !continueUrl" href="{{ route('contact') }}" class="font-bold text-[#0069FF]">تماس با پشتیبانی ←</a>
                         </div>
                     </div>
                     <noscript><p class="mt-4 text-sm leading-8">برای جستجو در این صفحه جاوااسکریپت را فعال کنید، یا <a href="{{ route('customer.domains.index') }}" class="text-[#0069FF] underline">از پنل مشتری جستجو کنید</a>.</p></noscript>

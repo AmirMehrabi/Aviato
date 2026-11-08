@@ -23,7 +23,9 @@ class DomainSearchController extends Controller
             throw ValidationException::withMessages(['domain' => 'این پسوند در حال حاضر پشتیبانی نمی‌شود. پسوند دیگری را امتحان کنید.']);
         }
         $next = null;
-        if ($result['available'] && $result['premium'] === false && AppSetting::domainSalesEnabled() && $pricing->customerPrice($result['domain'])) {
+        if ($result['available'] && $result['premium'] === false && AppSetting::domainSalesEnabled()
+            && ($retail = $pricing->customerPrice($result['domain']))) {
+            $result['retail'] = $retail;
             $next = route('customer.domains.index', ['register' => 1, 'domain' => $result['domain'], 'from' => 'homepage']);
         }
 

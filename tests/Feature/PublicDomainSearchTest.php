@@ -49,7 +49,8 @@ class PublicDomainSearchTest extends TestCase
         $next = route('customer.domains.index', ['register' => 1, 'domain' => 'example.com', 'from' => 'homepage']);
         $this->postJson('/domains/check', ['domain' => ' HTTPS://WWW.Example.COM/page '])
             ->assertOk()->assertJsonPath('data.domain', 'example.com')->assertJsonPath('continue_url', $next)
-            ->assertJsonMissingPath('data.price')->assertDontSee('private-test-token');
+            ->assertJsonMissingPath('data.price')->assertJsonMissingPath('data.retail.supplier_price')
+            ->assertJsonStructure(['data' => ['retail' => ['total', 'renewal']]])->assertDontSee('private-test-token');
         $this->postJson('/domains/check', ['domain' => 'example.com'])->assertOk();
         Http::assertSentCount(1);
         // The normal auth flow stores the domain-bearing destination, not a POST.

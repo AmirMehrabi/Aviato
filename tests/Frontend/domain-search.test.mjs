@@ -11,14 +11,19 @@ function component(config = {}) {
 
 globalThis.document = { querySelector: () => ({ content: 'csrf-token' }) };
 
-test('a successful public search uses the server handoff and normalized domain', async () => {
+test('a successful public search displays its result and purchase link without navigating', async () => {
     let destination;
     globalThis.window = { location: { assign(url) { destination = url; } } };
     globalThis.fetch = async () => ({ ok: true, json: async () => ({ data: { domain: 'example.com', available: true }, continue_url: 'https://cp.localhost/domains?domain=example.com' }) });
     const c = component({ publicSearch: true, domain: 'EXAMPLE.COM' });
     await c.search();
     assert.equal(c.domain, 'example.com');
-    assert.equal(destination, 'https://cp.localhost/domains?domain=example.com');
+    assert.equal(destination, undefined);
+    assert.equal(c.continueUrl, 'https://cp.localhost/domains?domain=example.com');
+    assert.equal(c.result.available, true);
+    c.clearResult();
+    assert.equal(c.continueUrl, null);
+    assert.equal(c.result, null);
     assert.equal(c.loading, false);
 });
 
