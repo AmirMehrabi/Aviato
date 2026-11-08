@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\Notifications\NotificationEventSubscriber;
 use App\Services\ResellerService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -97,6 +98,10 @@ class RegisteredUserController extends Controller
 
         Auth::guard($portal)->login($account);
         $request->session()->regenerate();
+
+        if ($portal === 'customer' && $account instanceof Customer) {
+            app(NotificationEventSubscriber::class)->signedIn($account);
+        }
 
         return redirect()->intended('/'.trim(config("portals.$portal.home_path"), '/'));
     }

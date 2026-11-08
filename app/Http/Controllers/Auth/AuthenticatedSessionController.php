@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\AdminAuditService;
+use App\Services\Notifications\NotificationEventSubscriber;
 use App\Support\AdminAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,6 +81,10 @@ class AuthenticatedSessionController extends Controller
         }
 
         $request->session()->regenerate();
+
+        if ($portal === 'customer' && $user instanceof Customer) {
+            app(NotificationEventSubscriber::class)->signedIn($user);
+        }
 
         if ($portal === 'admin' && $user instanceof User) {
             $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $request->ip()])->save();

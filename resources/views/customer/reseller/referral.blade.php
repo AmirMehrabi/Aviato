@@ -1,13 +1,11 @@
 @extends('customer.layout')
 
 @section('title', 'لینک معرفی')
+@section('header_title', 'لینک معرفی')
+@section('header_subtitle', 'لینک اختصاصی خود را با مشتریان به اشتراک بگذارید')
 
 @section('content')
 <div class="px-4 py-6 lg:px-8">
-    <div class="mb-6">
-        <h1 class="text-2xl font-black">لینک معرفی</h1>
-        <p class="mt-1 text-sm text-slate-500">لینک اختصاصی خود را با مشتریان به اشتراک بگذارید</p>
-    </div>
 
     <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 class="text-lg font-black">کد فروشنده شما</h2>

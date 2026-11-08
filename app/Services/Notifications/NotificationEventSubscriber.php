@@ -8,7 +8,6 @@ use App\Models\Payment;
 use App\Models\VirtualMachine;
 use App\Notifications\CorporateDatabaseNotification;
 use App\Notifications\TemplatedNotification;
-use Illuminate\Auth\Events\Login;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -38,12 +37,6 @@ class NotificationEventSubscriber
             }
             if (! app(NotificationTemplates::class)->enabled($key, 'in_app', $event->notifiable)) {
                 return false;
-            }
-        });
-        Event::listen(Login::class, function (Login $event): void {
-            if ($event->guard === 'customer' && $event->user instanceof Customer
-                && ! (request()->hasSession() && request()->session()->has('impersonated_by_admin_id'))) {
-                $this->notify($event->user, 'signed_in', ['ip' => request()->ip(), 'time' => now('Asia/Tehran')->format('Y-m-d H:i').' (تهران)'], route('dashboard'));
             }
         });
         Payment::updated(function (Payment $payment): void {
@@ -94,6 +87,18 @@ class NotificationEventSubscriber
                 });
             }
         });
+    }
+
+    public function signedIn(Customer $customer): void
+    {
+        if ($customer->isSuspended() || (request()->hasSession() && request()->session()->has('impersonated_by_admin_id'))) {
+            return;
+        }
+
+        $this->notify($customer, 'signed_in', [
+            'ip' => request()->ip(),
+            'time' => now('Asia/Tehran')->format('Y-m-d H:i').' (تهران)',
+        ], route('dashboard'));
     }
 
     public function notify(object $recipient, string $event, array $variables, string $url, bool $sendEmail = true): void

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Services\Notifications\AuthenticationMailDispatcher;
+use App\Services\Notifications\NotificationEventSubscriber;
 use App\Services\Sms\VerificationSmsSender;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -144,6 +145,8 @@ class CustomerOtpLoginController extends Controller
 
         Auth::guard('customer')->login($customer, remember: true);
         $request->session()->regenerate();
+
+        app(NotificationEventSubscriber::class)->signedIn($customer);
         $this->clearSession($request);
 
         return redirect()->intended('/'.trim(config('portals.customer.home_path'), '/'));

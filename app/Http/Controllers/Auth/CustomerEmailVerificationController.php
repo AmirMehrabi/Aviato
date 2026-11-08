@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Services\Notifications\AuthenticationMailDispatcher;
+use App\Services\Notifications\NotificationEventSubscriber;
 use App\Services\ResellerService;
 use App\Services\Sms\VerificationSmsSender;
 use Illuminate\Http\RedirectResponse;
@@ -58,6 +59,10 @@ class CustomerEmailVerificationController extends Controller
             return back()->withErrors(['code' => 'کد تایید نادرست است.'])->withInput();
         }
 
+        if ($customer->isSuspended()) {
+            return back()->withErrors(['code' => 'حساب شما تعلیق شده است. لطفا با پشتیبانی تماس بگیرید.']);
+        }
+
         $customer->forceFill([
             'email_verified_at' => now(),
             'email_verification_code' => null,
@@ -74,6 +79,8 @@ class CustomerEmailVerificationController extends Controller
 
         Auth::guard('customer')->login($customer, remember: true);
         $request->session()->regenerate();
+
+        app(NotificationEventSubscriber::class)->signedIn($customer);
 
         return redirect()->intended('/'.trim(config('portals.customer.home_path'), '/'))
             ->with('status', 'حساب شما با موفقیت تایید شد.');

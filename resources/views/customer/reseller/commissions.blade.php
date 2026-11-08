@@ -2,13 +2,11 @@
 @inject('money', 'App\Services\WalletService')
 
 @section('title', 'کمیسیون‌ها')
+@section('header_title', 'کمیسیون‌ها')
+@section('header_subtitle', 'جزئیات کمیسیون‌های روزانه از مصرف مشتریان شما')
 
 @section('content')
 <div class="px-4 py-6 lg:px-8">
-    <div class="mb-6">
-        <h1 class="text-2xl font-black">تاریخچه کمیسیون</h1>
-        <p class="mt-1 text-sm text-slate-500">جزئیات کمیسیون‌های روزانه از مصرف مشتریان شما</p>
-    </div>
 
     <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-100 text-sm">

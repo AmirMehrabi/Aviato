@@ -2,17 +2,14 @@
 @inject('money', 'App\Services\WalletService')
 
 @section('title', 'داشبورد فروشندگی')
+@section('header_title', 'داشبورد فروشندگی')
+@section('header_subtitle', 'نمای کلی درآمد و فعالیت فروشندگی شما')
 
 @section('content')
 <div class="px-4 py-6 lg:px-8">
     @if (session('status'))
         <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{{ session('status') }}</div>
     @endif
-
-    <div class="mb-6">
-        <h1 class="text-2xl font-black">داشبورد فروشندگی</h1>
-        <p class="mt-1 text-sm text-slate-500">نمای کلی درآمد و فعالیت فروشندگی شما</p>
-    </div>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
