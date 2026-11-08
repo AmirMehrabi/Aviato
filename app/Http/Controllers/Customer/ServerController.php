@@ -579,7 +579,7 @@ class ServerController extends Controller
             ->orderBy('vm_bundles.sort_order')
             ->orderBy('vm_bundles.monthly_price')
             ->get()
-            ->filter(fn (VmBundle $bundle): bool => $bundle->cpu_cores >= $server->cpu_cores
+            ->filter(fn (VmBundle $bundle): bool => $server->pricing_mode !== 'custom' && $bundle->cpu_cores >= $server->cpu_cores
                 && $bundle->ram_gb >= $server->ram_gb
                 && $bundle->disk_gb >= $server->disk_gb
                 && ($server->isProxmox() || VmBundleLocationMapping::query()
@@ -742,7 +742,7 @@ class ServerController extends Controller
                 'category' => 'vm_rebuild_fee',
                 'creation_charge_percentage' => AppSetting::vmCreationChargePercentage(),
                 'rebuild_multiplier_percentage' => app(WorkspaceProtectionSettings::class)->value($server->project, 'vm_rebuild_fee_multiplier_percentage'),
-                'monthly_price' => (int) ($server->bundle?->monthly_price ?? 0),
+                'monthly_price' => $this->billing->monthlyBeforeTax($server),
             ], allowNegative: false);
         }
 
@@ -1119,7 +1119,7 @@ class ServerController extends Controller
 
     private function rebuildFee(VirtualMachine $server): int
     {
-        $monthlyPrice = (int) ($server->bundle?->monthly_price ?? 0);
+        $monthlyPrice = $this->billing->monthlyBeforeTax($server);
 
         return $monthlyPrice > 0 ? app(WorkspaceProtectionSettings::class)->rebuildFee($server->project, $monthlyPrice) : 0;
     }

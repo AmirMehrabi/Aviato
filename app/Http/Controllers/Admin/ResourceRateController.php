@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ResourceRate;
+use App\Services\PricingBoundaryService;
 use App\Support\AdminTableSort;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -30,7 +31,8 @@ class ResourceRateController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        ResourceRate::create($this->validated($request));
+        $data = $this->validated($request);
+        app(PricingBoundaryService::class)->resources(fn () => ResourceRate::create($data));
 
         return redirect()->route('admin.billing.rates.index')->with('status', 'قیمت منبع ذخیره شد.');
     }
@@ -42,14 +44,15 @@ class ResourceRateController extends Controller
 
     public function update(Request $request, ResourceRate $rate): RedirectResponse
     {
-        $rate->update($this->validated($request, $rate));
+        $data = $this->validated($request, $rate);
+        app(PricingBoundaryService::class)->resources(fn () => $rate->update($data));
 
         return redirect()->route('admin.billing.rates.index')->with('status', 'قیمت منبع به‌روزرسانی شد.');
     }
 
     public function destroy(ResourceRate $rate): RedirectResponse
     {
-        $rate->delete();
+        app(PricingBoundaryService::class)->resources(fn () => $rate->delete());
 
         return redirect()->route('admin.billing.rates.index')->with('status', 'قیمت منبع حذف شد.');
     }

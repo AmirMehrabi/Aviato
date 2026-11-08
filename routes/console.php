@@ -3,6 +3,7 @@
 use App\Jobs\ApplyVmUpgradeJob;
 use App\Jobs\CheckDnsDelegation;
 use App\Jobs\DeleteVirtualMachineJob;
+use App\Jobs\ObserveVmHardware;
 use App\Jobs\ProcessVmOperation;
 use App\Jobs\ProvisionCloudVirtualMachine;
 use App\Jobs\ReconcilePendingVirtualMachine;
@@ -427,7 +428,7 @@ Artisan::command('inspire', function () {
 Artisan::command('vm-upgrades:reconcile {--limit=100 : Maximum orders to queue}', function (): int {
     $orders = VmUpgradeOrder::query()
         ->where(function ($query): void {
-            $query->where(function ($query): void {
+            $query->where('status', VmUpgradeOrder::STATUS_PENDING)->orWhere(function ($query): void {
                 $query->where('status', VmUpgradeOrder::STATUS_APPLYING)
                     ->where(function ($query): void {
                         $query->whereNull('last_attempt_at')
@@ -601,3 +602,23 @@ Schedule::call(function (): void {
         }
     });
 })->name('reconcile-vm-operations')->everyMinute()->withoutOverlapping();
+
+Artisan::command('vm-hardware:observe {--limit=100 : Maximum machines per pass}', function (): int {
+    $machines = VirtualMachine::query()->notDeleted()
+        ->where(fn ($q) => $q->where('provider', 'proxmox')->orWhereNull('provider'))
+        ->where('provisioning_status', 'ready')->whereNotNull('proxmox_server_id')->whereNotNull('vmid')->whereNotNull('node')
+        ->where(fn ($q) => $q->whereNull('provider_metadata->guest_type')->orWhere('provider_metadata->guest_type', '!=', 'lxc'))
+        ->whereDoesntHave('operations', fn ($q) => $q->whereNotNull('active_vm_id'))
+        ->where(fn ($q) => $q->whereNull('hardware_attempted_at')->orWhere('hardware_attempted_at', '<=', now()->subMinutes(10)))
+        ->orderBy('hardware_attempted_at')->limit(max(1, (int) $this->option('limit')))->get();
+    foreach ($machines as $vm) {
+        if (! $vm->isLxc()) {
+            ObserveVmHardware::dispatch($vm->id)->onQueue(ProvisionCloudVirtualMachine::QUEUE);
+        }
+    }
+    $this->info('Queued hardware observations. No prices or accepted resources changed.');
+
+    return Command::SUCCESS;
+})->purpose('Observe Proxmox hardware drift without accepting configuration changes');
+
+Schedule::command('vm-hardware:observe')->everyTenMinutes()->withoutOverlapping();

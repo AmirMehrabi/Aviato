@@ -37,6 +37,9 @@
         </div>
     @endif
 
+    @if ($vm->pricing_mode === 'custom')
+        <p class="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-7 text-blue-900">قیمت اختصاصی این ماشین پس از انتقال حفظ می‌شود. کارکرد گذشته برای مالک قبلی ثبت می‌شود و مالک جدید هزینه استفاده بعد از انتقال را می‌پردازد.</p>
+    @endif
     <div class="mb-6">
 
 @adminRoute('admin.virtual-machines.show')
@@ -138,7 +141,7 @@
                                 <span class="mt-0.5">•</span>
 
                                 @adminAbility('billing.read')
-<span>مبلغ محاسبه‌نشده فعلی ({{ $money->format($vm->unbilled_amount ?? 0) }}) به انتقال ثبت می‌شود.</span>
+<span>تمام کارکرد تا لحظه انتقال برای مالک قبلی ثبت می‌شود؛ بدهی گذشته به مالک جدید منتقل نمی‌شود.</span>
                                 @endadminAbility
 
                             </li>

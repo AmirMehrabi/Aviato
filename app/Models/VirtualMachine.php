@@ -52,6 +52,15 @@ use Illuminate\Support\Str;
     'disk_gb',
     'ip_count',
     'tax_exempt',
+    'pricing_mode',
+    'custom_monthly_price',
+    'custom_stopped_monthly_price',
+    'pricing_version',
+    'hardware_observation',
+    'hardware_drift',
+    'hardware_checked_at',
+    'hardware_attempted_at',
+    'hardware_sync_error',
     'status',
     'provisioning_status',
     'desired_state',
@@ -366,6 +375,22 @@ class VirtualMachine extends Model
             ->where('status', '!=', self::STATUS_DELETED);
     }
 
+    public function configurationChanges(): HasMany
+    {
+        return $this->hasMany(VmConfigurationChange::class);
+    }
+
+    public function pricingSnapshot(): array
+    {
+        return [
+            'currency' => AppSetting::currency(),
+            'pricing_mode' => $this->pricing_mode ?? 'inherit',
+            'custom_monthly_price' => $this->custom_monthly_price,
+            'custom_stopped_monthly_price' => $this->custom_stopped_monthly_price,
+            'pricing_version' => $this->pricing_version ?? 0,
+        ];
+    }
+
     public function desiredStateSnapshot(): array
     {
         return [
@@ -408,6 +433,13 @@ class VirtualMachine extends Model
             'disk_gb' => 'integer',
             'ip_count' => 'integer',
             'tax_exempt' => 'boolean',
+            'custom_monthly_price' => 'integer',
+            'custom_stopped_monthly_price' => 'integer',
+            'pricing_version' => 'integer',
+            'hardware_observation' => 'array',
+            'hardware_drift' => 'boolean',
+            'hardware_checked_at' => 'datetime',
+            'hardware_attempted_at' => 'datetime',
             'desired_state' => 'array',
             'remote_state' => 'array',
             'provider_metadata' => 'array',

@@ -144,6 +144,9 @@ class AdminAccess
                 default => $read ? [] : [AdminAbility::ProjectsManage],
             }];
         }
+        if (str_starts_with($name, 'admin.virtual-machines.configuration.')) {
+            return [AdminAbility::VmRead]; // Kind-specific permissions are checked against the signed quote in the controller/service.
+        }
         if (str_starts_with($name, 'admin.virtual-machines.')) {
             return [AdminAbility::VmRead, ...match (true) {
                 $action === 'options' => [AdminAbility::VmManage],

@@ -24,7 +24,7 @@ class VmOperation extends Model
         return match ($this->action) {
             'start' => 'روشن کردن', 'shutdown' => 'خاموش کردن',
             'restart' => 'راه‌اندازی مجدد', 'force-stop' => 'خاموش کردن اجباری',
-            'upgrade' => 'ارتقای منابع', default => 'تغییر سرور',
+            'upgrade' => ($this->details['requested_changes']['expected_digest'] ?? null) ? 'تغییر سخت‌افزار' : 'ارتقای منابع', default => 'تغییر سرور',
         };
     }
 

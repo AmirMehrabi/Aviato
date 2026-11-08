@@ -180,22 +180,34 @@ class InvoiceService
         $entries = collect();
 
         foreach ($accruals as $accrual) {
-            $entries->push([
-                'key' => $accrual->category === UsageAccrual::CATEGORY_NETWORK
-                    ? implode('|', [$accrual->category, 'virtual_machine', $accrual->virtual_machine_id])
-                    : implode('|', [$accrual->category, $accrual->resource_type, $accrual->resource_id]),
-                'category' => $accrual->category,
-                'virtual_machine_id' => $accrual->virtual_machine_id,
-                'resource_name' => $accrual->resource_name ?: 'VM',
-                'seconds' => $accrual->accrued_seconds,
-                'amount' => $accrual->amount,
-                'period_start' => $accrual->period_start,
-                'period_end' => $accrual->period_end,
-                'snapshot' => $accrual->snapshot ?? [],
-                'segments' => $accrual->segments ?? [],
-                'source_id' => $accrual->id,
-                'source' => 'usage_accrual',
-            ]);
+            $segments = $accrual->segments ?? [];
+            $split = $accrual->category === UsageAccrual::CATEGORY_VM
+                && collect($segments)->contains(fn ($segment) => isset($segment['snapshot']['pricing']));
+            $parts = $split ? $segments : [null];
+            foreach ($parts as $segment) {
+                $snapshot = $segment['snapshot'] ?? $accrual->snapshot ?? [];
+                $identity = $split ? hash('sha256', json_encode([
+                    $snapshot['pricing'] ?? null, $snapshot['tax_exempt'] ?? true, $snapshot['tax_rate'] ?? null,
+                    $snapshot['cpu_cores'] ?? null, $snapshot['ram_gb'] ?? null, $snapshot['disk_gb'] ?? null,
+                    $snapshot['bundle_id'] ?? null, $segment['hourly_rate'] ?? null,
+                ])) : '';
+                $entries->push([
+                    'key' => ($accrual->category === UsageAccrual::CATEGORY_NETWORK
+                        ? implode('|', [$accrual->category, 'virtual_machine', $accrual->virtual_machine_id])
+                        : implode('|', [$accrual->category, $accrual->resource_type, $accrual->resource_id])).$identity,
+                    'category' => $accrual->category,
+                    'virtual_machine_id' => $accrual->virtual_machine_id,
+                    'resource_name' => $accrual->resource_name ?: 'VM',
+                    'seconds' => $segment['seconds'] ?? $accrual->accrued_seconds,
+                    'amount' => $segment['amount'] ?? $accrual->amount,
+                    'period_start' => isset($segment['period_start']) ? CarbonImmutable::parse($segment['period_start']) : $accrual->period_start,
+                    'period_end' => isset($segment['period_end']) ? CarbonImmutable::parse($segment['period_end']) : $accrual->period_end,
+                    'snapshot' => $snapshot,
+                    'segments' => $segment ? [$segment] : $segments,
+                    'source_id' => $accrual->id,
+                    'source' => 'usage_accrual',
+                ]);
+            }
         }
 
         foreach ($legacyTransactions as $transaction) {
@@ -244,8 +256,8 @@ class InvoiceService
             $seconds = (int) $group->sum('seconds');
             $subtotal = (int) $group->sum('amount');
             $taxExempt = (bool) ($first['snapshot']['tax_exempt'] ?? true);
-            $taxRate = $taxExempt ? 0 : AppSetting::taxRatePercentage();
-            $taxMultiplier = $taxExempt ? 1 : AppSetting::taxMultiplier();
+            $taxRate = $taxExempt ? 0 : ($first['snapshot']['tax_rate'] ?? AppSetting::taxRatePercentage());
+            $taxMultiplier = 1 + $taxRate / 100;
             $preTaxSubtotal = $taxMultiplier > 1 ? (int) round($subtotal / $taxMultiplier) : $subtotal;
             $taxAmount = $subtotal - $preTaxSubtotal;
 

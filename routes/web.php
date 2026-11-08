@@ -37,6 +37,7 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\VirtualMachineConsoleController;
 use App\Http\Controllers\Admin\VirtualMachineController;
 use App\Http\Controllers\Admin\VmBundleController;
+use App\Http\Controllers\Admin\VmConfigurationController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\CustomerEmailVerificationController;
@@ -320,6 +321,9 @@ Route::domain($adminDomain)->middleware('portal.host:admin')->group(function () 
         Route::patch('workspaces/{project}/members/{member}', [AdminProjectController::class, 'updateMember'])->name('admin.projects.members.update');
         Route::delete('workspaces/{project}/members/{member}', [AdminProjectController::class, 'destroyMember'])->name('admin.projects.members.destroy');
 
+        Route::post('virtual-machines/{virtualMachine}/configuration/refresh', [VmConfigurationController::class, 'refresh'])->name('admin.virtual-machines.configuration.refresh');
+        Route::post('virtual-machines/{virtualMachine}/configuration/preview', [VmConfigurationController::class, 'preview'])->name('admin.virtual-machines.configuration.preview');
+        Route::post('virtual-machines/{virtualMachine}/configuration/confirm', [VmConfigurationController::class, 'confirm'])->name('admin.virtual-machines.configuration.confirm');
         Route::get('virtual-machines/proxmox-servers/{proxmoxServer}/options', [VirtualMachineController::class, 'options'])
             ->name('admin.virtual-machines.options');
         Route::post('virtual-machines/move-node', [VirtualMachineController::class, 'moveNode'])

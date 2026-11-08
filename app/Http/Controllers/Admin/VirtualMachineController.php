@@ -66,6 +66,7 @@ class VirtualMachineController extends Controller
                 VirtualMachine::STATUS_DELETING,
                 VirtualMachine::STATUS_DELETED,
             ])],
+            'hardware_drift' => ['nullable', 'in:1'],
             'search' => ['nullable', 'string', 'max:255'],
             'sort' => ['nullable', 'string', 'max:80'],
             'direction' => ['nullable', 'in:asc,desc'],
@@ -74,6 +75,7 @@ class VirtualMachineController extends Controller
         $query = VirtualMachine::query()
             ->notDeleted()
             ->with(['customer', 'project.owner', 'creator', 'proxmoxServer', 'infrastructureLocation', 'bundle', 'cloudImage'])
+            ->when($filters['hardware_drift'] ?? null, fn ($query) => $query->where('hardware_drift', true))
             ->when($filters['customer_id'] ?? null, fn ($query, int $customerId) => $query->where('customer_id', $customerId))
             ->when($filters['project_id'] ?? null, fn ($query, int $projectId) => $query->where('project_id', $projectId))
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
@@ -351,13 +353,24 @@ class VirtualMachineController extends Controller
 
         DB::transaction(function () use ($virtualMachine, $data, $request): void {
             VirtualMachine::query()->whereKey($virtualMachine->id)->lockForUpdate()->firstOrFail();
+            $virtualMachine->refresh();
+            if ($virtualMachine->isActionLocked()) {
+                throw ValidationException::withMessages(['configuration' => 'یک عملیات دیگر برای این سرور در حال انجام است. پس از پایان آن دوباره تلاش کنید.']);
+            }
             $virtualMachine->fill($data);
             if ($virtualMachine->project_id) {
                 $virtualMachine->loadMissing('project');
                 $virtualMachine->customer_id = $virtualMachine->project?->owner_customer_id ?? $virtualMachine->customer_id;
             }
-            $this->applyBundleHardware($virtualMachine);
-            $virtualMachine->desired_state = $virtualMachine->desiredStateSnapshot();
+            if ($virtualMachine->isDirty('vm_bundle_id')) {
+                throw ValidationException::withMessages(['vm_bundle_id' => 'تغییر پلن باید از مسیر ارتقا انجام شود؛ ویرایش مشخصات، منابع یا قیمت را تغییر نمی‌دهد.']);
+            }
+            if ($virtualMachine->isDirty('tax_exempt')) {
+                app(UsageBillingService::class)->accrueVm($virtualMachine);
+                $cursor = $virtualMachine->fresh()->last_billed_at;
+                $virtualMachine->last_billed_at = $cursor;
+            }
+            $virtualMachine->desired_state = array_merge($virtualMachine->desired_state ?? [], $virtualMachine->desiredStateSnapshot());
             $virtualMachine->save();
             app(NetworkBillingPolicyAdjustmentService::class)->refresh($virtualMachine, $request->user('admin'));
         });

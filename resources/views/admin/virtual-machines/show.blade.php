@@ -256,6 +256,8 @@
 
 @endadminAbility
 
+    @include('admin.virtual-machines.configuration')
+
     {{-- Hardware & Bundle --}}
     <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -282,7 +284,7 @@
 @adminAbility('billing.read')
 
             <div class="mt-5 rounded-xl border border-dashed border-slate-300 p-4">
-                <p class="font-black text-slate-950">باندل قیمت‌گذاری</p>
+                <p class="font-black text-slate-950">پلن مرجع</p>
                 @if($vm->bundle)
                     <p class="mt-2 text-sm text-slate-600">{{ $vm->bundle->name }} — {{ $money->format($vm->bundle->monthly_price) }} / ماه</p>
                 @else
@@ -399,7 +401,7 @@
                 @forelse($vm->upgradeOrders as $order)
                     <div class="rounded-xl border border-slate-100 p-4 text-sm">
                         <div class="flex items-center justify-between gap-3">
-                            <p class="font-black text-slate-950">{{ $order->type }} #{{ $order->id }}</p>
+                            <p class="font-black text-slate-950">{{ match ($order->type) { 'hardware' => 'تغییر سخت‌افزار', 'bundle' => 'ارتقای پلن', default => 'تغییر دیسک' } }} #{{ $order->id }}</p>
                             @php
                                 $orderStatus = match($order->status) {
                                     'succeeded' => 'bg-emerald-50 text-emerald-700',

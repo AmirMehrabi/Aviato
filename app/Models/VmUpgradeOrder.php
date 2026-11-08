@@ -66,7 +66,9 @@ class VmUpgradeOrder extends Model
                 return;
             }
 
-            $title = $order->type === self::TYPE_BUNDLE ? 'ارتقای پلن' : 'ارتقای دیسک';
+            $title = match ($order->type) {
+                self::TYPE_BUNDLE => 'ارتقای پلن', self::TYPE_HARDWARE => 'تغییر سخت‌افزار', default => 'ارتقای دیسک'
+            };
             $outcome = match ($order->status) {
                 self::STATUS_SUCCEEDED => 'succeeded',
                 self::STATUS_FAILED => 'failed',
@@ -81,6 +83,8 @@ class VmUpgradeOrder extends Model
             app(VmActivityRecorder::class)->record($vm, 'upgrade', $outcome, $title.' · '.($outcome === 'succeeded' ? 'انجام شد' : ($outcome === 'failed' ? 'ناموفق' : 'نیازمند بررسی')), $detail, metadata: ['order_id' => $order->id]);
         });
     }
+
+    public const TYPE_HARDWARE = 'hardware';
 
     public const TYPE_BUNDLE = 'bundle';
 

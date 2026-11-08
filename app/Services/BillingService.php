@@ -8,6 +8,8 @@ use App\Models\VirtualMachine;
 use App\Models\VmBackup;
 use App\Models\VmBundleLocationMapping;
 use App\Models\VmDisk;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Collection;
 use RuntimeException;
 
@@ -46,11 +48,15 @@ class BillingService
 
     public function hourlyWhenRunning(VirtualMachine $vm): float
     {
+        if ($vm->pricing_mode === 'custom') {
+            return $this->applyTaxIfApplicable($vm->custom_monthly_price / ResourceRate::hoursPerMonth(), $vm);
+        }
+
         if ($vm->isHetzner()) {
             return $this->applyTaxIfApplicable($this->hetznerHourly($vm), $vm);
         }
 
-        if ($vm->bundle) {
+        if ($vm->bundle && $vm->pricing_mode !== 'resources') {
             return $this->applyTaxIfApplicable((float) $vm->bundle->hourly_price, $vm);
         }
 
@@ -63,8 +69,42 @@ class BillingService
         return $this->applyTaxIfApplicable($base, $vm);
     }
 
+    public function monthlyBeforeTax(VirtualMachine $vm): int
+    {
+        $multiplier = ! $vm->tax_exempt && AppSetting::taxEnabled() ? AppSetting::taxMultiplier() : 1;
+
+        return (int) round($this->hourlyWhenRunning($vm) * ResourceRate::hoursPerMonth() / $multiplier);
+    }
+
+    public function hourlyDecimal(VirtualMachine $vm, bool $running): string
+    {
+        if ($vm->pricing_mode === 'custom') {
+            $monthly = $running ? $vm->custom_monthly_price : $vm->custom_stopped_monthly_price;
+            $value = BigDecimal::of((string) $monthly)->dividedBy(ResourceRate::hoursPerMonth(), 12, RoundingMode::HalfUp);
+            if (! $vm->tax_exempt && AppSetting::taxEnabled()) {
+                $value = $value->multipliedBy((string) AppSetting::taxMultiplier());
+            }
+
+            return (string) $value;
+        }
+
+        return sprintf('%.12F', $running ? $this->hourlyWhenRunning($vm) : $this->persistentHourly($vm));
+    }
+
     public function persistentHourly(VirtualMachine $vm): float
     {
+        if ($vm->pricing_mode === 'custom') {
+            return $this->applyTaxIfApplicable($vm->custom_stopped_monthly_price / ResourceRate::hoursPerMonth(), $vm);
+        }
+
+        if ($vm->pricing_mode === 'resources' && $vm->isProxmox()) {
+            $rates = $this->rates();
+
+            return $this->applyTaxIfApplicable(
+                $vm->disk_gb * $this->rate($rates, ResourceRate::DISK) + $vm->ip_count * $this->rate($rates, ResourceRate::IP), $vm,
+            );
+        }
+
         $override = $vm->vm_bundle_id && $vm->infrastructure_location_id
             ? VmBundleLocationMapping::query()->where('vm_bundle_id', $vm->vm_bundle_id)
                 ->where('infrastructure_location_id', $vm->infrastructure_location_id)
@@ -73,6 +113,10 @@ class BillingService
         $monthly = $override ?? $vm->bundle?->stopped_monthly_price;
         if ($monthly !== null) {
             return $this->applyTaxIfApplicable((float) $monthly / ResourceRate::hoursPerMonth(), $vm);
+        }
+
+        if ($vm->pricing_mode === 'custom') {
+            return $this->applyTaxIfApplicable($vm->custom_monthly_price / ResourceRate::hoursPerMonth(), $vm);
         }
 
         if ($vm->isHetzner()) {

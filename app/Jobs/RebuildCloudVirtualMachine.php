@@ -236,6 +236,8 @@ class RebuildCloudVirtualMachine implements ShouldBeEncrypted, ShouldBeUnique, S
                 'remote_state' => array_merge($vm->remote_state ?? [], [
                     'rebuild_steps' => $history,
                     'rebuild_finished_at' => now()->toISOString(),
+                    'accepted_hardware' => null,
+                    'hardware_identity' => null,
                     'rebuild_error' => null,
                 ]),
             ])->save();
@@ -328,6 +330,8 @@ class RebuildCloudVirtualMachine implements ShouldBeEncrypted, ShouldBeUnique, S
                 'remote_state' => array_merge($vm->remote_state ?? [], [
                     'rebuild_steps' => $history,
                     'rebuild_finished_at' => now()->toISOString(),
+                    'accepted_hardware' => null,
+                    'hardware_identity' => null,
                     'rebuild_error' => null,
                     'hetzner_server' => $server,
                 ]),

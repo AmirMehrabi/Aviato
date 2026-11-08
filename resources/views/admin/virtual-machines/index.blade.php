@@ -114,6 +114,10 @@ document.addEventListener('alpine:init', () => {
                     <option value="{{ $id }}" @selected((string)($filters['project_id'] ?? '') === (string)$id)>{{ $name }}</option>
                 @endforeach
             </select>
+            <select name="hardware_drift" aria-label="اختلاف سخت‌افزار" @change="fetchNow()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm">
+                <option value="">همه سخت‌افزارها</option>
+                <option value="1" @selected(($filters['hardware_drift'] ?? '') === '1')>دارای اختلاف با Proxmox</option>
+            </select>
             <select name="status" @change="fetchNow()" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-[#0069FF] focus:bg-white focus:outline-none">
                 <option value="">همه وضعیت‌ها</option>
                 <option value="running" @selected(($filters['status'] ?? '') === 'running')>روشن</option>
@@ -200,6 +204,8 @@ document.addEventListener('alpine:init', () => {
 
 @adminRoute('admin.virtual-machines.show')
 <a href="{{ route('admin.virtual-machines.show', $vm) }}" class="font-black text-slate-950" dir="ltr">{{ $vm->display_name }}</a>
+@if ($vm->hardware_drift)<a href="{{ route('admin.virtual-machines.show', $vm) }}#configuration" class="mt-1 inline-block rounded-full bg-amber-50 px-2 py-1 text-xs font-bold text-amber-800">اختلاف سخت‌افزار</a>@endif
+@if ($vm->pricing_mode === 'custom')<span class="mt-1 inline-block rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">قیمت اختصاصی</span>@endif
 @endadminRoute
 
                                     <span class="block text-xs text-slate-500" dir="ltr">{{ $vm->name }} · {{ $vm->ip_address ?: 'no-ip' }} · {{ $vm->proxmoxServer?->name ?: 'local' }} · {{ $vm->node ?: 'no-node' }}</span>

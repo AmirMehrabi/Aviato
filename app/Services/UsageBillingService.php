@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\UsageAccrual;
 use App\Models\UsageSettlement;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
 use App\Models\VmDisk;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -90,8 +93,10 @@ class UsageBillingService
                 resourceName: $locked->name,
                 from: $usage['from'],
                 until: $usage['until'],
-                hourlyRate: (float) $usage['hourly_rate'],
+                hourlyRate: $this->billing->hourlyDecimal($locked, $locked->isRunning()),
                 snapshot: [
+                    'pricing' => $locked->pricingSnapshot(),
+                    'tax_rate' => $locked->tax_exempt || ! AppSetting::taxEnabled() ? 0 : AppSetting::taxRatePercentage(),
                     'project_id' => $locked->project_id,
                     'project_name' => $locked->project?->name,
                     'project_owner_id' => $billingCustomer->id,
@@ -409,6 +414,13 @@ class UsageBillingService
         return $this->accrueAllDueUsage($until);
     }
 
+    private function decimalUsage(float|string $hourlyRate, float|int $seconds): BigDecimal
+    {
+        return BigDecimal::of((string) $hourlyRate)
+            ->multipliedBy(sprintf('%.6F', $seconds))
+            ->dividedBy(3600, 12, RoundingMode::HalfUp);
+    }
+
     private function accrueInterval(
         Customer $customer,
         ?int $projectId,
@@ -419,7 +431,7 @@ class UsageBillingService
         string $resourceName,
         CarbonInterface $from,
         CarbonInterface $until,
-        float $hourlyRate,
+        float|string $hourlyRate,
         array $snapshot,
         int $carryAmount = 0,
     ): ?UsageAccrual {
@@ -463,17 +475,21 @@ class UsageBillingService
                 'period_start' => $cursor->toIso8601String(),
                 'period_end' => $segmentEnd->toIso8601String(),
                 'seconds' => $seconds,
-                'hourly_rate' => $hourlyRate,
-                'amount' => (int) round($seconds * $hourlyRate / 3600),
+                'hourly_rate' => (float) $hourlyRate,
+                'rate_decimal' => (string) $hourlyRate,
+                'snapshot' => $snapshot,
+                'unrounded_amount' => (string) $this->decimalUsage($hourlyRate, $seconds),
+                'amount' => $this->decimalUsage($hourlyRate, $seconds)->toScale(0, RoundingMode::HalfUp)->toInt(),
             ];
             $lastIndex = array_key_last($segments);
 
             if ($lastIndex !== null
-                && (float) $segments[$lastIndex]['hourly_rate'] === $hourlyRate
+                && ($segments[$lastIndex]['snapshot'] ?? null) === $snapshot
+                && (string) ($segments[$lastIndex]['rate_decimal'] ?? $segments[$lastIndex]['hourly_rate']) === (string) $hourlyRate
                 && ($segments[$lastIndex]['period_end'] ?? null) === $segment['period_start']) {
                 $segments[$lastIndex]['period_end'] = $segment['period_end'];
                 $segments[$lastIndex]['seconds'] += $seconds;
-                $segments[$lastIndex]['amount'] = (int) round($segments[$lastIndex]['seconds'] * $hourlyRate / 3600);
+                $segments[$lastIndex]['unrounded_amount'] = (string) $this->decimalUsage($hourlyRate, $segments[$lastIndex]['seconds']);
             } else {
                 $segments[] = $segment;
             }
@@ -489,6 +505,17 @@ class UsageBillingService
                 ];
                 $carryAmount = 0;
             }
+
+            // Allocate rounding over the whole day, so frequent agreement changes neither create nor erase usage.
+            $preciseTotal = BigDecimal::of(0);
+            $roundedTotal = 0;
+            foreach ($segments as &$billableSegment) {
+                $preciseTotal = $preciseTotal->plus($billableSegment['unrounded_amount'] ?? $billableSegment['amount']);
+                $nextRounded = $preciseTotal->toScale(0, RoundingMode::HalfUp)->toInt();
+                $billableSegment['amount'] = $nextRounded - $roundedTotal;
+                $roundedTotal = $nextRounded;
+            }
+            unset($billableSegment);
 
             $accrual->forceFill([
                 'project_id' => $projectId,

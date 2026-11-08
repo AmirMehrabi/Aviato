@@ -6,7 +6,6 @@ use App\Models\Customer;
 use App\Models\Project;
 use App\Models\VirtualMachine;
 use App\Models\VmTransfer;
-use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -34,6 +33,8 @@ class VmTransferService
         $this->validateTransfer($vm, $toCustomer, $toProject);
 
         return DB::transaction(function () use ($vm, $toCustomer, $toProject, $initiatedByUserId, $notes) {
+            $vm = VirtualMachine::query()->whereKey($vm->id)->lockForUpdate()->firstOrFail();
+            $this->validateTransfer($vm, $toCustomer, $toProject);
             $fromCustomer = $vm->customer;
             $fromProject = $vm->project;
 
@@ -41,7 +42,16 @@ class VmTransferService
             $snapshotBefore = $this->createSnapshot($vm);
 
             // Calculate and handle unbilled amount
-            $unbilledAmount = $vm->unbilled_amount ?? 0;
+            $at = now();
+            app(UsageBillingService::class)->accrueVm($vm, $at);
+            foreach ($vm->backups()->where('status', 'ready')->get() as $backup) {
+                app(UsageBillingService::class)->accrueBackup($backup, $at);
+            }
+            foreach ($vm->disks()->where('status', 'ready')->get() as $disk) {
+                app(UsageBillingService::class)->accrueExtraDisk($disk, $at);
+            }
+            $vm->refresh();
+            $unbilledAmount = 0; // Elapsed usage belongs to the old owner; only future usage moves.
 
             // Create transfer record
             $transfer = VmTransfer::create([
@@ -56,17 +66,12 @@ class VmTransferService
                 'snapshot_before' => $snapshotBefore,
             ]);
 
-            // Handle unbilled amount transfer
-            if ($unbilledAmount > 0) {
-                $this->transferUnbilledAmount($vm, $fromCustomer, $toCustomer, $unbilledAmount, $transfer);
-            }
-
             // Update VM ownership
             $vm->update([
                 'customer_id' => $toCustomer->id,
                 'project_id' => $toProject->id,
-                'unbilled_amount' => 0, // Reset as it's been transferred
-                'last_billed_at' => now(), // Reset billing cycle
+                'unbilled_amount' => 0, // Already accrued to the previous owner
+                'last_billed_at' => $at, // Ownership boundary already accrued above
             ]);
 
             // Create snapshot after transfer
@@ -101,7 +106,7 @@ class VmTransferService
     private function validateTransfer(VirtualMachine $vm, Customer $toCustomer, Project $toProject): void
     {
         // Check if VM is in a transferable state
-        if ($vm->isDeleting() || $vm->isDeleted()) {
+        if ($vm->isActionLocked()) {
             throw new \Exception('ماشینی که در حال حذف است یا حذف شده، قابل انتقال نیست.');
         }
 
@@ -136,6 +141,7 @@ class VmTransferService
     private function createSnapshot(VirtualMachine $vm): array
     {
         return [
+            'pricing' => $vm->pricingSnapshot(),
             'vm_id' => $vm->id,
             'vm_name' => $vm->name,
             'customer_id' => $vm->customer_id,
@@ -153,41 +159,6 @@ class VmTransferService
                 ? $this->billingService->estimateMonthly($vm)
                 : $this->billingService->estimateStoppedMonthly($vm),
         ];
-    }
-
-    /**
-     * Transfer unbilled amount from old customer to new customer
-     */
-    private function transferUnbilledAmount(
-        VirtualMachine $vm,
-        Customer $fromCustomer,
-        Customer $toCustomer,
-        int $unbilledAmount,
-        VmTransfer $transfer
-    ): void {
-        // Deduct from old customer's wallet
-        WalletTransaction::create([
-            'wallet_id' => $fromCustomer->wallet->id,
-            'type' => 'debit',
-            'amount' => $unbilledAmount,
-            'description' => "VM transfer credit: {$vm->name} transferred to {$toCustomer->name}",
-            'reference_type' => VmTransfer::class,
-            'reference_id' => $transfer->id,
-        ]);
-
-        $fromCustomer->wallet->decrement('balance', $unbilledAmount);
-
-        // Add to new customer's wallet as a debit (they owe this amount)
-        WalletTransaction::create([
-            'wallet_id' => $toCustomer->wallet->id,
-            'type' => 'debit',
-            'amount' => $unbilledAmount,
-            'description' => "VM transfer charge: {$vm->name} transferred from {$fromCustomer->name}",
-            'reference_type' => VmTransfer::class,
-            'reference_id' => $transfer->id,
-        ]);
-
-        $toCustomer->wallet->decrement('balance', $unbilledAmount);
     }
 
     /**

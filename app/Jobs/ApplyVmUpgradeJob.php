@@ -8,7 +8,10 @@ use App\Models\VmBundleLocationMapping;
 use App\Models\VmDisk;
 use App\Models\VmUpgradeOrder;
 use App\Services\HetznerCloudService;
+use App\Services\PortalCache;
 use App\Services\ProxmoxService;
+use App\Services\UsageBillingService;
+use App\Services\VmHardwareService;
 use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -84,20 +87,22 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
             }
 
             $result = match ($order->type) {
-                VmUpgradeOrder::TYPE_BUNDLE => $this->applyBundle($order, $vm, $proxmox, $billingCustomer, $wallets),
+                VmUpgradeOrder::TYPE_BUNDLE, VmUpgradeOrder::TYPE_HARDWARE => $this->applyBundle($order, $vm, $proxmox, $billingCustomer, $wallets),
                 VmUpgradeOrder::TYPE_EXTRA_DISK => $this->applyExtraDisk($order, $vm, $proxmox),
                 VmUpgradeOrder::TYPE_PRIMARY_DISK => $this->applyPrimaryDisk($order, $vm, $proxmox),
                 default => throw new \RuntimeException('Unsupported upgrade type: '.$order->type),
             };
 
-            if ($order->type !== VmUpgradeOrder::TYPE_BUNDLE) {
+            if (! in_array($order->type, [VmUpgradeOrder::TYPE_BUNDLE, VmUpgradeOrder::TYPE_HARDWARE], true)) {
                 foreach ($this->taskIds($result) as $taskId) {
                     $proxmox->waitForTask($vm->proxmoxServer, $vm->node, $taskId);
                 }
             }
 
-            $config = $proxmox->vmConfig($vm->proxmoxServer, $vm->node, (int) $vm->vmid);
-            if ($order->type === VmUpgradeOrder::TYPE_BUNDLE && ! $this->bundleConfigMatches($vm, $order, $config)) {
+            $config = $order->type === VmUpgradeOrder::TYPE_HARDWARE
+                ? $proxmox->vmEffectiveConfig($vm->proxmoxServer, $vm->node, (int) $vm->vmid)
+                : $proxmox->vmConfig($vm->proxmoxServer, $vm->node, (int) $vm->vmid);
+            if (in_array($order->type, [VmUpgradeOrder::TYPE_BUNDLE, VmUpgradeOrder::TYPE_HARDWARE], true) && ! $this->bundleConfigMatches($vm, $order, $config)) {
                 throw new \RuntimeException('Proxmox configuration does not yet match the requested bundle.');
             }
             $this->markSucceeded($order->refresh(), $config, $result);
@@ -168,7 +173,18 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
         ];
         $billingBlocked = $billingCustomer ? $wallets->isWalletDepleted($billingCustomer) : false;
         $diskDevice = (string) data_get($vm->desired_state, 'disk_device', $vm->cloudImage?->disk_device ?: 'scsi0');
-        $config = $proxmox->vmConfig($server, $node, $vmid);
+        $config = $order->type === VmUpgradeOrder::TYPE_HARDWARE
+            ? $proxmox->vmEffectiveConfig($server, $node, $vmid)
+            : $proxmox->vmConfig($server, $node, $vmid);
+        if ($order->type === VmUpgradeOrder::TYPE_HARDWARE && empty($order->progress['validated'])) {
+            if (($config['digest'] ?? hash('sha256', json_encode($config))) !== ($after['expected_digest'] ?? null)
+                || $vm->pricing_version !== ($order->before_snapshot['pricing_version'] ?? 0)
+                || $vm->isLifecycleLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
+                $order->update(['status' => VmUpgradeOrder::STATUS_FAILED, 'failure_reason' => 'تنظیمات سرور از زمان تأیید تغییر کرده است. پیش‌نمایش تازه بگیرید.']);
+                throw new \RuntimeException('Hardware quote is stale.');
+            }
+            $this->checkpoint($order, 'validated', ['at' => now()->toIso8601String()]);
+        }
         $hardwareMatches = $this->hardwareMatches($config, $after);
         $currentDisk = $this->diskSizeGb($config, $diskDevice)
             ?? (int) ($order->before_snapshot['disk_gb'] ?? $vm->disk_gb);
@@ -188,12 +204,17 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
             $result['shutdown'] = $shutdown;
             $this->waitForTaskResult($proxmox, $vm, $shutdown, 180);
             $result['status_after_shutdown'] = $proxmox->waitForVmStopped($server, $node, $vmid, 60);
+            $this->recordStoppedBoundary($vm);
             $this->checkpoint($order, 'shutdown', $shutdown);
+        }
+
+        if (($remoteStatus['status'] ?? null) === 'stopped') {
+            $this->recordStoppedBoundary($vm);
         }
 
         if (! $hardwareMatches) {
             $hardware = $proxmox->updateVmHardware($server, $node, $vmid, [
-                'cpu_cores' => (int) $after['cpu_cores'],
+                'cpu_cores' => (int) $after['cpu_cores'] / max(1, (int) ($config['sockets'] ?? 1)),
                 'ram_gb' => (int) $after['ram_gb'],
             ]);
             $result['hardware'] = $hardware;
@@ -220,14 +241,15 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
         }
 
         $currentStatus = $proxmox->vmStatus($server, $node, $vmid);
-        if (! $billingBlocked && ($currentStatus['status'] ?? null) !== 'running') {
+        $shouldRun = ($after['original_status'] ?? $order->before_snapshot['status'] ?? 'running') === 'running';
+        if ($shouldRun && ! $billingBlocked && ($currentStatus['status'] ?? null) !== 'running') {
             $start = $proxmox->startVm($server, $node, $vmid);
             $result['start'] = $start;
             $this->checkpoint($order, 'start_submitted', $start);
             $this->waitForTaskResult($proxmox, $vm, $start, 180);
             $this->checkpoint($order, 'started', $start);
         } else {
-            $result[$billingBlocked ? 'start_skipped_wallet_locked' : 'already_running'] = true;
+            $result[$billingBlocked ? 'start_skipped_wallet_locked' : ($shouldRun ? 'already_running' : 'kept_stopped')] = true;
         }
 
         return $result;
@@ -250,9 +272,23 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
     private function applyExtraDisk(VmUpgradeOrder $order, VirtualMachine $vm, ProxmoxService $proxmox): array
     {
         $config = $proxmox->vmConfig($vm->proxmoxServer, $vm->node, (int) $vm->vmid);
-        $device = $this->nextScsiDiskDevice($config);
+        $device = $order->progress['selected_disk']['device'] ?? null;
+        if ($device && isset($config[$device])) {
+            $size = $this->diskSizeGb($config, $device);
+            if ($size !== (int) $order->after_snapshot['size_gb']
+                || ! str_contains((string) $config[$device], 'serial=aviato-upgrade-'.$order->id)) {
+                throw new \RuntimeException('Previously selected disk slot has an unexpected disk; manual reconciliation required.');
+            }
+
+            return ['disk_device' => $device, 'already_attached' => true];
+        }
+        $device ??= $this->nextScsiDiskDevice($config);
+        if (! isset($order->progress['selected_disk'])) {
+            $this->checkpoint($order, 'selected_disk', ['device' => $device]);
+        }
         $result = $proxmox->attachDisk($vm->proxmoxServer, $vm->node, (int) $vm->vmid, [
             'device' => $device,
+            'serial' => 'aviato-upgrade-'.$order->id,
             'storage' => (string) ($order->after_snapshot['storage'] ?? $vm->storage),
             'size_gb' => (int) $order->after_snapshot['size_gb'],
         ]);
@@ -270,23 +306,31 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
         DB::transaction(function () use ($order, $config, $result): void {
             $locked = VmUpgradeOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             $vm = VirtualMachine::query()->whereKey($locked->virtual_machine_id)->lockForUpdate()->firstOrFail();
+            if (! $locked->isPending()) {
+                return;
+            }
             $after = $locked->after_snapshot;
+            $at = now();
+            if (in_array($locked->type, [VmUpgradeOrder::TYPE_BUNDLE, VmUpgradeOrder::TYPE_HARDWARE, VmUpgradeOrder::TYPE_PRIMARY_DISK], true)) {
+                app(UsageBillingService::class)->accrueVm($vm, $at);
+                $vm->refresh();
+            }
 
-            if ($locked->type === VmUpgradeOrder::TYPE_BUNDLE) {
+            if (in_array($locked->type, [VmUpgradeOrder::TYPE_BUNDLE, VmUpgradeOrder::TYPE_HARDWARE], true)) {
                 $vm->forceFill([
-                    'vm_bundle_id' => $locked->to_bundle_id,
+                    'vm_bundle_id' => $locked->type === VmUpgradeOrder::TYPE_BUNDLE ? $locked->to_bundle_id : $vm->vm_bundle_id,
                     'cpu_cores' => (int) $after['cpu_cores'],
                     'ram_gb' => (int) $after['ram_gb'],
                     'disk_gb' => (int) $after['disk_gb'],
-                    'ip_count' => (int) $after['ip_count'],
-                    'status' => ! empty($result['start_skipped_wallet_locked']) ? VirtualMachine::STATUS_STOPPED : VirtualMachine::STATUS_RUNNING,
+                    'ip_count' => (int) ($after['ip_count'] ?? $vm->ip_count),
+                    'status' => (! empty($result['start_skipped_wallet_locked']) || ! empty($result['kept_stopped'])) ? VirtualMachine::STATUS_STOPPED : VirtualMachine::STATUS_RUNNING,
                     'last_stopped_at' => now(),
-                    'last_started_at' => empty($result['start_skipped_wallet_locked']) ? now() : $vm->last_started_at,
-                    'last_billed_at' => now(),
+                    'last_started_at' => empty($result['start_skipped_wallet_locked']) && empty($result['kept_stopped']) ? now() : $vm->last_started_at,
+                    'last_billed_at' => $at,
                     'wallet_restriction' => ! empty($result['start_skipped_wallet_locked'])
                         ? array_merge($vm->wallet_restriction ?? [], ['wallet_stopped' => true, 'resume_on_funding' => true])
                         : $vm->wallet_restriction,
-                    'desired_state' => array_merge($vm->desired_state ?? [], ['status' => ! empty($result['start_skipped_wallet_locked']) ? VirtualMachine::STATUS_STOPPED : VirtualMachine::STATUS_RUNNING]),
+                    'desired_state' => array_merge($vm->desired_state ?? [], ['status' => (! empty($result['start_skipped_wallet_locked']) || ! empty($result['kept_stopped'])) ? VirtualMachine::STATUS_STOPPED : VirtualMachine::STATUS_RUNNING]),
                     'remote_state' => array_merge($vm->remote_state ?? [], [
                         'upgrade_config' => $config,
                         'upgrade_restart' => $result,
@@ -297,7 +341,7 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
             if ($locked->type === VmUpgradeOrder::TYPE_PRIMARY_DISK) {
                 $vm->forceFill([
                     'disk_gb' => (int) $after['disk_gb'],
-                    'last_billed_at' => now(),
+                    'last_billed_at' => $at,
                     'remote_state' => array_merge($vm->remote_state ?? [], ['upgrade_config' => $config]),
                 ])->save();
             }
@@ -306,11 +350,29 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
                 $locked->disk->forceFill([
                     'disk_device' => (string) ($result['disk_device'] ?? $locked->disk->disk_device),
                     'status' => VmDisk::STATUS_READY,
-                    'last_billed_at' => now(),
+                    'last_billed_at' => $at,
                     'remote_state' => $result,
                 ])->save();
             }
 
+            if ($locked->type === VmUpgradeOrder::TYPE_HARDWARE) {
+                $observation = app(VmHardwareService::class)->normalize($vm, $config);
+                $observation = array_merge($observation, [
+                    'identity' => ['name' => $config['name'] ?? null, 'smbios1' => $config['smbios1'] ?? null],
+                    'digest' => $config['digest'] ?? hash('sha256', json_encode($config)),
+                    'pending' => [], 'locked' => false, 'status' => $vm->status, 'checked_at' => $at->toIso8601String(),
+                ]);
+                $vm->forceFill(['hardware_observation' => $observation, 'hardware_drift' => false,
+                    'hardware_checked_at' => $at, 'hardware_sync_error' => null,
+                    'remote_state' => array_merge($vm->remote_state ?? [], ['accepted_hardware' => $observation])]);
+            }
+            $vm->desired_state = array_merge($vm->desired_state ?? [], $vm->desiredStateSnapshot());
+            $vm->save();
+            if ($locked->type === VmUpgradeOrder::TYPE_HARDWARE) {
+                $change = $vm->configurationChanges()->where('request_key', $after['request_key'])->first();
+                $change?->update(['kind' => 'hardware', 'effective_at' => $at]);
+            }
+            app(PortalCache::class)->invalidate();
             $locked->forceFill([
                 'status' => VmUpgradeOrder::STATUS_SUCCEEDED,
                 'proxmox_task_id' => $result['task_id'] ?? null,
@@ -324,18 +386,23 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
 
     private function reconcileAfterFailure(VmUpgradeOrder $order, ProxmoxService $proxmox, Throwable $exception): void
     {
+        if (! $order->isPending()) {
+            return;
+        }
         $vm = $order->virtualMachine;
 
-        if ($vm?->isProxmox() && $vm->proxmoxServer && $vm->node && $vm->vmid && $order->type === VmUpgradeOrder::TYPE_BUNDLE) {
+        if ($vm?->isProxmox() && $vm->proxmoxServer && $vm->node && $vm->vmid && in_array($order->type, [VmUpgradeOrder::TYPE_BUNDLE, VmUpgradeOrder::TYPE_HARDWARE], true)) {
             try {
-                $config = $proxmox->vmConfig($vm->proxmoxServer, (string) $vm->node, (int) $vm->vmid);
+                $config = $order->type === VmUpgradeOrder::TYPE_HARDWARE
+                    ? $proxmox->vmEffectiveConfig($vm->proxmoxServer, (string) $vm->node, (int) $vm->vmid)
+                    : $proxmox->vmConfig($vm->proxmoxServer, (string) $vm->node, (int) $vm->vmid);
 
                 if ($this->bundleConfigMatches($vm, $order, $config)) {
                     $status = $proxmox->vmStatus($vm->proxmoxServer, (string) $vm->node, (int) $vm->vmid);
                     $this->markSucceeded($order, $config, [
                         'reconciled_after_error' => true,
                         'original_error' => $exception->getMessage(),
-                        'start_skipped_wallet_locked' => ($status['status'] ?? null) !== 'running',
+                        'kept_stopped' => ($status['status'] ?? null) !== 'running',
                     ]);
 
                     return;
@@ -369,7 +436,7 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
     /** @param array<string, mixed> $config @param array<string, mixed> $after */
     private function hardwareMatches(array $config, array $after): bool
     {
-        return (int) ($config['cores'] ?? 0) === (int) ($after['cpu_cores'] ?? 0)
+        return (int) ($config['cores'] ?? 0) * max(1, (int) ($config['sockets'] ?? 1)) === (int) ($after['cpu_cores'] ?? 0)
             && (int) ($config['memory'] ?? 0) === (int) ($after['ram_gb'] ?? 0) * 1024;
     }
 
@@ -388,6 +455,13 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
     /** @param array<string, mixed> $config */
     private function diskSizeGb(array $config, string $device): ?int
     {
+        $raw = $config[$device] ?? null;
+        if (is_string($raw)) {
+            $bytes = app(VmHardwareService::class)->diskBytes($raw);
+            if ($bytes !== null) {
+                return (int) ceil($bytes / 1024 ** 3);
+            }
+        }
         $value = $config[$device] ?? null;
         if (is_array($value)) {
             $value = $value['size'] ?? null;
@@ -415,6 +489,20 @@ class ApplyVmUpgradeJob implements ShouldBeUnique, ShouldQueue
         }
 
         $proxmox->waitForTask($vm->proxmoxServer, (string) $vm->node, (string) $result['task_id'], $timeoutSeconds);
+    }
+
+    private function recordStoppedBoundary(VirtualMachine $vm): void
+    {
+        DB::transaction(function () use ($vm): void {
+            $locked = VirtualMachine::query()->lockForUpdate()->findOrFail($vm->id);
+            if (! $locked->isRunning()) {
+                return;
+            }
+            $at = now();
+            app(UsageBillingService::class)->accrueVm($locked, $at);
+            $locked->refresh()->forceFill(['status' => VirtualMachine::STATUS_STOPPED, 'last_stopped_at' => $at])->save();
+        });
+        $vm->refresh();
     }
 
     private function pauseBeforeRestart(): void

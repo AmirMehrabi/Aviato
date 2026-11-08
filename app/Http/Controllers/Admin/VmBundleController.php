@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\VmBundle;
+use App\Services\PricingBoundaryService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,13 +44,16 @@ class VmBundleController extends Controller
 
     public function update(Request $request, VmBundle $bundle): RedirectResponse
     {
-        $bundle->update($this->validated($request, $bundle));
+        app(PricingBoundaryService::class)->bundle($bundle, $this->validated($request, $bundle));
 
         return redirect()->route('admin.billing.bundles.index')->with('status', 'باندل به‌روزرسانی شد.');
     }
 
     public function destroy(VmBundle $bundle): RedirectResponse
     {
+        if ($bundle->virtualMachines()->notDeleted()->exists()) {
+            return back()->withErrors(['bundle' => 'این پلن به ماشین فعال متصل است. برای جلوگیری از تغییر ناخواسته قیمت یا سیاست شبکه، آن را غیرفعال کنید.']);
+        }
         $bundle->delete();
 
         return redirect()->route('admin.billing.bundles.index')->with('status', 'باندل حذف شد.');

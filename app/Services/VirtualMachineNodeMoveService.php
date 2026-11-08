@@ -93,7 +93,13 @@ class VirtualMachineNodeMoveService
                 ? VirtualMachine::STATUS_RUNNING
                 : (($targetStatus['status'] ?? null) === 'stopped' ? VirtualMachine::STATUS_STOPPED : $vm->status),
             'last_seen_at' => now(),
+            'hardware_observation' => null,
+            'hardware_checked_at' => null,
+            'hardware_attempted_at' => null,
+            'hardware_drift' => false,
             'remote_state' => array_merge($vm->remote_state ?? [], [
+                'accepted_hardware' => null,
+                'hardware_identity' => null,
                 'node_move' => [
                     'action' => $action,
                     'from_node' => $sourceNode,

@@ -645,6 +645,26 @@ class ProxmoxService
     /**
      * @return array<string, mixed>
      */
+    public function hardwareCapacity(ProxmoxServer $server, string $node, string $storage): array
+    {
+        $nodeStatus = $this->getData($server, "/nodes/{$node}/status") ?? [];
+        $storageStatus = $this->getData($server, "/nodes/{$node}/storage/{$storage}/status") ?? [];
+
+        return ['memory_total' => $nodeStatus['memory']['total'] ?? null,
+            'memory_free' => $nodeStatus['memory']['free'] ?? null,
+            'storage_available' => $storageStatus['avail'] ?? null];
+    }
+
+    public function vmEffectiveConfig(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        return $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/config", ['current' => 1]) ?? [];
+    }
+
+    public function vmPendingConfig(ProxmoxServer $server, string $node, int $vmid): array
+    {
+        return $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/pending") ?? [];
+    }
+
     public function vmConfig(ProxmoxServer $server, string $node, int $vmid): array
     {
         return $this->getData($server, "/nodes/{$node}/qemu/{$vmid}/config") ?? [];
@@ -826,7 +846,8 @@ class ProxmoxService
         $device = (string) $options['device'];
         $storage = (string) $options['storage'];
         $sizeGb = (int) $options['size_gb'];
-        $payload = [$device => "{$storage}:{$sizeGb}"];
+        $serial = isset($options['serial']) ? ',serial='.preg_replace('/[^a-zA-Z0-9_-]/', '', $options['serial']) : '';
+        $payload = [$device => "{$storage}:{$sizeGb}{$serial}"];
         $taskId = $this->request($server)
             ->asForm()
             ->put("/nodes/{$node}/qemu/{$vmid}/config", $payload)

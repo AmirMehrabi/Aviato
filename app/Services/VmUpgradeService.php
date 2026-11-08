@@ -30,7 +30,11 @@ class VmUpgradeService
     {
         $vm->loadMissing('bundle');
         $beforeHourly = $this->billing->hourlyWhenRunning($vm);
-        $afterHourly = (float) $bundle->hourly_price;
+        $target = clone $vm;
+        $target->vm_bundle_id = $bundle->id;
+        $target->setRelation('bundle', $bundle);
+        $target->fill(['cpu_cores' => $bundle->cpu_cores, 'ram_gb' => $bundle->ram_gb, 'disk_gb' => max($vm->disk_gb, $bundle->disk_gb), 'ip_count' => $bundle->ip_count]);
+        $afterHourly = $this->billing->hourlyWhenRunning($target);
 
         return [
             'type' => VmUpgradeOrder::TYPE_BUNDLE,
@@ -94,7 +98,7 @@ class VmUpgradeService
         });
 
         $order->virtualMachine->operations()->where('action', 'upgrade')->where('details->upgrade_order_id', $order->id)->update(['actor_id' => $customer->id]);
-        ApplyVmUpgradeJob::dispatch($order->id)->onQueue(ApplyVmUpgradeJob::QUEUE);
+        ApplyVmUpgradeJob::dispatch($order->id)->onQueue(ApplyVmUpgradeJob::QUEUE)->afterCommit();
 
         return $order;
     }
@@ -143,7 +147,7 @@ class VmUpgradeService
         });
 
         $order->virtualMachine->operations()->where('action', 'upgrade')->where('details->upgrade_order_id', $order->id)->update(['actor_id' => $customer->id]);
-        ApplyVmUpgradeJob::dispatch($order->id)->onQueue(ApplyVmUpgradeJob::QUEUE);
+        ApplyVmUpgradeJob::dispatch($order->id)->onQueue(ApplyVmUpgradeJob::QUEUE)->afterCommit();
 
         return $order;
     }
@@ -162,7 +166,7 @@ class VmUpgradeService
             throw ValidationException::withMessages(['server' => 'این سرور در وضعیت حذف است و قابل ارتقا نیست.']);
         }
 
-        if ($vm->provisioning_status !== VirtualMachine::PROVISION_READY) {
+        if ($vm->provisioning_status !== VirtualMachine::PROVISION_READY || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
             throw ValidationException::withMessages(['server' => 'ارتقا فقط برای سرور آماده امکان پذیر است.']);
         }
 
@@ -182,6 +186,10 @@ class VmUpgradeService
 
     private function assertBundleUpgrade(VirtualMachine $vm, VmBundle $bundle): void
     {
+        if ($vm->pricing_mode === 'custom') {
+            throw ValidationException::withMessages(['bundle' => 'این سرور قیمت اختصاصی دارد. برای تغییر پلن و بررسی قیمت جدید با پشتیبانی تماس بگیرید.']);
+        }
+
         if (! $bundle->is_active) {
             throw ValidationException::withMessages(['bundle' => 'این باندل فعال نیست.']);
         }
@@ -208,9 +216,12 @@ class VmUpgradeService
 
     private function assertWalletCanStart(Customer $customer, int $minimumBalance): void
     {
-        $wallet = $this->wallets->walletFor($customer->refresh());
+        $customer = Customer::query()->whereKey($customer->id)->lockForUpdate()->firstOrFail();
+        $reserved = (int) VmUpgradeOrder::query()->where('customer_id', $customer->id)
+            ->whereIn('status', [VmUpgradeOrder::STATUS_PENDING, VmUpgradeOrder::STATUS_APPLYING, VmUpgradeOrder::STATUS_RECONCILIATION_REQUIRED])
+            ->sum('minimum_wallet_balance');
 
-        if ($wallet->balance < $minimumBalance) {
+        if (app(UsageBalanceService::class)->effectiveBalance($customer) - $reserved < $minimumBalance) {
             throw ValidationException::withMessages([
                 'wallet' => 'موجودی کیف پول برای شروع این ارتقا کافی نیست.',
             ]);
