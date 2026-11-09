@@ -7,6 +7,8 @@
     $activePage = 'pricing';
     $pricingBundles = ($bundles ?? collect())->values();
     $featuredIndex = $pricingBundles->count() > 1 ? 1 : null;
+    $trafficTimezones = $pricingBundles->where('network_accounting_enabled', true)->pluck('network_billing_timezone')->unique();
+    $trafficExample = $pricingBundles->first(fn ($plan) => $plan->network_accounting_enabled && $plan->network_usage_direction === 'ingress' && $plan->network_overage_price_unit_bytes > 0);
     $meta = [
         ['badge' => 'برای شروع آسان', 'fit' => 'سایت، وردپرس و پروژه های کوچک'],
         ['badge' => 'پلن پیشنهادی', 'fit' => 'فروشگاه، اپلیکیشن و سرویس های در حال رشد'],
@@ -21,7 +23,7 @@
         <div class="mx-auto max-w-[1320px]">
             <div class="ml-auto min-h-[224px] max-w-[872px] text-right">
                 <h1 class="text-3xl font-bold leading-[48px] text-[#000C1C] md:text-[32px]">پلن <span class="text-[#0069FF]">ماشین مجازی</span> را راحت انتخاب کنید و بخرید</h1>
-                <p class="mt-6 text-lg leading-9 text-[#5A5A5A] md:text-[22px] md:leading-10">هر پلن می‌بینید چه مقدار CPU، RAM، دیسک و IP می‌گیرید و هزینه ماهانه یا ساعتی آن چقدر است. بعد از انتخاب پلن، می‌توانید حساب مشتری بسازید و سفارش را ادامه دهید.</p>
+                <p class="mt-6 text-lg leading-9 text-[#5A5A5A] md:text-[22px] md:leading-10">هر پلن می‌بینید چه مقدار CPU، RAM، دیسک، IP و سهمیه ترافیک می‌گیرید و هزینه ماهانه یا ساعتی آن چقدر است. بعد از انتخاب پلن، می‌توانید حساب مشتری بسازید و سفارش را ادامه دهید.</p>
                 <a href="{{ route('contact') }}" class="mt-6 inline-flex h-12 items-center justify-center rounded-lg bg-[#0069FF] px-8 text-sm font-bold text-white transition hover:bg-[#0050D0]">مشاوره رایگان</a>
             </div>
             <div class="mt-6 flex min-h-[145px] flex-col justify-center gap-[18px] rounded-[28px] border border-[#E3EEFF] bg-[#FAFCFF] px-6 py-3 shadow-[0_0_1px_#C6DEFF]">
@@ -44,18 +46,19 @@
                 </div>
                 <div class="mt-4 overflow-hidden rounded-xl border border-[#C6DEFF] bg-[#FAFCFF]">
                     <div class="overflow-x-auto">
-                        <div class="min-w-[1120px]">
-                        <div class="grid h-[83px] grid-cols-[minmax(180px,1.2fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(190px,1.35fr)_minmax(170px,1.2fr)_64px] items-center border-b border-[#C6DEFF] bg-[#E3EEFF] text-center text-base text-[#5A5A5A]">
+                        <div class="min-w-[1320px]">
+                        <div class="grid h-[83px] grid-cols-[minmax(180px,1.2fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(200px,1.4fr)_minmax(190px,1.35fr)_minmax(170px,1.2fr)_64px] items-center border-b border-[#C6DEFF] bg-[#E3EEFF] text-center text-base text-[#5A5A5A]">
                             <div class="px-3 text-right">نام سرویس</div>
                             <div class="px-3">پردازنده</div>
                             <div class="px-3">حافظه</div>
                             <div class="px-3">دیسک</div>
+                            <div class="px-3">سهمیه ترافیک ماهانه</div>
                             <div class="px-3">قیمت / ماهیانه</div>
                             <div class="px-3">قیمت / ساعتی</div>
                             <div aria-hidden="true"></div>
                         </div>
                         @foreach ($pricingBundles as $bundle)
-                            <div class="grid min-h-[126px] grid-cols-[minmax(180px,1.2fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(190px,1.35fr)_minmax(170px,1.2fr)_64px] items-center border-b border-[#C6DEFF] text-center last:border-b-0 {{ $loop->index === $featuredIndex ? 'bg-[#EFEFEF] ring-2 ring-inset ring-[#0046AA]' : 'bg-[#FAFCFF]' }}">
+                            <div class="grid min-h-[126px] grid-cols-[minmax(180px,1.2fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(200px,1.4fr)_minmax(190px,1.35fr)_minmax(170px,1.2fr)_64px] items-center border-b border-[#C6DEFF] text-center last:border-b-0 {{ $loop->index === $featuredIndex ? 'bg-[#EFEFEF] ring-2 ring-inset ring-[#0046AA]' : 'bg-[#FAFCFF]' }}">
                                 <div class="px-4 text-right">
                                     <div class="flex flex-wrap items-center justify-start gap-2">
                                         <span class="text-xl font-bold leading-9 text-[#000C1C]">{{ $bundle->name }}</span>
@@ -68,6 +71,17 @@
                                 <div class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap px-2 text-lg text-[#5A5A5A]" dir="ltr"><img src="{{ asset('assets/icons/figma/cpu.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->cpu_cores }} vCPU</span></div>
                                 <div class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap px-2 text-lg text-[#5A5A5A]" dir="ltr"><img src="{{ asset('assets/icons/figma/ram.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->ram_gb }}GB</span></div>
                                 <div class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap px-2 text-lg text-[#5A5A5A]" dir="ltr"><img src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->disk_gb }}GB</span></div>
+                                <div class="px-3 py-4 text-sm leading-7 text-[#003A8E]">
+                                    @if ($bundle->network_accounting_enabled)
+                                        <p class="text-lg font-bold"><bdi dir="ltr">{{ rtrim(rtrim(number_format($bundle->network_included_bytes_monthly / 1073741824, 2, '.', ','), '0'), '.') }} GiB</bdi></p>
+                                        <p>{{ match ($bundle->network_usage_direction) { 'ingress' => 'ورودی', 'egress' => 'خروجی', default => 'مجموع ورودی و خروجی' } }}</p>
+                                        @if ($bundle->network_overage_price_unit_bytes > 0)
+                                            <p class="text-xs text-[#5A5A5A]">مازاد: {{ $wallets->format((int) round($bundle->network_overage_price * 1073741824 / $bundle->network_overage_price_unit_bytes)) }} / <bdi dir="ltr">GiB</bdi></p>
+                                        @endif
+                                    @else
+                                        <p>بدون هزینه حجمی</p>
+                                    @endif
+                                </div>
                                 <div class="px-2 text-lg font-bold text-[#003A8E]">{{ $wallets->format($bundle->monthly_price) }}</div>
                                 <div class="px-2 text-base text-[#5A5A5A]">{{ $wallets->format(round($bundle->monthly_price / 720)) }}</div>
                                 <a href="{{ route('customer.register') }}" aria-label="خرید پلن {{ $bundle->name }}" class="mx-auto flex size-8 items-center justify-center text-[#0069FF] transition hover:translate-x-[-2px]">
@@ -79,9 +93,41 @@
                         </div>
                     </div>
                 </div>
+                @include('marketing.traffic-note', ['trafficBundles' => $pricingBundles])
             </div>
         </section>
     @endif
+
+    <section id="traffic" class="scroll-mt-28 bg-white px-4 pt-12 text-right md:px-8 lg:px-10" aria-labelledby="traffic-heading">
+        <div class="mx-auto max-w-[1320px] rounded-3xl border border-[#C6DEFF] bg-[#FAFCFF] p-6 md:p-9">
+            <h2 id="traffic-heading" class="text-2xl font-bold leading-10 text-[#003A8E]">ترافیک چگونه محاسبه می‌شود؟</h2>
+            <div class="mt-5 grid gap-6 text-base leading-8 text-[#002355] md:grid-cols-2">
+                <div>
+                    <h3 class="font-bold">ورودی و خروجی از نگاه سرور</h3>
+                    <p class="mt-1">ترافیک ورودی، داده‌ای است که سرور شما دریافت می‌کند؛ مانند دانلود فایل روی سرور. ترافیک خروجی، داده‌ای است که سرور ارسال می‌کند؛ مانند ارسال صفحات سایت به بازدیدکنندگان. جهت محاسبه و سهمیه هر پلن در جدول مشخص است.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold">سهمیه مستقل برای هر سرور</h3>
+                    <p class="mt-1">سهمیه برای هر ماشین مجازی جداگانه است و بین سرورها به اشتراک گذاشته نمی‌شود. سهمیه مصرف‌نشده به ماه بعد منتقل نمی‌شود و برای سروری که در میانه ماه ساخته شود نیز سهمیه کامل همان ماه در نظر گرفته می‌شود.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold">زمان تجدید سهمیه</h3>
+                    <p class="mt-1">سهمیه در روز اول هر ماه میلادی، ساعت ۰۰:۰۰ در منطقه زمانی پلن تجدید می‌شود. دوره سهمیه ترافیک با دوره صورتحساب ماهانه که شمسی است، تفاوت دارد.</p>
+                    @foreach ($trafficTimezones as $timezone)
+                        <p class="mt-1 text-sm">{{ $trafficTimezones->count() === 1 ? 'منطقه زمانی پلن‌ها:' : 'منطقه زمانی '.$pricingBundles->where('network_accounting_enabled', true)->where('network_billing_timezone', $timezone)->pluck('name')->join('، ').':' }} <bdi>{{ $timezone === 'Asia/Tehran' ? 'تهران' : $timezone }}</bdi></p>
+                    @endforeach
+                </div>
+                <div>
+                    <h3 class="font-bold">مصرف مازاد و کیف پول</h3>
+                    <p class="mt-1">پس از مصرف سهمیه، هزینه مازاد به‌صورت خودکار و متناسب با حجم واقعی مصرف محاسبه می‌شود؛ نیازی به خرید بسته جداگانه نیست. این هزینه علاوه بر قیمت سرور است و در تسویه روزانه از کیف پول کسر می‌شود. ادامه استفاده به اعتبار کافی کیف پول نیاز دارد.</p>
+                </div>
+            </div>
+            @if ($trafficExample)
+                <p class="mt-6 rounded-xl bg-[#E3EEFF] p-4 text-base leading-8 text-[#002355]"><strong>مثال برای پلن {{ $trafficExample->name }}:</strong> اگر در یک ماه ۵۰ <bdi dir="ltr">GiB</bdi> بیشتر از سهمیه ورودی پلن دریافت کنید، هزینه ترافیک مازاد {{ $wallets->format((int) intdiv(50 * 1073741824 * $trafficExample->network_overage_price, $trafficExample->network_overage_price_unit_bytes)) }} خواهد بود. ترافیک خروجی هزینه حجمی ندارد.</p>
+            @endif
+            <p class="mt-6 border-t border-[#C6DEFF] pt-4 text-sm leading-7 text-[#5A5A5A]">هر <bdi dir="ltr">GiB</bdi> برابر با ۱٬۰۷۳٬۷۴۱٬۸۲۴ بایت است. مصرف کسری از این واحد نیز متناسب با حجم واقعی محاسبه می‌شود. گزارش مصرف پس از نهایی‌شدن داده‌های ساعتی به‌روزرسانی می‌شود.</p>
+        </div>
+    </section>
 
     <section class="bg-white px-4 pb-0 pt-[86px] text-right md:px-8 lg:px-10">
         <div class="mx-auto max-w-[1320px]">

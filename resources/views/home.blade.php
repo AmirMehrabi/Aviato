@@ -151,6 +151,7 @@
                             <span class="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-sm text-[#5A5A5A] md:text-lg"><img loading="lazy" decoding="async" src="{{ asset('assets/icons/figma/disk.svg') }}" alt="" class="size-6" aria-hidden="true"><span>{{ $bundle->disk_gb }} GB</span></span>
                         </a>
                     @endforeach
+                    @include('marketing.traffic-note', ['trafficBundles' => $marketingBundles])
                 </div>
             @else
                 <div class="rounded-xl border border-dashed border-[#C6DEFF] bg-[#FAFCFF] p-8 text-center text-[#5A5A5A]">فعلا پلنی برای نمایش وجود ندارد.</div>
