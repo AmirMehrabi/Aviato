@@ -10,14 +10,17 @@ use App\Models\ProjectMember;
 use App\Notifications\WorkspaceAddedNotification;
 use App\Services\ProjectAccessService;
 use App\Services\ProjectLifecycleService;
+use App\Services\ProjectMemberVmAccessService;
 use App\Services\WalletService;
 use App\Services\WorkspaceWalletAlertPreferences;
 use App\Services\WorkspaceWalletAlertService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
@@ -61,6 +64,12 @@ class ProjectController extends Controller
             'wallets' => $this->wallets,
             'projects' => $this->projects->projectsFor($customer),
             'project' => $project->load(['owner', 'members.customer']),
+            'memberVmIds' => $this->projects->canManageMembers($project, $customer)
+                ? $project->members()->with('specificVirtualMachines:id')->get()->mapWithKeys(fn (ProjectMember $member) => [$member->id => $member->specificVirtualMachines->modelKeys()])->all()
+                : [],
+            'assignableVms' => $this->projects->canManageMembers($project, $customer)
+                ? $project->virtualMachines()->notDeleted()->orderBy('display_name')->get(['id', 'name', 'display_name', 'ip_address'])
+                : collect(),
             'visibleVirtualMachineCount' => $visibleVirtualMachineCount,
             'activeProject' => $activeProject,
             'activeMembership' => $this->projects->membership($activeProject, $customer),
@@ -218,6 +227,7 @@ class ProjectController extends Controller
 
         $data = $request->validate([
             'identifier' => ['required', 'string', 'max:255'],
+            ...app(ProjectMemberVmAccessService::class)->rules($project, required: false),
             'dns_read' => ['sometimes', 'boolean'],
             'dns_manage' => ['sometimes', 'boolean'],
             'role' => ['required', Rule::in([
@@ -226,7 +236,7 @@ class ProjectController extends Controller
                 ProjectMember::ROLE_VIEWER,
                 ProjectMember::ROLE_BILLING,
             ])],
-        ]);
+        ], app(ProjectMemberVmAccessService::class)->messages());
 
         $identifier = trim($data['identifier']);
         $member = Customer::query()
@@ -235,22 +245,33 @@ class ProjectController extends Controller
             ->first();
 
         if (! $member) {
-            return back()->withInput()->withErrors(['identifier' => 'No customer was found with this email or phone.']);
+            return back()->withInput()->withErrors(['identifier' => 'مشتری با این ایمیل یا شماره موبایل پیدا نشد.']);
         }
 
-        $existingMembership = $project->members()->where('customer_id', $member->id)->exists();
-        $membership = $project->members()->updateOrCreate(
-            ['customer_id' => $member->id],
-            [
-                'role' => $member->id === $project->owner_customer_id ? ProjectMember::ROLE_OWNER : $data['role'],
-                'vm_access_scope' => $member->id === $project->owner_customer_id
-                    ? ProjectMember::VM_ACCESS_ALL
-                    : ProjectMember::defaultVmAccessScopeForRole($data['role']),
-                'invited_by_customer_id' => $customer->id,
-                'dns_read' => $request->boolean('dns_read'),
-                'dns_manage' => $request->boolean('dns_manage'),
-            ],
-        );
+        $existingMembership = $project->members()->where('customer_id', $member->id)->first();
+        if ($member->id === $project->owner_customer_id) {
+            throw ValidationException::withMessages(['identifier' => 'مالک از قبل عضو این فضای کاری است و همیشه دسترسی کامل دارد.']);
+        }
+
+        $membership = DB::transaction(function () use ($project, $member, $customer, $data, $request, $existingMembership): ProjectMember {
+            $membership = $project->members()->updateOrCreate(
+                ['customer_id' => $member->id],
+                [
+                    'role' => $data['role'],
+                    'vm_access_scope' => $data['vm_access_scope'] ?? $existingMembership?->vm_access_scope
+                        ?? ProjectMember::defaultVmAccessScopeForRole($data['role']),
+                    'invited_by_customer_id' => $customer->id,
+                    'dns_read' => $request->boolean('dns_read'),
+                    'dns_manage' => $request->boolean('dns_manage'),
+                ],
+            );
+
+            if (array_key_exists('vm_access_scope', $data)) {
+                app(ProjectMemberVmAccessService::class)->sync($membership, $project, $data);
+            }
+
+            return $membership;
+        });
 
         if (! $existingMembership && $member->id !== $customer->id) {
             $member->notify(new WorkspaceAddedNotification($project, $customer, $membership->role));
@@ -272,6 +293,7 @@ class ProjectController extends Controller
         abort_if($member->customer_id === $project->owner_customer_id, 422);
 
         $data = $request->validate([
+            ...app(ProjectMemberVmAccessService::class)->rules($project, required: false),
             'dns_read' => ['sometimes', 'boolean'],
             'dns_manage' => ['sometimes', 'boolean'],
             'role' => ['required', Rule::in([
@@ -280,11 +302,22 @@ class ProjectController extends Controller
                 ProjectMember::ROLE_VIEWER,
                 ProjectMember::ROLE_BILLING,
             ])],
-        ]);
+        ], app(ProjectMemberVmAccessService::class)->messages());
 
-        $member->update(['role' => $data['role'], 'dns_read' => $request->boolean('dns_read'), 'dns_manage' => $request->boolean('dns_manage')]);
+        DB::transaction(function () use ($member, $project, $data, $request): void {
+            $member->update([
+                'role' => $data['role'],
+                'vm_access_scope' => $data['vm_access_scope'] ?? $member->vm_access_scope,
+                'dns_read' => $request->boolean('dns_read'),
+                'dns_manage' => $request->boolean('dns_manage'),
+            ]);
 
-        return back()->with('status', 'نقش عضو به‌روزرسانی شد.');
+            if (array_key_exists('vm_access_scope', $data)) {
+                app(ProjectMemberVmAccessService::class)->sync($member, $project, $data);
+            }
+        });
+
+        return back()->with('status', 'دسترسی عضو به‌روزرسانی شد.');
     }
 
     public function destroyMember(Request $request, Project $project, ProjectMember $member): RedirectResponse

@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Services\BillingService;
+use App\Services\ProjectMemberVmAccessService;
 use App\Services\WorkspaceWalletAlertPreferences;
 use App\Services\WorkspaceWalletAlertService;
 use App\Support\AdminTableSort;
@@ -357,9 +358,7 @@ class ProjectController extends Controller
             ])],
             'dns_read' => ['sometimes', 'boolean'],
             'dns_manage' => ['sometimes', 'boolean'],
-            'vm_access_scope' => ['required', Rule::in(ProjectMember::vmAccessScopes())],
-            'vm_ids' => ['required_if:vm_access_scope,specific', 'array', 'min:1'],
-            'vm_ids.*' => ['integer', Rule::exists('virtual_machines', 'id')->where('project_id', $project->id)],
+            ...app(ProjectMemberVmAccessService::class)->rules($project),
         ];
     }
 
@@ -367,30 +366,12 @@ class ProjectController extends Controller
     {
         return [
             'customer_ids.required' => 'حداقل یک مشتری را انتخاب کنید.',
-            'vm_ids.required_if' => 'در حالت VMهای مشخص، باید حداقل یک ماشین انتخاب شود.',
+            ...app(ProjectMemberVmAccessService::class)->messages(),
         ];
     }
 
     private function syncProjectMemberVms(ProjectMember $member, Project $project, array $data): void
     {
-        if ($member->vm_access_scope !== ProjectMember::VM_ACCESS_SPECIFIC) {
-            $member->specificVirtualMachines()->detach();
-
-            return;
-        }
-
-        $vmIds = collect($data['vm_ids'] ?? [])
-            ->map(fn ($value): int => (int) $value)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
-        abort_if($vmIds === [], 422, 'در حالت VMهای مشخص، باید حداقل یک ماشین انتخاب شود.');
-
-        $projectVmIds = $project->virtualMachines()->whereKey($vmIds)->pluck('id')->all();
-        abort_if(count($projectVmIds) !== count($vmIds), 422, 'یکی از VMهای انتخاب‌شده متعلق به همین فضای کاری نیست.');
-
-        $member->specificVirtualMachines()->sync($projectVmIds);
+        app(ProjectMemberVmAccessService::class)->sync($member, $project, $data);
     }
 }

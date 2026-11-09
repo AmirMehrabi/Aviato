@@ -25,6 +25,10 @@
     $selectedWalletAlertRecipientIds = old('recipient_ids_present') !== null ? array_map('intval', old('recipient_ids', [])) : $walletAlertRecipientIds;
 @endphp
 
+@if($section === 'members' && old('_member_form'))
+    @section('own_messages', '1')
+@endif
+
 @section('content')
     <nav aria-label="بخش‌های مدیریت فضای کاری" class="mb-5 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3">
         @foreach($sections as $key => $label)
@@ -90,97 +94,61 @@
         </div>
     @elseif($section === 'members')
         <section class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div>
-                <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h2 class="text-lg font-black text-slate-950">دسترسی فضای کاری</h2>
-                    <p class="mt-1 text-sm leading-7 text-slate-500">مالک و مدیر همه ماشین‌های فضا را می‌بینند. نقش عضو فقط ماشین‌هایی را می‌بیند که خودش ساخته است.</p>
-                        </div>
-                        <span class="w-fit rounded-lg {{ $ownerPays ? 'bg-[#EBF3FF] text-[#0069FF]' : 'bg-slate-100 text-slate-700' }} px-3 py-2 text-xs font-black">
-                            مسئول پرداخت: {{ $project->owner?->name }}
-                        </span>
-                    </div>
-
-                    <div class="mt-4 space-y-3">
-                        @foreach($project->members as $member)
-                            <div class="flex flex-col gap-3 rounded-lg border border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                <h2 class="text-lg font-black text-slate-950">اعضا و دسترسی‌ها</h2>
+                <p class="mt-2 text-sm leading-7 text-slate-500">نقش هر فرد مشخص می‌کند چه کاری می‌تواند انجام دهد؛ محدوده دسترسی مشخص می‌کند کدام ماشین‌ها را می‌بیند.</p>
+                <div class="mt-5 space-y-3">
+                    @foreach($project->members as $member)
+                        @php
+                            $isProjectOwner = (int) $member->customer_id === (int) $project->owner_customer_id;
+                            $scopeLabel = $isProjectOwner ? 'همه ماشین‌ها' : (['all' => 'همه ماشین‌ها', 'own' => 'ماشین‌های خود عضو', 'specific' => 'ماشین‌های مشخص'][$member->vm_access_scope] ?? 'بدون دسترسی');
+                        @endphp
+                        <div class="rounded-lg border border-slate-200 p-4">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
-                                    <p class="truncate font-black text-slate-950">{{ $member->customer?->name }}</p>
-                                    <p class="mt-1 truncate text-xs font-bold text-slate-500">{{ $member->customer?->email ?: $member->customer?->phone }}</p>
+                                    <p class="break-words font-black text-slate-950">{{ $member->customer?->name }}</p>
+                                    <p class="mt-1 break-all text-xs text-slate-500" dir="auto">{{ $member->customer?->email ?: $member->customer?->phone }}</p>
                                 </div>
-                                <div class="flex flex-wrap gap-2">
-                                    @if($canManageMembers && $member->customer_id !== $project->owner_customer_id)
-                                        <form method="POST" action="{{ route('customer.projects.members.update', [$project, $member], false) }}" class="flex flex-wrap items-center gap-2">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="role" aria-label="نقش {{ $member->customer?->name }}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black">
-                                                @foreach(['admin' => 'مدیر', 'member' => 'عضو', 'viewer' => 'فقط مشاهده', 'billing' => 'مالی'] as $role => $label)
-                                                    <option value="{{ $role }}" @selected($member->role === $role)>{{ $label }}</option>
-                                                @endforeach
-                                            </select>
-                                            <label class="inline-flex items-center gap-1 text-xs"><input type="checkbox" name="dns_read" value="1" @checked($member->dns_read)>مشاهده DNS</label>
-                                            <label class="inline-flex items-center gap-1 text-xs"><input type="checkbox" name="dns_manage" value="1" @checked($member->dns_manage)>مدیریت DNS</label>
-                                            <button class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white">ذخیره</button>
-                                        </form>
-                                        <form method="POST" action="{{ route('customer.projects.members.destroy', [$project, $member], false) }}" onsubmit="return confirm('این عضو حذف شود؟')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-600">حذف</button>
-                                        </form>
-                                    @else
-                                        <span class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">{{ $roleLabels[$member->role] ?? $member->role }}</span>
-                                    @endif
-                                </div>
+                                <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{{ $roleLabels[$member->role] ?? $member->role }}</span>
                             </div>
-                        @endforeach
-                    </div>
+                            <p class="mt-3 text-xs font-bold text-slate-600">
+                                {{ $member->role === 'billing' ? 'بدون دسترسی به ماشین‌ها' : $scopeLabel }}
+                                @if($canManageMembers && $member->vm_access_scope === 'specific' && $member->role !== 'billing')
+                                    · {{ count($memberVmIds[$member->id] ?? []) }} ماشین
+                                @endif
+                            </p>
+                            @if($isProjectOwner)
+                                <p class="mt-2 text-xs leading-6 text-slate-400">مالک همیشه دسترسی کامل دارد.</p>
+                            @elseif($canManageMembers)
+                                <details class="group mt-3 border-t border-slate-100 pt-3" @if(old('_member_form') === 'member-'.$member->id) open @endif>
+                                    <summary class="cursor-pointer text-sm font-bold text-[#0069FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF]">ویرایش دسترسی</summary>
+                                    <form method="POST" action="{{ route('customer.projects.members.update', [$project, $member], false) }}" class="mt-4">
+                                        @csrf
+                                        @method('PATCH')
+                                        @include('customer.projects.partials.member-access-fields', ['editingMember' => $member])
+                                    </form>
+                                    <form method="POST" action="{{ route('customer.projects.members.destroy', [$project, $member], false) }}" class="mt-4 border-t border-slate-100 pt-3" onsubmit="return confirm('این عضو از فضای کاری حذف شود؟ دسترسی او به منابع این فضا قطع خواهد شد.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="rounded-lg px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50">حذف از فضای کاری</button>
+                                    </form>
+                                </details>
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
-
             </div>
             <aside class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
                 <h2 class="text-lg font-black text-slate-950">افزودن عضو</h2>
                 @if($canManageMembers)
-                    <p class="mt-2 text-sm font-bold leading-7 text-slate-500">مشتری فوراً عضو می‌شود و اعلانی با لینک ورود به این فضای کاری دریافت می‌کند.</p>
-                    <form method="POST" action="{{ route('customer.projects.members.store', $project, false) }}" class="mt-4 space-y-4" x-data="{ role: @js(old('role', 'member')) }">
+                    <p class="mt-2 text-sm leading-7 text-slate-500">دسترسی را انتخاب کنید؛ عضو جدید بلافاصله اضافه می‌شود و اعلان ورود به این فضا را دریافت می‌کند.</p>
+                    <form method="POST" action="{{ route('customer.projects.members.store', $project, false) }}" class="mt-5">
                         @csrf
-                        <div class="flex flex-wrap gap-4 text-xs"><label><input type="checkbox" name="dns_read" value="1" @checked(old('dns_read'))> مشاهده DNS</label><label><input type="checkbox" name="dns_manage" value="1" @checked(old('dns_manage'))> مدیریت DNS</label><p class="text-slate-500">مالک و مدیر فضای کاری همیشه دسترسی DNS دارند.</p></div>
-
-                        <label class="block">
-                            <span class="text-sm font-black text-slate-700">ایمیل یا موبایل مشتری</span>
-                            <input required name="identifier" maxlength="255" value="{{ old('identifier') }}" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
-                            @error('identifier')<span class="mt-2 block text-sm text-red-600" role="alert">{{ $message }}</span>@enderror
-                        </label>
-                        <label class="block">
-                            <span class="text-sm font-black text-slate-700">نقش</span>
-                            <select name="role" x-model="role" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-[#0069FF] focus:outline-none">
-                                <option value="admin">مدیر</option>
-                                <option value="member" @selected(old('role', 'member') === 'member')>عضو</option>
-                                <option value="viewer">فقط مشاهده</option>
-                                <option value="billing">مالی</option>
-                            </select>
-                            <span class="mt-2 block text-xs font-bold leading-6 text-slate-500">
-                                <span x-show="role === 'admin'">مدیریت اعضا، تنظیمات، ماشین‌ها و امور مالی فضای کاری</span>
-                                <span x-show="role === 'member'">ساخت و مدیریت ماشین‌های خودش، بدون دسترسی به اعضا و تنظیمات</span>
-                                <span x-show="role === 'viewer'">فقط مشاهده منابعی که برای او تعیین شده است</span>
-                                <span x-show="role === 'billing'">مشاهده صورتحساب و پرداخت‌ها، بدون دسترسی به ماشین‌ها</span>
-                            </span>
-                        </label>
-                        <button class="w-full rounded-xl bg-[#0069FF] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0050D0]">افزودن عضو</button>
+                        @include('customer.projects.partials.member-access-fields', ['editingMember' => null])
                     </form>
                 @else
-                    <p class="mt-4 rounded-lg bg-slate-50 p-4 text-sm font-bold leading-7 text-slate-500">برای دعوت عضو باید مالک یا مدیر این فضای کاری باشید.</p>
+                    <p class="mt-4 rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-500">برای افزودن عضو و تغییر دسترسی‌ها باید مالک یا مدیر این فضای کاری باشید.</p>
                 @endif
-
-                <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <p class="text-sm font-black text-slate-950">راهنمای نقش‌ها</p>
-                    <div class="mt-3 space-y-2 text-xs font-bold leading-6 text-slate-600">
-                        <p><span class="font-black text-slate-900">مالک / مدیر:</span> مدیریت اعضا، ماشین‌ها و امور مالی</p>
-                        <p><span class="font-black text-slate-900">عضو:</span> مدیریت ماشین‌ها</p>
-                        <p><span class="font-black text-slate-900">فقط مشاهده:</span> فقط دیدن منابع</p>
-                        <p><span class="font-black text-slate-900">مالی:</span> دیدن صورتحساب و پرداخت‌ها</p>
-                    </div>
-                </div>
             </aside>
         </section>
     @elseif($section === 'billing')
