@@ -2,23 +2,7 @@
 @inject('money', 'App\Services\WalletService')
 @section('title', 'نمایش ماشین مجازی')
 @section('content')
-@include('components.vm-operation-status', ['machine' => $vm])
-@adminAbility('virtual-machines.power')
-@if (! $vm->isLxc() && ! $vm->isActionLocked() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY)
-<details class="my-4 rounded-xl border border-red-200 bg-white p-4 text-sm">
-    <summary class="cursor-pointer font-bold text-red-700">خاموش کردن اجباری</summary>
-    <p class="my-3">برق سرور بلافاصله قطع می‌شود و اطلاعات ذخیره‌نشده ممکن است از بین بروند. برای خاموش کردن معمول، از «خاموش کردن» استفاده کنید.</p>
-    <form method="POST" action="{{ route('admin.virtual-machines.force-stop', $vm) }}" class="flex flex-wrap items-center gap-3">
-        @csrf
-        <input type="hidden" name="power_generation" value="{{ (int) data_get($vm->desired_state, 'power_generation', 0) }}">
-        <label><input type="checkbox" name="confirm_force_stop" value="1" required> خاموش کردن اجباری را تأیید می‌کنم.</label>
-        <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-bold text-white">خاموش کردن اجباری</button>
-    </form>
-</details>
-@endif
-@endadminAbility
-
-<div class="px-4 py-6 md:px-8 lg:px-10" x-data="{ confirmAction: null }" @keydown.escape.window="confirmAction = null">
+<div class="px-4 py-6 md:px-8 lg:px-10" x-data="{ confirmAction: null, tab: @js($errors->any() ? 'configuration' : 'overview'), init() { const key = window.location.hash.slice(1); if (['overview', 'configuration', 'billing', 'activities', 'management'].includes(key)) this.tab = key; if (key === 'upgrade-history') this.tab = 'activities'; } }" @keydown.escape.window="confirmAction = null">
 
     @if (session('status'))
         <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
@@ -161,8 +145,27 @@
         </div>
     </div>
 
+    <nav class="mt-6 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3" aria-label="بخش‌های ماشین مجازی">
+        <template x-for="item in [{id:'overview',label:'نمای کلی'},{id:'configuration',label:'منابع و تنظیمات'},{id:'billing',label:'مالی و قیمت‌گذاری'},{id:'activities',label:'فعالیت‌ها'},{id:'management',label:'مدیریت'}]">
+            <button type="button" @click="tab = item.id; window.location.hash = item.id" :aria-current="tab === item.id ? 'page' : null" :class="tab === item.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'" class="shrink-0 rounded-lg px-4 py-3 text-sm font-bold" x-text="item.label"></button>
+        </template>
+    </nav>
+    <section x-show="tab === 'activities'" x-cloak>
+        @include('components.vm-operation-status', ['machine' => $vm])
+    </section>
+    <section x-show="tab === 'management'" x-cloak class="mt-6 rounded-xl border border-red-200 bg-white p-5">
+        <h2 class="font-bold">مدیریت سرور</h2>
+        @adminAbility('virtual-machines.power')
+        @if (! $vm->isLxc() && ! $vm->isActionLocked() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY)
+        <button type="button" @click="confirmAction = 'force-stop'" class="mt-4 rounded-lg border border-red-300 px-4 py-3 font-bold text-red-700">خاموش کردن اجباری</button>
+        @endif
+        @endadminAbility
+    </section>
+    @if ($vm->isActionLocked())
+    <div class="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-900" role="status">عملیات سرور در حال انجام است. <button type="button" @click="tab = 'activities'; window.location.hash = 'activities'" class="font-bold underline">مشاهده جزئیات</button></div>
+    @endif
     {{-- Summary cards --}}
-    <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section x-show="tab === 'overview'" class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @php
             $statusLabel = match($vm->status) {
                 \App\Models\VirtualMachine::STATUS_RUNNING => 'روشن',
@@ -216,7 +219,7 @@
 @adminAbility('billing.read')
 
     {{-- Billing & Usage section --}}
-    <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section x-show="tab === 'billing'" x-cloak class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 class="text-xl font-black text-slate-950">اطلاعات مالی</h2>
         <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-xl bg-slate-50 p-4">
@@ -256,10 +259,12 @@
 
 @endadminAbility
 
+    <div x-show="tab === 'configuration'" x-cloak>
     @include('admin.virtual-machines.configuration')
+    </div>
 
     {{-- Hardware & Bundle --}}
-    <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div x-show="tab === 'overview'" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">مشخصات سخت‌افزاری</h2>
             <div class="mt-5 grid gap-3 md:grid-cols-4">
@@ -365,7 +370,7 @@
     </div>
 
     {{-- Disks & Upgrade Orders --}}
-    <div class="mt-6 grid gap-6 xl:grid-cols-2">
+    <div x-show="tab === 'configuration' || tab === 'activities'" class="mt-6 grid gap-6 xl:grid-cols-2">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">دیسک‌های اضافه</h2>
             <div class="mt-5 space-y-3">
@@ -395,7 +400,7 @@
             </div>
         </section>
 
-        <section id="upgrade-history" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section x-show="tab === 'activities'" id="upgrade-history" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">تاریخچه ارتقاء</h2>
             <div class="mt-5 space-y-3">
                 @forelse($vm->upgradeOrders as $order)
@@ -470,6 +475,8 @@
 
     {{-- Confirmation modal --}}
     <div
+        x-cloak
+        role="dialog" aria-modal="true" aria-label="تأیید عملیات سرور"
         x-show="confirmAction"
         x-transition.opacity
         @click.self="confirmAction = null"
@@ -477,6 +484,22 @@
     >
         <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" @click.stop>
 
+            @adminAbility('virtual-machines.power')
+            <template x-if="confirmAction === 'force-stop'">
+                <div>
+                    <h3 class="text-lg font-bold text-red-700">خاموش کردن اجباری</h3>
+                    <p class="mt-3" dir="auto">{{ $vm->display_name }} · {{ $vm->ip_address }}</p>
+                    <p class="my-3 text-sm leading-7">برق سرور بلافاصله قطع می‌شود و اطلاعات ذخیره‌نشده ممکن است از بین بروند.</p>
+    <form method="POST" action="{{ route('admin.virtual-machines.force-stop', $vm) }}" class="flex flex-wrap items-center gap-3">
+        @csrf
+        <input type="hidden" name="power_generation" value="{{ (int) data_get($vm->desired_state, 'power_generation', 0) }}">
+        <label><input type="checkbox" name="confirm_force_stop" value="1" required> خاموش کردن اجباری را تأیید می‌کنم.</label>
+        <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-bold text-white">خاموش کردن اجباری</button>
+    </form>
+                    <button type="button" @click="confirmAction = null" class="mt-4 rounded-lg border px-4 py-2">انصراف</button>
+                </div>
+            </template>
+            @endadminAbility
             @adminAbility('virtual-machines.manage')
 <template x-if="confirmAction === 'retry-provisioning'">
                 <div>
@@ -495,7 +518,7 @@
 <template x-if="confirmAction === 'stop'">
                 <div>
                     <h3 class="text-lg font-black text-slate-950">خاموش کردن سرور</h3>
-                    <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این سرور را خاموش کنید؟ از این لحظه CPU و RAM هزینه‌ای نخواهند داشت.</p>
+                    <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این سرور را خاموش کنید؟ پس از تأیید خاموش شدن، هزینه CPU و RAM متوقف می‌شود.</p>
                     <div class="mt-6 flex gap-3">
                         <button type="submit" form="form-stop" class="flex-1 rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، خاموش کن</button>
                         <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
