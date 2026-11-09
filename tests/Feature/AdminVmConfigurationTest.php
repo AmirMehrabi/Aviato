@@ -91,7 +91,7 @@ class AdminVmConfigurationTest extends TestCase
     {
         $vm = $this->vm();
         $this->actingAs(User::factory()->create(), 'admin')->get('https://admin.localhost/virtual-machines/'.$vm->uuid)
-            ->assertOk()->assertSee('سخت‌افزار و قیمت‌گذاری')->assertSee('مرور قیمت جدید')->assertSee('بررسی مجدد');
+            ->assertOk()->assertSee('منابع و تنظیمات')->assertSee('مالی و قیمت‌گذاری')->assertSee('مرور قیمت جدید')->assertSee('بررسی مجدد');
     }
 
     public function test_zero_custom_prices_are_valid_and_override_bundle_running_and_stopped_prices(): void

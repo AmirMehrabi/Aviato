@@ -6,6 +6,8 @@ window.corporateApplication = corporateApplication;
 import { cloudDns } from './cloud-dns';
 window.cloudDns = cloudDns;
 import Alpine from 'alpinejs';
+import { adminVmDetail } from './admin-vm-detail';
+Alpine.data('adminVmDetail', adminVmDetail);
 import { customerFormSubmission } from './form-submission';
 import { walletTopUp } from './wallet-top-up';
 import { domainSearch } from './domain-search';

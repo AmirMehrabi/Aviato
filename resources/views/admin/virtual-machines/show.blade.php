@@ -2,17 +2,18 @@
 @inject('money', 'App\Services\WalletService')
 @section('title', 'نمایش ماشین مجازی')
 @section('content')
-<div class="px-4 py-6 md:px-8 lg:px-10" x-data="{ confirmAction: null, tab: @js($errors->any() ? 'configuration' : 'overview'), init() { const key = window.location.hash.slice(1); if (['overview', 'configuration', 'billing', 'activities', 'management'].includes(key)) this.tab = key; if (key === 'upgrade-history') this.tab = 'activities'; } }" @keydown.escape.window="confirmAction = null">
+<div data-vm-detail class="min-w-0 px-4 py-6 md:px-8 lg:px-10" x-data="adminVmDetail" @submit="guardSubmission($event)" @keydown.escape.window="confirmAction = null" data-initial-tab="{{ $errors->any() ? (old('kind') === 'pricing' ? 'billing' : (old('confirm_force_stop') ? 'management' : 'configuration')) : 'overview' }}" data-validation-errors="{{ $errors->any() ? '1' : '0' }}" data-status="{{ $vm->status }}" data-provisioning="{{ $vm->provisioning_status }}" data-generation="{{ (int) data_get($vm->desired_state, 'power_generation', 0) }}" data-locked="{{ $vm->isActionLocked() ? '1' : '0' }}" data-can-billing="{{ auth('admin')->user()->allows('billing.read') ? '1' : '0' }}">
+
 
     @if (session('status'))
         <div class="mb-5 rounded-lg border border-[#B8D6FF] bg-[#EBF3FF] px-4 py-3 text-sm font-bold text-[#031B4E]">{{ session('status') }}</div>
     @endif
     @if (session('error'))
-        <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>
+        <div role="alert" class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{{ session('error') }}</div>
     @endif
     @if (session('provisioning_password'))
         <div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
-            رمز عبور اولیه فقط همین حالا نمایش داده می‌شود: <span dir="ltr">{{ session('provisioning_password') }}</span>
+            رمز عبور اولیه فقط همین حالا نمایش داده می‌شود: <span dir="ltr">{{ session('provisioning_password') }}</span><button type="button" @click="copy(@js(session('provisioning_password')))" class="min-h-11 px-3 underline">کپی رمز عبور</button>
         </div>
     @endif
 
@@ -29,19 +30,24 @@
         </section>
     @endif
 
+    <style>
+        [data-vm-detail] :is(button,a,input,select,summary):focus-visible { outline: 2px solid #0069ff; outline-offset: 3px; }
+        [data-vm-detail] button:disabled { opacity: .45; cursor: not-allowed; }
+        [data-vm-detail] dialog::backdrop { background: rgb(2 6 23 / .55); }
+    </style>
     {{-- Hero header --}}
-    <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-6 text-white shadow-xl shadow-[#031B4E]/15">
+    <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-5 text-white shadow-xl shadow-[#031B4E]/15">
         <div class="absolute -left-16 -top-16 size-48 rounded-full bg-white/10 blur-2xl"></div>
         <div class="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
                 <div class="flex items-center gap-3">
-                    <p class="text-sm font-bold text-white/60">VM #{{ $vm->id }}</p>
+                    <p class="text-sm font-bold text-white/80">VM #{{ $vm->id }}</p>
                     @php
                         $statusColors = match($vm->provisioning_status) {
                             \App\Models\VirtualMachine::PROVISION_READY => 'bg-emerald-400/20 text-emerald-300',
                             \App\Models\VirtualMachine::PROVISION_PENDING => 'bg-amber-400/20 text-amber-300',
                             \App\Models\VirtualMachine::PROVISION_FAILED => 'bg-red-400/20 text-red-300',
-                            default => 'bg-white/10 text-white/50',
+                            default => 'bg-white/10 text-white',
                         };
                         $statusLabels = match($vm->provisioning_status) {
                             \App\Models\VirtualMachine::PROVISION_READY => 'آماده',
@@ -50,20 +56,16 @@
                             default => $vm->provisioning_status,
                         };
                     @endphp
-                    <span class="rounded-full px-3 py-1 text-xs font-bold {{ $statusColors }}">{{ $statusLabels }}</span>
+                    <span class="rounded-full px-3 py-1 text-xs font-bold {{ $statusColors }}"><span>راه‌اندازی: </span><span x-text="provisioningLabel">{{ $statusLabels }}</span></span>
+                    <span class="text-sm font-bold" x-text="statusLabel"></span>
                 </div>
-                <h1 class="mt-1 text-2xl font-black md:text-4xl" dir="ltr">{{ $vm->display_name }}</h1>
-                <p class="mt-1 text-sm text-white/50" dir="ltr">{{ $vm->name }}</p>
+                <h1 class="mt-1 break-all text-2xl font-black md:text-3xl" dir="ltr">{{ $vm->display_name }}</h1>
+                <p class="mt-1 text-sm text-white/80" dir="ltr">{{ $vm->name }}</p>
                 <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/70">
                     <span dir="ltr">{{ $vm->ip_address ?: 'بدون IP' }}</span>
-                    <span>·</span>
-                    <span>{{ $vm->proxmoxServer?->name ?: 'فقط لوکال' }}</span>
-                    <span>·</span>
-                    <span>{{ $vm->node ? 'Node ' . $vm->node : '' }}{{ $vm->vmid ? ' · VMID ' . $vm->vmid : '' }}</span>
-                    <span>·</span>
-                    <span>{{ $vm->provider === \App\Models\VirtualMachine::PROVIDER_HETZNER ? 'Hetzner' : 'Proxmox' }}</span>
+                    @if($vm->ip_address)<button type="button" @click="copy(@js($vm->ip_address))" class="min-h-11 underline">کپی IP</button>@endif
                 </div>
-                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/60">
+                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/80">
                     <span>پروژه: <span class="font-bold text-white/80">{{ $vm->project?->name ?: '—' }}</span></span>
                     <span>·</span>
                     <span>مالک: <span class="font-bold text-white/80">{{ $vm->project?->owner?->name ?: '—' }}</span></span>
@@ -73,28 +75,23 @@
             </div>
             <div class="flex flex-wrap gap-2">
 
-@adminRoute('admin.billing.network.vm')
-<a href="{{ route('admin.billing.network.vm', $vm) }}" class="rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">مصرف شبکه</a>
-@endadminRoute
 
 
-@adminRoute('admin.virtual-machines.edit')
-<a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
-@endadminRoute
 
 
-@adminRoute('admin.virtual-machines.transfer.show')
-<a href="{{ route('admin.virtual-machines.transfer.show', $vm) }}" class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">انتقال مالکیت</a>
-@endadminRoute
+
+
+
 
                 @if($vm->proxmoxServer && $vm->node && $vm->vmid && ! $vm->isLxc() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $vm->isActionLocked())
 
 @adminRoute('admin.virtual-machines.console.show')
-<a href="{{ route('admin.virtual-machines.console.show', $vm) }}" class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">کنسول</a>
+<a href="{{ route('admin.virtual-machines.console.show', $vm) }}" class="rounded-lg bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">کنسول</a>
 @endadminRoute
 
                 @endif
 
+                <button type="button" @click="tab = 'management'; window.location.hash = 'management'" class="min-h-11 rounded-lg border border-white/30 px-4 text-sm font-bold">عملیات بیشتر</button>
                 {{-- Action buttons with confirmations --}}
                 @if($vm->provisioning_status === 'failed' && $vm->cloud_image_id)
 
@@ -102,7 +99,7 @@
 <button
                         type="button"
                         @click="confirmAction = 'retry-provisioning'"
-                        class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
+                        class="rounded-lg bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
                     >تلاش مجدد راه‌اندازی</button>
 @endadminAbility
 
@@ -111,9 +108,9 @@
 @adminAbility('virtual-machines.power')
 <button
                         type="button"
-                        @disabled($vm->isActionLocked())
+                        @disabled($vm->isActionLocked()) :disabled="stale || locked"
                         @click="confirmAction = 'stop'"
-                        class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
+                        class="rounded-lg bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
                     >خاموش کردن</button>
 @endadminAbility
 
@@ -123,49 +120,60 @@
 <button
                         type="button"
                         @click="{{ $walletBlocked ? 'null' : "confirmAction = 'start'" }}"
-                        @disabled($walletBlocked || $vm->isActionLocked())
-                        class="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        @disabled($walletBlocked || $vm->isActionLocked()) :disabled="stale || locked || @js($walletBlocked)"
+                        class="rounded-lg bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
                     >روشن کردن</button>
 @endadminAbility
 
                 @endif
 
-                @if(! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at || $vm->deleteAttemptIsStale()))
+
+            </div>
+        </div>
+    </div>
+
+    <nav role="tablist" aria-orientation="horizontal" @keydown="navigateTabs($event)" class="mt-6 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3" aria-label="بخش‌های ماشین مجازی">
+        <template x-for="item in [{id:'overview',label:'نمای کلی'},{id:'configuration',label:'منابع و تنظیمات'},@if(auth('admin')->user()->allows('billing.read')) {id:'billing',label:'مالی و قیمت‌گذاری'}, @endif{id:'activities',label:'فعالیت‌ها'},{id:'management',label:'مدیریت'}]" :key="item.id">
+            <button role="tab" :id="'vm-tab-' + item.id" aria-controls="vm-tab-content" :aria-selected="tab === item.id" :tabindex="tab === item.id ? 0 : -1" type="button" @click="tab = item.id; window.location.hash = item.id" :class="tab === item.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'" class="min-h-11 shrink-0 rounded-lg px-4 py-3 text-sm font-bold" x-text="item.label"></button>
+        </template>
+    </nav>
+    <div id="vm-tab-content" role="tabpanel" :aria-labelledby="'vm-tab-' + tab" tabindex="0" class="min-w-0">
+    <section x-show="tab === 'activities'" x-cloak>
+        @include('admin.virtual-machines.activity-history')
+    </section>
+    <section x-show="tab === 'management'" x-cloak class="mt-6 rounded-xl border border-red-200 bg-white p-5">
+        <h2 class="font-bold">مدیریت سرور</h2>
+        @if(! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at || $vm->deleteAttemptIsStale()))
 
 @adminAbility('virtual-machines.delete')
 <button
                         type="button"
                         @click="confirmAction = 'delete'"
-                        class="rounded-lg bg-red-500/20 px-4 py-2.5 text-sm font-bold text-red-300 transition hover:bg-red-500/30"
+                        class="rounded-lg bg-red-500/20 min-h-11 px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-500/30"
                     >حذف سرور</button>
 @endadminAbility
 
                 @endif
-            </div>
+        <div class="my-4 flex flex-wrap gap-3">@adminRoute('admin.virtual-machines.edit')
+<a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white min-h-11 px-4 py-2.5 text-sm font-bold text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
+@endadminRoute
+@adminRoute('admin.virtual-machines.transfer.show')
+<a href="{{ route('admin.virtual-machines.transfer.show', $vm) }}" class="rounded-lg bg-slate-100 min-h-11 px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-white/20">انتقال مالکیت</a>
+@endadminRoute
         </div>
-    </div>
-
-    <nav class="mt-6 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3" aria-label="بخش‌های ماشین مجازی">
-        <template x-for="item in [{id:'overview',label:'نمای کلی'},{id:'configuration',label:'منابع و تنظیمات'},{id:'billing',label:'مالی و قیمت‌گذاری'},{id:'activities',label:'فعالیت‌ها'},{id:'management',label:'مدیریت'}]">
-            <button type="button" @click="tab = item.id; window.location.hash = item.id" :aria-current="tab === item.id ? 'page' : null" :class="tab === item.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'" class="shrink-0 rounded-lg px-4 py-3 text-sm font-bold" x-text="item.label"></button>
-        </template>
-    </nav>
-    <section x-show="tab === 'activities'" x-cloak>
-        @include('components.vm-operation-status', ['machine' => $vm])
-    </section>
-    <section x-show="tab === 'management'" x-cloak class="mt-6 rounded-xl border border-red-200 bg-white p-5">
-        <h2 class="font-bold">مدیریت سرور</h2>
         @adminAbility('virtual-machines.power')
         @if (! $vm->isLxc() && ! $vm->isActionLocked() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY)
-        <button type="button" @click="confirmAction = 'force-stop'" class="mt-4 rounded-lg border border-red-300 px-4 py-3 font-bold text-red-700">خاموش کردن اجباری</button>
+        <button type="button" :disabled="stale || locked" @click="confirmAction = 'force-stop'" class="mt-4 rounded-lg border border-red-300 px-4 py-3 font-bold text-red-700">خاموش کردن اجباری</button>
         @endif
         @endadminAbility
     </section>
-    @if ($vm->isActionLocked())
-    <div class="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-900" role="status">عملیات سرور در حال انجام است. <button type="button" @click="tab = 'activities'; window.location.hash = 'activities'" class="font-bold underline">مشاهده جزئیات</button></div>
-    @endif
+    <div class="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-900" x-show="locked || operation" x-cloak role="status"><span x-text="operation || (locked ? 'عملیات دیگری در حال انجام است؛ تغییرات پس از پایان آن در دسترس خواهد بود.' : statusLabel)"></span> <button type="button" @click="tab = 'activities'; window.location.hash = 'activities'" class="font-bold underline">مشاهده جزئیات</button></div>
+    <div class="mt-3 flex flex-wrap items-center gap-3 text-xs" aria-live="polite">
+        <span x-text="pollMessage"></span><button type="button" @click="poll()" :disabled="loading" class="min-h-11 rounded-lg border px-3">به‌روزرسانی وضعیت</button>
+        <a x-show="stale" x-cloak href="" class="underline">وضعیت تغییر کرده؛ برای فعال‌سازی عملیات صفحه را تازه کنید</a>
+    </div>
     {{-- Summary cards --}}
-    <section x-show="tab === 'overview'" class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section x-show="tab === 'billing'" x-cloak class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @php
             $statusLabel = match($vm->status) {
                 \App\Models\VirtualMachine::STATUS_RUNNING => 'روشن',
@@ -185,7 +193,7 @@
         @endphp
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-xs font-bold text-slate-500">وضعیت فعلی</p>
-            <p class="mt-3 text-xl font-black {{ $statusTone }}">{{ $statusLabel }}</p>
+            <p class="mt-3 text-xl font-black {{ $statusTone }}" x-text="statusLabel">{{ $statusLabel }}</p>
         </div>
 
 @adminAbility('billing.read')
@@ -211,7 +219,7 @@
     {{-- Wallet warning --}}
     @if ($walletBlocked)
         <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
-            کیف پول فضای کاری این VM منفی است. روشن کردن آن تا شارژ شدن کیف پول ممکن نیست.
+            موجودی قابل استفاده کیف پول کافی نیست. روشن کردن آن تا شارژ شدن کیف پول ممکن نیست.
         </div>
     @endif
 
@@ -220,7 +228,9 @@
 
     {{-- Billing & Usage section --}}
     <section x-show="tab === 'billing'" x-cloak class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 class="text-xl font-black text-slate-950">اطلاعات مالی</h2>
+        <h2 class="text-xl font-black text-slate-950">اطلاعات مالی</h2>@adminRoute('admin.billing.network.vm')
+<a href="{{ route('admin.billing.network.vm', $vm) }}" class="rounded-lg border border-white/20 bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-white/20">مصرف شبکه</a>
+@endadminRoute
         <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-xl bg-slate-50 p-4">
                 <p class="text-xs font-bold text-slate-500">موجودی کیف پول مالک</p>
@@ -259,15 +269,17 @@
 
 @endadminAbility
 
-    <div x-show="tab === 'configuration'" x-cloak>
+    <div x-show="tab === 'configuration' || tab === 'billing'" x-cloak>
+    <fieldset :disabled="stale" class="min-w-0">
     @include('admin.virtual-machines.configuration')
+    </fieldset>
     </div>
 
     {{-- Hardware & Bundle --}}
     <div x-show="tab === 'overview'" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">مشخصات سخت‌افزاری</h2>
-            <div class="mt-5 grid gap-3 md:grid-cols-4">
+            <div class="mt-5 grid gap-3 grid-cols-2 md:grid-cols-4">
                 <div class="rounded-xl bg-slate-50 p-4 text-center">
                     <p class="text-2xl font-black text-slate-950">{{ $vm->cpu_cores }}</p>
                     <p class="text-xs text-slate-500">هسته CPU</p>
@@ -321,35 +333,36 @@
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">اطلاعات زیرساخت</h2>
             <div class="mt-5 space-y-3 text-sm">
-                <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div class="flex items-center justify-between gap-3 break-all rounded-xl bg-slate-50 p-3">
                     <span class="font-bold text-slate-500">سرور</span>
                     <span class="font-bold text-slate-950">{{ $vm->proxmoxServer?->name ?: '—' }}</span>
                 </div>
-                <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div class="flex items-center justify-between gap-3 break-all rounded-xl bg-slate-50 p-3">
                     <span class="font-bold text-slate-500">Node</span>
                     <span class="font-bold text-slate-950" dir="ltr">{{ $vm->node ?: '—' }}</span>
                 </div>
-                <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div class="flex items-center justify-between gap-3 break-all rounded-xl bg-slate-50 p-3">
                     <span class="font-bold text-slate-500">VMID</span>
                     <span class="font-bold text-slate-950" dir="ltr">{{ $vm->vmid ?: '—' }}</span>
+                    @if($vm->vmid)<button type="button" @click="copy(@js((string) $vm->vmid))" aria-label="کپی VMID" class="min-h-11 px-2 underline">کپی</button>@endif
                 </div>
-                <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div class="flex items-center justify-between gap-3 break-all rounded-xl bg-slate-50 p-3">
                     <span class="font-bold text-slate-500">قالب</span>
                     <span class="font-bold text-slate-950" dir="ltr">{{ $vm->template_vmid ?: '—' }}</span>
                 </div>
-                <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div class="flex items-center justify-between gap-3 break-all rounded-xl bg-slate-50 p-3">
                     <span class="font-bold text-slate-500">تصویر</span>
                     <span class="font-bold text-slate-950" dir="ltr">{{ $vm->cloudImage?->name ?: $vm->iso_volume ?: $vm->os_template ?: '—' }}</span>
                 </div>
-                <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div class="flex items-center justify-between gap-3 break-all rounded-xl bg-slate-50 p-3">
                     <span class="font-bold text-slate-500">ذخیره‌سازی</span>
                     <span class="font-bold text-slate-950" dir="ltr">{{ $vm->storage ?: '—' }}</span>
                 </div>
-                <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div class="flex items-center justify-between gap-3 break-all rounded-xl bg-slate-50 p-3">
                     <span class="font-bold text-slate-500">شبکه</span>
                     <span class="font-bold text-slate-950" dir="ltr">{{ $vm->network_bridge ?: '—' }}</span>
                 </div>
-                <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div class="flex items-center justify-between gap-3 break-all rounded-xl bg-slate-50 p-3">
                     <span class="font-bold text-slate-500">MAC</span>
                     <span class="font-bold text-slate-950 text-xs" dir="ltr">{{ $vm->mac_address ?: '—' }}</span>
                 </div>
@@ -360,7 +373,7 @@
                     </div>
                 @endif
                 @if($vm->login_username)
-                    <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                    <div class="flex items-center justify-between gap-3 break-all rounded-xl bg-slate-50 p-3">
                         <span class="font-bold text-slate-500">نام کاربری</span>
                         <span class="font-bold text-slate-950" dir="ltr">{{ $vm->login_username }}</span>
                     </div>
@@ -370,8 +383,8 @@
     </div>
 
     {{-- Disks & Upgrade Orders --}}
-    <div x-show="tab === 'configuration' || tab === 'activities'" class="mt-6 grid gap-6 xl:grid-cols-2">
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div x-show="tab === 'configuration' || tab === 'activities'" class="mt-6 space-y-6">
+        <section x-show="tab === 'configuration'" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">دیسک‌های اضافه</h2>
             <div class="mt-5 space-y-3">
                 @forelse($vm->disks as $disk)
@@ -403,7 +416,7 @@
         <section x-show="tab === 'activities'" id="upgrade-history" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black text-slate-950">تاریخچه ارتقاء</h2>
             <div class="mt-5 space-y-3">
-                @forelse($vm->upgradeOrders as $order)
+                @forelse($upgradeHistory as $order)
                     <div class="rounded-xl border border-slate-100 p-4 text-sm">
                         <div class="flex items-center justify-between gap-3">
                             <p class="font-black text-slate-950">{{ match ($order->type) { 'hardware' => 'تغییر سخت‌افزار', 'bundle' => 'ارتقای پلن', default => 'تغییر دیسک' } }} #{{ $order->id }}</p>
@@ -439,7 +452,13 @@
                     <p class="rounded-xl bg-slate-50 p-4 text-sm font-bold text-slate-500">تاریخچه ارتقاء وجود ندارد.</p>
                 @endforelse
             </div>
+            @include('admin.virtual-machines.history-pagination', ['paginator' => $upgradeHistory, 'label' => 'ارتقاء'])
         </section>
+    </div>
+
+    @if($errors->any())
+    <div role="alert" class="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800"><p class="font-bold">درخواست ثبت نشد</p><ul class="list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
+    @endif
     </div>
 
     {{-- Hidden forms for actions --}}
@@ -474,15 +493,13 @@
     @endif
 
     {{-- Confirmation modal --}}
-    <div
+    <dialog x-ref="confirmation" @keydown.tab.prevent="trapDialogFocus($event)"
         x-cloak
-        role="dialog" aria-modal="true" aria-label="تأیید عملیات سرور"
-        x-show="confirmAction"
-        x-transition.opacity
-        @click.self="confirmAction = null"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm"
+        aria-label="تأیید عملیات سرور"
+        @cancel.prevent="confirmAction = null"
+        class="max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl p-0 backdrop:bg-slate-950/50"
     >
-        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" @click.stop>
+        <div class="w-full min-w-0 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" @click.stop>
 
             @adminAbility('virtual-machines.power')
             <template x-if="confirmAction === 'force-stop'">
@@ -506,8 +523,8 @@
                     <h3 class="text-lg font-black text-slate-950">تلاش مجدد راه‌اندازی</h3>
                     <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید راه‌اندازی این VM را مجدداً تلاش کنید؟</p>
                     <div class="mt-6 flex gap-3">
-                        <button type="submit" form="form-retry-provisioning" class="flex-1 rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، تلاش مجدد</button>
-                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
+                        <button type="submit" form="form-retry-provisioning" class="flex-1 rounded-lg bg-[#0069FF] min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، تلاش مجدد</button>
+                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 min-h-11 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
                     </div>
                 </div>
             </template>
@@ -520,8 +537,8 @@
                     <h3 class="text-lg font-black text-slate-950">خاموش کردن سرور</h3>
                     <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این سرور را خاموش کنید؟ پس از تأیید خاموش شدن، هزینه CPU و RAM متوقف می‌شود.</p>
                     <div class="mt-6 flex gap-3">
-                        <button type="submit" form="form-stop" class="flex-1 rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، خاموش کن</button>
-                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
+                        <button type="submit" form="form-stop" class="flex-1 rounded-lg bg-[#0069FF] min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، خاموش کن</button>
+                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 min-h-11 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
                     </div>
                 </div>
             </template>
@@ -534,8 +551,8 @@
                     <h3 class="text-lg font-black text-slate-950">روشن کردن سرور</h3>
                     <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این سرور را روشن کنید؟ از این لحظه CPU و RAM نیز هزینه خواهند داشت.</p>
                     <div class="mt-6 flex gap-3">
-                        <button type="submit" form="form-start" class="flex-1 rounded-lg bg-[#0069FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، روشن کن</button>
-                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
+                        <button type="submit" form="form-start" class="flex-1 rounded-lg bg-[#0069FF] min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0]">بله، روشن کن</button>
+                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 min-h-11 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
                     </div>
                 </div>
             </template>
@@ -546,17 +563,17 @@
 <template x-if="confirmAction === 'delete'">
                 <div>
                     <h3 class="text-lg font-black text-red-700">حذف سرور</h3>
-                    <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این VM را از Proxmox و پنل حذف کنید؟ اگر قبلاً از Proxmox حذف شده باشد، فقط رکورد پنل حذف خواهد شد. <strong class="text-red-700">این عمل غیرقابل بازگشت است.</strong></p>
+                    <p class="mt-2 text-sm text-slate-600">آیا مطمئن هستید که می‌خواهید این VM را از {{ $vm->isHetzner() ? 'Hetzner' : 'Proxmox' }} و پنل حذف کنید؟ <strong class="text-red-700">این عمل غیرقابل بازگشت است.</strong></p>
                     <div class="mt-6 flex gap-3">
-                        <button type="submit" form="form-delete" class="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700">بله، حذف کن</button>
-                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
+                        <button type="submit" form="form-delete" class="flex-1 rounded-lg bg-red-600 min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700">بله، حذف کن</button>
+                        <button type="button" @click="confirmAction = null" class="flex-1 rounded-lg border border-slate-200 min-h-11 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">انصراف</button>
                     </div>
                 </div>
             </template>
             @endadminAbility
 
         </div>
-    </div>
+    </dialog>
 
 </div>
 @endsection

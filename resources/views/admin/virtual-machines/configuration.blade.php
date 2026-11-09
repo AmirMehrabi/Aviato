@@ -10,7 +10,7 @@
     <div class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 p-5 md:p-6">
         <div>
             <p class="text-xs font-bold text-[#0069FF]">مدیریت این ماشین</p>
-            <h2 class="mt-1 text-xl font-black text-slate-950">سخت‌افزار و قیمت‌گذاری</h2>
+            <h2 class="mt-1 text-xl font-black text-slate-950" x-text="tab === 'billing' ? 'قیمت‌گذاری' : 'منابع و تنظیمات'">منابع و تنظیمات</h2>
             <p class="mt-2 text-sm leading-7 text-slate-500">ابتدا تغییر را انتخاب کنید؛ پیش از ثبت، منابع و هزینه نهایی را مرور خواهید کرد.</p>
         </div>
         <span class="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800">{{ $modeLabels[$vm->pricing_mode ?? 'inherit'] }}</span>
@@ -24,8 +24,8 @@
     @if ($configurationLocked)
         <p role="status" class="mx-5 mt-5 rounded-xl bg-amber-50 p-4 text-sm leading-7 text-amber-900">تغییر تنظیمات پس از پایان عملیات جاری و آماده شدن سرور در دسترس خواهد بود. بررسی سخت‌افزار همچنان امکان‌پذیر است.</p>
     @endif
-    <div class="grid divide-y divide-slate-100 xl:grid-cols-2 xl:divide-x xl:divide-y-0 xl:divide-x-reverse">
-        <div class="p-5 md:p-6">
+    <div class="grid divide-y divide-slate-100">
+        <div x-show="tab === 'configuration'" class="p-5 md:p-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h3 class="font-black text-slate-950">سخت‌افزار Proxmox</h3>
                 @if ($hardwareSupported)
@@ -99,7 +99,7 @@
                 <p class="mt-4 rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-500">مدیریت مستقل سخت‌افزار برای ماشین QEMU متصل به Proxmox در دسترس است. تغییرات سایر ارائه‌دهندگان از مسیر ارتقای پلن انجام می‌شود.</p>
             @endif
         </div>
-        <div class="p-5 md:p-6">
+        <div x-show="tab === 'billing'" class="p-5 md:p-6">
             <h3 class="font-black text-slate-950">قیمت همین ماشین</h3>
             @adminAbility('billing.read')
             <div class="mt-4 grid grid-cols-2 gap-3">
@@ -140,12 +140,4 @@
             @endadminAbility
         </div>
     </div>
-    @adminAbility('pricing.manage')
-    @php($configurationChanges = $vm->configurationChanges()->with('actor')->latest('id')->limit(8)->get())
-    @if ($configurationChanges->isNotEmpty())
-    <details class="border-t border-slate-100 p-5 md:px-6"><summary class="cursor-pointer text-sm font-bold text-slate-600">تاریخچه تغییرات تنظیمات و قیمت</summary>
-        <ol class="mt-3 divide-y divide-slate-100 text-sm">@foreach ($configurationChanges as $change)<li class="py-3"><div class="flex flex-wrap justify-between gap-2"><span class="font-bold">{{ match ($change->kind) { 'pricing' => 'تغییر قیمت', 'sync' => 'پذیرش سخت‌افزار Proxmox', 'hardware_requested' => 'درخواست تغییر سخت‌افزار', default => 'تغییر سخت‌افزار' } }} · {{ $change->actor?->name ?? 'مدیر' }}</span><time class="text-xs text-slate-400">{{ $change->effective_at->diffForHumans() }}</time></div><p class="mt-1 text-xs leading-6 text-slate-500">{{ $change->reason }}</p></li>@endforeach</ol>
-    </details>
-    @endif
-    @endadminAbility
 </section>

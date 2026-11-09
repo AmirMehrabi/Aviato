@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AdminRole;
 use App\Jobs\DeleteVirtualMachineJob;
 use App\Jobs\MoveVirtualMachinesToNodeJob;
 use App\Models\CloudImage;
@@ -21,6 +22,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AdminVirtualMachineActionsTest extends TestCase
@@ -689,6 +691,49 @@ class AdminVirtualMachineActionsTest extends TestCase
             'virtual_machine_id' => $vm->id,
             'to_project_id' => $otherProject->id,
         ]);
+    }
+
+    public function test_vm_detail_paginates_history_and_polls_without_rendering_forms(): void
+    {
+        $admin = User::factory()->create();
+        $vm = $this->readyVm(Customer::factory()->create());
+        for ($i = 0; $i < 12; $i++) {
+            $vm->operations()->create(['action' => 'shutdown', 'status' => 'succeeded', 'actor_type' => 'admin', 'actor_id' => $admin->id]);
+            $vm->upgradeOrders()->createQuietly(['customer_id' => $vm->customer_id, 'type' => 'hardware', 'status' => 'succeeded', 'before_snapshot' => [], 'after_snapshot' => []]);
+            $vm->configurationChanges()->create(['actor_id' => $admin->id, 'request_key' => (string) Str::uuid(), 'kind' => 'pricing', 'reason' => 'Reviewed price', 'before' => [], 'after' => [], 'effective_at' => now()]);
+        }
+        $url = $this->adminBaseUrl.'/virtual-machines/'.$vm->uuid;
+        $response = $this->actingAs($admin, 'admin')->get($url);
+        $response->assertOk()->assertViewHas('operations', fn ($items) => $items->count() === 10 && $items->total() === 12)
+            ->assertSee('adminVmDetail')->assertDontSee('window.location.reload()', false);
+        $this->get($url.'?operations_page=2')->assertOk()
+            ->assertViewHas('operations', fn ($items) => $items->count() === 2);
+        $this->get($url.'?upgrades_page=2&changes_page=2')->assertOk()
+            ->assertViewHas('upgradeHistory', fn ($items) => $items->count() === 2)
+            ->assertViewHas('configurationHistory', fn ($items) => $items->count() === 2);
+        $this->get($url.'?operation_status=failed')->assertOk()->assertViewHas('operations', fn ($items) => $items->total() === 0);
+        $this->getJson($url.'?status_only=1')->assertOk()->assertJsonPath('status', 'running')
+            ->assertJsonPath('locked', false)->assertJsonStructure(['generation', 'provisioning', 'operation']);
+        $vm->operations()->create(['action' => 'shutdown', 'status' => 'queued', 'active_vm_id' => $vm->id, 'actor_type' => 'admin']);
+        $this->getJson($url.'?status_only=1')->assertOk()->assertJsonPath('locked', true);
+    }
+
+    public function test_vm_status_requires_admin_authentication(): void
+    {
+        $vm = $this->readyVm(Customer::factory()->create());
+        $this->getJson($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'?status_only=1')->assertRedirect();
+    }
+
+    public function test_vm_status_and_history_respect_admin_read_permissions(): void
+    {
+        $vm = $this->readyVm(Customer::factory()->create());
+        $admin = User::factory()->create(['role' => AdminRole::Custom, 'permissions' => []]);
+        $url = $this->adminBaseUrl.'/virtual-machines/'.$vm->uuid;
+        $this->actingAs($admin, 'admin')->getJson($url.'?status_only=1')->assertForbidden();
+        $admin->update(['permissions' => ['virtual-machines.read']]);
+        $this->getJson($url.'?status_only=1')->assertOk();
+        $this->get($url)->assertOk()->assertViewHas('configurationHistory', null)
+            ->assertDontSee("id:'billing'", false)->assertDontSee('form-delete', false);
     }
 
     private function readyVm(Customer $customer, array $overrides = []): VirtualMachine

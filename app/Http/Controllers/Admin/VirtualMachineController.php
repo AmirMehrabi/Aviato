@@ -185,9 +185,21 @@ class VirtualMachineController extends Controller
         }
     }
 
-    public function show(VirtualMachine $virtualMachine): View
+    public function show(VirtualMachine $virtualMachine): View|JsonResponse
     {
         abort_if($virtualMachine->isDeleted(), 404);
+
+        if (request()->boolean('status_only')) {
+            $operation = $virtualMachine->operations()->where('active_vm_id', $virtualMachine->id)->first();
+
+            return response()->json([
+                'status' => $virtualMachine->status,
+                'provisioning' => $virtualMachine->provisioning_status,
+                'locked' => $virtualMachine->isActionLocked(),
+                'generation' => (int) data_get($virtualMachine->desired_state, 'power_generation', 0),
+                'operation' => $operation ? $operation->label().' · '.$operation->customerStatus().' · '.$operation->progressLabel() : null,
+            ])->header('Cache-Control', 'no-store');
+        }
 
         $virtualMachine->load([
             'customer',
@@ -199,7 +211,6 @@ class VirtualMachineController extends Controller
             'cloudImage',
             'disks',
             'backups' => fn ($query) => $query->latest('id')->limit(1),
-            'upgradeOrders' => fn ($query) => $query->with(['toBundle', 'disk'])->latest()->limit(10),
         ]);
         $billingCustomer = $virtualMachine->project?->owner ?? $virtualMachine->customer;
 
@@ -220,6 +231,11 @@ class VirtualMachineController extends Controller
 
         return view('admin.virtual-machines.show', [
             'vm' => $virtualMachine,
+            'operations' => $virtualMachine->operations()->when(in_array(request('operation_status'), ['queued', 'running', 'checking', 'succeeded', 'failed'], true), fn ($query) => $query->where('status', request('operation_status')))->latest('id')->paginate(10, ['*'], 'operations_page')->withQueryString()->fragment('activities'),
+            'upgradeHistory' => $virtualMachine->upgradeOrders()->latest('id')->paginate(10, ['*'], 'upgrades_page')->withQueryString()->fragment('activities'),
+            'configurationHistory' => auth('admin')->user()->allows('pricing.manage')
+                ? $virtualMachine->configurationChanges()->with('actor')->latest('id')->paginate(10, ['*'], 'changes_page')->withQueryString()->fragment('activities') : null,
+
             'billing' => $this->billing,
             'wallet' => $canReadBilling && $billingCustomer ? $this->wallets->walletFor($billingCustomer) : null,
             'effectiveWalletBalance' => $canReadBilling ? $effectiveBalance : null,
