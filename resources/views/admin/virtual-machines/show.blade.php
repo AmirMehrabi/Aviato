@@ -35,19 +35,20 @@
         [data-vm-detail] button:disabled { opacity: .45; cursor: not-allowed; }
         [data-vm-detail] dialog::backdrop { background: rgb(2 6 23 / .55); }
     </style>
-    {{-- Hero header --}}
-    <div class="relative overflow-hidden rounded-2xl bg-[#031B4E] p-5 text-white shadow-xl shadow-[#031B4E]/15">
-        <div class="absolute -left-16 -top-16 size-48 rounded-full bg-white/10 blur-2xl"></div>
-        <div class="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-                <div class="flex items-center gap-3">
-                    <p class="text-sm font-bold text-white/80">VM #{{ $vm->id }}</p>
+    {{-- Server identity and actions --}}
+    <header class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div class="flex flex-col gap-6 p-5 md:p-6 xl:flex-row xl:items-center xl:justify-between">
+            <div class="min-w-0 space-y-4">
+                <p class="text-xs font-bold text-slate-400">ماشین مجازی <span dir="ltr">#{{ $vm->id }}</span></p>
+                <h1 class="break-words text-2xl font-black tracking-tight text-slate-950 sm:text-3xl" dir="auto">{{ $vm->display_name }}</h1>
+                <div class="flex flex-wrap items-center gap-3 text-sm font-bold text-slate-500">
+                    <span class="break-all" dir="ltr">{{ $vm->name }}</span>
                     @php
                         $statusColors = match($vm->provisioning_status) {
-                            \App\Models\VirtualMachine::PROVISION_READY => 'bg-emerald-400/20 text-emerald-300',
-                            \App\Models\VirtualMachine::PROVISION_PENDING => 'bg-amber-400/20 text-amber-300',
-                            \App\Models\VirtualMachine::PROVISION_FAILED => 'bg-red-400/20 text-red-300',
-                            default => 'bg-white/10 text-white',
+                            \App\Models\VirtualMachine::PROVISION_READY => 'bg-blue-50 text-blue-700',
+                            \App\Models\VirtualMachine::PROVISION_PENDING => 'bg-amber-50 text-amber-800',
+                            \App\Models\VirtualMachine::PROVISION_FAILED => 'bg-red-50 text-red-700',
+                            default => 'bg-slate-100 text-slate-600',
                         };
                         $statusLabels = match($vm->provisioning_status) {
                             \App\Models\VirtualMachine::PROVISION_READY => 'آماده',
@@ -56,87 +57,80 @@
                             default => $vm->provisioning_status,
                         };
                     @endphp
-                    <span class="rounded-full px-3 py-1 text-xs font-bold {{ $statusColors }}"><span>راه‌اندازی: </span><span x-text="provisioningLabel">{{ $statusLabels }}</span></span>
-                    <span class="text-sm font-bold" x-text="statusLabel"></span>
+                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs" :class="status === 'running' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'">
+                        <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                        <span x-text="statusLabel"></span>
+                    </span>
+                    <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $statusColors }}"><span>راه‌اندازی: </span><span x-text="provisioningLabel">{{ $statusLabels }}</span></span>
                 </div>
-                <h1 class="mt-1 break-all text-2xl font-black md:text-3xl" dir="ltr">{{ $vm->display_name }}</h1>
-                <p class="mt-1 text-sm text-white/80" dir="ltr">{{ $vm->name }}</p>
-                <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/70">
-                    <span dir="ltr">{{ $vm->ip_address ?: 'بدون IP' }}</span>
-                    @if($vm->ip_address)<button type="button" @click="copy(@js($vm->ip_address))" class="min-h-11 underline">کپی IP</button>@endif
-                </div>
-                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/80">
-                    <span>پروژه: <span class="font-bold text-white/80">{{ $vm->project?->name ?: '—' }}</span></span>
-                    <span>·</span>
-                    <span>مالک: <span class="font-bold text-white/80">{{ $vm->project?->owner?->name ?: '—' }}</span></span>
-                    <span>·</span>
-                    <span>ایجاد کننده: <span class="font-bold text-white/80">{{ $vm->creator?->name ?: '—' }}</span></span>
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <span class="text-slate-500">آدرس IP</span>
+                    <span class="break-all font-bold text-slate-700" dir="ltr">{{ $vm->ip_address ?: '—' }}</span>
+                    @if ($vm->ip_address)
+                        <button type="button" @click="copy(@js($vm->ip_address))" class="inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-bold text-blue-600 transition hover:bg-blue-50">کپی IP</button>
+                    @endif
                 </div>
             </div>
-            <div class="flex flex-wrap gap-2">
-
-
-
-
-
-
-
-
-
+            <div class="flex shrink-0 flex-wrap items-center gap-2">
                 @if($vm->proxmoxServer && $vm->node && $vm->vmid && ! $vm->isLxc() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && ! $vm->isActionLocked())
-
 @adminRoute('admin.virtual-machines.console.show')
-<a href="{{ route('admin.virtual-machines.console.show', $vm) }}" class="rounded-lg bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20">کنسول</a>
+<a href="{{ route('admin.virtual-machines.console.show', $vm) }}" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">کنسول</a>
 @endadminRoute
-
                 @endif
-
-                <button type="button" @click="tab = 'management'; window.location.hash = 'management'" class="min-h-11 rounded-lg border border-white/30 px-4 text-sm font-bold">عملیات بیشتر</button>
+                <button type="button" @click="tab = 'management'; window.location.hash = 'management'" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50">عملیات بیشتر</button>
                 {{-- Action buttons with confirmations --}}
                 @if($vm->provisioning_status === 'failed' && $vm->cloud_image_id)
-
 @adminAbility('virtual-machines.manage')
 <button
                         type="button"
                         @click="confirmAction = 'retry-provisioning'"
-                        class="rounded-lg bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
+                        class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                     >تلاش مجدد راه‌اندازی</button>
 @endadminAbility
-
                 @elseif($vm->isRunning())
-
 @adminAbility('virtual-machines.power')
 <button
                         type="button"
                         @disabled($vm->isActionLocked()) :disabled="stale || locked"
                         @click="confirmAction = 'stop'"
-                        class="rounded-lg bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
+                        class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                     >خاموش کردن</button>
 @endadminAbility
-
                 @else
-
 @adminAbility('virtual-machines.power')
 <button
                         type="button"
                         @click="{{ $walletBlocked ? 'null' : "confirmAction = 'start'" }}"
                         @disabled($walletBlocked || $vm->isActionLocked()) :disabled="stale || locked || @js($walletBlocked)"
-                        class="rounded-lg bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        class="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0069FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0050D0] disabled:cursor-not-allowed disabled:opacity-40"
                     >روشن کردن</button>
 @endadminAbility
-
                 @endif
-
-
             </div>
         </div>
-    </div>
+        <dl class="grid gap-4 border-t border-slate-100 bg-slate-50/50 px-5 py-4 text-sm sm:grid-cols-3 md:px-6">
+            <div class="min-w-0"><dt class="text-xs text-slate-500">پروژه</dt><dd class="mt-1 break-words font-bold text-slate-800">{{ $vm->project?->name ?: '—' }}</dd></div>
+            <div class="min-w-0"><dt class="text-xs text-slate-500">مالک</dt><dd class="mt-1 break-words font-bold text-slate-800">{{ $vm->project?->owner?->name ?: '—' }}</dd></div>
+            <div class="min-w-0"><dt class="text-xs text-slate-500">ایجاد کننده</dt><dd class="mt-1 break-words font-bold text-slate-800">{{ $vm->creator?->name ?: '—' }}</dd></div>
+        </dl>
+        <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6">
+            <div class="min-w-0 space-y-1 text-xs leading-6" aria-live="polite" aria-atomic="true">
+                <p class="text-slate-500" x-text="pollMessage"></p>
+                <a x-show="stale" x-cloak href="" class="inline-block font-bold text-blue-700 underline underline-offset-4">وضعیت تغییر کرده؛ برای فعال‌سازی عملیات صفحه را تازه کنید</a>
+            </div>
+            <button type="button" @click="poll()" :disabled="loading" :aria-busy="loading" class="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 sm:self-auto">
+                <svg class="size-4" :class="{ 'animate-spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.5-1L20 12M4 12l2.4 6A7 7 0 0 0 17.9 17"/></svg>
+                <span x-text="loading ? 'در حال بررسی…' : 'به‌روزرسانی وضعیت'">به‌روزرسانی وضعیت</span>
+            </button>
+        </div>
+    </header>
 
     <nav role="tablist" aria-orientation="horizontal" @keydown="navigateTabs($event)" class="mt-6 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3" aria-label="بخش‌های ماشین مجازی">
         <template x-for="item in [{id:'overview',label:'نمای کلی'},{id:'configuration',label:'منابع و تنظیمات'},@if(auth('admin')->user()->allows('billing.read')) {id:'billing',label:'مالی و قیمت‌گذاری'}, @endif{id:'activities',label:'فعالیت‌ها'},{id:'management',label:'مدیریت'}]" :key="item.id">
             <button role="tab" :id="'vm-tab-' + item.id" aria-controls="vm-tab-content" :aria-selected="tab === item.id" :tabindex="tab === item.id ? 0 : -1" type="button" @click="tab = item.id; window.location.hash = item.id" :class="tab === item.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'" class="min-h-11 shrink-0 rounded-lg px-4 py-3 text-sm font-bold" x-text="item.label"></button>
         </template>
     </nav>
+    <div class="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-900" x-show="locked || operation" x-cloak role="status"><span x-text="operation || (locked ? 'عملیات دیگری در حال انجام است؛ تغییرات پس از پایان آن در دسترس خواهد بود.' : statusLabel)"></span> <button type="button" @click="tab = 'activities'; window.location.hash = 'activities'" class="font-bold underline">مشاهده جزئیات</button></div>
     <div id="vm-tab-content" role="tabpanel" :aria-labelledby="'vm-tab-' + tab" tabindex="0" class="min-w-0">
     <section x-show="tab === 'activities'" x-cloak>
         @include('admin.virtual-machines.activity-history')
@@ -164,11 +158,8 @@
             @endif
         </div>
     </section>
-    <div class="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-900" x-show="locked || operation" x-cloak role="status"><span x-text="operation || (locked ? 'عملیات دیگری در حال انجام است؛ تغییرات پس از پایان آن در دسترس خواهد بود.' : statusLabel)"></span> <button type="button" @click="tab = 'activities'; window.location.hash = 'activities'" class="font-bold underline">مشاهده جزئیات</button></div>
-    <div class="mt-3 flex flex-wrap items-center gap-3 text-xs" aria-live="polite">
-        <span x-text="pollMessage"></span><button type="button" @click="poll()" :disabled="loading" class="min-h-11 rounded-lg border px-3">به‌روزرسانی وضعیت</button>
-        <a x-show="stale" x-cloak href="" class="underline">وضعیت تغییر کرده؛ برای فعال‌سازی عملیات صفحه را تازه کنید</a>
-    </div>
+
+
     {{-- Summary cards --}}
     <section x-show="tab === 'billing'" x-cloak class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @php
