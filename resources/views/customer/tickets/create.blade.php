@@ -45,12 +45,12 @@
         </div>
         <label class="mt-4 block">
             <span class="text-sm font-black text-slate-700">موضوع</span>
-            <input name="subject" value="{{ old('subject') }}" required maxlength="255" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">
+            <input name="subject" value="{{ old('subject', $consoleSubject ?? '') }}" required maxlength="255" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">
         </label>
 
         <label class="mt-4 block">
             <span class="text-sm font-black text-slate-700">توضیحات</span>
-            <textarea name="body" rows="12" data-ticket-editor class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">{{ old('body') }}</textarea>
+            <textarea name="body" rows="12" data-ticket-editor class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">{{ old('body', $consoleBody ?? '') }}</textarea>
         </label>
 
         <label class="mt-4 block text-xs font-bold text-slate-500">پیوست (اختیاری) · حداکثر ۵ فایل، هر فایل ۲۰ مگابایت

@@ -14,6 +14,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TicketController extends Controller
@@ -75,7 +76,17 @@ class TicketController extends Controller
 
     public function create(Request $request): View
     {
+        $consoleVm = $request->user('customer')->virtualMachines()->notDeleted()->whereKey(filter_var($request->query('virtual_machine_id'), FILTER_VALIDATE_INT) ?: 0)->first();
+        $consoleReference = $request->query('console_reference', '');
+        $consoleReference = is_string($consoleReference) ? $consoleReference : '';
+        $consoleActivity = Str::isUuid($consoleReference)
+            ? $consoleVm?->activities()->where('event', 'console.session')->where('metadata->reference', $consoleReference)->first()
+            : null;
+
         return view('customer.tickets.create', array_merge($this->layoutData($request), [
+            'selectedVirtualMachineId' => $consoleVm?->id,
+            'consoleSubject' => $consoleVm ? 'مشکل اتصال کنسول '.$consoleVm->display_name : '',
+            'consoleBody' => $consoleActivity ? 'کد پیگیری کنسول: '.$consoleReference : '',
             'categories' => TicketCategory::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'priorities' => Ticket::priorities(),
             'virtualMachines' => $request->user('customer')->virtualMachines()->notDeleted()->orderBy('name')->get(),

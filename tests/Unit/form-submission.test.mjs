@@ -58,7 +58,7 @@ test('independent forms do not share a submission lock', () => {
 });
 
 test('wallet top-up preserves its validation and allows only one payment submission', () => {
-    const wallet = walletTopUp({ initialGateway: 'mellat' });
+    const wallet = walletTopUp({ initialGateway: 'mellat', minimumTopUpToman: 250000 });
     const invalidAmount = submissionEvent();
     wallet.submitPayment(invalidAmount);
     assert.equal(invalidAmount.defaultPrevented, true);
@@ -79,7 +79,7 @@ test('wallet top-up preserves its validation and allows only one payment submiss
 });
 
 test('gift redemption shares the wallet submission lock and can recover after page restoration', () => {
-    const wallet = walletTopUp({});
+    const wallet = walletTopUp({ minimumTopUpToman: 250000 });
     wallet.code = 'GIFT';
     wallet.checkedCode = 'GIFT';
     wallet.promotion = { requires_payment: false };
@@ -92,4 +92,39 @@ test('gift redemption shares the wallet submission lock and can recover after pa
     assert.equal(repeated.defaultPrevented, true);
     wallet.resetSubmission();
     assert.equal(wallet.canRedeem, true);
+});
+
+test('wallet payments respect the configured minimum and maximum without locking rejected submissions', () => {
+    const wallet = walletTopUp({ initialGateway: 'mellat', minimumTopUpToman: 500000 });
+    for (const amount of ['', '250000', '499999', '50000001', 'invalid']) {
+        wallet.amount = amount;
+        const event = submissionEvent();
+        wallet.submitPayment(event);
+        assert.equal(event.defaultPrevented, true, `rejected ${amount}`);
+        assert.equal(wallet.submitting, false);
+    }
+    for (const amount of ['500000', '50000000']) {
+        wallet.amount = amount;
+        const event = submissionEvent();
+        wallet.submitPayment(event);
+        assert.equal(event.defaultPrevented, false, `accepted ${amount}`);
+        assert.equal(wallet.submitting, true);
+        wallet.resetSubmission();
+    }
+});
+
+test('a configured private testing minimum works and missing configuration fails closed', () => {
+    const wallet = walletTopUp({ initialGateway: 'mellat', minimumTopUpToman: 1000 });
+    wallet.amount = '999';
+    assert.equal(wallet.canSubmit, false);
+    wallet.amount = '1000';
+    assert.equal(wallet.canSubmit, true);
+    wallet.gateway = '';
+    assert.equal(wallet.canSubmit, false);
+    const unconfigured = walletTopUp({ initialGateway: 'mellat' });
+    unconfigured.amount = '250000';
+    const event = submissionEvent();
+    unconfigured.submitPayment(event);
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(unconfigured.submitting, false);
 });

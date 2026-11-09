@@ -104,6 +104,45 @@ class AdminVirtualMachineActionsTest extends TestCase
         $this->assertStringStartsWith('/console-ws/'.$vm->proxmox_server_id.'/nodes/pve1/qemu/101/vncwebsocket?', $response->json('websocket_url'));
     }
 
+    public function test_console_records_admin_actor_and_shows_both_portals_session_history(): void
+    {
+        $admin = User::factory()->create();
+        $vm = $this->readyVm(Customer::factory()->create());
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('qemuConsoleSession')->once()->andReturn(['port' => 5901, 'ticket' => 'private-admin-ticket']);
+        });
+        $this->actingAs($admin, 'admin');
+        $this->postJson($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/console/session')->assertOk();
+        $entry = $vm->activities()->where('event', 'console.session')->sole();
+        $this->assertSame('admin', $entry->metadata['portal']);
+        $this->assertSame($admin->id, $entry->metadata['actor_id']);
+        $this->assertStringNotContainsString('private-admin-ticket', $entry->toJson());
+        $this->get($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/console')->assertOk()
+            ->assertSee($admin->name)->assertSee($entry->metadata['reference'])
+            ->assertViewHas('powerActions', fn ($actions) => array_column($actions, 'key') === ['stop', 'force-stop']);
+    }
+
+    public function test_console_access_does_not_grant_power_controls(): void
+    {
+        $admin = User::factory()->create(['role' => AdminRole::Custom, 'permissions' => ['virtual-machines.read', 'virtual-machines.console']]);
+        $vm = $this->readyVm(Customer::factory()->create());
+        $this->actingAs($admin, 'admin')->get($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/console')
+            ->assertOk()->assertViewHas('powerActions', [])->assertDontSee('برق سرور');
+        $this->post($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/stop')->assertForbidden();
+    }
+
+    public function test_console_failure_does_not_expose_provider_exception_to_admin(): void
+    {
+        $admin = User::factory()->create();
+        $vm = $this->readyVm(Customer::factory()->create());
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('qemuConsoleSession')->once()->andThrow(new \RuntimeException('private-provider-secret'));
+        });
+        $this->actingAs($admin, 'admin')->postJson($this->adminBaseUrl.'/virtual-machines/'.$vm->uuid.'/console/session')
+            ->assertUnprocessable()->assertJsonPath('code', 'upstream')->assertJsonStructure(['reference'])
+            ->assertDontSee('private-provider-secret');
+    }
+
     public function test_admin_delete_queues_remote_delete_for_connected_vm(): void
     {
         Bus::fake();

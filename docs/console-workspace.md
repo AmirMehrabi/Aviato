@@ -1,0 +1,14 @@
+# VM console workspace
+
+Admin and customer consoles render `console.workspace` and use `resources/js/vm-console.js`. The portal wrappers provide navigation; `VmConsoleService` issues sessions and builds authorized power actions.
+
+- Fit mode enables noVNC scaling and remote resize. Actual-size mode disables both and allows scrolling. Touch panning additionally enables viewport clipping and drag mode.
+- Focus mode fills the browser viewport; fullscreen uses the browser Fullscreen API. Ctrl+Alt+Shift+Esc releases console input and focuses the keyboard toolbar. The special-key panel sends reserved keys directly to noVNC; modifier buttons remain pressed until released, disconnected, or the window loses focus.
+- View-only mode blocks pointer, keyboard and clipboard input. Mobile typing uses the dedicated input and sends text as key events. Clipboard transfer is explicit and depends on guest support; clipboard contents are never persisted or included in diagnostics.
+- Session creation plus transport connection has a 20-second deadline. Transient failures retry at most three times after 3, 6 and 12 seconds. A successful connection resets the retry budget. Manual disconnect cancels retries and leaves the VM running. Expired portal authentication, unsupported guests, unavailable configuration, provisioning and lifecycle locks do not automatically retry.
+- The session token lifetime describes connection credentials, not the duration of an established connection. Reconnect always requests fresh credentials. Session responses are marked private/no-store.
+- Session issuance and failures are recorded as `console.session` VM activities with actor, portal and a random reference. They do not record screen access success, keystrokes, clipboard, tickets or passwords. Admins can inspect the latest 20 requests. Existing admin mutation audit logging continues to apply.
+- Customer support links select an owned VM and prefill a diagnostic reference only if it belongs to that VM's recorded console activity. Reports contain server display name, connection stage, error category, reference, retry count and time. The user submits the support ticket explicitly.
+- Power actions reuse existing protected routes, CSRF, generation checks and lifecycle/business rules. The toolbar only exposes actions permitted by the portal role. The admin console offers existing start/stop/force-stop routes; customers also have restart. Each action requires confirmation.
+
+Check with `php artisan test --compact tests/Feature/CustomerConsoleTest.php tests/Feature/AdminVirtualMachineActionsTest.php tests/Feature/TicketingTest.php` and `node --test tests/Unit/vm-console.test.mjs`. Test the shared layout at desktop and mobile widths. End-to-end guest clipboard, touch and display behavior requires a running Proxmox VM and console proxy.

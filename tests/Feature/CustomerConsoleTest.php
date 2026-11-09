@@ -7,6 +7,7 @@ use App\Models\ProxmoxServer;
 use App\Models\VirtualMachine;
 use App\Services\ProxmoxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CustomerConsoleTest extends TestCase
@@ -87,7 +88,57 @@ class CustomerConsoleTest extends TestCase
 
         $this->postJson($this->customerBaseUrl.'/servers/'.$vm->uuid.'/console/session')
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'نشست کنسول ایجاد نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.');
+            ->assertJsonPath('message', 'نشست کنسول ایجاد نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.')
+            ->assertJsonPath('code', 'not_configured')->assertJsonPath('retryable', false);
+    }
+
+    public function test_session_requests_are_recorded_without_console_secrets_and_prefill_support(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->readyVm($customer);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('qemuConsoleSession')->once()->andReturn(['port' => 5901, 'ticket' => 'private-console-ticket']);
+        });
+        $this->actingAs($customer, 'customer');
+        $response = $this->postJson($this->customerBaseUrl.'/servers/'.$vm->uuid.'/console/session')->assertOk();
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+        $activity = $vm->activities()->where('event', 'console.session')->sole();
+        $this->assertSame($customer->id, $activity->actor_customer_id);
+        $this->assertSame('customer', $activity->metadata['portal']);
+        $this->assertSame($response->json('reference'), $activity->metadata['reference']);
+        $this->assertStringNotContainsString('private-console-ticket', $activity->toJson());
+
+        $this->get($this->customerBaseUrl.'/tickets/create?'.http_build_query(['virtual_machine_id' => $vm->id, 'console_reference' => $response->json('reference')]))
+            ->assertOk()->assertSee($response->json('reference'))
+            ->assertViewHas('selectedVirtualMachineId', $vm->id);
+    }
+
+    public function test_console_failure_has_safe_diagnostics_and_never_exposes_upstream_secrets(): void
+    {
+        $customer = Customer::factory()->create();
+        $vm = $this->readyVm($customer);
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('qemuConsoleSession')->once()->andThrow(new \RuntimeException('secret-api-token'));
+        });
+        $this->actingAs($customer, 'customer');
+        $this->postJson($this->customerBaseUrl.'/servers/'.$vm->uuid.'/console/session')
+            ->assertUnprocessable()->assertJsonPath('code', 'upstream')->assertJsonPath('retryable', true)
+            ->assertJsonStructure(['reference'])->assertDontSee('secret-api-token');
+        $activity = $vm->activities()->where('event', 'console.session')->sole();
+        $this->assertSame('failed', $activity->outcome);
+        $this->assertStringNotContainsString('secret-api-token', $activity->toJson());
+    }
+
+    public function test_support_prefill_cannot_reference_another_customers_machine(): void
+    {
+        $owner = Customer::factory()->create();
+        $other = Customer::factory()->create();
+        $vm = $this->readyVm($owner);
+        $reference = (string) Str::uuid();
+        $vm->activities()->create(['event' => 'console.session', 'outcome' => 'success', 'title' => 'test', 'metadata' => ['reference' => $reference]]);
+        $this->actingAs($other, 'customer')->get($this->customerBaseUrl.'/tickets/create?'.http_build_query(['virtual_machine_id' => $vm->id, 'console_reference' => $reference]))
+            ->assertOk()->assertDontSee($reference)->assertDontSee($vm->name)
+            ->assertViewHas('selectedVirtualMachineId', null)->assertViewHas('consoleBody', '');
     }
 
     private function readyVm(Customer $customer, array $overrides = []): VirtualMachine

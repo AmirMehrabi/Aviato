@@ -3,7 +3,7 @@
     <select id="ticket-virtual-machine" name="virtual_machine_id" aria-describedby="ticket-vm-help ticket-vm-status" @disabled(! $hasCustomer || $virtualMachines->isEmpty()) @error('virtual_machine_id') aria-invalid="true" @enderror class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold focus:border-[#0069FF] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-500">
         <option value="">بدون ماشین مجازی</option>
         @foreach($virtualMachines as $vm)
-            <option value="{{ $vm->id }}" @selected((string) old('virtual_machine_id') === (string) $vm->id) dir="ltr">{{ $vm->display_name }}{{ $vm->ip_address ? ' — '.$vm->ip_address : '' }}</option>
+            <option value="{{ $vm->id }}" @selected((string) old('virtual_machine_id', $selectedVirtualMachineId ?? null) === (string) $vm->id) dir="ltr">{{ $vm->display_name }}{{ $vm->ip_address ? ' — '.$vm->ip_address : '' }}</option>
         @endforeach
     </select>
     <p id="ticket-vm-help" class="mt-2 text-xs leading-6 text-slate-500">اگر درخواست درباره یک ماشین مجازی است، آن را انتخاب کنید تا پشتیبانی سریع‌تر بررسی کند. برای سایر درخواست‌ها، انتخاب لازم نیست.</p>
