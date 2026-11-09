@@ -141,31 +141,28 @@
     <section x-show="tab === 'activities'" x-cloak>
         @include('admin.virtual-machines.activity-history')
     </section>
-    <section x-show="tab === 'management'" x-cloak class="mt-6 rounded-xl border border-red-200 bg-white p-5">
-        <h2 class="font-bold">مدیریت سرور</h2>
-        @if(! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at || $vm->deleteAttemptIsStale()))
-
-@adminAbility('virtual-machines.delete')
-<button
-                        type="button"
-                        @click="confirmAction = 'delete'"
-                        class="rounded-lg bg-red-500/20 min-h-11 px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-500/30"
-                    >حذف سرور</button>
-@endadminAbility
-
-                @endif
-        <div class="my-4 flex flex-wrap gap-3">@adminRoute('admin.virtual-machines.edit')
-<a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="rounded-lg bg-white min-h-11 px-4 py-2.5 text-sm font-bold text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
-@endadminRoute
-@adminRoute('admin.virtual-machines.transfer.show')
-<a href="{{ route('admin.virtual-machines.transfer.show', $vm) }}" class="rounded-lg bg-slate-100 min-h-11 px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-white/20">انتقال مالکیت</a>
-@endadminRoute
+    <section x-show="tab === 'management'" x-cloak class="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+        <h2 class="font-bold text-slate-950">مدیریت سرور</h2>
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            @adminRoute('admin.virtual-machines.edit')
+                <a href="{{ route('admin.virtual-machines.edit', $vm) }}" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-[#031B4E] transition hover:bg-slate-100">ویرایش</a>
+            @endadminRoute
+            @adminRoute('admin.virtual-machines.transfer.show')
+                <a href="{{ route('admin.virtual-machines.transfer.show', $vm) }}" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-200">انتقال مالکیت</a>
+            @endadminRoute
         </div>
-        @adminAbility('virtual-machines.power')
-        @if (! $vm->isLxc() && ! $vm->isActionLocked() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY)
-        <button type="button" :disabled="stale || locked" @click="confirmAction = 'force-stop'" class="mt-4 rounded-lg border border-red-300 px-4 py-3 font-bold text-red-700">خاموش کردن اجباری</button>
-        @endif
-        @endadminAbility
+        <div class="mt-5 hidden flex-col gap-3 border-t border-red-100 pt-5 has-[button]:flex sm:flex-row sm:flex-wrap sm:items-center">
+            @adminAbility('virtual-machines.power')
+                @if (! $vm->isLxc() && ! $vm->isActionLocked() && $vm->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY)
+                    <button type="button" :disabled="stale || locked" @click="confirmAction = 'force-stop'" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-50">خاموش کردن اجباری</button>
+                @endif
+            @endadminAbility
+            @if (! $vm->isDeleted() && (! $vm->isDeleting() || $vm->delete_failed_at || $vm->deleteAttemptIsStale()))
+                @adminAbility('virtual-machines.delete')
+                    <button type="button" @click="confirmAction = 'delete'" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-100">حذف سرور</button>
+                @endadminAbility
+            @endif
+        </div>
     </section>
     <div class="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-900" x-show="locked || operation" x-cloak role="status"><span x-text="operation || (locked ? 'عملیات دیگری در حال انجام است؛ تغییرات پس از پایان آن در دسترس خواهد بود.' : statusLabel)"></span> <button type="button" @click="tab = 'activities'; window.location.hash = 'activities'" class="font-bold underline">مشاهده جزئیات</button></div>
     <div class="mt-3 flex flex-wrap items-center gap-3 text-xs" aria-live="polite">
