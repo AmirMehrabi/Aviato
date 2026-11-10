@@ -11,6 +11,22 @@ use Illuminate\Support\Collection;
 class NetworkUsageReportService
 {
     /** @return array<string, mixed> */
+    public function vmDetail(VirtualMachine $vm): array
+    {
+        $summary = $this->vmSummary($vm);
+        $from = $summary['period']?->period_start ?? now()->startOfMonth();
+        $to = $summary['period']?->period_end ?? now()->endOfMonth();
+
+        return [
+            'summary' => $summary,
+            'reports' => $this,
+            'daily' => $this->daily($vm, $from, $to),
+            'buckets' => NetworkUsageBucket::query()->where('virtual_machine_id', $vm->id)
+                ->latest('interval_start')->paginate(25, ['*'], 'network_page')->withQueryString()->fragment('network'),
+        ];
+    }
+
+    /** @return array<string, mixed> */
     public function vmSummary(VirtualMachine $vm, ?CarbonInterface $at = null): array
     {
         $at ??= now();

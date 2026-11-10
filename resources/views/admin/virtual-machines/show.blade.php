@@ -2,7 +2,7 @@
 @inject('money', 'App\Services\WalletService')
 @section('title', 'نمایش ماشین مجازی')
 @section('content')
-<div data-vm-detail class="min-w-0 px-4 py-6 md:px-8 lg:px-10" x-data="adminVmDetail" @submit="guardSubmission($event)" @keydown.escape.window="confirmAction = null" data-initial-tab="{{ $errors->any() ? (old('kind') === 'pricing' ? 'billing' : (old('confirm_force_stop') ? 'management' : 'configuration')) : 'overview' }}" data-validation-errors="{{ $errors->any() ? '1' : '0' }}" data-status="{{ $vm->status }}" data-provisioning="{{ $vm->provisioning_status }}" data-generation="{{ (int) data_get($vm->desired_state, 'power_generation', 0) }}" data-locked="{{ $vm->isActionLocked() ? '1' : '0' }}" data-can-billing="{{ auth('admin')->user()->allows('billing.read') ? '1' : '0' }}">
+<div data-vm-detail class="min-w-0 px-4 py-6 md:px-8 lg:px-10" x-data="adminVmDetail" @submit="guardSubmission($event)" @keydown.escape.window="confirmAction = null" data-initial-tab="{{ $errors->any() ? (old('kind') === 'pricing' ? 'billing' : (old('confirm_force_stop') ? 'management' : 'configuration')) : 'overview' }}" data-validation-errors="{{ $errors->any() ? '1' : '0' }}" data-status="{{ $vm->status }}" data-provisioning="{{ $vm->provisioning_status }}" data-generation="{{ (int) data_get($vm->desired_state, 'power_generation', 0) }}" data-locked="{{ $vm->isActionLocked() ? '1' : '0' }}" data-can-network="{{ $networkUsage ? '1' : '0' }}" data-can-billing="{{ auth('admin')->user()->allows('billing.read') ? '1' : '0' }}">
 
 
     @if (session('status'))
@@ -126,12 +126,18 @@
     </header>
 
     <nav role="tablist" aria-orientation="horizontal" @keydown="navigateTabs($event)" class="mt-6 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3" aria-label="بخش‌های ماشین مجازی">
-        <template x-for="item in [{id:'overview',label:'نمای کلی'},{id:'configuration',label:'منابع و تنظیمات'},@if(auth('admin')->user()->allows('billing.read')) {id:'billing',label:'مالی و قیمت‌گذاری'}, @endif{id:'activities',label:'فعالیت‌ها'},{id:'management',label:'مدیریت'}]" :key="item.id">
+        <template x-for="item in [{id:'overview',label:'نمای کلی'},{id:'configuration',label:'منابع و تنظیمات'},@if(auth('admin')->user()->allows('billing.read')) {id:'billing',label:'مالی و قیمت‌گذاری'}, @endif @if($networkUsage) {id:'network',label:'مصرف شبکه'}, @endif{id:'activities',label:'فعالیت‌ها'},{id:'management',label:'مدیریت'}]" :key="item.id">
             <button role="tab" :id="'vm-tab-' + item.id" aria-controls="vm-tab-content" :aria-selected="tab === item.id" :tabindex="tab === item.id ? 0 : -1" type="button" @click="tab = item.id; window.location.hash = item.id" :class="tab === item.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'" class="min-h-11 shrink-0 rounded-lg px-4 py-3 text-sm font-bold" x-text="item.label"></button>
         </template>
     </nav>
     <div class="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-900" x-show="locked || operation" x-cloak role="status"><span x-text="operation || (locked ? 'عملیات دیگری در حال انجام است؛ تغییرات پس از پایان آن در دسترس خواهد بود.' : statusLabel)"></span> <button type="button" @click="tab = 'activities'; window.location.hash = 'activities'" class="font-bold underline">مشاهده جزئیات</button></div>
     <div id="vm-tab-content" role="tabpanel" :aria-labelledby="'vm-tab-' + tab" tabindex="0" class="min-w-0">
+    @if($networkUsage)
+    <section x-show="tab === 'network'" x-cloak aria-label="مصرف شبکه">
+        <h2 class="mt-6 text-xl font-black">مصرف شبکه</h2>
+        @include('admin.billing.network.vm-details', $networkUsage)
+    </section>
+    @endif
     <section x-show="tab === 'activities'" x-cloak>
         @include('admin.virtual-machines.activity-history')
     </section>
@@ -216,9 +222,7 @@
 
     {{-- Billing & Usage section --}}
     <section x-show="tab === 'billing'" x-cloak class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 class="text-xl font-black text-slate-950">اطلاعات مالی</h2>@adminRoute('admin.billing.network.vm')
-<a href="{{ route('admin.billing.network.vm', $vm) }}" class="rounded-lg border border-white/20 bg-white/10 min-h-11 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-white/20">مصرف شبکه</a>
-@endadminRoute
+        <h2 class="text-xl font-black text-slate-950">اطلاعات مالی</h2>
         <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-xl bg-slate-50 p-4">
                 <p class="text-xs font-bold text-slate-500">موجودی کیف پول مالک</p>

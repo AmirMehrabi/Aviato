@@ -13,7 +13,8 @@ export function adminVmDetail() {
             this.locked = this.root.dataset.locked === '1';
             this.readHash = () => {
                 const key = location.hash.slice(1);
-                if (['overview','configuration','billing','activities','management'].includes(key)) this.tab = key === 'billing' && this.root.dataset.canBilling !== '1' ? 'overview' : key;
+                if (['overview','configuration','billing','network','activities','management'].includes(key)) this.tab = key === 'billing' && this.root.dataset.canBilling !== '1' ? 'overview' : key;
+                if (key === 'network' && this.root.dataset.canNetwork !== '1') this.tab = 'overview';
                 if (key === 'upgrade-history') this.tab = 'activities';
             };
             if (!hasErrors) this.readHash();
@@ -82,5 +83,27 @@ export function adminVmDetail() {
             catch { this.pollMessage = 'کپی ممکن نشد؛ مقدار را انتخاب و کپی کنید.'; }
         },
         destroy() { clearTimeout(this.timer); this.controller?.abort(); window.removeEventListener('hashchange', this.readHash); }
+    };
+}
+
+export function vmNetworkChart(series) {
+    let chart;
+    return {
+        init() {
+            this.$nextTick(() => {
+                chart = new window.Chart(this.$refs.canvas, {
+                    type: 'line',
+                    data: {
+                        labels: series.map(day => day.date),
+                        datasets: [
+                            { label: 'ورودی (GB)', data: series.map(day => day.ingress / 1e9), borderColor: '#0069ff', tension: 0.2 },
+                            { label: 'خروجی (GB)', data: series.map(day => day.egress / 1e9), borderColor: '#047857', tension: 0.2 },
+                        ],
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'GB' } } } },
+                });
+            });
+        },
+        destroy() { chart?.destroy(); },
     };
 }

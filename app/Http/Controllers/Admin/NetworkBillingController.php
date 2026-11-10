@@ -7,7 +7,6 @@ use App\Jobs\RunNetworkIntegration;
 use App\Models\NetworkIngestionCheckpoint;
 use App\Models\NetworkIntegrationRun;
 use App\Models\NetworkUsageBucket;
-use App\Models\NetworkUsageRating;
 use App\Models\VirtualMachine;
 use App\Models\VmNetworkBillingPeriod;
 use App\Services\IpdrClient;
@@ -171,16 +170,10 @@ class NetworkBillingController extends Controller
     public function vm(VirtualMachine $virtualMachine, Request $request): View
     {
         $virtualMachine->load(['customer', 'project.owner', 'bundle']);
-        $summary = $this->reports->vmSummary($virtualMachine);
-        $period = $summary['period'];
-        $from = $period?->period_start ?? CarbonImmutable::now()->startOfMonth();
-        $to = $period?->period_end ?? CarbonImmutable::now()->endOfMonth();
 
-        return view('admin.billing.network.vm', [
-            'vm' => $virtualMachine, 'summary' => $summary, 'reports' => $this->reports, 'wallets' => $this->wallets,
-            'daily' => $this->reports->daily($virtualMachine, $from, $to),
-            'buckets' => NetworkUsageBucket::query()->where('virtual_machine_id', $virtualMachine->id)->with('ratings')->latest('interval_start')->paginate(25),
-            'corrections' => NetworkUsageRating::query()->whereHas('bucket', fn ($q) => $q->where('virtual_machine_id', $virtualMachine->id))->where('revision', '>', 1)->latest()->limit(20)->get(),
-        ]);
+        return view('admin.billing.network.vm', array_merge($this->reports->vmDetail($virtualMachine), [
+            'vm' => $virtualMachine,
+            'wallets' => $this->wallets,
+        ]));
     }
 }

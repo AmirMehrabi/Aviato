@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AdminRole;
 use App\Models\Customer;
 use App\Models\NetworkUsageBucket;
 use App\Models\User;
@@ -31,6 +32,28 @@ class NetworkUsageUiTest extends TestCase
 
         $this->get('https://admin.localhost/billing/network')->assertOk()->assertSee('حسابداری شبکه')->assertSee($vm->display_name);
         $this->get('https://admin.localhost/billing/network/virtual-machines/'.$vm->uuid)->assertOk()->assertSee('دفتر باکت‌ها')->assertSee('bucket-ui-1');
+    }
+
+    public function test_vm_detail_includes_dedicated_network_tab_and_usage_ledger(): void
+    {
+        $vm = $this->meteredVm();
+        $this->period($vm);
+        $this->bucket($vm);
+        $this->actingAs(User::factory()->create(), 'admin');
+        $this->get('https://admin.localhost/virtual-machines/'.$vm->uuid)
+            ->assertOk()->assertSee("id:'network'", false)->assertSee('پیشرفت سهمیه')
+            ->assertSee('مصرف روزانه')->assertSee('نمودار ترافیک ورودی و خروجی')->assertSee('bucket-ui-1');
+    }
+
+    public function test_network_tab_requires_network_read_but_not_billing_read(): void
+    {
+        $vm = $this->meteredVm();
+        $this->period($vm);
+        $admin = User::factory()->create(['role' => AdminRole::Custom, 'permissions' => ['virtual-machines.read']]);
+        $url = 'https://admin.localhost/virtual-machines/'.$vm->uuid;
+        $this->actingAs($admin, 'admin')->get($url)->assertOk()->assertViewHas('networkUsage', null);
+        $admin->update(['permissions' => ['virtual-machines.read', 'network.read']]);
+        $this->get($url)->assertOk()->assertSee("id:'network'", false)->assertSee('پیشرفت سهمیه')->assertDontSee('هزینه دوره');
     }
 
     public function test_admin_network_dashboard_lists_machine_without_billing_period(): void

@@ -19,6 +19,7 @@ use App\Services\CloudVmProvisioningService;
 use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
 use App\Services\NetworkBillingPolicyAdjustmentService;
+use App\Services\NetworkUsageReportService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBalanceService;
 use App\Services\VirtualMachineDeletionService;
@@ -231,6 +232,8 @@ class VirtualMachineController extends Controller
 
         return view('admin.virtual-machines.show', [
             'vm' => $virtualMachine,
+            'networkUsage' => auth('admin')->user()->allows('network.read')
+                ? app(NetworkUsageReportService::class)->vmDetail($virtualMachine) : null,
             'operations' => $virtualMachine->operations()->when(in_array(request('operation_status'), ['queued', 'running', 'checking', 'succeeded', 'failed'], true), fn ($query) => $query->where('status', request('operation_status')))->latest('id')->paginate(10, ['*'], 'operations_page')->withQueryString()->fragment('activities'),
             'upgradeHistory' => $virtualMachine->upgradeOrders()->latest('id')->paginate(10, ['*'], 'upgrades_page')->withQueryString()->fragment('activities'),
             'configurationHistory' => auth('admin')->user()->allows('pricing.manage')
