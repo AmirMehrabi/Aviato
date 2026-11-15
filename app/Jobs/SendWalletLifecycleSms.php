@@ -6,6 +6,7 @@ use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\VirtualMachine;
 use App\Services\Sms\KavenegarLookupClient;
+use App\Services\Sms\WalletSmsTemplates;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -39,6 +40,9 @@ class SendWalletLifecycleSms implements ShouldQueue
         }
         $name = preg_replace('/[^\p{L}\p{N}]/u', '', KavenegarLookupClient::nameToken($customer->first_name ?: $customer->name)) ?: 'مشتری';
         $server = preg_replace('/[^\p{L}\p{N}]/u', '', $this->serverName) ?: 'سرور';
-        $sms->sendLookup($customer->phone, $this->template, mb_substr($name, 0, 100), token10: mb_substr($server, 0, 100));
+        $recoveryToken = in_array($this->template, [WalletSmsTemplates::FROZEN, WalletSmsTemplates::STOPPED], true) && $vm->project
+            ? WalletSmsTemplates::recoveryToken($vm->project)
+            : null;
+        $sms->sendLookup($customer->phone, $this->template, mb_substr($name, 0, 100), token3: $recoveryToken, token10: mb_substr($server, 0, 100));
     }
 }

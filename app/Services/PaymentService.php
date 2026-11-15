@@ -13,6 +13,7 @@ use App\Services\Domains\DomainOrderService;
 use App\Services\Payments\PaymentGatewayException;
 use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -111,12 +112,26 @@ class PaymentService
             }
 
             $gateway = $this->gateways->gateway($payment->provider);
-            $result = $gateway->complete($payment, $payload);
+            $verifiedResult = data_get($payment->gateway_payload, '_aviato_verified_wallet_credit');
+            $result = $verifiedResult ?? $gateway->complete($payment, $payload);
+
+            if (! $payment->invoice_id && $payment->type === Payment::TYPE_TOP_UP
+                && $payment->customer->wallet()->lockForUpdate()->first()?->is_locked) {
+                if ($verifiedResult === null) {
+                    $payment->forceFill([
+                        'gateway_payload' => array_merge($payment->gateway_payload ?? [], [
+                            '_aviato_verified_wallet_credit' => $result,
+                        ]),
+                    ])->save();
+                }
+
+                return $payment;
+            }
 
             $payment->forceFill([
                 'status' => Payment::STATUS_SUCCESSFUL,
                 'provider_reference' => $result['provider_reference'] ?? $payment->provider_reference,
-                'gateway_payload' => array_merge($payment->gateway_payload ?? [], $result['payload'] ?? [], ['completed_at' => now()->toIso8601String()]),
+                'gateway_payload' => array_merge(Arr::except($payment->gateway_payload ?? [], ['_aviato_verified_wallet_credit']), $result['payload'] ?? [], ['completed_at' => now()->toIso8601String()]),
                 'paid_at' => now(),
                 'failed_at' => null,
             ])->save();
@@ -159,7 +174,7 @@ class PaymentService
         });
 
         try {
-            if (! $completed->invoice_id) {
+            if ($completed->isSuccessful() && ! $completed->invoice_id) {
                 app(HesabroAccountingService::class)->enqueue($completed);
             }
         } catch (\Throwable $exception) {
@@ -208,7 +223,7 @@ class PaymentService
     {
         return DB::transaction(function () use ($payment, $payload): Payment {
             $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
-            if (! $locked->isPending()) {
+            if (! $locked->isPending() || data_get($locked->gateway_payload, '_aviato_verified_wallet_credit')) {
                 return $payment->refresh();
             }
             $this->promotions->releasePaymentReservation($locked, 'payment_failed');
@@ -227,11 +242,16 @@ class PaymentService
      */
     public function recordGatewayPayload(Payment $payment, array $payload): Payment
     {
-        $payment->forceFill([
-            'gateway_payload' => array_merge($payment->gateway_payload ?? [], $payload),
-        ])->save();
+        return DB::transaction(function () use ($payment, $payload): Payment {
+            $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+            if ($locked->isPending()) {
+                $locked->forceFill([
+                    'gateway_payload' => array_merge($locked->gateway_payload ?? [], $payload),
+                ])->save();
+            }
 
-        return $payment;
+            return $locked;
+        });
     }
 
     private function newAuthority(): string

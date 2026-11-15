@@ -18,7 +18,7 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-xs font-black tracking-[0.25em] {{ $effectiveBalance < 0 ? 'text-red-600' : 'text-amber-600' }}">عملیات پرداختی متوقف است</p>
+                        <p class="text-xs font-black tracking-[0.25em] {{ $effectiveBalance < 0 ? 'text-red-600' : 'text-amber-600' }}">محدودیت سرویس‌ها</p>
                         <h2 class="mt-1 text-2xl font-black {{ $effectiveBalance < 0 ? 'text-red-900' : 'text-amber-900' }} sm:text-3xl">{{ $effectiveBalance < 0 ? 'موجودی مؤثر کیف پول منفی است' : 'کیف پول شما خالی است' }}</h2>
                     </div>
                 </div>
@@ -36,11 +36,11 @@
                 @endif
 
                 <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                    <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex items-center justify-center rounded-xl {{ $effectiveBalance < 0 ? 'bg-red-600 shadow-red-600/20 hover:bg-red-500' : 'bg-amber-500 shadow-amber-500/20 hover:bg-amber-400' }} px-5 py-3 text-sm font-black text-white shadow-lg transition">
-                        رفتن به کیف پول
+                    <a href="{{ route('customer.wallet.show', ['topup' => 1, 'restore' => 1], false) }}" class="inline-flex items-center justify-center rounded-xl {{ $effectiveBalance < 0 ? 'bg-red-600 shadow-red-600/20 hover:bg-red-500' : 'bg-amber-500 shadow-amber-500/20 hover:bg-amber-400' }} px-5 py-3 text-sm font-black text-white shadow-lg transition">
+                        شارژ کیف پول
                     </a>
-                    <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="inline-flex items-center justify-center rounded-xl border {{ $effectiveBalance < 0 ? 'border-red-200 text-red-700 hover:bg-red-50' : 'border-amber-200 text-amber-700 hover:bg-amber-50' }} bg-white px-5 py-3 text-sm font-black transition">
-                        شارژ سریع
+                    <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex items-center justify-center rounded-xl border {{ $effectiveBalance < 0 ? 'border-red-200 text-red-700 hover:bg-red-50' : 'border-amber-200 text-amber-700 hover:bg-amber-50' }} bg-white px-5 py-3 text-sm font-black transition">
+                        مشاهده کیف پول
                     </a>
                 </div>
             </div>

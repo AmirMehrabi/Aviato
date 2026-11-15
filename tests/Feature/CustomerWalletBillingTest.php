@@ -1741,6 +1741,61 @@ class CustomerWalletBillingTest extends TestCase
             ->assertOk()->assertViewHas('retryAmountToman', 500000)->assertViewHas('retryGateway', 'mellat');
     }
 
+    public function test_wallet_alert_recovers_the_affected_workspace_after_login(): void
+    {
+        $customer = Customer::factory()->create();
+        $project = $customer->ownedProjects()->create(['name' => 'Affected workspace']);
+        $project->members()->create(['customer_id' => $customer->id, 'role' => ProjectMember::ROLE_OWNER]);
+        $customer->wallet()->update(['balance' => -3124800]);
+        $url = $this->customerBaseUrl.'/wallet/recover/'.str_replace('-', '', $project->uuid);
+
+        $this->get($url)->assertRedirect($this->customerBaseUrl.'/login')->assertSessionHas('url.intended', $url);
+        $this->actingAs($customer, 'customer')->get($url)
+            ->assertRedirect($this->customerBaseUrl.'/wallet?topup=1&restore=1')
+            ->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id);
+        $this->get($this->customerBaseUrl.'/wallet?topup=1&restore=1')
+            ->assertViewHas('recoveryAmountToman', 312481);
+    }
+
+    public function test_verified_payment_survives_wallet_lock_and_can_be_reconciled_once_in_its_original_workspace(): void
+    {
+        $owner = Customer::factory()->create();
+        $default = $owner->ensureDefaultProject();
+        $project = $owner->ownedProjects()->create(['name' => 'Payment workspace']);
+        $project->members()->create(['customer_id' => $owner->id, 'role' => ProjectMember::ROLE_OWNER]);
+        $this->enableMellatGateway();
+        $this->fakeMellatClient();
+
+        $this->actingAs($owner, 'customer')->withSession([ProjectAccessService::SESSION_KEY => $project->id]);
+        $owner->wallet()->update(['is_locked' => true]);
+        $this->from($this->customerBaseUrl.'/wallet?topup=1')
+            ->post($this->customerBaseUrl.'/wallet/top-ups', ['amount_toman' => 500000, 'gateway' => 'mellat'])
+            ->assertSessionHasErrors('payment');
+        $this->assertDatabaseCount('payments', 0);
+
+        $owner->wallet()->update(['is_locked' => false]);
+        $this->post($this->customerBaseUrl.'/wallet/top-ups', ['amount_toman' => 500000, 'gateway' => 'mellat']);
+        $payment = Payment::firstOrFail();
+        $resultUrl = $this->customerBaseUrl.'/wallet?payment_id='.$payment->id;
+        $owner->wallet()->update(['is_locked' => true]);
+        $this->post($this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/callback', [
+            'RefId' => $payment->authority, 'ResCode' => '0', 'SaleOrderId' => $payment->id, 'SaleReferenceId' => '127926981246',
+        ])->assertRedirect($resultUrl);
+        $this->assertTrue($payment->fresh()->isPending());
+        $this->assertDatabaseCount('wallet_transactions', 0);
+
+        $this->withSession([ProjectAccessService::SESSION_KEY => $default->id])
+            ->get($resultUrl)->assertOk()->assertSessionHas(ProjectAccessService::SESSION_KEY, $project->id)
+            ->assertViewHas('paymentNotice.verified_credit_pending', true);
+        $owner->wallet()->update(['is_locked' => false]);
+        $reconcileUrl = $this->customerBaseUrl.'/wallet/payments/'.$payment->id.'/reconcile';
+        $this->post($reconcileUrl)->assertRedirect($resultUrl);
+        $this->post($reconcileUrl)->assertRedirect($resultUrl);
+        $this->assertTrue($payment->fresh()->isSuccessful());
+        $this->assertDatabaseCount('wallet_transactions', 1);
+        $this->get($resultUrl)->assertOk()->assertViewHas('paymentNotice.tone', 'success');
+    }
+
     private function enableMellatGateway(): void
     {
         AppSetting::setValue(AppSetting::PAYMENTS_ENABLED, true, 'boolean', 'payment');

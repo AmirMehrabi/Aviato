@@ -37,6 +37,10 @@ class PaymentController extends Controller
         $activeProject = $this->projects->activeProject($request, $customer);
         abort_unless($this->canTopUpProjectWallet($activeProject, $customer), 404);
 
+        if ($this->wallets->walletFor($activeProject->owner)->is_locked) {
+            return back()->withErrors(['payment' => 'کیف پول قفل است. برای پیگیری با پشتیبانی تماس بگیرید.']);
+        }
+
         $request->merge([
             'amount_toman' => $this->normalizeTomanAmount($request->input('amount_toman')),
         ]);
@@ -190,6 +194,23 @@ class PaymentController extends Controller
 
                 return $this->walletRedirect($payment);
             }
+        }
+
+        return $this->walletRedirect($payment);
+    }
+
+    public function reconcile(Request $request, Payment $payment): RedirectResponse
+    {
+        $journey = data_get($payment->gateway_payload, '_aviato_wallet_journey', []);
+        $customer = $request->user('customer');
+        $project = Project::find($journey['project_id'] ?? null);
+
+        abort_unless($project && (int) ($journey['actor_id'] ?? 0) === $customer->id
+            && (int) $project->owner_customer_id === (int) $payment->customer_id
+            && $this->projects->canViewBilling($project, $customer), 404);
+
+        if ($payment->isPending() && data_get($payment->gateway_payload, '_aviato_verified_wallet_credit')) {
+            $this->payments->completeTopUp($payment);
         }
 
         return $this->walletRedirect($payment);

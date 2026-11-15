@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Payment;
+use App\Models\Project;
 use App\Models\PromotionException;
 use App\Models\WalletTransaction;
 use App\Services\NetworkMonthlyEstimateService;
@@ -35,6 +36,19 @@ class WalletController extends Controller
     {
         $customer = $request->user('customer');
         $activeProject = $this->projects->activeProject($request, $customer);
+        if ($request->integer('payment_id') > 0) {
+            $payment = Payment::find($request->integer('payment_id'));
+            $journey = data_get($payment?->gateway_payload, '_aviato_wallet_journey', []);
+            if ($payment && (int) ($journey['actor_id'] ?? 0) === $customer->id) {
+                $project = Project::find($journey['project_id'] ?? null);
+                if ($project && (int) $project->owner_customer_id === (int) $payment->customer_id
+                    && $this->projects->canViewBilling($project, $customer)) {
+                    $this->projects->switch($request, $customer, $project);
+                    $activeProject = $project;
+                }
+            }
+        }
+
         abort_unless($this->projects->canViewBilling($activeProject, $customer), 404);
         $wallet = $this->wallets->walletFor($activeProject->owner);
         $filters = $request->validate([
@@ -113,6 +127,10 @@ class WalletController extends Controller
             : $projectMonthlyEstimate;
         $roundedMonthlyEstimateToman = intdiv($projectMonthlyEstimateToman + 999, 1000) * 1000;
         $minimumTopUpToman = $customer->walletMinimumTopUpToman();
+        $deficitTargetToman = $effectiveBalance <= 0
+            ? (int) floor(-$effectiveBalance / (AppSetting::currency() === 'IRR' ? 10 : 1)) + 1
+            : null;
+        $recoveryAmountToman = $deficitTargetToman === null ? null : max($minimumTopUpToman, $deficitTargetToman, $restoreAmountToman ?? 0);
         $recommendedTopUpToman = $activeProject->virtualMachines()->notDeleted()->exists()
             && $roundedMonthlyEstimateToman >= $minimumTopUpToman
             && $roundedMonthlyEstimateToman <= 50000000
@@ -145,6 +163,10 @@ class WalletController extends Controller
             'wallets' => $this->wallets,
             'transactions' => $transactions,
             'restoreAmountToman' => $restoreAmountToman,
+            'recoveryAmountToman' => $recoveryAmountToman === null ? null : min(50000000, $recoveryAmountToman),
+            'recoveryRequiresMultiplePayments' => ($deficitTargetToman ?? 0) > 50000000,
+            'restorationPending' => $paymentNotice && ! empty($paymentNotice['receipt_url']) && $effectiveBalance > 0
+                && $activeProject->virtualMachines()->notDeleted()->whereNotNull('wallet_restriction')->exists(),
             'selectedType' => $selectedType,
             'transactionFilters' => $filters,
             'selectedTab' => $selectedTab,
@@ -330,7 +352,11 @@ class WalletController extends Controller
             default => [
                 'return_action' => $returnAction,
                 'tone' => 'pending',
-                'message' => 'نتیجه پرداخت دریافت شد، اما تایید نهایی هنوز انجام نشده است. لطفا چند دقیقه دیگر وضعیت کیف پول را بررسی کنید.',
+                'message' => data_get($payment->gateway_payload, '_aviato_verified_wallet_credit')
+                    ? 'پرداخت در درگاه تأیید شده و ثبت اعتبار در کیف پول در انتظار بررسی است. دوباره پرداخت نکنید و با پشتیبانی تماس بگیرید.'
+                    : 'تأیید نهایی پرداخت هنوز انجام نشده است. وضعیت همین پرداخت را دوباره بررسی کنید.',
+                'payment_id' => $payment->id,
+                'verified_credit_pending' => (bool) data_get($payment->gateway_payload, '_aviato_verified_wallet_credit'),
             ],
         };
     }

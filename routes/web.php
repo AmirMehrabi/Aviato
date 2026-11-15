@@ -619,6 +619,9 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         Route::patch('tickets/{ticket}/close', [TicketController::class, 'close'])->name('customer.tickets.close');
         Route::get('tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'show'])->name('customer.tickets.attachments.show');
         Route::resource('tickets', TicketController::class)->only(['index', 'create', 'store', 'show'])->names('customer.tickets');
+        Route::get('wallet/recover/{workspace}', [ProjectController::class, 'recover'])->name('customer.wallet.recover');
+        Route::post('wallet/payments/{payment}/reconcile', [PaymentController::class, 'reconcile'])
+            ->middleware('throttle:10,1')->name('customer.wallet.payments.reconcile');
         Route::get('wallet', [CustomerWalletController::class, 'show'])->name('customer.wallet.show');
         Route::get('wallet/transactions', [CustomerWalletController::class, 'transactionsJson'])->name('customer.wallet.transactions.json');
         Route::post('wallet/top-ups', [PaymentController::class, 'storeTopUp'])->name('customer.wallet.topups.store');

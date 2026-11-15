@@ -200,19 +200,32 @@ class ProjectController extends Controller
         return redirect()->route('dashboard')->with('status', 'فضای کاری فعال تغییر کرد.');
     }
 
+    public function recover(Request $request, string $workspace): RedirectResponse
+    {
+        $uuid = preg_replace('/^([a-f0-9]{8})([a-f0-9]{4})([a-f0-9]{4})([a-f0-9]{4})([a-f0-9]{12})$/i', '$1-$2-$3-$4-$5', $workspace);
+        $project = Project::where('uuid', $uuid)->firstOrFail();
+
+        return $this->enter($request, $project);
+    }
+
     public function enter(Request $request, Project $project): RedirectResponse
     {
         $customer = $request->user('customer');
         $project->loadMissing('members');
         $this->projects->switch($request, $customer, $project);
 
+        $recoveringWallet = $request->boolean('wallet_topup') || $request->routeIs('customer.wallet.recover');
         $customer->unreadNotifications()
-            ->where('data->event', 'workspace_added')
+            ->whereIn('data->event', $recoveringWallet ? ['workspace_added', 'workspace_wallet_balance'] : ['workspace_added'])
             ->where('data->project_id', $project->id)
             ->update(['read_at' => now()]);
 
-        if ($request->boolean('wallet_topup') && $this->projects->canViewBilling($project, $customer)) {
-            return redirect()->route('customer.wallet.show', ['topup' => 1, 'restore' => 1]);
+        if ($recoveringWallet) {
+            if ($this->projects->canViewBilling($project, $customer)) {
+                return redirect()->route('customer.wallet.show', ['topup' => 1, 'restore' => 1]);
+            }
+
+            return redirect()->route('dashboard')->with('wallet_recovery_support', "برای شارژ کیف پول «{$project->name}» با مالک فضای کاری یا پشتیبانی تماس بگیرید.");
         }
 
         return redirect()->route('dashboard')

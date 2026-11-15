@@ -160,8 +160,8 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <a href="{{ route('customer.wallet.show', [], false) }}" class="inline-flex items-center justify-center rounded-xl {{ $walletIsOverdrawn || $walletIsLocked ? 'bg-red-600 hover:bg-red-500' : 'bg-amber-500 hover:bg-amber-400' }} px-4 py-2 text-sm font-black text-white transition">
-                        رفتن به کیف پول
+                    <a href="{{ route('customer.wallet.show', ['topup' => 1, 'restore' => 1], false) }}" class="inline-flex min-h-11 items-center justify-center rounded-xl {{ $walletIsOverdrawn || $walletIsLocked ? 'bg-red-600 hover:bg-red-500' : 'bg-amber-500 hover:bg-amber-400' }} px-4 py-2 text-sm font-black text-white transition">
+                        {{ $walletIsLocked ? 'بررسی کیف پول' : 'شارژ کیف پول' }}
                     </a>
                     <a href="{{ route('customer.suspension.notice', [], false) }}" class="inline-flex items-center justify-center rounded-xl border {{ $walletIsOverdrawn || $walletIsLocked ? 'border-red-200 text-red-700 hover:bg-red-100' : 'border-amber-200 text-amber-700 hover:bg-amber-100' }} bg-white px-4 py-2 text-sm font-black transition">
                         مشاهده توضیح
@@ -212,6 +212,7 @@
                 }).slice(0, 10);
             },
             openSearch() {
+                if (this.sidebarOpen) return;
                 this.searchOpen = true;
                 this.walletOpen = false;
                 this.profileOpen = false;
@@ -231,7 +232,7 @@
         }"
         @keydown.window.ctrl.k.prevent="openSearch()"
         @keydown.window.meta.k.prevent="openSearch()"
-        @keydown.window.escape="if (sidebarOpen) { sidebarOpen = false; $refs.sidebarTrigger?.focus(); } closePanels()"
+        @keydown.window.escape="if (sidebarOpen) { sidebarOpen = false; $nextTick(() => $refs.sidebarTrigger?.focus()); } closePanels()"
         @notification-center-open.window="walletOpen = false; profileOpen = false; workspaceOpen = false; searchOpen = false"
         @ticket-notification-unread-changed.window="ticketUnreadCount = Number($event.detail.count || 0)"
         @keydown.window="
@@ -247,13 +248,22 @@
             x-show="sidebarOpen"
             x-transition.opacity.duration.200ms
             class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden"
-            @click="sidebarOpen = false; $refs.sidebarTrigger?.focus()"
+            @click="sidebarOpen = false; $nextTick(() => $refs.sidebarTrigger?.focus())"
             aria-hidden="true"
         ></div>
 
         <aside
-            class="pointer-events-none invisible fixed inset-y-0 right-0 z-40 flex h-dvh w-[min(86vw,280px)] translate-x-full flex-col border-l border-white/10 bg-[#031B4E] px-3 py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:pointer-events-auto lg:visible lg:sticky lg:top-0 lg:bottom-auto lg:right-auto lg:w-[260px] lg:translate-x-0 lg:shadow-none"
+            class="pointer-events-none invisible fixed inset-y-0 right-0 z-40 flex h-dvh overflow-y-auto overscroll-contain lg:overflow-visible w-[min(86vw,280px)] translate-x-full flex-col border-l border-white/10 bg-[#031B4E] px-3 py-4 text-white shadow-2xl shadow-[#031B4E]/40 transition-transform duration-200 lg:pointer-events-auto lg:visible lg:sticky lg:top-0 lg:bottom-auto lg:right-auto lg:w-[260px] lg:translate-x-0 lg:shadow-none"
             :class="{ '!pointer-events-auto !visible !translate-x-0': sidebarOpen }"
+            id="customer-sidebar"
+            :aria-modal="sidebarOpen ? 'true' : null"
+            :role="sidebarOpen ? 'dialog' : null"
+            @keydown.tab="
+                if (!sidebarOpen) return;
+                const links = [...$el.querySelectorAll('a[href], button:not([disabled]), summary')].filter(control => control.getClientRects().length);
+                if ($event.shiftKey && document.activeElement === links[0]) { $event.preventDefault(); links.at(-1)?.focus(); }
+                if (!$event.shiftKey && document.activeElement === links.at(-1)) { $event.preventDefault(); links[0]?.focus(); }
+            "
             aria-label="منوی مشتری"
         >
             <div class="flex shrink-0 items-center justify-between px-2">
@@ -268,7 +278,7 @@
                     type="button"
                     x-ref="sidebarClose"
                     class="grid size-9 place-items-center rounded-md border border-white/10 text-[#9DB4DC] transition hover:bg-white/10 hover:text-white lg:hidden"
-                    @click="sidebarOpen = false; $refs.sidebarTrigger?.focus()"
+                    @click="sidebarOpen = false; $nextTick(() => $refs.sidebarTrigger?.focus())"
                     aria-label="بستن منو"
                 >
                     <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -343,7 +353,27 @@
                 </div>
             </div>
 
-            <div class="customer-sidebar-scroll mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
+            @if($canViewBilling)
+                <div class="mt-3 shrink-0 rounded-xl border border-white/10 bg-white/[0.03] p-3" aria-label="موجودی فضای کاری">
+                    <p class="text-[11px] font-medium text-[#9DB4DC]">موجودی کیف پول</p>
+                    <div class="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+                        <p class="min-w-0 break-words text-sm font-semibold leading-6 {{ $activeWalletRisk && $activeWalletRisk['tone'] !== 'warning' ? 'text-rose-200' : ($balanceIsNegative ? 'text-red-200' : 'text-white') }}">{{ $wallets->formatAvailableBalance($effectiveWalletBalance) }}</p>
+                        <a href="{{ route('customer.wallet.show', ['topup' => 1, 'restore' => 1], false) }}" class="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-lg border border-[#168BFF] lg:w-auto px-2 py-1 text-[11px] font-semibold text-[#69B8FF] transition hover:bg-[#0069FF]/20 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#69A9FF]">
+                            شارژ کیف پول
+                        </a>
+                    </div>
+                    @if($activeWalletRisk)
+                        <details class="mt-2 border-t border-white/10 pt-2 {{ $activeWalletRisk['tone'] === 'warning' ? 'text-amber-200' : 'text-rose-200' }}">
+                            <summary class="cursor-pointer rounded text-[11px] font-medium leading-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#69A9FF]">{{ $activeWalletRisk['label'] }}</summary>
+                            <p class="mt-1 text-[11px] leading-5">
+                                {{ $activeWalletRisk['tone'] === 'depleted' ? 'اعتبار قابل استفاده پایان یافته است.' : 'اعتبار قابل استفاده: '.number_format($activeWalletRisk['percent'], 0).'٪ هزینه ماهانه' }}
+                            </p>
+                        </details>
+                    @endif
+                </div>
+            @endif
+
+            <div class="customer-sidebar-scroll mt-4 pb-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
                 <nav class="space-y-4 text-sm font-medium" aria-label="بخش‌های پنل مشتری">
                     @foreach ($navGroups as $group => $items)
                         @if ($group === 'فروشندگی')
@@ -374,26 +404,6 @@
                     @endforeach
                 </nav>
             </div>
-
-            @if($canViewBilling)
-                <div class="mt-3 shrink-0 rounded-xl border border-white/10 bg-white/[0.03] p-3" aria-label="موجودی فضای کاری">
-                    <p class="text-[11px] font-medium text-[#9DB4DC]">موجودی کیف پول</p>
-                    <div class="mt-1.5 flex flex-wrap items-center justify-between gap-2">
-                        <p class="min-w-0 break-words text-sm font-semibold leading-6 {{ $activeWalletRisk && $activeWalletRisk['tone'] !== 'warning' ? 'text-rose-200' : ($balanceIsNegative ? 'text-red-200' : 'text-white') }}">{{ $wallets->formatAvailableBalance($effectiveWalletBalance) }}</p>
-                        <a href="{{ route('customer.wallet.show', ['topup' => 1], false) }}" class="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-[#168BFF] px-2 py-1 text-[11px] font-semibold text-[#69B8FF] transition hover:bg-[#0069FF]/20 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#69A9FF]">
-                            افزایش اعتبار
-                        </a>
-                    </div>
-                    @if($activeWalletRisk)
-                        <details class="mt-2 border-t border-white/10 pt-2 {{ $activeWalletRisk['tone'] === 'warning' ? 'text-amber-200' : 'text-rose-200' }}">
-                            <summary class="cursor-pointer rounded text-[11px] font-medium leading-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#69A9FF]">{{ $activeWalletRisk['label'] }}</summary>
-                            <p class="mt-1 text-[11px] leading-5">
-                                {{ $activeWalletRisk['tone'] === 'depleted' ? 'اعتبار قابل استفاده پایان یافته است.' : 'اعتبار قابل استفاده: '.number_format($activeWalletRisk['percent'], 0).'٪ هزینه ماهانه' }}
-                            </p>
-                        </details>
-                    @endif
-                </div>
-            @endif
 
             <div class="relative mt-3 shrink-0 border-t border-white/15 pt-2" @click.outside="profileOpen = false" @focusout="if (!$el.contains($event.relatedTarget)) profileOpen = false">
                 <button
@@ -453,15 +463,17 @@
             </div>
         </aside>
 
-        <main class="min-w-0 {{ View::hasSection('full_width_header') ? 'min-h-screen bg-[#F8FAFC]' : '' }}">
+        <main :inert="sidebarOpen && !window.matchMedia('(min-width: 1024px)').matches" class="min-w-0 {{ View::hasSection('full_width_header') ? 'min-h-screen bg-[#F8FAFC]' : '' }}">
             <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-3 shadow-sm shadow-slate-200/50 backdrop-blur sm:px-4 md:px-6 lg:px-8">
                 <div class="flex h-16 items-center justify-between gap-2">
                     <button
                         type="button"
                         x-ref="sidebarTrigger"
                         class="grid size-11 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm shadow-slate-200/50 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] lg:hidden"
-                        @click="sidebarOpen = true; $nextTick(() => $refs.sidebarClose?.focus())"
+                        @click="closePanels(); sidebarOpen = true; $nextTick(() => $refs.sidebarClose?.focus())"
+                        @resize.window="if (window.matchMedia('(min-width: 1024px)').matches) sidebarOpen = false"
                         :aria-expanded="sidebarOpen.toString()"
+                        aria-controls="customer-sidebar"
                         aria-label="باز کردن منو"
                     >
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -469,10 +481,15 @@
                         </svg>
                     </button>
 
+                    @if ($canViewBilling)
+                        <a href="{{ route('customer.wallet.show', $walletIsDepleted ? ['topup' => 1, 'restore' => 1] : [], false) }}" class="inline-flex min-h-11 shrink-0 items-center rounded-xl px-2 text-xs font-bold {{ $walletIsDepleted ? 'bg-rose-50 text-rose-800' : 'bg-slate-100 text-slate-800' }} lg:hidden">کیف پول</a>
+                    @endif
+
                     <div class="shrink-0 sm:min-w-0 sm:flex-1 md:max-w-md">
                         <button
                             type="button"
                             @click="openSearch()"
+                            aria-label="جستجو"
                             class="group flex size-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 text-sm text-slate-500 shadow-sm shadow-slate-200/40 transition hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] sm:h-11 sm:w-full sm:justify-start sm:px-3"
                         >
                             <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-slate-500 shadow-sm shadow-slate-200/50 transition group-hover:text-[#0069FF]">
@@ -507,7 +524,7 @@
                         @endif
 
                         @if($canViewBilling && ! View::hasSection('primary_actions_in_content'))
-                        <div class="relative hidden sm:block">
+                        <div class="relative hidden lg:block">
                             <button
                                 type="button"
                                 @click="walletOpen = !walletOpen; profileOpen = false; searchOpen = false"

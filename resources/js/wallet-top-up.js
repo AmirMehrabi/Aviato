@@ -14,7 +14,6 @@ export function walletTopUp(config) {
         codeError: '',
         requestVersion: 0,
         promotionOpen: Boolean(config.openPromotion || config.initialCode),
-        summaryOpen: false,
         currentBalanceRial: Number(config.currentBalanceRial || 0),
         init() {
             const initialAmount = this.normalizeDigits(config.initialAmount || '');

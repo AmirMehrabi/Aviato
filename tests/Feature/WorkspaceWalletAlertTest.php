@@ -50,6 +50,10 @@ class WorkspaceWalletAlertTest extends TestCase
         Http::fake(['api.kavenegar.com/*' => Http::response(['return' => ['status' => 200]])]);
         app(WorkspaceWalletAlertService::class)->sendSmsNow($project, $owner, ['balance' => 100000, 'monthly_cost' => 730000]);
         Http::assertSent(fn ($request) => $request['template'] === 'aviato-credit-days-v2' && $request['token2'] === '4');
+        AppSetting::setValue('customer.wallet.days_sms_template', 'aviato-credit-days-v3');
+        app(WorkspaceWalletAlertService::class)->sendSmsNow($project, $owner, ['balance' => 100000, 'monthly_cost' => 730000]);
+        Http::assertSent(fn ($request) => $request['template'] === 'aviato-credit-days-v3'
+            && $request['token2'] === '4' && $request['token3'] === str_replace('-', '', $project->uuid));
         $this->assertSame('aviato-negative-credit', AppSetting::customerWalletNegativeSmsTemplate());
     }
 

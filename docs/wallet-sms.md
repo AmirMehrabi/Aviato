@@ -21,7 +21,7 @@ At effective balance <= 0, networking is isolated. Shutdown occurs at the config
 
 1. Deploy the staged application code through the normal release process; restart queue workers.
 2. Run `php artisan wallet:configure-sms` to inspect statuses and text equality. No provider templates are edited by this command. `--apply` creates missing templates only and saves returned IDs for later reads. Never activate a template marked TEXT DIFFERS.
-3. In admin `/settings/protection`, set the four new template fields to the corresponding names above. Leave `aviato-negative-credit` in the existing field. The days field overrides it only when set; clearing that field restores the old SMS immediately. Clear lifecycle fields to disable those SMS messages.
+3. In admin `/settings/protection`, select the approved templates. The optional days template overrides the fallback balance template when a usage estimate is available. Clear lifecycle fields to disable those SMS messages. See the workspace recovery links below for current template versions.
 4. `/settings/notifications` lists their configured status. The new fields remain blank by default and are never automatically enabled by submission or approval.
 
 ## Tokens and estimates
@@ -31,3 +31,16 @@ Low-credit: `%token` = customer's first name, `%token10` = workspace name, `%tok
 Lifecycle: `%token` = customer first name; `%token10` = compact server name. Provider text is defined in `app/Services/Sms/WalletSmsTemplates.php`.
 
 Creation and approval inspection do not send SMS. Do not use the corporate template updater for this rollout.
+
+
+## Workspace recovery links
+
+The linked templates are `aviato-credit-recovery-v3` (fallback balance alert),
+`aviato-credit-days-v3`, `aviato-credit-network-v3`, and
+`aviato-credit-stopped-v3`. Each appends the workspace ID from `%token3` to the customer portal URL configured when the template is submitted. The link requires customer sign-in and workspace billing access.
+
+Submit the new versions with `php artisan wallet:configure-sms --apply`. After
+provider approval and a test delivery, select the matching versions in
+`/settings/protection`. Set the fallback balance template to
+`aviato-credit-recovery-v3`. The restoration template remains
+`aviato-credit-restored-v2`. The previous versions can still be selected.

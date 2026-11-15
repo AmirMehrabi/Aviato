@@ -98,7 +98,8 @@ class CustomerNotificationActionsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('unread_count', 2)
             ->assertJsonPath('ticket_unread_count', 1)
-            ->assertJsonPath('items.0.action_label', 'مشاهده فضای کاری')
+            ->assertJsonPath('items.0.action_label', 'شارژ کیف پول')
+            ->assertJsonPath('items.0.url', '/projects/example/enter?wallet_topup=1')
             ->assertJsonPath('items.1.action_label', 'مشاهده تیکت');
 
         $this->actingAs($customer, 'customer')

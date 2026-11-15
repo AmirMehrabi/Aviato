@@ -11,6 +11,7 @@ use App\Models\VmBackup;
 use App\Models\VmDisk;
 use App\Notifications\WorkspaceWalletBalanceNotification;
 use App\Services\Sms\KavenegarLookupClient;
+use App\Services\Sms\WalletSmsTemplates;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -266,12 +267,17 @@ class WorkspaceWalletAlertService
             $tokens['token2'] = (string) $days;
         }
 
+        if (in_array($template, [WalletSmsTemplates::RECOVERY, WalletSmsTemplates::DAYS], true)) {
+            $tokens['token3'] = WalletSmsTemplates::recoveryToken($project);
+        }
+
         try {
             $sent = app(KavenegarLookupClient::class)->sendLookup(
                 $recipient->phone,
                 $template,
                 $customerToken,
                 token2: $useDays ? (string) $days : null,
+                token3: $tokens['token3'] ?? null,
                 token10: $workspaceToken,
                 token20: $amountToken,
             );

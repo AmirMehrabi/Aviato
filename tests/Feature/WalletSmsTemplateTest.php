@@ -21,12 +21,12 @@ class WalletSmsTemplateTest extends TestCase
         AppSetting::setValue(AppSetting::KAVENEGAR_API_KEY, 'fake');
         AppSetting::setValue(AppSetting::CUSTOMER_WALLET_NEGATIVE_SMS_TEMPLATE, 'aviato-negative-credit');
         Http::fake([
-            '*/templatelist.json*' => Http::response(['return' => ['status' => 200], 'entries' => [['name' => 'aviato-credit-days-v2', 'id' => 42]]]),
-            '*/gettemplate.json*' => Http::response(['return' => ['status' => 200], 'entries' => ['name' => 'aviato-credit-days-v2', 'approvalstatus' => 'PendingReview']]),
+            '*/templatelist.json*' => Http::response(['return' => ['status' => 200], 'entries' => [['name' => 'aviato-credit-days-v3', 'id' => 42]]]),
+            '*/gettemplate.json*' => Http::response(['return' => ['status' => 200], 'entries' => ['name' => 'aviato-credit-days-v3', 'approvalstatus' => 'PendingReview']]),
             '*/addtemplate.json' => Http::response(['return' => ['status' => 200]]),
         ]);
         $this->artisan('wallet:configure-sms --apply')->assertSuccessful();
-        Http::assertSentCount(5);
+        Http::assertSentCount(6);
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'updatetemplate'));
         $this->assertSame('aviato-negative-credit', AppSetting::customerWalletNegativeSmsTemplate());
         $this->assertNull(AppSetting::getValue('customer.wallet.days_sms_template'));

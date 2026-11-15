@@ -11,6 +11,11 @@
             <span x-show="amount && !amountError" x-cloak class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">مبلغ انتخاب شد</span>
         </div>
 
+        @if ($recoveryAmountToman)
+            <button type="button" @click="selectPreset({{ $recoveryAmountToman }})" :aria-pressed="(Number(amount) === {{ $recoveryAmountToman }}).toString()" class="mt-4 min-h-11 w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-right text-sm font-bold text-blue-900">
+                {{ $recoveryRequiresMultiplePayments ? 'سقف پرداخت در هر تراکنش' : 'مبلغ پیشنهادی برای رفع محدودیت' }} · {{ \App\Support\PersianDigits::format($recoveryAmountToman) }} تومان
+            </button>
+        @endif
         <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
             @foreach ($topUpPresets as $amount)
                 <button

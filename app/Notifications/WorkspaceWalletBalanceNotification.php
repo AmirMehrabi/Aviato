@@ -37,7 +37,8 @@ class WorkspaceWalletBalanceNotification extends Notification
             'body' => $manual
                 ? "موجودی قابل استفاده برای «{$this->project->name}»: {$formatted}{$coverage}"
                 : "موجودی قابل استفاده برای «{$this->project->name}» به {$this->threshold}٪ از هزینه ماهانه رسیده است: {$formatted}.",
-            'url' => route('customer.projects.enter', $this->project, false),
+            'url' => route('customer.wallet.recover', $this->project, false),
+            'action_label' => 'شارژ کیف پول',
             'balance' => $this->balance,
             'remaining_percent' => $this->percent,
             'threshold_percent' => $this->threshold,

@@ -60,6 +60,13 @@
         ])->filter()->values();
     @endphp
 
+    @if (session('wallet_recovery_support'))
+        <div role="status" class="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+            <p>{{ session('wallet_recovery_support') }}</p>
+            <a class="mt-2 inline-flex min-h-11 items-center font-bold underline" href="{{ route('customer.tickets.create', [], false) }}">تماس با پشتیبانی</a>
+        </div>
+    @endif
+
     <section class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm shadow-slate-200/50 xl:flex-row xl:items-center xl:justify-between" aria-label="دسترسی‌های سریع">
         <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <a
@@ -87,8 +94,8 @@
                         <span class="block truncate text-sm font-black {{ $walletIsBlocked ? 'text-red-700' : 'text-slate-950' }}">{{ $wallets->formatAvailableBalance($effectiveBalance) }}</span>
                     </span>
                     <a
-                        href="{{ route('customer.wallet.show', ['topup' => 1], false) }}"
-                        class="mr-1 rounded-lg px-2 py-1.5 text-xs font-black text-[#0069FF] transition-colors hover:bg-[#EBF3FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
+                        href="{{ route('customer.wallet.show', ['topup' => 1, 'restore' => 1], false) }}"
+                        class="mr-1 inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-black text-[#0069FF] transition-colors hover:bg-[#EBF3FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
                     >
                         شارژ کیف پول
                     </a>

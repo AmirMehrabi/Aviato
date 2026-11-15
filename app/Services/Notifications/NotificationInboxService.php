@@ -27,10 +27,13 @@ class NotificationInboxService
                 'id' => $notification->id,
                 'title' => data_get($notification->data, 'title', 'اعلان'),
                 'body' => data_get($notification->data, 'body', ''),
-                'url' => data_get($notification->data, 'url', $fallbackUrl),
+                'url' => data_get($notification->data, 'event') === 'workspace_wallet_balance'
+                    && preg_match('~^/projects/[^/?]+/enter$~', (string) data_get($notification->data, 'url'))
+                        ? data_get($notification->data, 'url').'?wallet_topup=1'
+                        : data_get($notification->data, 'url', $fallbackUrl),
                 'action_label' => data_get($notification->data, 'action_label')
                     ?? ($notification->type === TicketDatabaseNotification::class ? 'مشاهده تیکت' : match (data_get($notification->data, 'event')) {
-                        'workspace_wallet_balance' => 'مشاهده فضای کاری',
+                        'workspace_wallet_balance' => 'شارژ کیف پول',
                         'workspace_added' => 'ورود به فضای کاری',
                         default => 'مشاهده',
                     }),
