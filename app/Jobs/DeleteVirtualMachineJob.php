@@ -2,8 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\ProxmoxDeletionPreflightException;
+use App\Models\User;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
+use App\Notifications\VmDeletionBlockedNotification;
 use App\Services\HetznerCloudService;
 use App\Services\ProxmoxService;
 use App\Services\UsageBillingService;
@@ -14,7 +17,9 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use RuntimeException;
 use Throwable;
 
@@ -81,18 +86,45 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if (data_get($vm->remote_state, 'delete_requested.actor') === VmWalletRetentionService::DELETE_ACTOR) {
-            $vm->forceFill([
-                'delete_started_at' => $vm->delete_started_at ?? now(),
-                'remote_state' => array_merge($vm->remote_state ?? [], [
-                    'wallet_delete_started_at' => data_get($vm->remote_state, 'wallet_delete_started_at', now()->toISOString()),
-                ]),
-            ])->save();
+        if ($this->isWalletDeletion($vm)) {
             try {
-                $this->deleteExpiredBackups($vm, $proxmox);
+                $targets = $this->checkProxmoxDeletionTargets($vm, $proxmox);
+                $started = DB::transaction(function () use ($vm, $targets): bool {
+                    $locked = VirtualMachine::query()->lockForUpdate()->findOrFail($vm->id);
+                    if (! $locked->isDeleting() || ! $this->isWalletDeletion($locked)
+                        || ! app(VmWalletRetentionService::class)->allowDeletion($locked)) {
+                        return false;
+                    }
+
+                    $locked->forceFill([
+                        'node' => $targets['vm_node'],
+                        'delete_started_at' => $locked->delete_started_at ?? now(),
+                        'remote_state' => array_merge($locked->remote_state ?? [], [
+                            'wallet_delete_started_at' => data_get($locked->remote_state, 'wallet_delete_started_at', now()->toISOString()),
+                        ]),
+                    ])->save();
+
+                    return true;
+                });
+                if (! $started) {
+                    return;
+                }
+                $vm->refresh();
+                $this->deleteExpiredBackups($vm, $proxmox, $targets['backups']);
+            } catch (ProxmoxDeletionPreflightException $exception) {
+                $this->blockWalletDeletion($vm, $exception);
+
+                return;
             } catch (Throwable $exception) {
-                $vm->forceFill(['delete_failed_at' => now(), 'delete_error' => $exception->getMessage()])->save();
-                throw $exception;
+                if ($this->hasAttemptsRemaining()) {
+                    $vm->forceFill(['delete_error' => $exception->getMessage()])->save();
+
+                    throw $exception;
+                }
+
+                $this->blockWalletDeletion($vm, $exception);
+
+                return;
             }
             if ($vm->isProxmox() && (! $vm->proxmox_server_id || ! $vm->node || ! $vm->vmid)) {
                 $deletions->finalizeLocalDelete($vm, 'wallet_expired_missing_connection');
@@ -281,6 +313,11 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             ]);
         } catch (Throwable $exception) {
             $hasAttemptsRemaining = $this->hasAttemptsRemaining();
+            if ($this->isWalletDeletion($vm) && ! $hasAttemptsRemaining) {
+                $this->blockWalletDeletion($vm, $exception);
+
+                return;
+            }
 
             Log::error('Cloud VM deletion failed', [
                 'virtual_machine_id' => $vm->id,
@@ -294,7 +331,7 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
 
             $vm->forceFill([
                 'status' => VirtualMachine::STATUS_DELETING,
-                'delete_failed_at' => now(),
+                'delete_failed_at' => $this->isWalletDeletion($vm) ? null : now(),
                 'delete_error' => $exception->getMessage(),
                 'remote_state' => array_merge($vm->remote_state ?? [], ['delete_steps' => $history]),
             ])->save();
@@ -308,7 +345,98 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    private function deleteExpiredBackups(VirtualMachine $vm, ProxmoxService $proxmox): void
+    public function failed(Throwable $exception): void
+    {
+        $vm = VirtualMachine::query()->find($this->virtualMachineId);
+        if ($vm && $vm->isDeleting() && $this->isWalletDeletion($vm)) {
+            $this->blockWalletDeletion($vm, $exception);
+        }
+    }
+
+    private function isWalletDeletion(VirtualMachine $vm): bool
+    {
+        return data_get($vm->remote_state, 'delete_requested.actor') === VmWalletRetentionService::DELETE_ACTOR;
+    }
+
+    private function blockWalletDeletion(VirtualMachine $vm, Throwable $exception): void
+    {
+        $blocked = VirtualMachine::query()->whereKey($vm->id)->where('status', VirtualMachine::STATUS_DELETING)
+            ->whereNull('delete_failed_at')
+            ->update(['delete_failed_at' => now(), 'delete_error' => $exception->getMessage()]);
+        if (! $blocked) {
+            return;
+        }
+        $vm->refresh();
+        Log::error('Automatic VM deletion blocked', [
+            'virtual_machine_id' => $vm->id,
+            'error' => $vm->delete_error,
+        ]);
+        $admins = User::query()->where('is_active', true)->get()
+            ->filter(fn (User $user): bool => $user->allows('virtual-machines.delete'));
+        Notification::send($admins, new VmDeletionBlockedNotification($vm));
+    }
+
+    /** @return array{vm_node: ?string, backups: array<int, string>} */
+    private function checkProxmoxDeletionTargets(VirtualMachine $vm, ProxmoxService $proxmox): array
+    {
+        $targets = ['vm_node' => $vm->node, 'backups' => []];
+        if (! $vm->isProxmox()) {
+            return $targets;
+        }
+
+        $backups = $vm->backups()->where('status', '!=', VmBackup::STATUS_DELETED)->whereNotNull('volid')->get();
+        if (! $vm->vmid && $backups->isEmpty()) {
+            return $targets;
+        }
+        $server = $vm->proxmoxServer;
+        if (! $server) {
+            throw new ProxmoxDeletionPreflightException('The Proxmox server is missing for this VM or its backups.');
+        }
+
+        $nodes = collect($proxmox->deletionNodes($server))->keyBy('node');
+        if ($nodes->isEmpty()) {
+            throw new RuntimeException('The Proxmox API returned no visible nodes.');
+        }
+        $aliases = config('proxmox.deletion_node_aliases', [])[$server->id] ?? [];
+        $resolveNode = function (?string $node) use ($nodes, $aliases): string {
+            $target = $nodes->has($node) ? $node : ($aliases[$node] ?? null);
+            if ($target === null || ! $nodes->has($target)) {
+                throw new ProxmoxDeletionPreflightException(sprintf(
+                    'Proxmox node "%s" is missing from live inventory. Check the recorded node or configure a verified node alias.',
+                    $node ?? '(unset)',
+                ));
+            }
+            if (data_get($nodes->get($target), 'status') === 'offline') {
+                throw new RuntimeException('Proxmox node "'.$target.'" is offline.');
+            }
+
+            return $target;
+        };
+
+        if ($vm->vmid) {
+            $targets['vm_node'] = $resolveNode($vm->node);
+        }
+        $storageByNode = [];
+        foreach ($backups as $backup) {
+            $node = $resolveNode($backup->node);
+            $storageByNode[$node] ??= collect($proxmox->deletionBackupStorage($server, $node))->keyBy('storage');
+            $storage = $storageByNode[$node]->get($backup->storage);
+            if (! $storage || (isset($storage['active']) && ! $storage['active'])) {
+                throw new ProxmoxDeletionPreflightException(sprintf(
+                    'Backup #%d storage "%s" is missing or inactive on Proxmox node "%s". Verify the backup location and storage configuration.',
+                    $backup->id,
+                    $backup->storage ?? '(unset)',
+                    $node,
+                ));
+            }
+            $targets['backups'][$backup->id] = $node;
+        }
+
+        return $targets;
+    }
+
+    /** @param array<int, string> $backupNodes */
+    private function deleteExpiredBackups(VirtualMachine $vm, ProxmoxService $proxmox, array $backupNodes): void
     {
         $vm->backupPolicy()->update(['is_enabled' => false, 'next_run_at' => null]);
         $vm->backups()->where('status', VmBackup::STATUS_QUEUED)->update([
@@ -322,13 +450,15 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             ->get() as $backup) {
             app(UsageBillingService::class)->accrueBackup($backup);
             if ($backup->volid) {
-                if (! $vm->proxmoxServer || ! $backup->node || ! $backup->storage) {
+                $node = $backupNodes[$backup->id] ?? null;
+                if (! $vm->proxmoxServer || ! $node || ! $backup->storage) {
                     throw new RuntimeException('Backup storage connection is missing; expired backup deletion will be retried.');
                 }
                 try {
-                    $proxmox->deleteBackupFile($vm->proxmoxServer, $backup->node, $backup->storage, $backup->volid);
+                    $proxmox->deleteBackupFile($vm->proxmoxServer, $node, $backup->storage, $backup->volid);
                 } catch (Throwable $exception) {
-                    if (! $this->isRemoteMissingException($exception)) {
+                    if (! $this->isRemoteMissingException($exception)
+                        || str_contains(strtolower($exception->getMessage()), 'storage ')) {
                         throw $exception;
                     }
                 }
@@ -387,6 +517,12 @@ class DeleteVirtualMachineJob implements ShouldBeUnique, ShouldQueue
             ]);
         } catch (Throwable $exception) {
             $hasAttemptsRemaining = $this->hasAttemptsRemaining();
+
+            if ($this->isWalletDeletion($vm) && ! $hasAttemptsRemaining) {
+                $this->blockWalletDeletion($vm, $exception);
+
+                return;
+            }
 
             Log::error('Hetzner VM deletion failed', [
                 'virtual_machine_id' => $vm->id,

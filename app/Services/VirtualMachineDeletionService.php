@@ -37,17 +37,29 @@ class VirtualMachineDeletionService
         $queued = false;
         $status = 'queued';
 
-        $vm = DB::transaction(function () use ($vm, $actor, &$queued, &$status): VirtualMachine {
+        $vm = DB::transaction(function () use ($vm, &$actor, &$queued, &$status): VirtualMachine {
             $locked = VirtualMachine::query()
                 ->with(['reservedIpAddress', 'customer', 'bundle'])
                 ->whereKey($vm->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $walletDeletion = $locked->isDeleting()
+                && data_get($locked->remote_state, 'delete_requested.actor') === VmWalletRetentionService::DELETE_ACTOR;
+            if ($walletDeletion && $locked->delete_failed_at && $actor !== 'admin') {
+                $status = 'delete_blocked';
+
+                return $locked;
+            }
+            if ($walletDeletion) {
+                $actor = VmWalletRetentionService::DELETE_ACTOR;
+            }
+
             if ($actor === VmWalletRetentionService::DELETE_ACTOR) {
                 $owner = $locked->project?->owner ?? $locked->customer;
-                if (! $owner || ! $owner->auto_suspend_vms || ! $locked->wallet_retention_expires_at?->lte(now())
-                    || app(UsageBalanceService::class)->effectiveBalance($owner) > 0) {
+                if (! $locked->delete_started_at && ! data_get($locked->remote_state, 'wallet_delete_started_at')
+                    && (! $owner || ! $owner->auto_suspend_vms || ! $locked->wallet_retention_expires_at?->lte(now())
+                        || app(UsageBalanceService::class)->effectiveBalance($owner) > 0)) {
                     $status = 'retention_cancelled';
 
                     return $locked;

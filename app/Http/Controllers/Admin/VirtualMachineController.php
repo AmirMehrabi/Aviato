@@ -476,6 +476,10 @@ class VirtualMachineController extends Controller
             return back()->with('error', 'درخواست حذف VM ثبت نشد: '.$exception->getMessage());
         }
 
+        if ($result['status'] === 'retention_cancelled') {
+            return back()->with('status', 'سرور دیگر شرایط حذف خودکار را ندارد.');
+        }
+
         if ($result['status'] === 'already_queued') {
             return back()->with('status', 'این VM قبلا وارد صف حذف شده است.');
         }

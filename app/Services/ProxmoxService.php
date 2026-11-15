@@ -1468,9 +1468,21 @@ class ProxmoxService
             ->all();
     }
 
+    /** @return array<int, array<string, mixed>> */
+    public function deletionNodes(ProxmoxServer $server): array
+    {
+        return $this->getData($server, '/nodes') ?? [];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function deletionBackupStorage(ProxmoxServer $server, string $node): array
+    {
+        return $this->getData($server, '/nodes/'.rawurlencode($node).'/storage', ['content' => 'backup']) ?? [];
+    }
+
     public function deleteBackupFile(ProxmoxServer $server, string $node, string $storage, string $volid): void
     {
-        $this->request($server)
+        $this->request($server, $server->apiBaseUrlForNode($node), $node)
             ->delete("/nodes/{$node}/storage/{$storage}/content/".rawurlencode($volid))
             ->throw();
     }

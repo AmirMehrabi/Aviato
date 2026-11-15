@@ -6,6 +6,7 @@ use App\Jobs\DeleteVirtualMachineJob;
 use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\InfrastructureLocation;
+use App\Models\ProxmoxServer;
 use App\Models\ResourceRate;
 use App\Models\UsageAccrual;
 use App\Models\User;
@@ -14,6 +15,7 @@ use App\Models\VmBackup;
 use App\Models\VmBundle;
 use App\Models\VmBundleLocationMapping;
 use App\Models\VmDisk;
+use App\Notifications\VmDeletionBlockedNotification;
 use App\Notifications\VmWalletRetentionNotification;
 use App\Services\BillingService;
 use App\Services\ProxmoxService;
@@ -21,6 +23,7 @@ use App\Services\UsageBalanceService;
 use App\Services\UsageBillingService;
 use App\Services\VirtualMachineDeletionService;
 use App\Services\VmWalletRetentionService;
+use Illuminate\Bus\UniqueLock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -250,6 +253,82 @@ class VmWalletRetentionTest extends TestCase
         $this->assertSame(VmBackup::STATUS_DELETED, $backup->fresh()->status);
         $this->assertSame(16800, (int) UsageAccrual::query()->where('virtual_machine_id', $vm->id)->sum('amount'));
         $this->assertDatabaseHas('notifications', ['notifiable_id' => $owner->id, 'type' => VmWalletRetentionNotification::class]);
+    }
+
+    public function test_stale_proxmox_node_blocks_deletion_until_admin_retries_with_verified_alias(): void
+    {
+        Notification::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $owner = Customer::factory()->create();
+        $owner->wallet()->update(['balance' => -10000]);
+        $server = ProxmoxServer::create([
+            'name' => 'Test Proxmox', 'host' => 'pve.local', 'port' => 8006,
+            'username' => 'root', 'realm' => 'pam',
+        ]);
+        $vm = $this->machine($owner, ['proxmox_server_id' => $server->id, 'vmid' => 127, 'node' => 'srv1']);
+        $retention = app(VmWalletRetentionService::class);
+        $retention->reconcile($owner, $vm);
+        $this->travel(7)->days();
+        $retention->reconcile($owner, $vm->fresh());
+
+        $proxmox = $this->mock(ProxmoxService::class);
+        $proxmox->shouldReceive('deletionNodes')->twice()->andReturn([['node' => 'srv1-new', 'status' => 'online']]);
+        $proxmox->shouldNotReceive('deleteVm');
+        $deletions = app(VirtualMachineDeletionService::class);
+        $job = new DeleteVirtualMachineJob($vm->id);
+        $job->handle($proxmox, $deletions);
+        $vm->refresh();
+
+        $this->assertStringContainsString('Proxmox node "srv1"', $vm->delete_error);
+        $this->assertNull($vm->delete_started_at);
+        Notification::assertSentTo($admin, VmDeletionBlockedNotification::class);
+        $retention->reconcile($owner, $vm);
+        Queue::assertPushed(DeleteVirtualMachineJob::class, 1);
+
+        config(['proxmox.deletion_node_aliases' => [$server->id => ['srv1' => 'srv1-new']]]);
+        $proxmox->shouldReceive('vmConfigOrNull')->once()->withArgs(
+            fn ($target, $node, $vmid) => $target->is($server) && $node === 'srv1-new' && $vmid === 127,
+        )->andReturnNull();
+
+        // The queue releases the unique lock after handle() returns.
+        app(UniqueLock::class)->release($job);
+        $this->assertTrue($deletions->requestDelete($vm, 'admin')['queued']);
+        Queue::assertPushed(DeleteVirtualMachineJob::class, 2);
+        $job->handle($proxmox, $deletions);
+
+        $this->assertSame(VirtualMachine::STATUS_DELETED, $vm->fresh()->status);
+    }
+
+    public function test_missing_proxmox_backup_storage_preserves_backup_and_blocks_vm_deletion(): void
+    {
+        $owner = Customer::factory()->create();
+        $owner->wallet()->update(['balance' => -10000]);
+        $server = ProxmoxServer::create([
+            'name' => 'Test Proxmox', 'host' => 'pve.local', 'port' => 8006,
+            'username' => 'root', 'realm' => 'pam',
+        ]);
+        $vm = $this->machine($owner, [
+            'proxmox_server_id' => $server->id, 'vmid' => 127, 'node' => 'srv1',
+            'status' => VirtualMachine::STATUS_DELETING, 'wallet_retention_expires_at' => now()->subMinute(),
+            'remote_state' => ['delete_requested' => ['actor' => VmWalletRetentionService::DELETE_ACTOR]],
+        ]);
+        $backup = $vm->backups()->create([
+            'source' => 'manual', 'status' => 'ready', 'node' => 'srv1', 'storage' => 'usb-backup',
+            'volid' => 'usb-backup:backup/vzdump-qemu-127.vma.zst',
+        ]);
+
+        $proxmox = $this->mock(ProxmoxService::class);
+        $proxmox->shouldReceive('deletionNodes')->once()->andReturn([['node' => 'srv1', 'status' => 'online']]);
+        $proxmox->shouldReceive('deletionBackupStorage')->once()->withArgs(
+            fn ($target, $node) => $target->is($server) && $node === 'srv1',
+        )->andReturn([]);
+        $proxmox->shouldNotReceive('deleteBackupFile', 'vmConfigOrNull', 'deleteVm');
+
+        (new DeleteVirtualMachineJob($vm->id))->handle($proxmox, app(VirtualMachineDeletionService::class));
+
+        $this->assertStringContainsString('storage "usb-backup" is missing or inactive', $vm->fresh()->delete_error);
+        $this->assertNull($vm->fresh()->delete_started_at);
+        $this->assertSame(VmBackup::STATUS_READY, $backup->fresh()->status);
     }
 
     public function test_started_automatic_delete_stays_irreversible_on_retry_after_funding(): void
