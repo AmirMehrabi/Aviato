@@ -366,7 +366,7 @@ class VirtualMachineController extends Controller
         }
         $selectedIpAddressId = $data['ip_address_id'] ?? null;
         $syncToProxmox = (bool) ($data['sync_to_proxmox'] ?? true);
-        unset($data['ip_pool_id'], $data['ip_address_id'], $data['sync_to_proxmox']);
+        unset($data['ip_pool_id'], $data['ip_address_id'], $data['sync_to_proxmox'], $data['guest_network_configured']);
 
         $previousIpAddressId = $virtualMachine->ip_address_id;
 
@@ -400,11 +400,12 @@ class VirtualMachineController extends Controller
                     $virtualMachine,
                     IpAddress::query()->findOrFail((int) $selectedIpAddressId),
                     syncToProxmox: $syncToProxmox,
+                    guestNetworkConfigured: $request->boolean('guest_network_configured'),
                 );
             } catch (Throwable $exception) {
                 return redirect()
                     ->route('admin.virtual-machines.show', $virtualMachine)
-                    ->with('error', 'تغییر IP کامل نشد و بازگردانی انجام شد: '.$exception->getMessage());
+                    ->with('error', 'تغییر IP کامل نشد: '.$exception->getMessage());
             }
         }
 
@@ -416,6 +417,7 @@ class VirtualMachineController extends Controller
         $data = $request->validate([
             'ip_address_id' => ['required', 'integer', 'exists:ip_addresses,id'],
             'sync_to_proxmox' => ['sometimes', 'boolean'],
+            'guest_network_configured' => ['sometimes', 'boolean'],
         ]);
 
         $syncToProxmox = (bool) ($data['sync_to_proxmox'] ?? true);
@@ -425,6 +427,7 @@ class VirtualMachineController extends Controller
                 $virtualMachine,
                 IpAddress::query()->findOrFail($data['ip_address_id']),
                 syncToProxmox: $syncToProxmox,
+                guestNetworkConfigured: $request->boolean('guest_network_configured'),
             );
         } catch (Throwable $exception) {
             return back()->with('error', $exception->getMessage());
@@ -777,6 +780,7 @@ class VirtualMachineController extends Controller
             'onboot' => ['nullable', 'boolean'],
             'tax_exempt' => ['nullable', 'boolean'],
             'sync_to_proxmox' => ['sometimes', 'boolean'],
+            'guest_network_configured' => ['sometimes', 'boolean'],
         ]);
     }
 

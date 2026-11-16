@@ -240,6 +240,7 @@
                                             x-data="{
                                                 syncProxmox: true,
                                                 ipChange: '',
+                                                guestNetworkConfigured: false,
                                                 submit() {
                                                     if (!this.ipChange) return;
                                                     if (!this.syncProxmox && !confirm('فقط رکوردهای دیتابیس به‌روزرسانی می‌شود. اعمال در Proxmox انجام نخواهد شد. ادامه می‌دهید?')) return;
@@ -254,6 +255,7 @@
                                                 @csrf
                                                 @method('PATCH')
                                                 <input type="hidden" name="sync_to_proxmox" :value="syncProxmox ? '1' : '0'">
+                                                <input type="hidden" name="guest_network_configured" :value="guestNetworkConfigured ? '1' : '0'">
                                                 <select name="ip_address_id" required x-model="ipChange" class="min-w-48 rounded-lg border border-slate-200 px-3 py-2 text-xs">
                                                     <option value="">IP جدید</option>
                                                     @foreach($replacementAddresses->filter(fn ($candidate) => (int) $candidate->pool?->proxmox_server_id === (int) $vm->proxmox_server_id && (blank($candidate->pool?->node) || $candidate->pool?->node === $vm->node)) as $candidate)
@@ -268,6 +270,12 @@
                                                 <input type="checkbox" x-model="syncProxmox" class="size-3 rounded border-slate-300 text-[#0069FF]">
                                                 اعمال در Proxmox
                                             </label>
+                                            @if (! $vm->cloudImage?->cloud_init_enabled)
+                                                <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-500">
+                                                    <input type="checkbox" x-model="guestNetworkConfigured" class="size-3 rounded border-slate-300 text-[#0069FF]">
+                                                    IP جدید را داخل سیستم‌عامل تنظیم کرده‌ام
+                                                </label>
+                                            @endif
                                         </div>
                                     @elseif($address->status === 'reserved' || ($address->status === 'assigned' && !$vm))
 

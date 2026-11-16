@@ -68,9 +68,12 @@
             @endforeach
         </select>
         @error('ip_address_id') <span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span> @enderror
-        <p class="mt-1 text-xs text-slate-500">بعد از تغییر IP، ipconfig0 و nameserver در Cloud-init روی Proxmox بازسازی می‌شود.</p>
+
     </label>
-    <x-form.checkbox name="sync_to_proxmox" label="اعمال تغییرات IP در Proxmox (Cloud-init)" :checked="old('sync_to_proxmox', true)" help="اگر غیرفعال باشد فقط رکوردهای دیتابیس به‌روزرسانی می‌شود و تغییرات به Proxmox ارسال نمی‌شود." wrapper-class="md:col-span-2" />
+    @if ($vm->exists && ! $vm->cloudImage?->cloud_init_enabled)
+        <x-form.checkbox name="guest_network_configured" label="IP جدید را داخل سیستم‌عامل تنظیم کرده‌ام" :checked="old('guest_network_configured', false)" help="برای این ماشین، تنظیم IP و مسیر پیش‌فرض را در کنسول سیستم‌عامل انجام دهید. Aviato فیلتر IP در Proxmox را به‌روزرسانی می‌کند." wrapper-class="md:col-span-2" />
+    @endif
+    <x-form.checkbox name="sync_to_proxmox" label="اعمال تغییرات IP در Proxmox" :checked="old('sync_to_proxmox', true)" help="اگر غیرفعال باشد فقط رکوردهای دیتابیس به‌روزرسانی می‌شود و تغییرات به Proxmox ارسال نمی‌شود." wrapper-class="md:col-span-2" />
     <x-form.input name="vmid" type="number" label="Proxmox VMID" :value="$vm->vmid" />
     <label>
         <span class="text-sm font-black text-slate-700">Node</span>

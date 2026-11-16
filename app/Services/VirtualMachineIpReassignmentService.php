@@ -15,7 +15,7 @@ class VirtualMachineIpReassignmentService
         private readonly ProxmoxService $proxmox,
     ) {}
 
-    public function reassign(VirtualMachine $vm, IpAddress $destination, bool $syncToProxmox = true): VirtualMachine
+    public function reassign(VirtualMachine $vm, IpAddress $destination, bool $syncToProxmox = true, bool $guestNetworkConfigured = false): VirtualMachine
     {
         $vm->loadMissing(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool']);
         $oldAddress = $vm->reservedIpAddress;
@@ -27,6 +27,10 @@ class VirtualMachineIpReassignmentService
 
         $destination->loadMissing('pool');
         $this->assertDestination($vm, $destination);
+
+        if ($syncToProxmox && ! $vm->cloudImage?->cloud_init_enabled && ! $guestNetworkConfigured) {
+            throw new RuntimeException('Configure the new IP inside the guest first, then confirm the guest network change.');
+        }
 
         $this->ipPools->reserveSpecificForVm($destination, $vm);
         $vm->refresh()->load(['proxmoxServer', 'cloudImage', 'reservedIpAddress.pool']);
@@ -72,21 +76,23 @@ class VirtualMachineIpReassignmentService
         try {
             $this->wait($server, $node, $this->proxmox->setVmNetworkLinkState($server, $node, $vmid, false));
             $disabled = true;
-            $this->wait($server, $node, $this->proxmox->configureCloudInit($server, [
-                'node' => $node,
-                'vmid' => $vmid,
-                'cpu_cores' => $vm->cpu_cores,
-                'ram_gb' => $vm->ram_gb,
-                'network_bridge' => $vm->network_bridge,
-                'login_username' => $vm->login_username,
-                'login_password' => $vm->cloudInitPassword(),
-                'ssh_public_key' => $vm->ssh_public_key,
-                'ipconfig0' => $this->ipPools->ipConfig($address),
-                'nameserver' => $this->ipPools->nameservers($address),
-                'cicustom' => 'vendor=local:snippets/ubuntu-password-login.yml',
-                'description' => 'Cloud-init network updated by Aviato admin panel',
-            ]));
-            $this->wait($server, $node, $this->proxmox->regenerateCloudInit($server, $node, $vmid));
+            if ($vm->cloudImage?->cloud_init_enabled) {
+                $this->wait($server, $node, $this->proxmox->configureCloudInit($server, [
+                    'node' => $node,
+                    'vmid' => $vmid,
+                    'cpu_cores' => $vm->cpu_cores,
+                    'ram_gb' => $vm->ram_gb,
+                    'network_bridge' => $vm->network_bridge,
+                    'login_username' => $vm->login_username,
+                    'login_password' => $vm->cloudInitPassword(),
+                    'ssh_public_key' => $vm->ssh_public_key,
+                    'ipconfig0' => $this->ipPools->ipConfig($address),
+                    'nameserver' => $this->ipPools->nameservers($address),
+                    'cicustom' => 'vendor=local:snippets/ubuntu-password-login.yml',
+                    'description' => 'Cloud-init network updated by Aviato admin panel',
+                ]));
+                $this->wait($server, $node, $this->proxmox->regenerateCloudInit($server, $node, $vmid));
+            }
             $antiSpoofing = $this->proxmox->applyVmIpAntiSpoofing($server, $node, $vmid, $address->address, 'net0', $vm->network_bridge ?: 'vmbr1');
             $this->wait($server, $node, $this->proxmox->setVmNetworkLinkState($server, $node, $vmid, true));
             $disabled = false;
@@ -95,8 +101,10 @@ class VirtualMachineIpReassignmentService
                 'mac_address' => $antiSpoofing['mac_address'] ?? $vm->mac_address,
                 'desired_state' => $vm->desiredStateSnapshot(),
                 'remote_state' => array_merge($vm->remote_state ?? [], [
-                    'cloudinit_network_updated_at' => now()->toISOString(),
-                    'cloudinit_network_ip' => $vm->ip_address,
+                    ...($vm->cloudImage?->cloud_init_enabled ? [
+                        'cloudinit_network_updated_at' => now()->toISOString(),
+                        'cloudinit_network_ip' => $vm->ip_address,
+                    ] : []),
                     'anti_spoofing' => $antiSpoofing,
                 ]),
             ])->save();
@@ -131,9 +139,6 @@ class VirtualMachineIpReassignmentService
         }
         if (! $vm->proxmoxServer || ! $vm->node || ! $vm->vmid || ! $oldAddress) {
             throw new RuntimeException('Only provisioned VMs with an assigned IP can change IP.');
-        }
-        if (! $vm->cloudImage?->cloud_init_enabled) {
-            throw new RuntimeException('Cloud-init is not enabled for this VM image.');
         }
     }
 
