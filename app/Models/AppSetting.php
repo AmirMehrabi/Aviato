@@ -24,6 +24,8 @@ class AppSetting extends Model
 
     public const DOMAIN_MANAGEMENT_ENABLED = 'domains.enabled';
 
+    public const DOMAIN_ACCESS_SCOPE = 'domains.access_scope';
+
     public const DOMAIN_SALES_ENABLED = 'domains.sales_enabled';
 
     public static function domainSalesEnabled(): bool
@@ -34,6 +36,11 @@ class AppSetting extends Model
     public static function domainManagementEnabled(): bool
     {
         return filter_var(static::getValue(self::DOMAIN_MANAGEMENT_ENABLED, false), FILTER_VALIDATE_BOOL);
+    }
+
+    public static function domainAccessScope(): string
+    {
+        return (string) static::getValue(self::DOMAIN_ACCESS_SCOPE, 'selected');
     }
 
     public static function domainResellerToken(): string

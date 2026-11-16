@@ -225,7 +225,9 @@ class Customer extends Authenticatable
 
     public function canPurchaseDomains(): bool
     {
-        return (bool) $this->domain_management_enabled && ! $this->isSuspended() && AppSetting::domainManagementEnabled();
+        return ! $this->isSuspended()
+            && AppSetting::domainManagementEnabled()
+            && ($this->domain_management_enabled || AppSetting::domainAccessScope() === 'all');
     }
 
     public function hasVerifiedNationalCode(): bool

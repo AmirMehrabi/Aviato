@@ -29,13 +29,14 @@ class DomainSettingsController extends Controller
             'customers' => $query->orderByDesc('domain_management_enabled')->orderBy('name')->paginate(20)->withQueryString(),
             'selectedCount' => Customer::where('domain_management_enabled', true)->count(),
             'enabled' => AppSetting::domainManagementEnabled(),
+            'accessScope' => AppSetting::domainAccessScope(),
             'tokenConfigured' => filled(AppSetting::getValue(AppSetting::DOMAIN_RESELLER_TOKEN)),
         ]);
     }
 
     public function update(Request $request): RedirectResponse
     {
-        $data = $request->validate(['enabled' => ['required', 'boolean'], 'domain_reseller_token' => ['nullable', 'string', 'max:10000'], 'sales_enabled' => ['sometimes', 'boolean'], 'irpower_api_key' => ['nullable', 'string', 'max:2000', 'regex:/^\S+$/'], 'irpower_enabled' => ['sometimes', 'boolean'], 'reseller_world_enabled' => ['sometimes', 'boolean'], 'routing_policy' => ['sometimes', 'in:cheapest,two_year,reseller_world,irpower'], 'default_nameservers' => ['nullable', 'string', 'max:1500']]);
+        $data = $request->validate(['enabled' => ['required', 'boolean'], 'access_scope' => ['sometimes', 'in:selected,all'], 'domain_reseller_token' => ['nullable', 'string', 'max:10000'], 'sales_enabled' => ['sometimes', 'boolean'], 'irpower_api_key' => ['nullable', 'string', 'max:2000', 'regex:/^\S+$/'], 'irpower_enabled' => ['sometimes', 'boolean'], 'reseller_world_enabled' => ['sometimes', 'boolean'], 'routing_policy' => ['sometimes', 'in:cheapest,two_year,reseller_world,irpower'], 'default_nameservers' => ['nullable', 'string', 'max:1500']]);
         $token = preg_replace('/^Bearer\s+/i', '', trim($data['domain_reseller_token'] ?? ''));
         if ($token !== '' && preg_match('/\s/', $token)) {
             return back()->withErrors(['domain_reseller_token' => 'توکن معتبر وارد کنید.']);
@@ -69,6 +70,9 @@ class DomainSettingsController extends Controller
             if ($token !== '') {
                 AppSetting::setValue(AppSetting::DOMAIN_RESELLER_TOKEN, $token, 'string', 'domains');
             }
+            if (array_key_exists('access_scope', $data)) {
+                AppSetting::setValue(AppSetting::DOMAIN_ACCESS_SCOPE, $data['access_scope'], 'string', 'domains');
+            }
             AppSetting::setValue(AppSetting::DOMAIN_MANAGEMENT_ENABLED, (bool) $data['enabled'], 'boolean', 'domains');
         });
 
@@ -81,8 +85,12 @@ class DomainSettingsController extends Controller
         // This flag is intentionally excluded from public/customer mass assignment.
         $customer->forceFill(['domain_management_enabled' => (bool) $data['enabled']])->save();
 
+        if (AppSetting::domainAccessScope() === 'all') {
+            return back()->with('status', 'فهرست مشتریان منتخب به‌روزرسانی شد. این فهرست در حالت «فقط مشتریان منتخب» اعمال می‌شود.');
+        }
+
         if ($data['enabled'] && ! AppSetting::domainManagementEnabled()) {
-            return back()->with('status', 'مشتری انتخاب شد. برای نمایش منوی دامنه، کلید «فعال‌سازی بخش دامنه برای مشتریان منتخب» را هم روشن کنید.');
+            return back()->with('status', 'مشتری انتخاب شد. برای نمایش منوی دامنه، کلید «فعال‌سازی بخش دامنه» را هم روشن کنید.');
         }
 
         return back()->with('status', $data['enabled'] ? 'دسترسی دامنه برای مشتری فعال شد.' : 'دسترسی دامنه برای مشتری لغو شد.');

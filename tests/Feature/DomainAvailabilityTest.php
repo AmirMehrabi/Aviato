@@ -197,6 +197,41 @@ class DomainAvailabilityTest extends TestCase
         $this->assertFalse($customer->fresh()->domain_management_enabled);
     }
 
+    public function test_admin_can_enable_domains_for_existing_and_future_customers(): void
+    {
+        $admin = User::factory()->create();
+        $selected = $this->selectedCustomer();
+        $existing = Customer::factory()->create();
+
+        $this->actingAs($admin, 'admin')
+            ->patch('https://admin.localhost/settings/domains', ['enabled' => 1, 'access_scope' => 'all'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->get('https://admin.localhost/settings/domains')
+            ->assertOk()->assertViewHas('accessScope', 'all');
+
+        $new = Customer::factory()->create();
+        $suspended = Customer::factory()->create(['status' => Customer::STATUS_SUSPENDED]);
+        $this->assertFalse($suspended->canPurchaseDomains());
+
+        Http::fake(['*' => Http::response(['domain' => 'example.com', 'available' => true])]);
+        $this->actingAs($existing, 'customer')->get('https://cp.localhost/dashboard')
+            ->assertOk()->assertSee(route('customer.domains.index', [], false), false);
+        $this->actingAs($new, 'customer')
+            ->postJson('https://cp.localhost/domains/check', ['domain' => 'example.com'])->assertOk();
+
+        $this->actingAs($admin, 'admin')
+            ->patch('https://admin.localhost/settings/domains', ['enabled' => 0])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($new, 'customer')->get('https://cp.localhost/domains')->assertForbidden();
+        $this->assertSame('all', AppSetting::domainAccessScope());
+
+        $this->actingAs($admin, 'admin')
+            ->patch('https://admin.localhost/settings/domains', ['enabled' => 1, 'access_scope' => 'selected'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($existing, 'customer')->get('https://cp.localhost/domains')->assertForbidden();
+        $this->actingAs($selected, 'customer')->get('https://cp.localhost/domains')->assertOk();
+    }
+
     public function test_token_is_encrypted_masked_preserved_and_redacted_in_admin_audit(): void
     {
         $this->actingAs(User::factory()->create(), 'admin')
