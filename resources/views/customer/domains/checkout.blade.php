@@ -8,8 +8,7 @@
 @endphp
 @section('content')
 <div class="mx-auto max-w-5xl space-y-6">
-    <a href="{{ route('customer.domains.index', [], false) }}" class="text-sm font-bold text-blue-600">→ بازگشت به دامنه‌ها</a>
-    <p class="rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-600">فضای کاری: <strong>{{ $activeProject->name }}</strong> · پرداخت‌کننده: <strong>{{ $order->customer->name }}</strong></p>
+    <a href="{{ route('customer.domains.index', ['view' => 'orders'], false) }}" class="text-sm font-bold text-blue-600">→ بازگشت به سفارش‌ها</a>
     @if(session('status'))<p role="status" class="domain-notice">{{ session('status') }}</p>@endif
     @if($errors->any())<div role="alert" class="domain-error"><p class="font-black">لطفاً موارد زیر را بررسی کنید</p><ul class="mt-2 list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <div class="flex flex-wrap items-center justify-between gap-3"><h1 dir="ltr" class="break-all text-2xl font-black text-slate-950">{{ $order->domain }}</h1><span class="domain-badge">{{ $order->operation === 'renew' ? 'تمدید' : 'ثبت' }} · {{ $order->period }} سال</span></div>
@@ -17,6 +16,7 @@
         <section class="domain-card text-center" x-data="{ state: @js($order->status), attempts: 0, timer: null, init() { if (@js($order->isProcessing())) { this.timer = setInterval(() => this.check(), 10000); } }, destroy() { clearInterval(this.timer); }, async check() { if (++this.attempts > 30) { clearInterval(this.timer); return; } try { const r = await fetch(@js(route('customer.domains.orders.show', $order, false)), { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (r.ok) { const d = await r.json(); if (d.status !== this.state) { window.location.reload(); } } } catch (_) {} } }">
             <div class="mx-auto mb-5 flex size-16 items-center justify-center rounded-full {{ $order->status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600' }} text-3xl" aria-hidden="true">{{ $order->status === 'completed' ? '✓' : ($order->isProcessing() ? '◷' : '—') }}</div>
             <h2 class="text-xl font-black" role="status">{{ $order->label() }}</h2>
+            @include('customer.domains.partials.order-progress')
             <p class="mx-auto mt-4 max-w-xl text-sm leading-8 text-slate-600">{{ $order->customer_message ?: ($order->isProcessing() ? 'پرداخت سفارش انجام شده و درخواست ثبت یا تمدید در حال انجام است. نیازی به پرداخت دوباره نیست. می‌توانید این صفحه را ببندید و بعداً از بخش دامنه‌ها نتیجه را ببینید.' : 'جزئیات سفارش در حساب شما محفوظ است.') }}</p>
             @if($order->payment?->type === \App\Models\Payment::TYPE_DOMAIN && $order->payment->isSuccessful())
                 <p class="mt-4 text-sm leading-7 text-slate-600">پرداخت آنلاین: <strong>{{ $wallets->format($order->payment->amount, $order->payment->currency) }}</strong>@if($order->payment->provider_reference)<br>شماره پیگیری پرداخت: <bdi class="font-bold">{{ $order->payment->provider_reference }}</bdi>@endif</p>
@@ -28,16 +28,28 @@
                     <a class="domain-secondary" href="{{ route('customer.domains.orders.invoice', $order, false) }}">مشاهده فاکتور</a>
                     <p class="w-full text-xs leading-7 text-slate-500">اگر سرویس‌دهنده ایمیل تأیید مالکیت فرستاده است، صندوق ورودی و پوشه هرزنامه خود را بررسی کنید.</p>
                 @elseif($order->isProcessing())<a class="domain-secondary" href="{{ route('customer.domains.orders.show', $order, false) }}">بررسی دوباره وضعیت</a>
-                @elseif($customer->canPurchaseDomains())<a class="domain-primary" href="{{ route('customer.domains.index', ['domain' => $order->domain], false) }}">جستجو و سفارش دوباره</a>@endif
+                @elseif($order->operation === 'renew' && $order->managedDomain)
+                    <a class="domain-primary" href="{{ route('customer.domains.show', $order->managedDomain, false) }}#renewal">بازگشت به تمدید دامنه</a>
+                @elseif($customer->canPurchaseDomains())
+                    <a class="domain-primary" href="{{ route('customer.domains.register', ['domain' => $order->domain], false) }}">بررسی دوباره دامنه</a>
+                @endif
             </div>
         </section>
     @else
         @if($order->customer_message)<p role="status" class="domain-notice">{{ $order->customer_message }}</p>@endif
         @if($order->payment && !$order->payment->isPending() && !$order->payment->isSuccessful())<p role="status" class="domain-notice">پرداخت قبلی تکمیل نشد. اطلاعات سفارش محفوظ است؛ روش پرداخت را انتخاب و دوباره تلاش کنید.</p>@endif
-        <nav aria-label="مراحل خرید" class="grid grid-cols-3 gap-2 text-center text-xs sm:text-sm">
-            @foreach(['owner' => '۱. مشخصات مالک', 'setup' => '۲. تنظیمات دامنه', 'review' => '۳. بررسی و پرداخت'] as $key => $label)
-                @if($order->payment?->isPending())
-                    <span class="rounded-xl border px-2 py-3 font-bold {{ $key === 'review' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500' }}" @if($key === 'review') aria-current="step" @endif>{{ $label }}</span>
+        @php
+            $steps = ['review' => 'بررسی و پرداخت'];
+            if ($order->operation === 'register') {
+                $steps = ($order->nameservers && $step !== 'setup'
+                    ? ['owner' => 'مشخصات مالک']
+                    : ['owner' => 'مشخصات مالک', 'setup' => 'نیم‌سرورها']) + $steps;
+            }
+        @endphp
+        <nav aria-label="مراحل خرید" class="flex flex-wrap gap-2 text-center text-xs sm:text-sm">
+            @foreach($steps as $key => $label)
+                @if($order->payment?->isPending() || ($key === 'setup' && !$order->registrant) || ($key === 'review' && !$order->nameservers))
+                    <span class="rounded-xl border px-2 py-3 font-bold {{ $step === $key ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500' }}" @if($step === $key) aria-current="step" @endif>{{ $label }}</span>
                 @else
                 <a href="{{ route('customer.domains.orders.show', ['order' => $order, 'step' => $key], false) }}" class="rounded-xl border px-2 py-3 font-bold {{ $step === $key ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500' }}" @if($step === $key) aria-current="step" @endif>{{ $label }}</a>
                 @endif
@@ -72,7 +84,7 @@
                             @endif
                             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="save_contact" value="1" class="accent-blue-600"> ذخیره برای سفارش‌های بعدی</label>
                         </fieldset>
-                        <button class="domain-primary w-full">ذخیره و ادامه به تنظیمات</button><p class="domain-help text-center">هنوز مبلغی پرداخت نمی‌کنید.</p>
+                        <button class="domain-primary w-full">ذخیره و ادامه</button><p class="domain-help text-center">هنوز مبلغی پرداخت نمی‌کنید.</p>
                     </form>
                 @elseif($step === 'setup')
                     <h2 class="domain-heading">دامنه را به کجا متصل کنیم؟</h2><p class="domain-help mt-2">حداقل دو نیم‌سرور ارائه‌شده توسط میزبان یا سرویس DNS خود را وارد کنید. بعد از ثبت هم می‌توانید آن‌ها را تغییر دهید.</p>
@@ -89,6 +101,7 @@
                         <div class="rounded-xl bg-slate-50 p-4"><div class="flex justify-between"><h3 class="font-black">نیم‌سرورها</h3>@if($order->operation === 'register' && !$order->payment?->isPending())<a href="{{ route('customer.domains.orders.show', ['order'=>$order,'step'=>'setup'], false) }}" class="text-blue-600">ویرایش</a>@endif</div>@foreach($order->nameservers ?? [] as $ns)<p dir="ltr" class="mt-2 break-all text-right text-slate-500">{{ $ns }}</p>@endforeach</div>
                     </div>
                     @if($order->payment?->isPending())
+                        @include('customer.domains.partials.order-progress')
                         <div class="domain-notice mt-6" role="status">
                             <h3 class="font-black">پرداخت شما هنوز تأیید نشده است</h3>
                             <p class="mt-2">اگر پرداخت را انجام داده‌اید، منتظر تأیید بانک بمانید و وضعیت را دوباره بررسی کنید. برای جلوگیری از پرداخت تکراری، پرداخت تازه‌ای ایجاد نمی‌شود.</p>
@@ -155,7 +168,9 @@
                 @endif
             </section>
             <aside class="domain-card {{ $step === 'review' ? 'order-first lg:order-last' : '' }} lg:sticky lg:top-6">
-                <h2 class="domain-heading">خلاصه سفارش</h2><dl class="mt-5 space-y-4 text-sm"><div class="flex justify-between gap-2"><dt class="text-slate-500">دوره</dt><dd class="font-bold">{{ $order->period }} سال</dd></div><div class="flex justify-between gap-2"><dt class="text-slate-500">مبلغ پایه</dt><dd class="font-bold">{{ $wallets->format($order->subtotal, $order->currency) }}</dd></div><div class="flex justify-between gap-2"><dt class="text-slate-500">مالیات و عوارض</dt><dd>{{ $wallets->format($order->tax_amount, $order->currency) }}</dd></div><div class="flex justify-between gap-2 border-t border-slate-100 pt-4"><dt class="font-black">جمع کل</dt><dd class="font-black text-blue-600">{{ $wallets->format($order->total, $order->currency) }}</dd></div></dl>
+                <h2 class="domain-heading">خلاصه سفارش</h2>
+                <p class="domain-help mt-2">پرداخت‌کننده: {{ $order->customer->name }}</p>
+                <dl class="mt-5 space-y-4 text-sm"><div class="flex justify-between gap-2"><dt class="text-slate-500">دوره</dt><dd class="font-bold">{{ $order->period }} سال</dd></div><div class="flex justify-between gap-2"><dt class="text-slate-500">مبلغ پایه</dt><dd class="font-bold">{{ $wallets->format($order->subtotal, $order->currency) }}</dd></div><div class="flex justify-between gap-2"><dt class="text-slate-500">مالیات و عوارض</dt><dd>{{ $wallets->format($order->tax_amount, $order->currency) }}</dd></div><div class="flex justify-between gap-2 border-t border-slate-100 pt-4"><dt class="font-black">جمع کل</dt><dd class="font-black text-blue-600">{{ $wallets->format($order->total, $order->currency) }}</dd></div></dl>
                 @if($renewalPrice)<p class="domain-help mt-5">قیمت فعلی تمدید یک‌ساله: {{ $renewalPrice }}. قیمت تمدید در زمان تمدید محاسبه می‌شود.</p>@endif
                 <p class="domain-help mt-3">قیمت تا {{ \App\Support\Jalali::format($order->quoted_until, 'H:i') }} معتبر است. پیشرفت شما با هر مرحله ذخیره می‌شود.</p>
                 <form method="POST" action="{{ route('customer.domains.orders.cancel', $order, false) }}" class="mt-5">@csrf<input type="hidden" name="workspace" value="{{ $activeProject->uuid }}"><button class="text-xs text-slate-500 underline">لغو این سفارش</button></form>

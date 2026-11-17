@@ -27,6 +27,11 @@ class DomainController extends Controller
         return $this->page($request);
     }
 
+    public function register(Request $request): View
+    {
+        return $this->page($request);
+    }
+
     public function check(CheckDomainRequest $request, DomainAvailabilityService $domains): JsonResponse|View
     {
         $this->workspaces->active($request);
@@ -79,8 +84,8 @@ class DomainController extends Controller
             'expiringCount' => $allDomains->filter(fn ($domain) => $domain->expires_at?->isFuture() && $domain->expires_at->lte(now()->addDays(30)))->count(),
             'domainOrders' => $orders->paginate(15, ['*'], 'orders_page')->withQueryString(),
             'pendingOrders' => $pendingOrders,
-            'canSearch' => $canSearch, 'salesEnabled' => AppSetting::domainSalesEnabled(),
-            'showSearch' => $canSearch && ($result !== null || $lookupError !== '' || $request->filled('domain') || $request->boolean('register') || ($request->input('view') !== 'orders' && $allDomains->isEmpty() && $pendingOrders->isEmpty())),
+            'canSearch' => $canSearch, 'registrationRequested' => $request->routeIs('customer.domains.register'), 'salesEnabled' => AppSetting::domainSalesEnabled(),
+            'showSearch' => $canSearch && ($result !== null || $lookupError !== '' || $request->filled('domain') || $request->boolean('register') || $request->routeIs('customer.domains.register')),
         ]);
     }
 }

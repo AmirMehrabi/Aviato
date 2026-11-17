@@ -4,6 +4,13 @@ export function domainSearch(config) {
         result: config.result || null,
         error: config.error || '',
         loading: false,
+        period: config.result?.retail?.periods?.[0] ?? null,
+        comparing: false,
+        comparison: [],
+        comparisonKey: 0,
+        get selectedPrice() {
+            return this.result?.retail?.prices?.[this.period] || this.result?.retail;
+        },
         continueUrl: null,
         cooldown: 0,
         cooldownTimer: null,
@@ -25,11 +32,75 @@ export function domainSearch(config) {
         clearResult() {
             this.result = null;
             this.continueUrl = null;
+            this.comparisonKey++;
+            this.comparing = false;
+            this.comparison = [];
         },
         get alternatives() {
             if (!this.result) return [];
             const label = this.result.domain.split('.')[0];
             return ['com', 'net', 'org', 'online'].map((tld) => `${label}.${tld}`).filter((name) => name !== this.result.domain);
+        },
+        async lookup(name) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 18000);
+            try {
+                const response = await fetch(config.url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    signal: controller.signal,
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                    body: JSON.stringify({ domain: name, workspace: config.workspace }),
+                });
+                const data = await response.json().catch(() => ({}));
+                return { response, data };
+            } finally {
+                clearTimeout(timeout);
+            }
+        },
+        async compare() {
+            if (this.comparing || this.cooldown) return;
+            const key = ++this.comparisonKey;
+            this.comparing = true;
+            const candidates = this.alternatives.slice(0, 3);
+            const results = await Promise.all(candidates.map(async (domain) => {
+                try {
+                    const { response, data } = await this.lookup(domain);
+                    if (key !== this.comparisonKey) return { domain };
+                    if (response.status === 429) this.pause(60);
+                    if (response.ok && typeof data.data?.available === 'boolean') return data.data;
+                } catch {
+                    // A failed alternative should not hide results for other names.
+                }
+                return { domain };
+            }));
+            if (key !== this.comparisonKey) return;
+            this.comparison = results;
+            this.comparing = false;
+        },
+        selectResult(result) {
+            this.result = result;
+            this.period = result.retail?.periods?.[0] ?? null;
+            this.domain = result.domain;
+            this.error = '';
+            this.$nextTick(() => {
+                if (!config.scrollToResult) {
+                    this.$refs.result?.focus();
+                    return;
+                }
+
+                // Alpine shows the result after the reactive update.
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    const target = this.$refs.result;
+                    if (!target || this.loading || this.result?.domain !== result.domain) return;
+                    target.focus({ preventScroll: true });
+                    target.scrollIntoView({ block: 'start' });
+                }));
+            });
         },
         async search(name = null) {
             if (this.loading) return;
@@ -46,21 +117,8 @@ export function domainSearch(config) {
             this.loading = true;
             this.error = '';
             this.clearResult();
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 18000);
             try {
-                const response = await fetch(config.url, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    signal: controller.signal,
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                    },
-                    body: JSON.stringify({ domain: this.domain, workspace: config.workspace }),
-                });
-                const data = await response.json().catch(() => ({}));
+                const { response, data } = await this.lookup(this.domain);
                 if (!response.ok) {
                     if (response.status === 429) {
                         const retry = response.headers.get('Retry-After');
@@ -78,14 +136,11 @@ export function domainSearch(config) {
                     return;
                 }
                 if (typeof data.data?.available !== 'boolean') throw new Error('Invalid response');
-                this.result = data.data;
-                this.domain = this.result.domain;
+                this.selectResult(data.data);
                 this.continueUrl = config.publicSearch ? (data.continue_url || null) : null;
-                this.$nextTick(() => this.$refs.result?.focus());
             } catch {
                 this.error = 'ارتباط برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.';
             } finally {
-                clearTimeout(timeout);
                 this.loading = false;
             }
         },

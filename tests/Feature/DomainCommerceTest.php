@@ -403,13 +403,28 @@ class DomainCommerceTest extends TestCase
             ->assertOk()->assertJsonPath('data.retail.periods', [1])->assertJsonMissingPath('data.price')->assertJsonMissingPath('data.supplier_price')->assertJsonStructure(['data' => ['retail' => ['total', 'renewal']]])->assertDontSee('test-secret');
     }
 
-    public function test_checkout_saves_steps_prefills_owner_and_returns_to_review(): void
+    public function test_search_quotes_the_selected_term_even_when_one_year_is_unavailable(): void
     {
+        DomainProduct::where('operation', 'register')->update(['period' => 5, 'retail_price' => 45000000]);
+        $wallets = app(WalletService::class);
+
+        $this->actingAs($this->customer, 'customer')->postJson('https://cp.localhost/domains/check', ['domain' => 'example.com'])
+            ->assertOk()
+            ->assertJsonPath('data.retail.periods', [5])
+            ->assertJsonPath('data.retail.prices.5.total', $wallets->format(45000000, 'IRR'))
+            ->assertJsonPath('data.retail.prices.5.renewal', $wallets->format(10000000, 'IRR'));
+    }
+
+    public function test_checkout_saves_steps_prefills_owner_and_uses_editable_default_nameservers(): void
+    {
+        AppSetting::setValue('domains.default_nameservers', ['ns1.default.net', 'ns2.default.net'], 'json', 'domains');
         $this->actingAs($this->customer, 'customer')->post('https://cp.localhost/domains/orders', ['domain' => 'example.com', 'period' => 1])->assertRedirect();
         $order = DomainOrder::firstOrFail();
         $this->get('https://cp.localhost/domains/orders/'.$order->uuid)->assertOk()->assertSee('دامنه به نام چه کسی ثبت شود؟')->assertSee($this->customer->email);
         $this->patch('https://cp.localhost/domains/orders/'.$order->uuid, ['stage' => 'owner', 'name' => 'Owner Name', 'email' => 'owner@example.org', 'country' => 'IR', 'state' => 'Tehran', 'city' => 'Tehran', 'address' => 'Test address', 'postCode' => '12345', 'phone' => '۰۹۱۲۱۲۳۴۵۶۷', 'save_contact' => 1])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseCount('domain_contacts', 1);
+        $this->assertSame(['ns1.default.net', 'ns2.default.net'], $order->fresh()->nameservers);
+        $this->get('https://cp.localhost/domains/orders/'.$order->uuid)->assertOk()->assertViewHas('step', 'review')->assertSee('ns1.default.net');
         $this->assertSame('+98.9121234567', $order->fresh()->registrant['phone']);
         $this->assertStringNotContainsString('owner@example.org', DB::table('domain_contacts')->value('details'));
         $this->patch('https://cp.localhost/domains/orders/'.$order->uuid, ['stage' => 'setup', 'nameservers' => ['ns1.example.net', 'ns2.example.net']])->assertRedirect()->assertSessionHasNoErrors();

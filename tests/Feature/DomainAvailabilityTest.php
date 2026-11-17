@@ -45,8 +45,8 @@ class DomainAvailabilityTest extends TestCase
 
     public function test_selected_customer_sees_search_in_navigation_and_can_open_page(): void
     {
-        $this->actingAs($this->selectedCustomer(), 'customer')->get('https://cp.localhost/domains')
-            ->assertOk()->assertSee('نام بعدی شما در اینترنت چیست؟')->assertSee('domain-name')
+        $this->actingAs($this->selectedCustomer(), 'customer')->get('https://cp.localhost/domains/register')
+            ->assertOk()->assertSee('دامنه دلخواهتان را پیدا کنید')->assertSee('domain-name')
             ->assertSee(route('customer.domains.index', [], false), false)
             ->assertHeader('Cache-Control', 'max-age=0, no-store, private');
         Http::assertNothingSent();

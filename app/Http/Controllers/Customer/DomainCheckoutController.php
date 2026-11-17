@@ -21,6 +21,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -50,7 +51,7 @@ class DomainCheckoutController extends Controller
                 'canViewDomainBilling' => $this->workspaces->canBill($project, $request->user('customer')),
             ]);
         }
-        $step = $request->query('step', 'owner');
+        $step = $request->query('step', $order->nameservers ? 'review' : ($order->registrant ? 'setup' : 'owner'));
         if (! in_array($step, ['owner', 'setup', 'review'], true)) {
             $step = 'owner';
         }
@@ -80,6 +81,10 @@ class DomainCheckoutController extends Controller
         $request->validate(['stage' => ['required', 'in:owner,setup'], 'contact_id' => ['nullable', 'integer']]);
         $stage = $request->input('stage');
         $attributes = [];
+        $nameserverRules = [
+            'nameservers' => ['required', 'array', 'list', 'min:2', 'max:'.($order->provider === 'irpower' ? 5 : 6)],
+            'nameservers.*' => ['required', 'string', 'max:253', 'distinct:ignore_case', 'regex:/\A(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\z/i'],
+        ];
         if ($stage === 'owner') {
             if ($request->filled('contact_id')) {
                 $contact = DomainContact::where('customer_id', $order->customer_id)->findOrFail($request->input('contact_id'));
@@ -128,20 +133,29 @@ class DomainCheckoutController extends Controller
             }
             $attributes['registrant'] = $details;
         } else {
-            $data = $request->validate(['nameservers' => ['required', 'array', 'list', 'min:2', 'max:'.($order->provider === 'irpower' ? 5 : 6)], 'nameservers.*' => ['required', 'string', 'max:253', 'distinct:ignore_case', 'regex:/\A(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\z/i']]);
+            $data = $request->validate($nameserverRules);
             $attributes['nameservers'] = array_map('strtolower', $data['nameservers']);
         }
-        DB::transaction(function () use ($order, $attributes, $request, $stage): void {
+        $defaults = Validator::make(
+            ['nameservers' => AppSetting::getValue('domains.default_nameservers', [])],
+            $nameserverRules,
+        );
+        $order = DB::transaction(function () use ($order, $attributes, $request, $stage, $defaults): DomainOrder {
             $order = DomainOrder::lockForUpdate()->findOrFail($order->id);
             abort_unless(in_array($order->status, ['draft', 'awaiting_payment'], true), 409);
             abort_if($order->payment?->isPending(), 409, 'ابتدا نتیجه پرداخت جاری را بررسی کنید.');
+            if ($stage === 'owner' && ! $order->nameservers && $defaults->passes()) {
+                $attributes['nameservers'] = array_map('strtolower', $defaults->validated()['nameservers']);
+            }
             $order->update($attributes + ['consented_at' => null]);
             if ($stage === 'owner' && $request->boolean('save_contact') && ! $request->filled('contact_id')) {
                 DomainContact::create(['customer_id' => $order->customer_id, 'label' => $attributes['registrant']['name'] ?? $attributes['registrant']['holder'], 'details' => $attributes['registrant']]);
             }
+
+            return $order;
         });
 
-        return $this->redirectTo('customer.domains.orders.show', ['order' => $order, 'step' => $stage === 'owner' ? 'setup' : 'review']);
+        return $this->redirectTo('customer.domains.orders.show', ['order' => $order, 'step' => $order->nameservers ? 'review' : 'setup']);
     }
 
     public function pay(Request $request, DomainOrder $order, DomainOrderService $orders, PaymentGatewayManager $gateways): RedirectResponse
@@ -181,9 +195,16 @@ class DomainCheckoutController extends Controller
     public function refresh(Request $request, DomainOrder $order, DomainOrderService $orders): RedirectResponse
     {
         $this->own($request, $order);
+        $wallets = app(WalletService::class);
+        $previous = $wallets->format($order->total, $order->currency);
         $orders->refreshQuote($order);
+        $order->refresh();
+        $current = $wallets->format($order->total, $order->currency);
+        $message = $previous === $current
+            ? 'اعتبار قیمت تمدید شد و مبلغ سفارش تغییری نکرد.'
+            : "قیمت قبلی: {$previous} · قیمت جدید: {$current}";
 
-        return $this->redirectTo('customer.domains.orders.show', ['order' => $order, 'step' => 'review'])->with('status', 'قیمت به‌روز شد. لطفاً مبلغ جدید را بررسی کنید.');
+        return $this->redirectTo('customer.domains.orders.show', ['order' => $order, 'step' => 'review'])->with('status', $message);
     }
 
     public function cancel(Request $request, DomainOrder $order): RedirectResponse

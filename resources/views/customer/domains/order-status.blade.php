@@ -6,10 +6,11 @@
 @php($activeNav = 'domains')
 @section('content')
 <div class="mx-auto max-w-4xl space-y-6">
-    <a href="{{ route('customer.domains.index', [], false) }}" class="text-sm font-bold text-blue-600">→ بازگشت به دامنه‌ها</a>
+    <a href="{{ route('customer.domains.index', ['view' => 'orders'], false) }}" class="text-sm font-bold text-blue-600">→ بازگشت به سفارش‌ها</a>
     <section class="domain-card">
         <h1 dir="ltr" class="break-all text-2xl font-black">{{ $order->domain }}</h1>
         <p role="status" class="mt-5 font-bold text-blue-700">{{ $order->label() }}</p>
+        @include('customer.domains.partials.order-progress')
         <p class="domain-help mt-3">فضای کاری: {{ $activeProject->name }} · خریدار: {{ $order->customer->name }}</p>
         <p class="mt-4 text-sm leading-7 text-slate-600">{{ $order->customer_message ?: (in_array($order->status, ['draft', 'awaiting_payment']) ? 'تکمیل مشخصات و پرداخت این سفارش بر عهده خریدار آن است. پس از ثبت، دامنه در همین فضای کاری نمایش داده می‌شود.' : ($order->isProcessing() ? 'سفارش در حال انجام است. نیازی به ثبت سفارش دوباره نیست؛ می‌توانید بعداً نتیجه را از همین صفحه ببینید.' : 'وضعیت سفارش در این صفحه نگهداری می‌شود.')) }}</p>
         <div class="mt-6 flex flex-wrap gap-3">

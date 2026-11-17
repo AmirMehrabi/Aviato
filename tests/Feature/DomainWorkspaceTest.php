@@ -65,13 +65,14 @@ class DomainWorkspaceTest extends TestCase
         $this->actingAs($customer ?? $this->owner, 'customer')->withSession([ProjectAccessService::SESSION_KEY => ($project ?? $this->first)->id]);
     }
 
-    public function test_empty_workspace_leads_with_search_and_populated_workspace_leads_with_management(): void
+    public function test_inventory_stays_separate_from_registration_in_empty_and_populated_workspaces(): void
     {
         $this->signIn();
-        $this->get('https://cp.localhost/domains')->assertOk()->assertViewHas('showSearch', true)->assertSee('نام بعدی شما در اینترنت چیست؟');
+        $this->get('https://cp.localhost/domains')->assertOk()->assertViewHas('showSearch', false)->assertSee('اولین دامنه‌تان را پیدا کنید');
+        $this->get('https://cp.localhost/domains/register')->assertOk()->assertViewHas('showSearch', true)->assertSee('دامنه دلخواهتان را پیدا کنید');
         $this->domain();
         $this->get('https://cp.localhost/domains')->assertOk()->assertViewHas('showSearch', false)
-            ->assertSee('shop.com')->assertSee('دامنه‌های فضای کاری')->assertDontSee('نام بعدی شما در اینترنت چیست؟');
+            ->assertSee('shop.com')->assertSee('دامنه‌های فضای کاری')->assertDontSee('دامنه دلخواهتان را پیدا کنید');
         $this->get('https://cp.localhost/domains?register=1')->assertOk()->assertViewHas('showSearch', true)->assertSee('name="workspace"', false);
         $this->get('https://cp.localhost/domains?view=orders')->assertOk()->assertSee('سفارش‌های دامنه');
     }
@@ -94,7 +95,7 @@ class DomainWorkspaceTest extends TestCase
         app(DomainOrderService::class)->create($this->owner, 'pending.com', 1, project: $this->first);
         $this->signIn();
         $this->get('https://cp.localhost/domains')->assertOk()->assertViewHas('showSearch', false)
-            ->assertSee('سفارش‌های در جریان')->assertSee('ادامه سفارش')->assertDontSee('نام بعدی شما در اینترنت چیست؟');
+            ->assertSee('سفارش‌های در جریان')->assertSee('ادامه سفارش')->assertDontSee('دامنه دلخواهتان را پیدا کنید');
     }
 
     public function test_new_orders_keep_the_selected_workspace_and_stale_forms_do_not_purchase_elsewhere(): void

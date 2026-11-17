@@ -518,6 +518,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
         });
         Route::middleware([EnsureDomainManagementAccess::class, 'no-store'])->group(function (): void {
             Route::get('domains', [DomainController::class, 'index'])->name('customer.domains.index');
+            Route::get('domains/register', [DomainController::class, 'register'])->name('customer.domains.register');
             Route::post('domains/orders', [DomainCheckoutController::class, 'store'])->middleware('throttle:15,1')->name('customer.domains.orders.store');
             Route::get('domains/orders/{order:uuid}', [DomainCheckoutController::class, 'show'])->name('customer.domains.orders.show');
             Route::patch('domains/orders/{order:uuid}', [DomainCheckoutController::class, 'save'])->middleware('throttle:15,1')->name('customer.domains.orders.save');

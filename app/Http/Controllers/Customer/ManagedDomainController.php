@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\DomainOperation;
 use App\Models\DomainProduct;
 use App\Models\ManagedDomain;
+use App\Services\CloudDns\CloudDnsRollout;
 use App\Services\Domains\DomainManagementService;
 use App\Services\Domains\DomainWorkspaceService;
+use App\Services\ProjectAccessService;
 use App\Services\WalletService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -21,7 +23,12 @@ class ManagedDomainController extends Controller
     {
         $project = $this->workspaces->domain($request, $domain);
 
-        return view('customer.domains.show', ['customer' => $request->user('customer'), 'activeProject' => $project, 'canManageDomain' => $this->workspaces->canManage($project, $request->user('customer')), 'canPayDomain' => (int) $domain->customer_id === (int) $request->user('customer')->id && $this->workspaces->canBill($project, $request->user('customer')), 'canViewDomainBilling' => $this->workspaces->canBill($project, $request->user('customer')), 'domain' => $domain, 'wallets' => app(WalletService::class), 'renewals' => DomainProduct::where('provider', $domain->provider)->where('extension', $domain->extension)->where('operation', 'renew')->where('enabled', true)->orderBy('period')->get(), 'orders' => $domain->orders()->latest()->get(), 'operations' => DomainOperation::where('managed_domain_id', $domain->id)->latest()->limit(10)->get()]);
+        $customer = $request->user('customer');
+        $canReadDns = app(ProjectAccessService::class)->membership($project, $customer)?->canReadDns()
+            && app(CloudDnsRollout::class)->allows($customer, $project);
+        $dnsZone = $canReadDns ? $project->dnsZones()->where('name', $domain->name)->where('status', '!=', 'deleted')->first() : null;
+
+        return view('customer.domains.show', ['customer' => $request->user('customer'), 'activeProject' => $project, 'canManageDomain' => $this->workspaces->canManage($project, $request->user('customer')), 'canPayDomain' => (int) $domain->customer_id === (int) $request->user('customer')->id && $this->workspaces->canBill($project, $request->user('customer')), 'canViewDomainBilling' => $this->workspaces->canBill($project, $request->user('customer')), 'domain' => $domain, 'dnsZone' => $dnsZone, 'canReadDns' => $canReadDns, 'wallets' => app(WalletService::class), 'renewals' => DomainProduct::where('provider', $domain->provider)->where('extension', $domain->extension)->where('operation', 'renew')->where('enabled', true)->orderBy('period')->get(), 'orders' => $domain->orders()->latest()->get(), 'operations' => DomainOperation::where('managed_domain_id', $domain->id)->latest()->limit(10)->get()]);
     }
 
     public function nameservers(Request $request, ManagedDomain $domain, DomainManagementService $management): RedirectResponse

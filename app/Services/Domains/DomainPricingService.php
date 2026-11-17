@@ -128,15 +128,29 @@ class DomainPricingService
 
     public function customerPrice(string $domain): ?array
     {
-        try {
-            $quote = $this->quote($domain, 'register', 1);
-        } catch (ValidationException) {
+        $wallets = app(WalletService::class);
+        $periods = DomainProduct::where('extension', $this->extension($domain))
+            ->where('operation', 'register')->where('enabled', true)
+            ->distinct()->orderBy('period')->pluck('period');
+        $prices = [];
+        foreach ($periods as $period) {
+            try {
+                $quote = $this->quote($domain, 'register', $period);
+            } catch (ValidationException) {
+                continue;
+            }
+
+            $prices[$period] = [
+                'total' => $wallets->format($quote['total'], $quote['currency']),
+                'renewal' => $this->renewalPrice($domain, $quote['provider']),
+                'requires_handle' => $quote['contact_mode'] === 'registry_handle',
+            ];
+        }
+
+        if ($prices === []) {
             return null;
         }
-        $wallets = app(WalletService::class);
-        $periods = DomainProduct::where('provider', $quote['provider'])->where('extension', $this->extension($domain))->where('operation', 'register')
-            ->orderBy('period')->get()->filter(fn ($product) => $this->ready($product))->pluck('period')->all();
 
-        return ['total' => $wallets->format($quote['total'], $quote['currency']), 'renewal' => $this->renewalPrice($domain, $quote['provider']), 'periods' => array_values($periods)];
+        return reset($prices) + ['periods' => array_keys($prices), 'prices' => $prices];
     }
 }
