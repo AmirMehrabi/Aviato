@@ -3,7 +3,7 @@
     $filters = ['all' => ['همه', $domainCount], 'expiring' => ['انقضا تا ۳۰ روز', $expiringCount], 'attention' => ['نیازمند توجه', $attentionCount]];
 @endphp
 <section id="my-domains" class="domain-card scroll-mt-6">
-    <h1 class="domain-heading">دامنه‌های فضای کاری</h1>
+    <h2 class="domain-heading">دامنه‌های فضای کاری</h2>
     @if($domainCount)
         <div class="my-5 flex flex-wrap items-end justify-between gap-4">
             <nav aria-label="فیلتر دامنه‌ها" class="flex flex-wrap gap-2">
@@ -71,10 +71,10 @@
     @else
         <div class="py-8 text-center">
             @if($domainCount)
-                <h2 class="font-black">دامنه‌ای با این جستجو یا فیلتر پیدا نشد</h2>
+                <h3 class="font-black">دامنه‌ای با این جستجو یا فیلتر پیدا نشد</h3>
                 <a href="{{ route('customer.domains.index', [], false) }}" class="domain-secondary mt-4">پاک کردن فیلترها</a>
             @else
-                <h2 class="font-black">هنوز دامنه‌ای در این فضای کاری ندارید</h2>
+                <h3 class="font-black">هنوز دامنه‌ای در این فضای کاری ندارید</h3>
                 @if($canSearch && $pendingOrders->isEmpty())
                     <a href="{{ route('customer.domains.register', [], false) }}" class="domain-primary mt-4">اولین دامنه‌تان را پیدا کنید</a>
                 @elseif(!$canSearch)

@@ -1,14 +1,20 @@
 @extends('customer.layout')
-@section('primary_actions_in_content', '1')
+@section('own_messages', '1')
 @section('title', 'مدیریت دامنه')
 @section('header_title', 'مدیریت دامنه')
-@section('header_subtitle', 'فضای کاری: '.$activeProject->name)
+@section('header_subtitle', 'مدیریت تمدید، نیم‌سرورها و سفارش‌های دامنه')
+@section('breadcrumbs')
+    @include('customer.domains.partials.breadcrumbs', [
+        'parents' => [['دامنه‌ها', route('customer.domains.index', request()->only(['filter', 'q', 'page']), false)]],
+        'current' => $domain->name,
+        'ltr' => true,
+    ])
+@endsection
 @php
     $activeNav = 'domains';
 @endphp
 @section('content')
-<div class="mx-auto max-w-5xl space-y-6">
-    <a href="{{ route('customer.domains.index', request()->only(['filter', 'q', 'page']), false) }}" class="text-sm font-bold text-blue-600">→ دامنه‌های من</a>
+<div class="space-y-6">
     @if(session('status'))<p role="status" class="domain-notice">{{ session('status') }}</p>@endif
     @if($errors->any())<div role="alert" class="domain-error">{{ $errors->first() }}</div>@endif
     @php
@@ -17,7 +23,7 @@
     <section class="domain-card">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="min-w-0">
-                <h1 dir="ltr" class="break-all text-start text-2xl font-black">{{ $domain->name }}</h1>
+                <h2 dir="ltr" class="break-all text-start text-2xl font-black">{{ $domain->name }}</h2>
                 <span class="domain-badge mt-2 {{ $domain->needsAttention() ? 'text-amber-800' : 'text-emerald-700' }}">{{ $domain->customerStatus() }}</span>
             </div>
             @if($domain->needsAttention() && $canRenew)

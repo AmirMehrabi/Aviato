@@ -1,17 +1,23 @@
 @extends('customer.layout')
-@section('primary_actions_in_content', '1')
+@section('own_messages', '1')
 @section('title', 'سفارش دامنه')
 @section('header_title', $order->operation === 'renew' ? 'تمدید دامنه' : 'ثبت دامنه')
-@section('header_subtitle', 'فضای کاری: '.$activeProject->name)
+@section('header_subtitle', 'تکمیل و پیگیری سفارش دامنه')
+@section('breadcrumbs')
+    @include('customer.domains.partials.breadcrumbs', [
+        'parents' => [['دامنه‌ها', route('customer.domains.index', [], false)], ['سفارش‌ها', route('customer.domains.index', ['view' => 'orders'], false)]],
+        'current' => $order->domain,
+        'ltr' => true,
+    ])
+@endsection
 @php
     $activeNav = 'domains';
 @endphp
 @section('content')
-<div class="mx-auto max-w-5xl space-y-6">
-    <a href="{{ route('customer.domains.index', ['view' => 'orders'], false) }}" class="text-sm font-bold text-blue-600">→ بازگشت به سفارش‌ها</a>
+<div class="space-y-6">
     @if(session('status'))<p role="status" class="domain-notice">{{ session('status') }}</p>@endif
     @if($errors->any())<div role="alert" class="domain-error"><p class="font-black">لطفاً موارد زیر را بررسی کنید</p><ul class="mt-2 list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-    <div class="flex flex-wrap items-center justify-between gap-3"><h1 dir="ltr" class="break-all text-2xl font-black text-slate-950">{{ $order->domain }}</h1><span class="domain-badge">{{ $order->operation === 'renew' ? 'تمدید' : 'ثبت' }} · {{ $order->period }} سال</span></div>
+    <div class="flex flex-wrap items-center justify-between gap-3"><h2 dir="ltr" class="break-all text-2xl font-black text-slate-950">{{ $order->domain }}</h2><span class="domain-badge">{{ $order->operation === 'renew' ? 'تمدید' : 'ثبت' }} · {{ $order->period }} سال</span></div>
     @if(!in_array($order->status, ['draft', 'awaiting_payment']))
         <section class="domain-card text-center" x-data="{ state: @js($order->status), attempts: 0, timer: null, init() { if (@js($order->isProcessing())) { this.timer = setInterval(() => this.check(), 10000); } }, destroy() { clearInterval(this.timer); }, async check() { if (++this.attempts > 30) { clearInterval(this.timer); return; } try { const r = await fetch(@js(route('customer.domains.orders.show', $order, false)), { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (r.ok) { const d = await r.json(); if (d.status !== this.state) { window.location.reload(); } } } catch (_) {} } }">
             <div class="mx-auto mb-5 flex size-16 items-center justify-center rounded-full {{ $order->status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600' }} text-3xl" aria-hidden="true">{{ $order->status === 'completed' ? '✓' : ($order->isProcessing() ? '◷' : '—') }}</div>

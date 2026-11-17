@@ -1,14 +1,19 @@
 @extends('customer.layout')
-@section('primary_actions_in_content', '1')
 @section('title', 'وضعیت سفارش دامنه')
 @section('header_title', 'وضعیت سفارش دامنه')
-@section('header_subtitle', 'فضای کاری: '.$activeProject->name)
+@section('header_subtitle', 'پیگیری پرداخت و نتیجه سفارش دامنه')
+@section('breadcrumbs')
+    @include('customer.domains.partials.breadcrumbs', [
+        'parents' => [['دامنه‌ها', route('customer.domains.index', [], false)], ['سفارش‌ها', route('customer.domains.index', ['view' => 'orders'], false)]],
+        'current' => $order->domain,
+        'ltr' => true,
+    ])
+@endsection
 @php($activeNav = 'domains')
 @section('content')
-<div class="mx-auto max-w-4xl space-y-6">
-    <a href="{{ route('customer.domains.index', ['view' => 'orders'], false) }}" class="text-sm font-bold text-blue-600">→ بازگشت به سفارش‌ها</a>
+<div class="space-y-6">
     <section class="domain-card">
-        <h1 dir="ltr" class="break-all text-2xl font-black">{{ $order->domain }}</h1>
+        <h2 dir="ltr" class="break-all text-2xl font-black">{{ $order->domain }}</h2>
         <p role="status" class="mt-5 font-bold text-blue-700">{{ $order->label() }}</p>
         @include('customer.domains.partials.order-progress')
         <p class="domain-help mt-3">فضای کاری: {{ $activeProject->name }} · خریدار: {{ $order->customer->name }}</p>

@@ -1,5 +1,5 @@
 <section id="domain-orders" class="domain-card scroll-mt-6">
-    <h1 class="domain-heading">سفارش‌های دامنه</h1>
+    <h2 class="domain-heading">سفارش‌های دامنه</h2>
     <div class="mt-4 divide-y divide-slate-100">
         @forelse($domainOrders as $order)
             @php

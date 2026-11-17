@@ -1,16 +1,29 @@
 @extends('customer.layout')
-@section('primary_actions_in_content', '1')
 
-@section('title', 'دامنه‌ها')
-@section('header_title', $showSearch || $registrationRequested ? 'ثبت دامنه جدید' : 'دامنه‌ها')
-@section('header_subtitle', 'فضای کاری: '.$activeProject->name)
-@php($activeNav = 'domains')
+@php
+    $activeNav = 'domains';
+    $selected = $showSearch || $registrationRequested ? 'search' : (request('view') === 'orders' ? 'orders' : 'domains');
+    [$heading, $subtitle] = match ($selected) {
+        'search' => ['ثبت دامنه جدید', 'جستجو و ثبت دامنه در فضای کاری'],
+        'orders' => ['سفارش‌های دامنه', 'پیگیری سفارش‌های ثبت و تمدید دامنه'],
+        default => ['دامنه‌ها', 'مدیریت دامنه‌ها، تاریخ انقضا و تمدید'],
+    };
+@endphp
+
+@section('title', $heading)
+@section('header_title', $heading)
+@section('header_subtitle', $subtitle)
+@section('breadcrumbs')
+    @include('customer.domains.partials.breadcrumbs', [
+        'parents' => $selected === 'domains' ? [] : [['دامنه‌ها', route('customer.domains.index', [], false)]],
+        'current' => $selected === 'orders' ? 'سفارش‌ها' : $heading,
+    ])
+@endsection
 
 @section('content')
-    <div class="mx-auto max-w-4xl space-y-6" x-data="domainSearch({ scrollToResult: true, workspace: @js($activeProject->uuid), autoSearch: @js(request('from') === 'homepage' && request()->filled('domain') && $canSearch), url: @js(route('customer.domains.check', [], false)), domain: @js(old('domain', request('domain', ''))), result: @js($result), error: @js(($lookupError ?? '') ?: $errors->first('domain')) })">
-        @php($selected = $showSearch || $registrationRequested ? 'search' : (request('view') === 'orders' ? 'orders' : 'domains'))
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-            <nav aria-label="دامنه‌های فضای کاری" class="flex flex-wrap gap-2 text-sm">
+    <div class="space-y-6" x-data="domainSearch({ scrollToResult: true, workspace: @js($activeProject->uuid), autoSearch: @js(request('from') === 'homepage' && request()->filled('domain') && $canSearch), url: @js(route('customer.domains.check', [], false)), domain: @js(old('domain', request('domain', ''))), result: @js($result), error: @js(($lookupError ?? '') ?: $errors->first('domain')) })">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <nav aria-label="دامنه‌های فضای کاری" class="inline-flex flex-wrap rounded-2xl border border-slate-200 bg-slate-100 p-1 text-sm">
                 @foreach([
                     'domains' => ['دامنه‌های من', route('customer.domains.index', [], false)],
                     'orders' => ['سفارش‌ها', route('customer.domains.index', ['view' => 'orders'], false)],
@@ -18,7 +31,7 @@
                 ] as $tab => [$label, $href])
                     @if($tab !== 'search' || $selected === 'search')
                         <a href="{{ $href }}" @if($selected === $tab) aria-current="page" @endif
-                            class="rounded-xl px-4 py-2 font-bold {{ $selected === $tab ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50' }}">{{ $label }}</a>
+                            class="inline-flex min-h-11 items-center justify-center rounded-xl px-4 font-black transition focus-visible:outline-2 focus-visible:outline-[#0069FF] {{ $selected === $tab ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600 hover:bg-white' }}">{{ $label }}</a>
                     @endif
                 @endforeach
             </nav>
@@ -47,14 +60,14 @@
             @include('customer.domains.partials.orders')
         @elseif(!$canSearch)
             <section class="domain-card">
-                <h1 class="domain-heading">ثبت دامنه در دسترس نیست</h1>
+                <h2 class="domain-heading">ثبت دامنه در دسترس نیست</h2>
                 <p class="domain-help mt-2">برای بررسی امکان خرید در این فضای کاری با مالک یا پشتیبانی تماس بگیرید.</p>
             </section>
         @endif
 
         @if($canSearch && $showSearch)
         <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-9">
-            <h1 class="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">دامنه دلخواهتان را پیدا کنید</h1>
+            <h2 class="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">دامنه دلخواهتان را پیدا کنید</h2>
             <p class="mt-3 text-sm leading-7 text-slate-600">آزاد بودن نام، هزینه ثبت و قیمت فعلی تمدید را بررسی کنید.</p>
 
             <form method="POST" action="{{ route('customer.domains.check', [], false) }}" @submit.prevent="search()" class="mt-7" :aria-busy="loading">
