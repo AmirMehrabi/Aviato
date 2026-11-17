@@ -54,7 +54,7 @@ Chart.register(...registerables);
 window.Chart = Chart;
 window.Alpine = Alpine;
 
-window.addEventListener('DOMContentLoaded', () => {
+function initializeTicketEditors() {
     document.querySelectorAll('textarea[data-ticket-editor]').forEach((textarea) => {
         if (textarea.dataset.editorReady) return;
 
@@ -69,10 +69,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
         const editor = new Editor({
             el: container,
-            height: textarea.closest('#ticket-reply') ? '220px' : '300px',
+            height: textarea.closest('#ticket-reply') ? '160px' : '300px',
             initialEditType: 'wysiwyg',
             previewStyle: 'tab',
             initialValue: textarea.value || '',
+            placeholder: textarea.placeholder,
             usageStatistics: false,
             toolbarItems: [],
             hideModeSwitch: true,
@@ -82,7 +83,7 @@ window.addEventListener('DOMContentLoaded', () => {
         textarea.required = false;
         textarea.classList.add('hidden');
         const content = container.querySelector('[contenteditable="true"]');
-        content?.setAttribute('aria-label', 'متن پیام');
+        content?.setAttribute('aria-label', textarea.labels?.[0]?.textContent.trim() || 'متن پیام');
         content?.setAttribute('dir', 'auto');
 
         const syncBody = () => { textarea.value = editor.getMarkdown(); };
@@ -115,11 +116,36 @@ window.addEventListener('DOMContentLoaded', () => {
             fileSummary.className = 'ticket-attachment-summary hidden border-t border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600';
             wrapper.append(fileSummary);
 
-            attachmentInput.addEventListener('change', () => {
-                const names = Array.from(attachmentInput.files || []).map((file) => `${file.name} (${Math.ceil(file.size / 1024)} KB)`);
-                fileSummary.textContent = names.length ? `فایل‌های انتخاب‌شده: ${names.join('، ')}` : '';
-                fileSummary.classList.toggle('hidden', names.length === 0);
-            });
+            const updateFileSummary = () => {
+                const files = Array.from(attachmentInput.files || []);
+                fileSummary.classList.toggle('hidden', files.length === 0);
+
+                if (!attachmentInput.hasAttribute('data-ticket-removable') || typeof DataTransfer !== 'function') {
+                    const names = files.map((file) => `${file.name} (${Math.ceil(file.size / 1024)} KB)`);
+                    fileSummary.textContent = names.length ? `فایل‌های انتخاب‌شده: ${names.join('، ')}` : '';
+                    return;
+                }
+
+                fileSummary.replaceChildren();
+                files.forEach((file, index) => {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'm-1 max-w-full break-all rounded-lg border border-slate-200 bg-white px-2 py-1 hover:border-red-300 hover:text-red-700';
+                    chip.textContent = `× ${file.name}`;
+                    chip.setAttribute('aria-label', `حذف پیوست ${file.name}`);
+                    chip.addEventListener('click', () => {
+                        const remaining = new DataTransfer();
+                        files.forEach((item, position) => {
+                            if (position !== index) remaining.items.add(item);
+                        });
+                        attachmentInput.files = remaining.files;
+                        updateFileSummary();
+                        (fileSummary.children[index] || fileSummary.lastElementChild || attachmentInput).focus();
+                    });
+                    fileSummary.append(chip);
+                });
+            };
+            attachmentInput.addEventListener('change', updateFileSummary);
         }
 
         const validationMessage = document.createElement('p');
@@ -140,7 +166,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
         textarea.dataset.editorReady = '1';
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeTicketEditors, { once: true });
+} else {
+    initializeTicketEditors();
+}
 
 window.customerVmConsole = vmConsole;
 

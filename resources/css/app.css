@@ -78,56 +78,99 @@
     .ticket-thread {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
-        padding: 1rem;
-        background: #f8fafc;
+        gap: 0.75rem;
+        min-height: 12rem;
+        padding: 1rem 1.125rem 1.25rem;
+        background: radial-gradient(circle, #91a9c32b 1px, transparent 1px) 0 0 / 16px 16px, #edf3f9;
     }
 
     .ticket-day {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        color: #64748b;
-        font-size: 0.7rem;
-    }
-
-    .ticket-day::before,
-    .ticket-day::after {
-        content: '';
-        height: 1px;
-        flex: 1;
-        background: #e2e8f0;
+        align-self: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        background: #dce7f1;
+        color: #334155;
+        font-size: 0.75rem;
+        font-weight: 700;
     }
 
     .ticket-message {
+        position: relative;
         min-width: 0;
         width: fit-content;
-        max-width: 90%;
-        padding: 1rem;
-        border: 1px solid #e2e8f0;
+        max-width: 94%;
+        padding: 0.625rem 0.875rem 0.375rem;
         border-radius: 1rem;
+        background: var(--ticket-bubble, white);
+        box-shadow: 0 1px 2px #18324d1a;
         overflow-wrap: anywhere;
     }
 
     .ticket-message-own {
+        --ticket-bubble: #dcecff;
         align-self: flex-start;
-        background: #ebf3ff;
-        border-color: #bfd7ff;
-        border-start-start-radius: 0.25rem;
     }
 
     .ticket-message-other {
+        --ticket-bubble: white;
         align-self: flex-end;
-        background: white;
-        border-start-end-radius: 0.25rem;
+    }
+
+    .ticket-message-continuation {
+        margin-block-start: -0.5rem;
+    }
+
+    .ticket-message-own:not(:has(+ .ticket-message-continuation)) {
+        border-end-start-radius: 0.25rem;
+    }
+
+    .ticket-message-other:not(:has(+ .ticket-message-continuation)) {
+        border-end-end-radius: 0.25rem;
+    }
+
+    .ticket-message-own:not(:has(+ .ticket-message-continuation))::after,
+    .ticket-message-other:not(:has(+ .ticket-message-continuation))::after {
+        content: '';
+        position: absolute;
+        inset-block-end: 0;
+        width: 0.5rem;
+        height: 0.625rem;
+        background: var(--ticket-bubble);
+        pointer-events: none;
+    }
+
+    .ticket-message-own::after {
+        inset-inline-start: -0.4375rem;
+        clip-path: polygon(0 0, 0 100%, 100% 100%);
+    }
+
+    .ticket-message-other::after {
+        inset-inline-end: -0.4375rem;
+        clip-path: polygon(100% 0, 100% 100%, 0 100%);
     }
 
     .ticket-message-internal {
+        --ticket-bubble: #fffbeb;
         align-self: stretch;
         width: auto;
         max-width: 100%;
-        background: #fffbeb;
-        border: 1px dashed #d97706;
+        border: 1px solid #fcd34d;
+        border-inline-start-width: 4px;
+    }
+
+    .ticket-message-author {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.375rem;
+        margin-block-end: 0.25rem;
+        color: #17509a;
+        font-size: 0.75rem;
+        font-weight: 800;
+    }
+
+    .ticket-message-internal .ticket-message-author {
+        color: #92400e;
     }
 
     .ticket-file {
@@ -170,8 +213,8 @@
     .ticket-composer:focus-within { outline: 2px solid #0069ff; outline-offset: 2px; }
 
     @media (min-width: 640px) {
-        .ticket-thread { padding: 1.5rem; gap: 1.25rem; }
-        .ticket-message { max-width: 82%; }
+        .ticket-thread { padding: 1.5rem; }
+        .ticket-message { max-width: min(85%, 48rem); }
         .ticket-message-internal { max-width: 100%; }
     }
 }

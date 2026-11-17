@@ -30,7 +30,8 @@
     <section class="mb-5 flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5">
         <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2 text-xs">
-                <span class="font-bold text-slate-500" dir="ltr">{{ $ticket->number }}</span>
+                <span class="rounded-full bg-slate-100 px-2.5 py-1 font-bold text-slate-600">{{ \App\Models\Ticket::priorities()[$ticket->priority] ?? $ticket->priority }}</span>
+                <span class="font-bold text-slate-600">{{ $ticket->assignee?->name ?? 'بدون مسئول' }}</span>
                 <span class="rounded-full px-2.5 py-1 font-bold ring-1 {{ $statusClasses[$ticket->status] ?? 'bg-slate-100 text-slate-700 ring-slate-200' }}">{{ $statuses[$ticket->status] ?? $ticket->status }}</span>
             </div>
             <h1 class="mt-3 break-words text-xl font-black leading-8 text-slate-950">{{ $ticket->subject }}</h1>
@@ -39,43 +40,37 @@
     </section>
 
     <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <main class="min-w-0 space-y-5">
-            @include('tickets.partials.conversation', ['messages' => $ticket->messages->values(), 'portal' => 'admin'])
-
-
-@adminRoute('admin.tickets.reply')
-<form id="ticket-reply" method="POST" action="{{ route('admin.tickets.reply', $ticket) }}" enctype="multipart/form-data" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" x-data="{ mode: @js(old('mode', 'public')), submitting: false }" @submit="submitting = true">
-                @csrf
-                <div>
-                    <h2 class="font-black text-slate-950">ادامه گفتگو</h2>
-                    <p class="mt-1 text-xs font-bold text-slate-500">پیش از نوشتن، مشخص کنید پیام برای مشتری ارسال می‌شود یا فقط داخل تیم می‌ماند.</p>
-                </div>
-
-                <fieldset class="mt-4">
-                    <legend class="sr-only">نوع پیام</legend>
-                    <div class="grid gap-2 rounded-2xl bg-slate-100 p-1.5 sm:grid-cols-2">
-                        <label class="cursor-pointer rounded-xl focus-within:ring-2 focus-within:ring-blue-500 px-4 py-3 transition-colors duration-150" :class="mode === 'public' ? 'bg-white text-[#0069FF] shadow-sm' : 'text-slate-600 hover:text-slate-900'">
-                            <input type="radio" name="mode" value="public" x-model="mode" class="sr-only">
-                            <span class="block text-sm font-black">پاسخ به مشتری</span><span class="mt-1 block text-xs font-bold opacity-75">مشتری پیام و پیوست‌ها را می‌بیند.</span>
-                        </label>
-                        <label class="cursor-pointer rounded-xl focus-within:ring-2 focus-within:ring-blue-500 px-4 py-3 transition-colors duration-150" :class="mode === 'internal' ? 'bg-amber-50 text-amber-800 shadow-sm ring-1 ring-amber-200' : 'text-slate-600 hover:text-slate-900'">
-                            <input type="radio" name="mode" value="internal" x-model="mode" class="sr-only">
-                            <span class="block text-sm font-black">یادداشت داخلی</span><span class="mt-1 block text-xs font-bold opacity-75">فقط مدیران پشتیبانی آن را می‌بینند.</span>
-                        </label>
+        <main class="min-w-0 space-y-4">
+            @component('tickets.partials.conversation', [
+                'ticket' => $ticket,
+                'messages' => $ticket->messages->values(),
+                'portal' => 'admin',
+                'canReply' => \App\Support\AdminAccess::canVisit(auth('admin')->user(), 'admin.tickets.reply'),
+            ])
+                @adminRoute('admin.tickets.reply')
+                    @php($draftMode = old('mode') === 'internal' ? 'internal' : 'public')
+                    <div id="ticket-reply" class="border-t border-slate-200" x-data="{ mode: @js($draftMode), submitting: false }">
+                        <fieldset class="px-4 pt-4 sm:px-5" :disabled="submitting">
+                            <legend class="sr-only">نوع پیام</legend>
+                            <div class="flex w-fit max-w-full flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
+                                @foreach(['public' => 'پاسخ به مشتری', 'internal' => 'یادداشت داخلی'] as $replyMode => $label)
+                                    <label class="cursor-pointer rounded-lg px-3 py-2 text-sm font-bold text-slate-600 focus-within:ring-2 focus-within:ring-blue-500 has-checked:bg-white has-checked:text-blue-700 has-checked:shadow-sm">
+                                        <input type="radio" value="{{ $replyMode }}" name="ticket-reply-mode" x-model="mode" @checked($draftMode === $replyMode) class="sr-only">
+                                        {{ $label }}
+                                    </label>
+                                @endforeach
+                            </div>
+                        </fieldset>
+                        @foreach(['public', 'internal'] as $replyMode)
+                            <div x-show="mode === '{{ $replyMode }}'" @style(['display: none' => $draftMode !== $replyMode])>
+                                @include('tickets.partials.reply-form', ['portal' => 'admin', 'mode' => $replyMode, 'restoreDraft' => $draftMode === $replyMode])
+                            </div>
+                        @endforeach
                     </div>
-                </fieldset>
+                @endadminRoute
+            @endcomponent
 
-                @if($errors->any())<div class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700" role="alert">پیام ثبت نشد. متن و فایل‌های پیوست را بررسی کنید.</div>@endif
-                @if($errors->any())<ul class="mt-2 list-inside list-disc text-sm leading-7 text-red-700">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif
-                <label for="admin-ticket-reply" class="mt-4 block text-sm font-black text-slate-800">متن پیام</label>
-                <textarea id="admin-ticket-reply" name="body" rows="9" required data-ticket-editor class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-bold">{{ old('body') }}</textarea>
-                <label class="mt-4 block text-xs font-bold text-slate-500">پیوست (اختیاری) · حداکثر ۵ فایل، هر فایل ۲۰ مگابایت
-                    <input type="file" name="attachments[]" multiple data-ticket-attachments accept="image/*,.pdf,.txt,.log,.csv,.json,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx" class="mt-2 block w-full text-xs text-slate-600 file:me-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2">
-                </label>
-                <button :disabled="submitting" class="mt-4 min-h-11 rounded-xl px-6 py-3 text-sm font-black text-white transition-colors duration-150 disabled:cursor-wait disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] active:scale-[0.96]" :class="mode === 'internal' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#0069FF] hover:bg-[#0050D0]'" x-text="submitting ? 'در حال ثبت…' : (mode === 'internal' ? 'ثبت یادداشت داخلی' : 'ارسال پاسخ به مشتری')">ارسال پاسخ به مشتری</button>
-            </form>
-@endadminRoute
-
+            @include('admin.tickets._activity')
         </main>
 
         <aside class="space-y-4">
