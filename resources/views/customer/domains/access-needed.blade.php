@@ -1,4 +1,4 @@
-@extends('layouts.marketing')
+@extends('layouts.marketing', ['publicTypography' => false])
 @section('title', 'ادامه ثبت دامنه | آویاتو')
 @section('content')
     <section class="px-4 pb-16 pt-32">

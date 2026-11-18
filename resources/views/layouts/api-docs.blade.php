@@ -17,7 +17,7 @@
         .api-docs-code li > span { white-space: pre; }
     </style>
 </head>
-<body class="min-h-screen bg-[#f8fafc] text-slate-950 antialiased">
+<body class="public-typography min-h-screen bg-[#f8fafc] text-slate-950 antialiased">
     <header class="sticky top-0 z-50 border-b border-slate-200/90 bg-white/95 backdrop-blur">
         <div class="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between gap-6 px-5 lg:px-8">
             <a href="{{ route('home') }}" class="flex shrink-0 items-center gap-3" aria-label="آویاتو">

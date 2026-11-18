@@ -25,6 +25,7 @@
     box-sizing:border-box;
 }
 body {
+    --public-font-fallback: Ravi, sans-serif;
     margin:0;
     -webkit-font-smoothing:antialiased;
 }
@@ -73,7 +74,7 @@ h1,h2,h3,p {
     color:#202726;
 }
 .home-link span {
-    font:20px sans-serif;
+    font-size:20px;
 }
 .page-intro {
     padding:53px 0 31px;
@@ -114,7 +115,7 @@ h1 {
     border-radius:50%;
     background:#e0f0e7;
     color:#238660;
-    font:21px sans-serif;
+    font-size:21px;
 }
 .overall-status h2 {
     font-size:16px;

@@ -8,6 +8,24 @@
 
 @import './base.css';
 
+@font-face {
+    font-family: 'Dastkhat Diamond';
+    src: url('../fonts/DastkhatDiamond-Variable.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@layer base {
+    html.portal-font {
+        --font-sans: 'Dastkhat Diamond', 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .portal-font :where(h1, h2, h3, h4, h5, h6, [role="heading"]) {
+        font-family: 'Dastkhat Bar', var(--font-sans);
+    }
+}
+
 @layer components {
     :is(.admin-sidebar-scroll, .customer-sidebar-scroll) {
         scrollbar-width: thin;

@@ -60,7 +60,7 @@
 
         /* Shared visual language for the Figma landing and pricing frames. */
         .figma-marketing {
-            font-family: 'Ravi', 'Dana', 'Vazirmatn', sans-serif;
+            --public-font-fallback: 'Ravi', 'Dana', 'Vazirmatn', sans-serif;
         }
 
         .figma-marketing header {
@@ -127,7 +127,7 @@
     </style>
 </head>
 
-<body class="overflow-x-hidden bg-white text-slate-950 antialiased @yield('body_class')">
+<body @class(['overflow-x-hidden bg-white text-slate-950 antialiased', 'public-typography' => $publicTypography ?? true, trim($__env->yieldContent('body_class'))])>
     @php
         $activePage = $activePage ?? 'home';
         $darkHeaderTop = false;

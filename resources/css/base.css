@@ -1,3 +1,11 @@
+@font-face {
+    font-family: 'Dastkhat Bar';
+    src: url('../fonts/DastkhatBar-Variable.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 @theme {
     --font-sans: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
@@ -5,7 +13,8 @@
 
 @layer base {
     html.website-font {
-        --font-sans: 'Ravi', 'Dana', 'Estedad', 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+        --public-font-fallback: 'Ravi', 'Dana', 'Estedad', 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+        --font-sans: var(--public-font-fallback);
     }
 
     html {
@@ -15,6 +24,13 @@
     body {
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
+    }
+
+    .public-typography {
+        --font-sans: 'Dastkhat Bar', var(--public-font-fallback);
+        --font-mono: var(--font-sans);
+        --default-mono-font-family: var(--font-mono);
+        font-family: var(--font-sans);
     }
 }
 

@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="{{ asset('assets/css/public.css') }}?v={{ filemtime(public_path('assets/css/public.css')) }}">
     @stack('styles')
 </head>
-<body>
+<body class="public-typography">
     <a href="#main" class="public-skip">رفتن به محتوای صفحه</a>
     <div class="public-shell">
         <header class="site-header">

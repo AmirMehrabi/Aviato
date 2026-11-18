@@ -55,7 +55,7 @@
 .journal-prose blockquote { border-inline-start: 3px solid #215ca5; padding-inline-start: 24px; color: #55584e; }
 .journal-prose blockquote p { margin-block: .7em; }
 .journal-prose pre { direction: ltr; text-align: left; overflow-x: auto; background: #edeee8; padding: 20px; font-size: 14px; line-height: 1.8; }
-.journal-prose code { font-family: ui-monospace, monospace; font-size: .8em; background: #edeee8; padding: 2px 5px; direction: ltr; unicode-bidi: isolate; }
+.journal-prose code { font-family: var(--font-mono); font-size: .8em; background: #edeee8; padding: 2px 5px; direction: ltr; unicode-bidi: isolate; }
 .journal-prose :not(pre) > code { display: inline-block; max-width: 100%; vertical-align: middle; }
 .journal-prose pre code { font-size: inherit; padding: 0; }
 .journal-prose table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 16px; }

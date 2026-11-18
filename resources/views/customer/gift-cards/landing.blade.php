@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>کارت هدیه آویاتو</title><link rel="stylesheet" href="{{ asset('assets/fonts.css') }}">@vite(['resources/css/app.css'])</head>
+<html lang="fa" dir="rtl" class="portal-font"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>کارت هدیه آویاتو</title><link rel="stylesheet" href="{{ asset('assets/fonts.css') }}">@vite(['resources/css/app.css'])</head>
 <body class="grid min-h-screen place-items-center bg-[#F5F8FD] p-4 text-slate-950">
 <main class="w-full max-w-lg rounded-[32px] border border-blue-100 bg-white p-7 text-center shadow-2xl shadow-blue-100">
     <img src="{{ asset('assets/images/aviato_logo_full_color.webp') }}" alt="آویاتو" class="mx-auto h-12 w-auto">
