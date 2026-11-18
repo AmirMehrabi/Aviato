@@ -1,6 +1,6 @@
 @extends('customer.layout')
 
-@section('title', $server->display_name.' · '.(['overview' => 'نمای کلی', 'resources' => 'منابع', 'billing' => 'صورتحساب', 'upgrade' => 'ارتقا', 'rebuild' => 'بازسازی', 'delete' => 'حذف', 'activity' => 'فعالیت'][$tab] ?? 'سرور'))
+@section('title', $server->display_name.' · '.(['overview' => 'نمای کلی', 'resources' => 'منابع', 'billing' => 'صورتحساب', 'network' => 'شبکه', 'upgrade' => 'ارتقا', 'rebuild' => 'بازسازی', 'delete' => 'حذف', 'activity' => 'فعالیت'][$tab] ?? 'سرور'))
 @section('header_title', $server->display_name)
 @section('full_width_header')
     @include('customer.servers.partials.header')

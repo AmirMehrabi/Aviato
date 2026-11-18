@@ -113,12 +113,26 @@ class NetworkUsageUiTest extends TestCase
 
     public function test_customer_sees_network_summary_for_accessible_vm(): void
     {
+        $this->travelTo(now()->startOfMonth()->addDays(14));
         $vm = $this->meteredVm();
         $this->period($vm);
         $this->actingAs($vm->customer, 'customer');
 
+        $url = 'https://cp.localhost/servers/'.$vm->uuid.'/network';
         $this->get('https://cp.localhost/network')->assertOk()->assertSee($vm->display_name)->assertSee('900');
-        $this->get('https://cp.localhost/servers/'.$vm->uuid.'/network')->assertOk()->assertSee('سهمیه ماهانه');
+        $this->get($url)->assertOk()->assertSee('سهمیه ماهانه')
+            ->assertSee('مصرف روزانه نهایی‌شده موجود نیست.')
+            ->assertDontSee('customerNetworkChart');
+
+        $this->bucket($vm);
+        $this->get($url)->assertOk()->assertViewIs('customer.servers.detail')
+            ->assertViewHas('tab', 'network')
+            ->assertViewHas('daily', fn ($daily) => $daily->count() === 1
+                && (int) $daily->first()->ingress_bytes === 100
+                && (int) $daily->first()->egress_bytes === 200)
+            ->assertSee('نمودار ترافیک ورودی و خروجی')
+            ->assertSee('customerNetworkChart')
+            ->assertSee('جزئیات مصرف روزانه');
     }
 
     public function test_customer_cannot_view_another_projects_vm_network_page(): void

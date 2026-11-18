@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\NetworkUsageBucket;
 use App\Models\VirtualMachine;
+use App\Services\BillingService;
 use App\Services\NetworkUsageReportService;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
@@ -28,22 +29,28 @@ class NetworkUsageController extends Controller
         ]);
     }
 
-    public function show(Request $request, VirtualMachine $virtualMachine): View
+    public function show(Request $request, VirtualMachine $virtualMachine, BillingService $billing): View
     {
-        $vm = $this->projects->resolveCustomerVm($request, $virtualMachine);
-        $vm->loadMissing(['proxmoxServer', 'infrastructureLocation', 'project.owner']);
-        $summary = $this->reports->vmSummary($vm);
+        $server = $this->projects->resolveCustomerVm($request, $virtualMachine);
+        $server->loadMissing(['proxmoxServer', 'infrastructureLocation.hetznerAccount', 'project.owner']);
+        $summary = $this->reports->vmSummary($server);
         $period = $summary['period'];
+        $customer = $request->user('customer');
 
-        return view('customer.network.show', array_merge($this->layoutData($request), [
-            'activeProject' => $vm->project,
-            'activeMembership' => $this->projects->membership($vm->project, $request->user('customer')),
-            'canManageServer' => $this->projects->canManageVms($vm->project, $request->user('customer')),
-            'vm' => $vm, 'summary' => $summary, 'reports' => $this->reports, 'wallets' => $this->wallets,
-            'daily' => $period ? $this->reports->daily($vm, $period->period_start, $period->period_end) : collect(),
+        return view('customer.servers.detail', array_merge($this->layoutData($request), [
+            'server' => $server,
+            'tab' => 'network',
+            'activeProject' => $server->project,
+            'activeMembership' => $this->projects->membership($server->project, $customer),
+            'canManageServer' => $this->projects->canManageVms($server->project, $customer),
+            'billing' => $billing,
+            'summary' => $summary,
+            'reports' => $this->reports,
+            'wallets' => $this->wallets,
+            'daily' => $period ? $this->reports->daily($server, $period->period_start, $period->period_end) : collect(),
             'dataState' => [
-                'partial' => NetworkUsageBucket::query()->where('virtual_machine_id', $vm->id)->where('completeness', 'partial')->count(),
-                'missing' => NetworkUsageBucket::query()->where('virtual_machine_id', $vm->id)->where('completeness', 'missing')->count(),
+                'partial' => NetworkUsageBucket::query()->where('virtual_machine_id', $server->id)->where('completeness', 'partial')->count(),
+                'missing' => NetworkUsageBucket::query()->where('virtual_machine_id', $server->id)->where('completeness', 'missing')->count(),
             ],
         ]));
     }

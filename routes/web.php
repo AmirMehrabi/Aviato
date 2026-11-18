@@ -587,7 +587,7 @@ $customerRoutes = function () use ($customerLogin, $customerRegister, $customerH
 
         Route::middleware('customer.vm.access')->group(function (): void {
             Route::get('network', [NetworkUsageController::class, 'index'])->name('customer.network.index');
-            Route::get('servers/{virtualMachine}/network', [NetworkUsageController::class, 'show'])->name('customer.network.show');
+            Route::get('servers/{virtualMachine}/network', [NetworkUsageController::class, 'show'])->middleware('cache.headers:no_store;private')->name('customer.network.show');
             Route::get('servers', [ServerController::class, 'index'])->middleware('cache.headers:no_store;private')->name('customer.servers.index');
             Route::get('servers/create', [ServerController::class, 'create'])->name('customer.servers.create');
             Route::post('servers', [ServerController::class, 'store'])->name('customer.servers.store');
