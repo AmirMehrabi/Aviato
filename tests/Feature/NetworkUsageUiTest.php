@@ -10,6 +10,7 @@ use App\Models\VirtualMachine;
 use App\Models\VmBundle;
 use App\Models\VmNetworkBillingPeriod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class NetworkUsageUiTest extends TestCase
@@ -36,13 +37,15 @@ class NetworkUsageUiTest extends TestCase
 
     public function test_vm_detail_includes_dedicated_network_tab_and_usage_ledger(): void
     {
+        $this->travelTo(Carbon::parse('2026-11-18 12:00:00'));
         $vm = $this->meteredVm();
         $this->period($vm);
         $this->bucket($vm);
         $this->actingAs(User::factory()->create(), 'admin');
         $this->get('https://admin.localhost/virtual-machines/'.$vm->uuid)
             ->assertOk()->assertSee("id:'network'", false)->assertSee('پیشرفت سهمیه')
-            ->assertSee('مصرف روزانه')->assertSee('نمودار ترافیک ورودی و خروجی')->assertSee('bucket-ui-1');
+            ->assertSee('مصرف روزانه')->assertSee('نمودار ترافیک ورودی و خروجی')->assertSee('bucket-ui-1')
+            ->assertSee('vmNetworkChart')->assertSee('۱۴۰۵/۰۸/۲۷');
     }
 
     public function test_network_tab_requires_network_read_but_not_billing_read(): void
@@ -113,7 +116,7 @@ class NetworkUsageUiTest extends TestCase
 
     public function test_customer_sees_network_summary_for_accessible_vm(): void
     {
-        $this->travelTo(now()->startOfMonth()->addDays(14));
+        $this->travelTo(Carbon::parse('2026-11-18 12:00:00'));
         $vm = $this->meteredVm();
         $this->period($vm);
         $this->actingAs($vm->customer, 'customer');
@@ -122,7 +125,7 @@ class NetworkUsageUiTest extends TestCase
         $this->get('https://cp.localhost/network')->assertOk()->assertSee($vm->display_name)->assertSee('900');
         $this->get($url)->assertOk()->assertSee('سهمیه ماهانه')
             ->assertSee('مصرف روزانه نهایی‌شده موجود نیست.')
-            ->assertDontSee('customerNetworkChart');
+            ->assertDontSee('vmNetworkChart');
 
         $this->bucket($vm);
         $this->get($url)->assertOk()->assertViewIs('customer.servers.detail')
@@ -131,7 +134,8 @@ class NetworkUsageUiTest extends TestCase
                 && (int) $daily->first()->ingress_bytes === 100
                 && (int) $daily->first()->egress_bytes === 200)
             ->assertSee('نمودار ترافیک ورودی و خروجی')
-            ->assertSee('customerNetworkChart')
+            ->assertSee('vmNetworkChart')
+            ->assertSee('۱۴۰۵/۰۸/۲۷')
             ->assertSee('جزئیات مصرف روزانه');
     }
 

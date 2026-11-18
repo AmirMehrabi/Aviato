@@ -31,18 +31,8 @@
     @endif
 
     <section class="mt-5 min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6" aria-labelledby="daily-network-heading">
-        <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-            <div>
-                <h3 id="daily-network-heading" class="text-lg font-black text-slate-950">نمودار ترافیک ورودی و خروجی</h3>
-                <p class="mt-1 text-sm leading-6 text-slate-500">مصرف روزانه نهایی‌شده در دوره صورتحساب نمایش‌داده‌شده</p>
-            </div>
-            @if ($daily->isNotEmpty())
-                <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-slate-700" aria-label="راهنمای نمودار">
-                    <li class="inline-flex items-center gap-2"><span class="size-2.5 rounded-sm bg-blue-600" aria-hidden="true"></span>ورودی</li>
-                    <li class="inline-flex items-center gap-2"><span class="size-2.5 rounded-sm bg-emerald-600" aria-hidden="true"></span>خروجی</li>
-                </ul>
-            @endif
-        </div>
+        <h3 id="daily-network-heading" class="text-lg font-black text-slate-950">نمودار ترافیک ورودی و خروجی</h3>
+        <p class="mt-1 text-sm leading-6 text-slate-500">مصرف روزانه نهایی‌شده در دوره صورتحساب نمایش‌داده‌شده</p>
 
         @if ($daily->isNotEmpty())
             @php
@@ -52,10 +42,8 @@
                     'egress' => (int) $day->egress_bytes,
                 ])->values();
             @endphp
-            <div x-data="customerNetworkChart(@js($series))" x-cloak class="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-2 sm:p-4">
-                <div class="relative h-60 min-w-0 sm:h-72 xl:h-88" dir="ltr">
-                    <canvas x-ref="canvas" role="img" aria-label="نمودار مصرف روزانه ورودی و خروجی. مقادیر در جدول جزئیات مصرف روزانه آمده‌اند."></canvas>
-                </div>
+            <div x-data="vmNetworkChart(@js($series))" x-cloak class="relative mt-4 h-60 min-w-0 sm:h-72 xl:h-88" dir="ltr">
+                <canvas x-ref="canvas" role="img" aria-label="نمودار مصرف روزانه ورودی و خروجی. مقادیر در جدول جزئیات مصرف روزانه آمده‌اند."></canvas>
             </div>
 
             <details class="mt-4 border-t border-slate-100 pt-2">
@@ -72,7 +60,7 @@
                     <tbody class="divide-y divide-slate-100 text-slate-700">
                         @foreach ($daily as $day)
                             <tr>
-                                <th scope="row" class="p-2 font-semibold sm:px-4"><time datetime="{{ $day->usage_date }}" dir="ltr">{{ $day->usage_date }}</time></th>
+                                <th scope="row" class="p-2 font-semibold sm:px-4"><x-network-usage-date :date="$day->usage_date" /></th>
                                 <td class="break-all p-2 sm:px-4"><bdi dir="ltr">{{ $day->ingress_bytes }}</bdi></td>
                                 <td class="break-all p-2 sm:px-4"><bdi dir="ltr">{{ $day->egress_bytes }}</bdi></td>
                             </tr>

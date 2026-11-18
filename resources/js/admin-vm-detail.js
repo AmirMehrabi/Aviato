@@ -85,25 +85,3 @@ export function adminVmDetail() {
         destroy() { clearTimeout(this.timer); this.controller?.abort(); window.removeEventListener('hashchange', this.readHash); }
     };
 }
-
-export function vmNetworkChart(series) {
-    let chart;
-    return {
-        init() {
-            this.$nextTick(() => {
-                chart = new window.Chart(this.$refs.canvas, {
-                    type: 'line',
-                    data: {
-                        labels: series.map(day => day.date),
-                        datasets: [
-                            { label: 'ورودی (GB)', data: series.map(day => day.ingress / 1e9), borderColor: '#0069ff', tension: 0.2 },
-                            { label: 'خروجی (GB)', data: series.map(day => day.egress / 1e9), borderColor: '#047857', tension: 0.2 },
-                        ],
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'GB' } } } },
-                });
-            });
-        },
-        destroy() { chart?.destroy(); },
-    };
-}
