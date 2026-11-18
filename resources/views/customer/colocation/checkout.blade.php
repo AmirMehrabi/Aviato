@@ -21,7 +21,7 @@
                 <fieldset class="mt-6"><legend class="mb-3 text-sm font-bold">هر چند وقت پرداخت می‌کنید؟</legend><div class="grid gap-3 sm:grid-cols-3">@foreach($plan->intervals() as $interval => $label)<label class="cursor-pointer rounded-xl border border-slate-200 p-4 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50"><input type="radio" name="billing_interval" value="{{ $interval }}" x-model="interval" @checked($selectedInterval === $interval) required><span class="mr-2 text-sm font-bold">{{ $label }}</span><span class="mt-3 block text-sm font-black">{{ $wallets->format($plan->{$interval.'_price'}, $plan->currency) }}</span><span class="mt-1 block text-xs text-slate-500">مبلغ کامل هر دوره، پیش از مالیات</span></label>@endforeach</div></fieldset>
             </section>
             <section class="colo-card"><h2 class="text-lg font-black text-slate-950">شرایط توافق شما</h2><p class="mt-4 whitespace-pre-line text-sm leading-8 text-slate-600">{{ $plan->terms }}</p>
-                <p class="mt-4 text-sm leading-7 text-slate-600">با پرداخت، سفارش نصب ثبت می‌شود. تاریخ شروع سرویس را تیم نصب تعیین و اعلام می‌کند. تمدید با صدور صورتحساب انجام می‌شود؛ برداشت خودکار نداریم. دوره‌ها بر اساس سالگرد میلادی شروع سرویس و به وقت تهران محاسبه و تاریخ‌ها در پنل شمسی نمایش داده می‌شوند.</p>
+                <p class="mt-4 text-sm leading-7 text-slate-600">با پرداخت، سفارش نصب ثبت می‌شود.</p>
                 <label class="mt-5 flex items-start gap-3 text-sm leading-7"><input class="mt-2 size-4 shrink-0" type="checkbox" name="accept_terms" value="1" required @checked(old('accept_terms') && !$errors->has('plan_version'))><span>مشخصات، مبلغ، شرایط تمدید و لغو و نحوه محاسبه ترافیک را خوانده‌ام و می‌پذیرم.</span></label>
             </section>
         </div>
