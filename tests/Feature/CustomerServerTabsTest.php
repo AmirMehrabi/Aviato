@@ -226,6 +226,8 @@ class CustomerServerTabsTest extends TestCase
         $this->actingAs($customer, 'customer')->get($this->base.'/servers/'.$vm->uuid)
             ->assertOk()->assertSee(route('customer.servers.stop', $vm, false))
             ->assertSee(route('customer.servers.force-stop', $vm, false))
+            ->assertSee('name="vm-power-state" value="on" class="peer sr-only" checked', false)
+            ->assertSee('سرور خاموش شود؟')
             ->assertDontSee('سیستم‌عامل به‌صورت عادی خاموش می‌شود.')
             ->assertDontSee('درخواست راه‌اندازی مجدد از سیستم‌عامل.')
             ->assertSee('عملیات بیشتر')->assertSee('<dialog', false)
@@ -234,7 +236,9 @@ class CustomerServerTabsTest extends TestCase
         $vm->update(['status' => 'stopped']);
         $this->get($this->base.'/servers/'.$vm->uuid)->assertOk()
             ->assertSee(route('customer.servers.start', $vm, false))
-            ->assertDontSee('عملیات بیشتر')->assertDontSee('<dialog', false);
+            ->assertSee('name="vm-power-state" value="off" class="peer sr-only" checked', false)
+            ->assertSee('سرور روشن شود؟')
+            ->assertDontSee('عملیات بیشتر')->assertDontSee('id="vm-force-stop-title"', false);
     }
 
     private function vm(Customer $customer): VirtualMachine

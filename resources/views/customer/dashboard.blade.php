@@ -222,63 +222,69 @@
             <div class="space-y-2.5">
                 @foreach ($visibleVmRows as $vm)
                     <article class="rounded-2xl border bg-white p-4 shadow-sm shadow-slate-200/40 transition-[border-color,box-shadow] hover:border-[#B8D6FF] hover:shadow-md hover:shadow-[#0069FF]/[0.08] {{ $vm['needsAttention'] ? 'border-red-200' : 'border-slate-200' }}">
-                        <div class="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(15rem,.75fr)_auto] xl:items-center">
+                        <div class="grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(15rem,.75fr)_auto] xl:items-center">
                             <div class="flex min-w-0 items-start gap-3">
-                                <span class="mt-1.5 size-2.5 shrink-0 rounded-full {{ $vm['dot'] }}" aria-hidden="true"></span>
-                                <div class="min-w-0">
+                                <span class="mt-1.5 hidden size-2.5 shrink-0 rounded-full sm:block {{ $vm['dot'] }}" aria-hidden="true"></span>
+                                <div class="min-w-0 max-sm:w-full">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <h3 class="min-w-0 truncate text-sm font-black" dir="ltr"><a href="{{ $vm['url'] }}" class="text-slate-950 hover:text-[#0069FF] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">{{ $vm['name'] }}</a></h3>
-                                        <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-black {{ $vm['statusClass'] }}">
+                                        <h3 class="min-w-0 text-sm font-black max-sm:flex-1 sm:truncate"><a href="{{ $vm['url'] }}" class="text-slate-950 hover:text-[#0069FF] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF] max-sm:wrap-anywhere"><bdi>{{ $vm['name'] }}</bdi></a></h3>
+                                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-black {{ $vm['statusClass'] }}">
                                             <span class="size-1.5 rounded-full {{ $vm['dot'] }}" aria-hidden="true"></span>
                                             {{ $vm['status'] }}
                                         </span>
                                         @if ($vm['provisioningStatus'] !== 'آماده')
-                                            <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-black {{ $vm['provisioningClass'] }}">{{ $vm['provisioningStatus'] }}</span>
+                                            <div class="max-sm:basis-full">
+                                                <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-black {{ $vm['provisioningClass'] }}">{{ $vm['provisioningStatus'] }}</span>
+                                            </div>
                                         @endif
                                     </div>
-                                    <p class="mt-1.5 break-all text-xs font-bold text-slate-600" dir="ltr">{{ $vm['hostname'] }} · {{ $vm['ip'] }}</p>
+                                    <p class="mt-1.5 text-xs font-bold text-slate-600 max-sm:flex max-sm:items-baseline max-sm:gap-1 sm:break-all" dir="ltr">
+                                        <bdi class="max-sm:truncate" title="{{ $vm['hostname'] }}">{{ $vm['hostname'] }}</bdi>
+                                        <span aria-hidden="true">·</span>
+                                        <bdi class="max-sm:shrink-0">{{ $vm['ip'] }}</bdi>
+                                    </p>
                                 </div>
                             </div>
 
-                            <dl class="grid grid-cols-2 gap-2">
-                                <div class="flex min-h-10 items-center gap-2 rounded-xl bg-slate-50 px-3">
-                                    <svg class="size-4 shrink-0 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <dl class="grid grid-cols-2 gap-2 max-sm:rounded-lg max-sm:bg-slate-50 max-sm:px-3 max-sm:py-2">
+                                <div class="flex items-center gap-2 sm:min-h-10 sm:rounded-xl sm:bg-slate-50 sm:px-3">
+                                    <svg class="hidden size-4 shrink-0 text-slate-600 sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                         <rect x="7" y="7" width="10" height="10" rx="2"/>
                                         <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" stroke-linecap="round"/>
                                     </svg>
-                                    <div>
+                                    <div class="max-sm:flex max-sm:flex-wrap max-sm:gap-x-1.5">
                                         <dt class="text-xs font-black text-slate-600">CPU</dt>
                                         <dd class="text-xs font-black text-slate-700">{{ $vm['cpu'] }}</dd>
                                     </div>
                                 </div>
-                                <div class="flex min-h-10 items-center gap-2 rounded-xl bg-slate-50 px-3">
-                                    <svg class="size-4 shrink-0 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <div class="flex items-center gap-2 sm:min-h-10 sm:rounded-xl sm:bg-slate-50 sm:px-3">
+                                    <svg class="hidden size-4 shrink-0 text-slate-600 sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                         <rect x="5" y="6" width="14" height="12" rx="2"/>
                                         <path d="M8 10h8M8 14h8M9 3v3M15 3v3M9 18v3M15 18v3" stroke-linecap="round"/>
                                     </svg>
-                                    <div>
+                                    <div class="max-sm:flex max-sm:flex-wrap max-sm:gap-x-1.5">
                                         <dt class="text-xs font-black text-slate-600">RAM</dt>
                                         <dd class="text-xs font-black text-slate-700">{{ $vm['ram'] }}</dd>
                                     </div>
                                 </div>
                             </dl>
 
-                            <div class="flex flex-wrap items-center gap-2 xl:justify-end">
+                            <div class="grid gap-2 sm:flex sm:items-center sm:flex-wrap xl:justify-end {{ $vm['consoleReady'] ? 'grid-cols-2' : 'grid-cols-1' }}">
                                 @if ($vm['consoleReady'])
                                     <a
                                         href="{{ $vm['consoleUrl'] }}"
-                                        class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-xs font-black text-white transition-[background-color,transform] hover:bg-[#0069FF] active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
+                                        class="inline-flex min-h-11 sm:min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-2 sm:px-4 text-center text-xs font-black text-white transition-[background-color,transform] hover:bg-[#0069FF] active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
                                     >
-                                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                        <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                             <path d="m5 7 5 5-5 5M12 17h7" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
                                         باز کردن کنسول
                                     </a>
                                     <a
                                         href="{{ $vm['url'] }}"
-                                        class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition-colors hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
+                                        class="inline-flex min-h-11 sm:min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2 sm:px-3 text-center text-xs font-black text-slate-700 transition-colors hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]"
                                     >
-                                        <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                        <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                             <circle cx="12" cy="12" r="3"/>
                                             <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.95 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.53-1H3v-4h.08A1.7 1.7 0 0 0 4.6 8.95a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08A1.7 1.7 0 0 0 15.05 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06L19.82 7l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.61.6 1.1 1.2 1H21v4h-.4a1.7 1.7 0 0 0-1.2 1Z" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
@@ -287,9 +293,9 @@
                                 @else
                                     <a
                                         href="{{ $vm['url'] }}"
-                                        class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-4 text-xs font-black transition-[border-color,background-color,color,transform] active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 {{ $vm['needsAttention'] ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 focus-visible:outline-red-600' : 'border-slate-200 bg-white text-slate-700 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] focus-visible:outline-[#0069FF]' }}"
+                                        class="inline-flex min-h-11 sm:min-h-10 items-center justify-center gap-2 rounded-xl border px-2 sm:px-4 text-center text-xs font-black transition-[border-color,background-color,color,transform] active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 {{ $vm['needsAttention'] ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 focus-visible:outline-red-600' : 'border-slate-200 bg-white text-slate-700 hover:border-[#B8D6FF] hover:bg-[#EBF3FF] hover:text-[#0069FF] focus-visible:outline-[#0069FF]' }}"
                                     >
-                                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                        <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                             <circle cx="12" cy="12" r="3"/>
                                             <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.95 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.53-1H3v-4h.08A1.7 1.7 0 0 0 4.6 8.95a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08A1.7 1.7 0 0 0 15.05 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06L19.82 7l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.61.6 1.1 1.2 1H21v4h-.4a1.7 1.7 0 0 0-1.2 1Z" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
