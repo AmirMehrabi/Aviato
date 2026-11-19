@@ -12,6 +12,9 @@
     <div class="mx-auto max-w-7xl">
         @include('customer.servers.partials.password-reset-status')
         @include('customer.servers.partials.retention-cost')
+        @if ($tab === 'overview')
+            @include('customer.servers.partials.overview-indicators')
+        @endif
         @include('customer.servers.tabs.'.$tab)
     </div>
 @endsection

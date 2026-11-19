@@ -15,6 +15,7 @@ use App\Models\PromotionEvent;
 use App\Models\PromotionRedemption;
 use App\Models\ProxmoxServer;
 use App\Models\ResourceRate;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Models\VmBackup;
 use App\Models\VmBundle;
@@ -24,6 +25,7 @@ use App\Services\CloudVmProvisioningService;
 use App\Services\CustomerVmQuotaService;
 use App\Services\HetznerCloudService;
 use App\Services\IpPoolService;
+use App\Services\NetworkUsageReportService;
 use App\Services\ProjectAccessService;
 use App\Services\PromotionService;
 use App\Services\ProxmoxService;
@@ -35,6 +37,7 @@ use App\Services\VmOperationService;
 use App\Services\VmUpgradeService;
 use App\Services\WalletService;
 use App\Services\WorkspaceProtectionSettings;
+use App\Support\Jalali;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -606,6 +609,7 @@ class ServerController extends Controller
             ? 'ssh '.($server->login_username ?: 'root').'@'.$server->ip_address
             : null;
         $latestBackup = $server->backups->first();
+        $canViewBilling = $this->projects->canViewBilling($server->project, $customer);
         $loginPassword = null;
         $credentialDecryptionFailed = false;
 
@@ -625,10 +629,10 @@ class ServerController extends Controller
         return view('customer.servers.detail', [
             'tab' => $tab,
             'activities' => $tab === 'activity' ? app(VmActivityTimeline::class)->forVm($server) : null,
-            'billingWallet' => $tab === 'billing' && $this->projects->canViewBilling($server->project, $customer)
+            'billingWallet' => $tab === 'billing' && $canViewBilling
                 ? $this->wallets->walletFor($server->project?->owner ?? $server->customer)
                 : null,
-            'canViewBilling' => $this->projects->canViewBilling($server->project, $customer),
+            'canViewBilling' => $canViewBilling,
             'customer' => $customer,
             'activeProject' => $server->project,
             'activeMembership' => $this->projects->membership($server->project, $customer),
@@ -640,6 +644,7 @@ class ServerController extends Controller
             'rebuildFee' => $this->rebuildFee($server),
             'billing' => $this->billing,
             'monthlyCost' => $monthlyCost,
+            'overviewUsage' => $tab === 'overview' ? $this->overviewUsage($server, $canViewBilling) : null,
             'sshCommand' => $sshCommand,
             'loginPassword' => $loginPassword,
             'credentialDecryptionFailed' => $credentialDecryptionFailed,
@@ -666,6 +671,24 @@ class ServerController extends Controller
             'hasPendingUpgrade' => $hasPendingUpgrade,
             'invoiceCount' => $customer->invoices()->count(),
         ]);
+    }
+
+    private function overviewUsage(VirtualMachine $server, bool $canViewBilling): array
+    {
+        [$monthStart] = Jalali::currentJalaliMonthRange();
+        $now = now();
+        $reports = app(NetworkUsageReportService::class);
+        $traffic = $reports->daily($server, $monthStart->toImmutable()->utc(), $now->toImmutable()->utc());
+
+        return [
+            'cost' => $canViewBilling ? (int) UsageAccrual::query()
+                ->where('project_id', $server->project_id)
+                ->where('virtual_machine_id', $server->id)
+                ->whereBetween('service_date', [$monthStart->toDateString(), $now->toDateString()])
+                ->sum('amount') : null,
+            'egress' => $traffic->isNotEmpty() ? $reports->bytes((int) $traffic->sum('egress_bytes')) : null,
+            'ingress' => $traffic->isNotEmpty() ? $reports->bytes((int) $traffic->sum('ingress_bytes')) : null,
+        ];
     }
 
     public function rebuild(Request $request, VirtualMachine $virtualMachine): RedirectResponse

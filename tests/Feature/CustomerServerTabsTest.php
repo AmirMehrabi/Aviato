@@ -3,11 +3,16 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
+use App\Models\NetworkUsageBucket;
+use App\Models\ProjectMember;
 use App\Models\ProxmoxServer;
+use App\Models\UsageAccrual;
 use App\Models\VirtualMachine;
 use App\Services\VmActivityRecorder;
 use App\Services\VmActivityTimeline;
 use App\Services\VmOperationService;
+use App\Services\WalletService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -41,6 +46,64 @@ class CustomerServerTabsTest extends TestCase
                 ->assertSee('نمای کلی')
                 ->assertSee('فعالیت');
         }
+    }
+
+    public function test_overview_shows_jalali_month_to_date_usage_for_the_selected_server(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-02 12:00:00', 'Asia/Tehran'));
+        $customer = Customer::factory()->create();
+        $vm = $this->vm($customer);
+        $url = $this->base.'/servers/'.$vm->uuid;
+
+        foreach (['2026-10-22' => 99000, '2026-10-23' => 12500, '2026-11-01' => 2500] as $day => $amount) {
+            UsageAccrual::create([
+                'customer_id' => $customer->id,
+                'project_id' => $vm->project_id,
+                'scope_key' => 'project:'.$vm->project_id,
+                'category' => UsageAccrual::CATEGORY_VM,
+                'resource_type' => 'virtual_machine',
+                'resource_id' => $vm->id,
+                'virtual_machine_id' => $vm->id,
+                'service_date' => $day,
+                'period_start' => $day.' 00:00:00',
+                'period_end' => $day.' 01:00:00',
+                'amount' => $amount,
+            ]);
+        }
+
+        foreach (['2026-10-22T20:00:00Z' => 9, '2026-10-22T20:30:00Z' => 2, '2026-11-01T12:00:00Z' => 1] as $time => $gibibytes) {
+            $start = CarbonImmutable::parse($time);
+            NetworkUsageBucket::create([
+                'source' => 'overview-test',
+                'bucket_id' => $time,
+                'revision' => 1,
+                'status' => 'final',
+                'virtual_machine_id' => $vm->id,
+                'vm_uuid' => $vm->uuid,
+                'assignment_id' => $vm->uuid,
+                'interval_start' => $start,
+                'interval_end' => $start->addMinutes(30),
+                'ingress_bytes' => $gibibytes * 1024 ** 3,
+                'egress_bytes' => $gibibytes * 2 * 1024 ** 3,
+                'completeness' => 'complete',
+                'source_updated_at' => $start,
+                'payload_hash' => hash('sha256', $time),
+                'payload' => [],
+            ]);
+        }
+
+        $cost = app(WalletService::class)->format(15000);
+        $this->actingAs($customer, 'customer')->get($url)
+            ->assertOk()
+            ->assertSeeInOrder(['حافظه', '4 GB', 'پردازنده', '2 vCPU', 'دیسک اصلی', '40 GB', 'هزینه این ماه', $cost, 'ترافیک خروجی', '6.0 GiB', 'ترافیک ورودی', '3.0 GiB'])
+            ->assertDontSee('خلاصه منابع');
+
+        $viewer = Customer::factory()->create();
+        $vm->project->members()->create(['customer_id' => $viewer->id, 'role' => ProjectMember::ROLE_VIEWER]);
+        $this->actingAs($viewer, 'customer')->get($url)
+            ->assertOk()
+            ->assertSee('نیازمند دسترسی مالی')
+            ->assertDontSee($cost);
     }
 
     public function test_server_tabs_and_activity_are_scoped_to_the_current_customer_workspace(): void
