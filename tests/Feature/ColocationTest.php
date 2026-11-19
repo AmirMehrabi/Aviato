@@ -305,6 +305,32 @@ class ColocationTest extends TestCase
         $this->get('https://admin.localhost/colocation/services/'.$service->uuid)->assertOk()->assertSee('تکمیل نصب و شروع صورتحساب');
     }
 
+    public function test_admin_can_update_a_plan_price_only_under_its_own_customer(): void
+    {
+        $other = Customer::factory()->create();
+        $this->plan->update(['monthly_price' => 70000000]);
+        $form = [
+            '_method' => 'PATCH',
+            ...$this->plan->only(['name', 'location', 'rack_units', 'power', 'connectivity', 'traffic_policy', 'included_traffic_gb', 'tax_rate', 'terms', 'delivery_instructions', 'available']),
+            'monthly_price_toman' => 7200000,
+            'quarterly_price_toman' => 5500000,
+            'yearly_price_toman' => 20000000,
+            'setup_fee_toman' => 500000,
+            'traffic_price_per_gb_toman' => 1000,
+        ];
+
+        $this->actingAs($this->admin, 'admin')
+            ->post('https://admin.localhost/colocation/customers/'.$other->id.'/plans/'.$this->plan->uuid, $form)
+            ->assertNotFound();
+        $this->assertSame(70000000, $this->plan->fresh()->monthly_price);
+
+        $customerUrl = 'https://admin.localhost/colocation/customers/'.$this->customer->id;
+        $this->from($customerUrl)->post($customerUrl.'/plans/'.$this->plan->uuid, $form)
+            ->assertRedirect($customerUrl)
+            ->assertSessionHasNoErrors();
+        $this->assertSame(72000000, $this->plan->fresh()->monthly_price);
+    }
+
     public function test_read_only_accountants_cannot_activate_services_or_change_prices(): void
     {
         $accountant = User::factory()->create(['role' => 'accountant']);

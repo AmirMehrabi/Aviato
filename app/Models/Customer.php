@@ -70,6 +70,11 @@ class Customer extends Authenticatable
         return $this->hasMany(ColocationPlan::class);
     }
 
+    protected function childRouteBindingRelationshipName($childType): string
+    {
+        return $childType === 'plan' ? 'colocationPlans' : parent::childRouteBindingRelationshipName($childType);
+    }
+
     public function colocationServices(): HasMany
     {
         return $this->hasMany(ColocationService::class);
