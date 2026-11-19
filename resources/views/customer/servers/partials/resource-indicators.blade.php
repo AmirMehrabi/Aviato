@@ -47,13 +47,13 @@
     }
 @endphp
 
-<section class="@container overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="server-resource-indicators">
-    <header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-slate-200 px-4 py-4 sm:px-5">
-        <h2 id="server-resource-indicators" class="text-lg font-black text-slate-950">{{ $showUsage ? 'منابع و کارکرد سرور' : 'منابع سرور' }}</h2>
-        @if ($showUsage)
-            <p class="text-xs font-medium text-slate-600">هزینه و ترافیک ثبت‌شده از ابتدای ماه شمسی تا امروز</p>
-        @endif
-    </header>
+<section class="@container overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+    @if ($showUsage) aria-label="منابع و مصرف سرور" @else aria-labelledby="server-resource-indicators" @endif>
+    @unless ($showUsage)
+        <header class="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <h2 id="server-resource-indicators" class="text-lg font-black text-slate-950">منابع سرور</h2>
+        </header>
+    @endunless
 
     <dl class="grid gap-px bg-slate-200 @min-[34rem]:grid-cols-3 {{ $showUsage ? 'grid-cols-2 @min-[66rem]:grid-cols-6' : 'grid-cols-1' }}">
         @foreach ($indicators as $indicator)

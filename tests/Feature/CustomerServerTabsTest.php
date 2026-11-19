@@ -96,6 +96,8 @@ class CustomerServerTabsTest extends TestCase
         $this->actingAs($customer, 'customer')->get($url)
             ->assertOk()
             ->assertSeeInOrder(['حافظه', '4 GB', 'پردازنده', '2 vCPU', 'دیسک اصلی', '40 GB', 'هزینه این ماه', $cost, 'ترافیک خروجی', '6.0 GiB', 'ترافیک ورودی', '3.0 GiB'])
+            ->assertDontSee('منابع و کارکرد سرور')
+            ->assertDontSee('هزینه و ترافیک ثبت‌شده از ابتدای ماه شمسی تا امروز')
             ->assertDontSee('خلاصه منابع');
 
         $this->get($url.'/resources')
@@ -230,7 +232,8 @@ class CustomerServerTabsTest extends TestCase
             ->assertSee('سرور خاموش شود؟')
             ->assertDontSee('سیستم‌عامل به‌صورت عادی خاموش می‌شود.')
             ->assertDontSee('درخواست راه‌اندازی مجدد از سیستم‌عامل.')
-            ->assertSee('عملیات بیشتر')->assertSee('<dialog', false)
+            ->assertSeeInOrder(['راه‌اندازی مجدد</span>', 'aria-label="باز کردن کنسول سرور', 'aria-controls="vm-more-actions"', 'id="vm-more-actions"', 'ویرایش نام نمایشی'], false)
+            ->assertSee('<dialog', false)
             ->assertSee('اطلاعات ذخیره‌نشده ممکن است از بین برود.')
             ->assertDontSee('سرور پاسخ نمی‌دهد؟')->assertDontSee('درخواست‌های سرور');
         $vm->update(['status' => 'stopped']);
@@ -238,7 +241,8 @@ class CustomerServerTabsTest extends TestCase
             ->assertSee(route('customer.servers.start', $vm, false))
             ->assertSee('name="vm-power-state" value="off" class="peer sr-only" checked', false)
             ->assertSee('سرور روشن شود؟')
-            ->assertDontSee('عملیات بیشتر')->assertDontSee('id="vm-force-stop-title"', false);
+            ->assertSeeInOrder(['aria-label="باز کردن کنسول سرور', 'aria-controls="vm-more-actions"', 'id="vm-more-actions"', 'ویرایش نام نمایشی'], false)
+            ->assertDontSee('id="vm-force-stop-title"', false);
     }
 
     private function vm(Customer $customer): VirtualMachine

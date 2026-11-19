@@ -19,6 +19,7 @@
         ? ($server->infrastructureLocation?->hetznerAccount && $server->remote_id)
         : ($server->proxmoxServer && $server->node && $server->vmid);
     $powerReady = $canManageServer && ! $server->isLxc() && ! $server->isActionLocked() && $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_READY && $providerReady && ($server->isRunning() || ! $customer->isSuspended());
+    $showRunningActions = $powerReady && $server->isRunning();
     $showPowerRadios = $powerReady && in_array($server->status, [\App\Models\VirtualMachine::STATUS_RUNNING, \App\Models\VirtualMachine::STATUS_STOPPED], true);
     $actionPending = $server->provisioning_status === \App\Models\VirtualMachine::PROVISION_PENDING || ($server->isDeleting() && ! $server->delete_failed_at && ! $server->deleteAttemptIsStale());
     $pendingOperation = $server->operations()->whereNotNull('active_vm_id')->first();
@@ -51,9 +52,10 @@
             x-data="{
                 editing: @js($errors->renameVm->has('display_name')),
                 saving: false,
+                menuOpen: false,
                 name: @js($displayNameInput),
                 start() { this.editing = true; this.$nextTick(() => { this.$refs.name.focus(); this.$refs.name.select(); }); },
-                cancel() { if (this.saving) return; this.editing = false; this.name = @js($server->display_name); this.$nextTick(() => this.$refs.edit.focus()); }
+                cancel() { if (this.saving) return; this.editing = false; this.name = @js($server->display_name); this.$nextTick(() => this.$refs.more.focus()); }
             }" x-init="if (editing) $nextTick(() => $refs.name.focus())"
         @endif
     >
@@ -90,14 +92,8 @@
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 [&>*:only-child]:col-span-2 sm:flex sm:flex-wrap sm:justify-end">
-                @if ($powerReady && $server->isRunning())
+                @if ($showRunningActions)
                     @include('customer.servers.partials.power-actions')
-                @endif
-                @if ($canManageServer)
-                    <button type="button" x-ref="edit" :class="{ 'hidden!': editing }" @click="start()" aria-label="ویرایش نام نمایشی" class="{{ $actionClass }}">
-                        <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5M4 20l4-1L20 7a3.5 3.5 0 0 0-5-5L3 14l-1 8 2-2Z"/></svg>
-                        ویرایش نام
-                    </button>
                 @endif
                 @php
                     $consoleIcon = '<svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg>';
@@ -112,6 +108,9 @@
                         {!! $consoleIcon !!}
                         کنسول
                     </button>
+                @endif
+                @if ($canManageServer)
+                    @include('customer.servers.partials.more-actions')
                 @endif
             </div>
         </div>
