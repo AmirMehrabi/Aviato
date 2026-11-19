@@ -43,13 +43,17 @@
         $activeWalletRisk = $workspaceWalletRisks[$activeProject->id] ?? null;
         $workspaceSelectorRiskTone = $activeWalletRisk['tone'] ?? (collect($workspaceWalletRisks)->contains(fn (array $risk): bool => $risk['tone'] !== 'warning') ? 'critical' : 'warning');
         $workspaceSelectorRiskLabel = $activeWalletRisk['label'] ?? (count($workspaceWalletRisks).' فضای کاری نیازمند توجه');
-        $activeNav = $activeNav ?? match (request()->route()?->getName()) {
+        // Portal aliases prepend their domain to the same customer route names.
+        $sidebarRoute = preg_replace('/^customer\.alias\.[^.]+\./', '', request()->route()?->getName() ?? '');
+        $activeNav = $activeNav ?? match ($sidebarRoute) {
+            'dashboard' => 'dashboard',
+            'customer.suspension.notice' => 'wallet',
             'customer.reseller.dashboard' => 'reseller',
             'customer.reseller.customers' => 'reseller-customers',
             'customer.reseller.commissions' => 'reseller-commissions',
             'customer.reseller.referral' => 'reseller-referral',
             'customer.reseller.withdrawals' => 'reseller-withdrawals',
-            default => 'dashboard',
+            default => null,
         };
         $newWorkspaceNotification = $customer->unreadNotifications()
             ->where('type', \App\Notifications\WorkspaceAddedNotification::class)
@@ -63,43 +67,43 @@
         $customerUnreadTicketNotificationsCount = app(\App\Services\Notifications\NotificationInboxService::class)->ticketUnreadCount($customer);
         $navGroups = [
             'نمای کلی' => [
-                ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => route('dashboard', [], false), 'icon' => 'M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z'],
+                ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => 'dashboard', 'icon' => 'M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z'],
             ],
             'زیرساخت' => [
                 ...($canViewVms ? [
-                    ['key' => 'servers', 'label' => 'ماشین‌های مجازی', 'route' => route('customer.servers.index', [], false), 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
-                    ['key' => 'backups', 'label' => 'پشتیبان‌گیری', 'route' => route('customer.backups.index', [], false), 'icon' => 'M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 6.5 19H8'],
-                    ['key' => 'monitoring', 'label' => 'پایش', 'route' => route('customer.monitoring.index', [], false), 'icon' => 'M3 12h4l3-8 4 16 3-8h4'],
+                    ['key' => 'servers', 'label' => 'ماشین‌های مجازی', 'route' => 'customer.servers.index', 'icon' => 'M4 5h16v6H4V5Zm0 8h16v6H4v-6Zm4-5h.01M8 16h.01M12 8h4M12 16h4'],
+                    ['key' => 'backups', 'label' => 'پشتیبان‌گیری', 'route' => 'customer.backups.index', 'icon' => 'M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 6.5 19H8'],
+                    ['key' => 'monitoring', 'label' => 'پایش', 'route' => 'customer.monitoring.index', 'icon' => 'M3 12h4l3-8 4 16 3-8h4'],
                 ] : []),
                 ...($canViewColocation ? [
-                    ['key' => 'colocation', 'label' => 'کولوکیشن', 'route' => route('customer.colocation.index', [], false), 'icon' => 'M4 3h16v18H4V3Zm0 6h16M4 15h16M8 6h.01M8 12h.01M8 18h.01'],
+                    ['key' => 'colocation', 'label' => 'کولوکیشن', 'route' => 'customer.colocation.index', 'icon' => 'M4 3h16v18H4V3Zm0 6h16M4 15h16M8 6h.01M8 12h.01M8 18h.01'],
                 ] : []),
             ],
             'دامنه و DNS' => [
                 ...($customer->canManageDomains() ? [
-                    ['key' => 'domains', 'label' => 'دامنه‌ها', 'route' => route('customer.domains.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z'],
+                    ['key' => 'domains', 'label' => 'دامنه‌ها', 'route' => 'customer.domains.index', 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z'],
                 ] : []),
                 ...($activeMembership?->canReadDns() && app(\App\Services\CloudDns\CloudDnsRollout::class)->allows($customer, $activeProject) ? [
-                    ['key' => 'cloud-dns', 'label' => 'مدیریت DNS', 'route' => route('customer.cloud-dns.index', [], false), 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z'],
+                    ['key' => 'cloud-dns', 'label' => 'مدیریت DNS', 'route' => 'customer.cloud-dns.index', 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z'],
                 ] : []),
             ],
             'امور مالی' => [
                 ...($canViewBilling ? [
-                    ['key' => 'wallet', 'label' => 'کیف پول', 'route' => route('customer.wallet.show', [], false), 'icon' => 'M19 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6M16 13h5v4h-5a2 2 0 0 1 0-4Z'],
-                    ['key' => 'invoices', 'label' => 'صورتحساب‌ها', 'route' => route('customer.invoices.index', [], false), 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
+                    ['key' => 'wallet', 'label' => 'کیف پول', 'route' => 'customer.wallet.show', 'icon' => 'M19 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6M16 13h5v4h-5a2 2 0 0 1 0-4Z'],
+                    ['key' => 'invoices', 'label' => 'صورتحساب‌ها', 'route' => 'customer.invoices.index', 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h8'],
                 ] : []),
             ],
             ...(auth('customer')->check() && auth('customer')->user()->isReseller() ? [
                 'فروشندگی' => [
-                    ['key' => 'reseller', 'label' => 'داشبورد فروشندگی', 'route' => route('customer.reseller.dashboard', [], false), 'icon' => 'M4 10h16M5 10l1-6h12l1 6M6 10v10h12V10M9 20v-6h6v6'],
-                    ['key' => 'reseller-customers', 'label' => 'مشتریان', 'route' => route('customer.reseller.customers', [], false), 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
-                    ['key' => 'reseller-commissions', 'label' => 'کمیسیون‌ها', 'route' => route('customer.reseller.commissions', [], false), 'icon' => 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-15v10M15 9.5A2.5 2.5 0 0 0 12.5 7H11a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9'],
-                    ['key' => 'reseller-referral', 'label' => 'لینک معرفی', 'route' => route('customer.reseller.referral', [], false), 'icon' => 'M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15'],
-                    ['key' => 'reseller-withdrawals', 'label' => 'برداشت‌ها', 'route' => route('customer.reseller.withdrawals', [], false), 'icon' => 'M3 6h18v12H3V6Zm0 4h18M7 15h2M15 14l2 2 2-2M17 11v5'],
+                    ['key' => 'reseller', 'label' => 'داشبورد فروشندگی', 'route' => 'customer.reseller.dashboard', 'icon' => 'M4 10h16M5 10l1-6h12l1 6M6 10v10h12V10M9 20v-6h6v6'],
+                    ['key' => 'reseller-customers', 'label' => 'مشتریان', 'route' => 'customer.reseller.customers', 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
+                    ['key' => 'reseller-commissions', 'label' => 'کمیسیون‌ها', 'route' => 'customer.reseller.commissions', 'icon' => 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-15v10M15 9.5A2.5 2.5 0 0 0 12.5 7H11a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9'],
+                    ['key' => 'reseller-referral', 'label' => 'لینک معرفی', 'route' => 'customer.reseller.referral', 'icon' => 'M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15'],
+                    ['key' => 'reseller-withdrawals', 'label' => 'برداشت‌ها', 'route' => 'customer.reseller.withdrawals', 'icon' => 'M3 6h18v12H3V6Zm0 4h18M7 15h2M15 14l2 2 2-2M17 11v5'],
                 ],
             ] : []),
             'پشتیبانی' => [
-                ['key' => 'tickets', 'label' => 'پشتیبانی', 'route' => route('customer.tickets.index', [], false), 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
+                ['key' => 'tickets', 'label' => 'پشتیبانی', 'route' => 'customer.tickets.index', 'icon' => 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z'],
             ],
         ];
         $navGroups = array_filter($navGroups, fn (array $items): bool => $items !== []);
@@ -377,7 +381,7 @@
                 <nav class="space-y-4 text-sm font-medium" aria-label="بخش‌های پنل مشتری">
                     @foreach ($navGroups as $group => $items)
                         @if ($group === 'فروشندگی')
-                            <details class="group/reseller" @if (str_starts_with($activeNav, 'reseller')) open @endif>
+                            <details class="group/reseller" @if (str_starts_with($activeNav ?? '', 'reseller')) open @endif>
                                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2.5 text-[#C7D4EA] transition hover:bg-[#0A2A66] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#69A9FF] [&::-webkit-details-marker]:hidden">
                                     <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 10h16M5 10l1-6h12l1 6M6 10v10h12V10M9 20v-6h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     <span>فروشندگی</span>

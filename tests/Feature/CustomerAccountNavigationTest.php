@@ -46,8 +46,12 @@ class CustomerAccountNavigationTest extends TestCase
         app(ResellerService::class)->enableReseller($customer, 10.00, 'auto_credit');
         $this->actingAs($customer, 'customer');
 
-        foreach (['dashboard' => false, 'reseller/customers' => true] as $page => $expanded) {
-            $response = $this->get('https://cp.localhost/'.$page)->assertOk();
+        foreach ([
+            ['cp.localhost', 'dashboard', false],
+            ['cp.localhost', 'reseller/customers', true],
+            ['my.aviato.ir', 'reseller/customers', true],
+        ] as [$host, $page, $expanded]) {
+            $response = $this->get('https://'.$host.'/'.$page)->assertOk();
             $document = new \DOMDocument;
             @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
             $xpath = new \DOMXPath($document);
@@ -56,6 +60,24 @@ class CustomerAccountNavigationTest extends TestCase
             $this->assertNotNull($resellerSection);
             $this->assertSame($expanded, $resellerSection->hasAttribute('open'));
             $this->assertSame('/'.$page, $xpath->query('//nav//a[@aria-current="page"]')->item(0)->getAttribute('href'));
+        }
+    }
+
+    public function test_sidebar_marks_the_parent_section_on_nested_pages(): void
+    {
+        $customer = Customer::factory()->create();
+        $this->actingAs($customer, 'customer');
+
+        foreach (['/tickets/create' => '/tickets', '/suspended' => '/wallet'] as $page => $section) {
+            $response = $this->get('https://cp.localhost'.$page)->assertOk();
+            $document = new \DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+            $xpath = new \DOMXPath($document);
+            $currentLinks = $xpath->query('//aside[@id="customer-sidebar"]/div/nav//a[@aria-current]');
+
+            $this->assertSame(1, $currentLinks->length);
+            $this->assertSame($section, $currentLinks->item(0)->getAttribute('href'));
+            $this->assertSame('location', $currentLinks->item(0)->getAttribute('aria-current'));
         }
     }
 
