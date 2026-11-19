@@ -18,36 +18,44 @@
             'icon' => 'M4 13l2.5-7.5A2 2 0 0 1 8.4 4h7.2a2 2 0 0 1 1.9 1.5L20 13M4 13h16a1 1 0 0 1 1 1v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4a1 1 0 0 1 1-1Zm3 3.5h.01m3.99 0h.01',
             'dir' => 'ltr',
         ],
-        [
-            'label' => 'هزینه این ماه',
-            'value' => $canViewBilling ? $wallets->format($overviewUsage['cost']) : null,
-            'unavailable' => 'نیازمند دسترسی مالی',
-            'icon' => 'M19 8V6a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h13a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V7m18 6h-5a2 2 0 0 0 0 4h5',
-            'dir' => 'rtl',
-            'highlight' => true,
-        ],
-        [
-            'label' => 'ترافیک خروجی',
-            'value' => $overviewUsage['egress'],
-            'icon' => 'M12 16V3m-5 5 5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4',
-            'dir' => 'ltr',
-        ],
-        [
-            'label' => 'ترافیک ورودی',
-            'value' => $overviewUsage['ingress'],
-            'icon' => 'M12 3v13m-5-5 5 5 5-5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4',
-            'dir' => 'ltr',
-        ],
     ];
+
+    if ($showUsage) {
+        $indicators = [
+            ...$indicators,
+            [
+                'label' => 'هزینه این ماه',
+                'value' => $canViewBilling ? $wallets->format($overviewUsage['cost']) : null,
+                'unavailable' => 'نیازمند دسترسی مالی',
+                'icon' => 'M19 8V6a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h13a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V7m18 6h-5a2 2 0 0 0 0 4h5',
+                'dir' => 'rtl',
+                'highlight' => true,
+            ],
+            [
+                'label' => 'ترافیک خروجی',
+                'value' => $overviewUsage['egress'],
+                'icon' => 'M12 16V3m-5 5 5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4',
+                'dir' => 'ltr',
+            ],
+            [
+                'label' => 'ترافیک ورودی',
+                'value' => $overviewUsage['ingress'],
+                'icon' => 'M12 3v13m-5-5 5 5 5-5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4',
+                'dir' => 'ltr',
+            ],
+        ];
+    }
 @endphp
 
-<section class="@container mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="server-overview-indicators">
+<section class="@container overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="server-resource-indicators">
     <header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-slate-200 px-4 py-4 sm:px-5">
-        <h2 id="server-overview-indicators" class="text-lg font-black text-slate-950">منابع و کارکرد سرور</h2>
-        <p class="text-xs font-medium text-slate-600">هزینه و ترافیک ثبت‌شده از ابتدای ماه شمسی تا امروز</p>
+        <h2 id="server-resource-indicators" class="text-lg font-black text-slate-950">{{ $showUsage ? 'منابع و کارکرد سرور' : 'منابع سرور' }}</h2>
+        @if ($showUsage)
+            <p class="text-xs font-medium text-slate-600">هزینه و ترافیک ثبت‌شده از ابتدای ماه شمسی تا امروز</p>
+        @endif
     </header>
 
-    <dl class="grid grid-cols-2 gap-px bg-slate-200 @min-[34rem]:grid-cols-3 @min-[66rem]:grid-cols-6">
+    <dl class="grid gap-px bg-slate-200 @min-[34rem]:grid-cols-3 {{ $showUsage ? 'grid-cols-2 @min-[66rem]:grid-cols-6' : 'grid-cols-1' }}">
         @foreach ($indicators as $indicator)
             <div class="min-w-0 p-3 sm:p-4 {{ ($indicator['highlight'] ?? false) ? 'bg-blue-50 text-blue-800' : 'bg-white text-slate-950' }}">
                 <dt class="flex items-center gap-2 text-xs font-bold sm:text-sm">

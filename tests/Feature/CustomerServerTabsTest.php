@@ -98,6 +98,12 @@ class CustomerServerTabsTest extends TestCase
             ->assertSeeInOrder(['حافظه', '4 GB', 'پردازنده', '2 vCPU', 'دیسک اصلی', '40 GB', 'هزینه این ماه', $cost, 'ترافیک خروجی', '6.0 GiB', 'ترافیک ورودی', '3.0 GiB'])
             ->assertDontSee('خلاصه منابع');
 
+        $this->get($url.'/resources')
+            ->assertOk()
+            ->assertSeeInOrder(['حافظه', '4 GB', 'پردازنده', '2 vCPU', 'دیسک اصلی', '40 GB', 'پیکربندی', 'نشانی IP', 'دیسک‌های اضافه', 'ارتقای منابع'])
+            ->assertDontSee('هزینه این ماه')
+            ->assertDontSee('ترافیک خروجی');
+
         $viewer = Customer::factory()->create();
         $vm->project->members()->create(['customer_id' => $viewer->id, 'role' => ProjectMember::ROLE_VIEWER]);
         $this->actingAs($viewer, 'customer')->get($url)

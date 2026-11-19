@@ -1,10 +1,54 @@
-<div class="space-y-5"><div><h2 class="text-xl font-black text-slate-950">منابع سرور</h2><p class="mt-1 text-sm text-slate-500">مشخصات فعلی سخت‌افزار و فضای ذخیره‌سازی</p></div>
-    <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        @foreach ([['پردازنده', $server->cpu_cores.' CPU', 'cpu'], ['حافظه', $server->ram_gb.' GB', 'ram'], ['دیسک اصلی', $server->disk_gb.' GB', 'disk'], ['نشانی IP', $server->ip_address ?: 'در انتظار', 'ip']] as $metric)
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-bold text-slate-500">{{ $metric[0] }}</p><p class="mt-3 truncate text-xl font-black text-slate-950" dir="ltr">{{ $metric[1] }}</p></div>
-        @endforeach
-    </section>
-    <section class="grid gap-5 lg:grid-cols-2"><div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="text-lg font-black">پیکربندی</h3><dl class="mt-4 space-y-3 text-sm"><div class="flex justify-between gap-3"><dt class="text-slate-500">پلن</dt><dd class="font-black">{{ $server->bundle?->name ?: 'اختصاصی' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">سیستم عامل</dt><dd class="font-black">{{ $server->cloudImage?->name ?: $server->os_template ?: '—' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">موقعیت</dt><dd class="font-black">{{ $server->infrastructureLocation?->name ?: $server->proxmoxServer?->name ?: '—' }}</dd></div></dl></div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="text-lg font-black">دیسک‌های اضافه</h3><div class="mt-4 space-y-3">@forelse ($server->disks as $disk)<div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-4 text-sm"><span class="font-black" dir="ltr">{{ $disk->size_gb }} GB · {{ $disk->disk_device }}</span><span class="rounded-full px-2 py-1 text-xs font-bold {{ $disk->status === 'ready' ? 'bg-emerald-50 text-emerald-700' : ($disk->status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800') }}">{{ $disk->status === 'ready' ? 'آماده' : ($disk->status === 'failed' ? 'ناموفق' : 'در حال آماده‌سازی') }}</span></div>@empty<p class="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">دیسک اضافه‌ای ثبت نشده است.</p>@endforelse</div></div></section>
+<div class="space-y-5">
+    @include('customer.servers.partials.resource-indicators', ['showUsage' => false])
+
+    <div class="grid gap-5 lg:grid-cols-2">
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 class="text-lg font-black text-slate-950">پیکربندی</h3>
+            <dl class="mt-4 divide-y divide-slate-100 text-sm">
+                @foreach ([
+                    ['پلن', $server->bundle?->name ?: 'اختصاصی', 'auto'],
+                    ['سیستم عامل', $server->cloudImage?->name ?: $server->os_template ?: '—', 'auto'],
+                    ['موقعیت', $server->infrastructureLocation?->name ?: $server->proxmoxServer?->name ?: '—', 'auto'],
+                    ['نشانی IP', $server->ip_address ?: 'در انتظار', $server->ip_address ? 'ltr' : 'rtl'],
+                ] as [$label, $value, $direction])
+                    <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0">
+                        <dt class="text-slate-600">{{ $label }}</dt>
+                        <dd class="min-w-0 font-bold text-slate-950 [overflow-wrap:anywhere]">
+                            <bdi dir="{{ $direction }}">{{ $value }}</bdi>
+                        </dd>
+                    </div>
+                @endforeach
+            </dl>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 class="text-lg font-black text-slate-950">دیسک‌های اضافه</h3>
+            @if ($server->disks->isNotEmpty())
+                <ul class="mt-4 space-y-3">
+                    @foreach ($server->disks as $disk)
+                        @php
+                            [$diskStatusLabel, $diskStatusClasses] = match ($disk->status) {
+                                'ready' => ['آماده', 'bg-emerald-50 text-emerald-700'],
+                                'failed' => ['ناموفق', 'bg-red-50 text-red-700'],
+                                default => ['در حال آماده‌سازی', 'bg-amber-50 text-amber-800'],
+                            };
+                        @endphp
+                        <li class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-4 text-sm">
+                            <bdi class="min-w-0 font-bold text-slate-950 [overflow-wrap:anywhere]" dir="ltr">
+                                {{ $disk->size_gb }} GB
+                                @if ($disk->disk_device)
+                                    · {{ $disk->disk_device }}
+                                @endif
+                            </bdi>
+                            <span class="rounded-full px-2 py-1 text-xs font-bold {{ $diskStatusClasses }}">{{ $diskStatusLabel }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">دیسک اضافه‌ای ثبت نشده است.</p>
+            @endif
+        </section>
+    </div>
+
     <a href="{{ route('customer.servers.tab', [$server, 'tab' => 'upgrade'], false) }}" class="inline-flex rounded-xl bg-[#0069FF] px-5 py-3 text-sm font-black text-white hover:bg-[#0050D0]">ارتقای منابع</a>
 </div>

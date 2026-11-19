@@ -13,7 +13,9 @@
         @include('customer.servers.partials.password-reset-status')
         @include('customer.servers.partials.retention-cost')
         @if ($tab === 'overview')
-            @include('customer.servers.partials.overview-indicators')
+            <div class="mb-5">
+                @include('customer.servers.partials.resource-indicators', ['showUsage' => true])
+            </div>
         @endif
         @include('customer.servers.tabs.'.$tab)
     </div>
