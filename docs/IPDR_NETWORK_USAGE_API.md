@@ -14,8 +14,18 @@ This document is the implementation specification for the IPDR project. Aviato o
 - Normalize cumulative device counters into interval deltas inside IPDR. Never return negative bytes.
 - Handle flow deduplication, counter wrap/reset, router reboot, collector restart, and out-of-order samples inside IPDR.
 - Do not silently mutate published data. Corrections retain `bucket_id` and increment `revision`.
+- A correction to a rated bucket must stay within its original VM and billing period. To replace traffic across a boundary, void the original bucket in its original interval and publish new buckets for the corrected intervals.
 - The exact same `bucket_id` + `revision` must always have byte-for-byte equivalent semantic content.
-- A bucket must never cross an `Asia/Tehran` calendar-month boundary. Split the bucket at that boundary when necessary.
+- Split buckets at VM network billing boundaries using actual measured bytes. For `Asia/Tehran`, midnight is 20:30 UTC on the preceding day, so a bucket aligned to the UTC hour may need a split.
+
+### Jalali network quota rollout
+
+Aviato enables the change through `NETWORK_BILLING_JALALI_FROM=YYYY-MM-01`. This is the first day of a future Gregorian month, at midnight in each VM's billing timezone (normally `Asia/Tehran`). Leave the setting empty until IPDR can split buckets at the required boundaries.
+
+- Split at Gregorian month boundaries up to and including the configured date.
+- Starting on that date, split at the first midnight of each Jalali month. The interval from the configured date to the next Jalali boundary has the full monthly quota. Billing uses exclusive period ends.
+- Deploy the billing code to all workers before the cutover, then apply the same date across Aviato and IPDR. Keep the configured date after activation so late usage without a saved period can still be rated under the calendar in effect when it occurred.
+- Keep published billing history in place. Verify a dry run on copied data before activation, including the last Gregorian bucket, the first transition bucket, the first Jalali bucket, and revisions of already settled usage.
 
 ## Endpoint 1: list usage buckets
 

@@ -45,6 +45,7 @@ class NetworkBillingPolicyAdjustmentService
             // A timezone change takes effect next month; do not move already rated buckets.
             $policy['timezone'] = $period->timezone;
             $policy['currency'] = $period->currency;
+            $policy['calendar'] = $period->billingCalendar();
             $attributes = [
                 'price_per_unit' => $policy['price_per_unit'], 'price_unit_bytes' => $policy['price_unit_bytes'],
                 'included_bytes' => $policy['included_bytes'], 'direction' => $policy['direction'],

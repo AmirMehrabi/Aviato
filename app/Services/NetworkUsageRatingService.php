@@ -16,27 +16,32 @@ class NetworkUsageRatingService
 
     public function rate(NetworkUsageBucket $bucket): bool
     {
-        if (! in_array($bucket->status, ['final', 'void'], true) || $bucket->completeness !== 'complete' || ! $bucket->virtual_machine_id) {
-            return false;
-        }
-
         return DB::transaction(function () use ($bucket): bool {
             $bucket = NetworkUsageBucket::query()->whereKey($bucket->id)->lockForUpdate()->firstOrFail();
-            if (NetworkUsageRating::query()->where('network_usage_bucket_id', $bucket->id)->where('revision', $bucket->revision)->exists()) {
+            if (! in_array($bucket->status, ['final', 'void'], true) || $bucket->completeness !== 'complete' || ! $bucket->virtual_machine_id) {
+                return false;
+            }
+
+            $previousRating = NetworkUsageRating::query()->where('network_usage_bucket_id', $bucket->id)
+                ->latest('revision')->first();
+            if ($previousRating?->revision === $bucket->revision) {
                 return false;
             }
 
             $vm = VirtualMachine::query()->with(['bundle', 'customer', 'project.owner'])->lockForUpdate()->findOrFail($bucket->virtual_machine_id);
             $policy = $this->policies->effective($vm);
-            if (! $policy['enabled']) {
+            if (! $policy['enabled'] && ! $previousRating) {
                 $bucket->forceFill(['processing_status' => 'ignored', 'processing_error' => 'Network accounting is disabled.', 'rated_at' => now()])->save();
 
                 return false;
             }
 
-            $period = $this->policies->periodFor($vm, $bucket->interval_start);
-            $period = VmNetworkBillingPeriod::query()->whereKey($period->id)->lockForUpdate()->firstOrFail();
-            if ($bucket->interval_end->greaterThan($period->period_end)) {
+            $periodId = $previousRating?->vm_network_billing_period_id
+                ?? $this->policies->periodFor($vm, $bucket->interval_start)->id;
+            $period = VmNetworkBillingPeriod::query()->whereKey($periodId)->lockForUpdate()->firstOrFail();
+            if ($bucket->virtual_machine_id !== $period->virtual_machine_id
+                || $bucket->interval_start->lt($period->period_start)
+                || $bucket->interval_end->gt($period->period_end)) {
                 $bucket->forceFill(['processing_status' => 'quarantined', 'processing_error' => 'Bucket crosses a billing month boundary.'])->save();
 
                 return false;

@@ -177,6 +177,15 @@ class NetworkUsageIngestionService
                 return null;
             }
 
+            if ($bucket && ($bucket->vm_uuid !== $data['vm_uuid']
+                || ! $bucket->interval_start->equalTo($start) || ! $bucket->interval_end->equalTo($end))) {
+                $originalPeriod = $bucket->ratings()->latest('revision')->first()?->period;
+                if ($originalPeriod && ($bucket->vm_uuid !== $data['vm_uuid']
+                    || $start->lt($originalPeriod->period_start) || $end->gt($originalPeriod->period_end))) {
+                    throw new RuntimeException('A rated bucket revision cannot move to another VM or billing period.');
+                }
+            }
+
             $bucket ??= new NetworkUsageBucket(['source' => $source, 'bucket_id' => $data['bucket_id']]);
             $bucket->fill([
                 'revision' => $data['revision'], 'status' => $data['status'], 'virtual_machine_id' => $vm?->id,

@@ -50,6 +50,18 @@ class NetworkMonthlyEstimateTest extends TestCase
         $this->assertGreaterThan($before['amount'], $service->forOwner($vm->customer)['amount']);
     }
 
+    public function test_projection_uses_the_length_of_the_jalali_cutover_period(): void
+    {
+        config(['network-billing.jalali_from' => '2026-04-01']);
+        $this->travelTo(CarbonImmutable::parse('2026-04-10 12:00:00', 'Asia/Tehran'));
+        $vm = $this->networkVm();
+        $this->day($vm, 1, 2 * 1073741824);
+
+        // 2 GiB/day * 20 days, less the full 10 GiB quota.
+        $this->assertSame(270000, app(NetworkMonthlyEstimateService::class)->forOwner($vm->customer)['amount']);
+        $this->assertDatabaseCount('vm_network_billing_periods', 0);
+    }
+
     public function test_missing_or_partial_days_are_not_treated_as_zero_usage(): void
     {
         $vm = $this->networkVm();

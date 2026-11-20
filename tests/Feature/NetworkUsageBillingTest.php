@@ -117,6 +117,107 @@ class NetworkUsageBillingTest extends TestCase
         $this->assertDatabaseHas('vm_network_billing_periods', ['period_start' => '2026-08-31 20:30:00', 'period_end' => '2026-09-30 20:30:00']);
     }
 
+    public function test_jalali_cutover_preserves_settled_usage_and_gives_the_transition_a_full_quota(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-03-31 12:00:00', 'Asia/Tehran'));
+        $vm = $this->networkVm();
+        $quota = $vm->bundle->network_included_bytes_monthly;
+        $ingestion = app(NetworkUsageIngestionService::class);
+        $rating = app(NetworkUsageRatingService::class);
+        $legacyPayload = array_replace($this->payload($vm, $quota + 1073741824), [
+            'interval_start' => '2026-03-31T07:00:00Z',
+            'interval_end' => '2026-03-31T08:00:00Z',
+        ]);
+        $this->assertTrue($rating->rate($ingestion->ingest('test-ipdr', $legacyPayload)));
+        app(UsageBillingService::class)->settleDate('2026-03-31');
+        $legacy = VmNetworkBillingPeriod::firstOrFail();
+        $legacy->update(['policy_snapshot' => array_diff_key($legacy->policy_snapshot, ['calendar' => true])]);
+        $ledger = UsageAccrual::firstOrFail()->getAttributes();
+
+        config(['network-billing.jalali_from' => '2026-04-01']);
+        $this->travelTo(CarbonImmutable::parse('2026-04-02 12:00:00', 'Asia/Tehran'));
+        $transition = array_replace($this->payload($vm, $quota), [
+            'bucket_id' => 'transition',
+            'interval_start' => '2026-03-31T20:30:00Z',
+            'interval_end' => '2026-03-31T21:00:00Z',
+        ]);
+        $this->assertTrue($rating->rate($ingestion->ingest('test-ipdr', $transition)));
+        $this->assertSame('gregorian', $legacy->fresh()->billingCalendar());
+        $period = VmNetworkBillingPeriod::where('period_start', $legacy->period_end)->firstOrFail();
+        $this->assertSame('transition', $period->billingCalendar());
+        $this->assertSame($quota, $period->included_bytes);
+        $this->assertSame(0, $period->accrued_amount);
+        $this->assertSame('2026-04-20 20:30:00', $period->period_end->toDateTimeString());
+        $this->actingAs($vm->customer, 'customer')->get('https://cp.localhost/servers/'.$vm->uuid.'/network')
+            ->assertOk()->assertSee('دوره گذار به تقویم شمسی')->assertSee('نوسازی سهمیه در')
+            ->assertSee('۱۴۰۵/۰۲/۰۱')->assertSee('سهمیه کامل ماهانه در دوره گذار اعمال می‌شود.');
+
+        $this->travelTo(CarbonImmutable::parse('2026-04-21 12:00:00', 'Asia/Tehran'));
+        $jalali = array_replace($transition, [
+            'bucket_id' => 'jalali',
+            'interval_start' => '2026-04-20T20:30:00Z',
+            'interval_end' => '2026-04-20T21:00:00Z',
+        ]);
+        $this->assertTrue($rating->rate($ingestion->ingest('test-ipdr', $jalali)));
+        $newPeriod = VmNetworkBillingPeriod::where('period_start', $period->period_end)->firstOrFail();
+        $this->assertSame('jalali', $newPeriod->billingCalendar());
+        $this->assertSame($quota, $newPeriod->rated_bytes);
+        $this->assertSame('2026-05-21 20:30:00', $newPeriod->period_end->toDateTimeString());
+        $this->get('https://cp.localhost/servers/'.$vm->uuid.'/network')->assertOk()->assertSee('دوره ماه شمسی');
+
+        $this->assertSame($ledger, UsageAccrual::firstOrFail()->getAttributes());
+        $this->assertSame(9000, $legacy->fresh()->accrued_amount);
+        $this->assertDatabaseCount('wallet_transactions', 1);
+
+        $correction = $ingestion->ingest('test-ipdr', array_replace($legacyPayload, ['revision' => 2, 'egress_bytes' => $quota]));
+        $this->assertTrue($rating->rate($correction));
+        $this->assertFalse($rating->rate($correction));
+        $this->assertSame($legacy->id, $correction->ratings()->where('revision', 2)->firstOrFail()->vm_network_billing_period_id);
+        $this->assertSame($ledger, UsageAccrual::firstOrFail()->getAttributes());
+        $this->assertSame(0, $legacy->fresh()->accrued_amount);
+        $this->assertDatabaseCount('wallet_transactions', 2);
+        $this->assertDatabaseCount('vm_network_billing_periods', 3);
+    }
+
+    public function test_late_usage_without_a_saved_period_uses_the_calendar_in_effect_at_the_time(): void
+    {
+        config(['network-billing.jalali_from' => '2026-04-01']);
+        $this->travelTo(CarbonImmutable::parse('2026-05-15 12:00:00', 'Asia/Tehran'));
+        $vm = $this->networkVm();
+        $bucket = app(NetworkUsageIngestionService::class)->ingest('test-ipdr', array_replace($this->payload($vm, 100), [
+            'interval_start' => '2026-03-31T20:00:00Z',
+            'interval_end' => '2026-03-31T20:30:00Z',
+        ]));
+        $this->assertTrue(app(NetworkUsageRatingService::class)->rate($bucket));
+        $period = VmNetworkBillingPeriod::firstOrFail();
+        $this->assertSame('gregorian', $period->billingCalendar());
+        $this->assertSame('2026-03-31 20:30:00', $period->period_end->toDateTimeString());
+    }
+
+    public function test_buckets_cannot_be_rated_across_the_first_jalali_boundary(): void
+    {
+        config(['network-billing.jalali_from' => '2026-04-01']);
+        $vm = $this->networkVm();
+        $ingestion = app(NetworkUsageIngestionService::class);
+        $rating = app(NetworkUsageRatingService::class);
+        $payload = array_replace($this->payload($vm, 100), [
+            'interval_start' => '2026-04-20T20:00:00Z',
+            'interval_end' => '2026-04-20T21:00:00Z',
+        ]);
+        $bucket = $ingestion->ingest('test-ipdr', $payload);
+        $this->assertFalse($rating->rate($bucket));
+        $this->assertSame('quarantined', $bucket->fresh()->processing_status);
+        $this->assertDatabaseCount('network_usage_ratings', 0);
+
+        $bucket = $ingestion->ingest('test-ipdr', array_replace($payload, [
+            'interval_end' => '2026-04-20T20:30:00Z', 'revision' => 2,
+        ]));
+        $this->assertTrue($rating->rate($bucket));
+        $this->assertThrows(fn () => $ingestion->ingest('test-ipdr', array_replace($payload, ['revision' => 3])), RuntimeException::class);
+        $this->assertSame(2, $bucket->fresh()->revision);
+        $this->assertDatabaseCount('network_usage_ratings', 1);
+    }
+
     public function test_vm_overrides_control_actual_rating_including_unit_size_quota_and_direction(): void
     {
         $vm = $this->networkVm();

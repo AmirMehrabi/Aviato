@@ -7,6 +7,8 @@ use App\Models\VirtualMachine;
 use App\Models\VmNetworkBillingPeriod;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use InvalidArgumentException;
+use Morilog\Jalali\Jalalian;
 
 class NetworkBillingPolicyService
 {
@@ -30,10 +32,24 @@ class NetworkBillingPolicyService
 
     public function periodFor(VirtualMachine $vm, CarbonInterface $instant): VmNetworkBillingPeriod
     {
+        $instant = $instant->toImmutable()->utc();
+        $periods = $vm->networkBillingPeriods();
+        $existing = $this->storedPeriodAt($vm, $instant);
+        if ($existing) {
+            return $existing;
+        }
+
         $policy = $this->effective($vm);
-        $local = CarbonImmutable::instance($instant->toImmutable())->setTimezone($policy['timezone']);
-        $start = $local->startOfMonth()->utc();
-        $end = $local->addMonthNoOverflow()->startOfMonth()->utc();
+        [$start, $end, $policy['calendar']] = $this->periodBounds($instant->setTimezone($policy['timezone']));
+
+        // Stored periods retain their dates even when a VM's timezone changes.
+        $previous = (clone $periods)->where('period_end', '>', $start)
+            ->where('period_end', '<=', $instant)->latest('period_end')->first();
+        $next = (clone $periods)->where('period_start', '>', $instant)
+            ->where('period_start', '<', $end)->oldest('period_start')->first();
+        $start = $previous?->period_end ?? $start;
+        $end = $next?->period_start ?? $end;
+
         $customer = $vm->project?->owner ?? $vm->customer;
 
         return VmNetworkBillingPeriod::query()->firstOrCreate([
@@ -51,6 +67,56 @@ class NetworkBillingPolicyService
             'currency' => $policy['currency'],
             'policy_snapshot' => $policy,
         ]);
+    }
+
+    public function periodDays(VirtualMachine $vm, CarbonImmutable $local): int
+    {
+        $period = $this->storedPeriodAt($vm, $local);
+        [$start, $end] = $period
+            ? [$period->period_start, $period->period_end]
+            : $this->periodBounds($local);
+        $timezone = $period?->timezone ?? $local->getTimezone();
+
+        return (int) round($start->toImmutable()->setTimezone($timezone)->diffInDays($end->toImmutable()->setTimezone($timezone)));
+    }
+
+    private function storedPeriodAt(VirtualMachine $vm, CarbonImmutable $instant): ?VmNetworkBillingPeriod
+    {
+        $utc = $instant->utc();
+
+        return $vm->networkBillingPeriods()->where('period_start', '<=', $utc)
+            ->where('period_end', '>', $utc)->latest('period_start')->first();
+    }
+
+    /** @return array{CarbonImmutable, CarbonImmutable, string} */
+    private function periodBounds(CarbonImmutable $local): array
+    {
+        $cutoverDate = config('network-billing.jalali_from');
+        $cutover = null;
+        if (filled($cutoverDate)) {
+            if (! is_string($cutoverDate) || ! preg_match('/^\d{4}-(0[1-9]|1[0-2])-01$/D', $cutoverDate)) {
+                throw new InvalidArgumentException('NETWORK_BILLING_JALALI_FROM must be the first day of a Gregorian month (YYYY-MM-01).');
+            }
+
+            $cutover = CarbonImmutable::parse($cutoverDate, $local->getTimezone());
+        }
+
+        if ($cutover === null || $local->lt($cutover)) {
+            return [
+                $local->startOfMonth()->utc(),
+                $local->startOfMonth()->addMonth()->utc(),
+                VmNetworkBillingPeriod::CALENDAR_GREGORIAN,
+            ];
+        }
+
+        $month = Jalalian::fromCarbon($local->startOfDay()->toMutable())->getFirstDayOfMonth();
+        $start = $month->toCarbon()->startOfDay()->toImmutable();
+        $end = $month->addMonths()->toCarbon()->startOfDay()->toImmutable();
+        if ($start->lt($cutover)) {
+            return [$cutover->utc(), $end->utc(), VmNetworkBillingPeriod::CALENDAR_TRANSITION];
+        }
+
+        return [$start->utc(), $end->utc(), VmNetworkBillingPeriod::CALENDAR_JALALI];
     }
 
     public function ratedBytes(string $direction, int $ingress, int $egress): int

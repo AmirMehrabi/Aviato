@@ -71,7 +71,7 @@ class NetworkMonthlyEstimateService
                 if ($days === 0) {
                     return ['amount' => null];
                 }
-                $projectedBytes = (int) round($bytes / $days * $today->daysInMonth);
+                $projectedBytes = (int) round($bytes / $days * $this->policies->periodDays($vm, $today));
 
                 return ['amount' => $this->policies->amount($projectedBytes, $policy['included_bytes'], $policy['price_per_unit'], $policy['price_unit_bytes'])];
             });

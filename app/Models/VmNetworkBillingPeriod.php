@@ -10,6 +10,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['virtual_machine_id', 'customer_id', 'project_id', 'period_start', 'period_end', 'timezone', 'direction', 'included_bytes', 'price_per_unit', 'price_unit_bytes', 'currency', 'policy_snapshot', 'ingress_bytes', 'egress_bytes', 'rated_bytes', 'billable_bytes', 'accrued_amount', 'status'])]
 class VmNetworkBillingPeriod extends Model
 {
+    public const CALENDAR_GREGORIAN = 'gregorian';
+
+    public const CALENDAR_TRANSITION = 'transition';
+
+    public const CALENDAR_JALALI = 'jalali';
+
+    public function billingCalendar(): string
+    {
+        return $this->policy_snapshot['calendar'] ?? self::CALENDAR_GREGORIAN;
+    }
+
     public function virtualMachine(): BelongsTo
     {
         return $this->belongsTo(VirtualMachine::class);

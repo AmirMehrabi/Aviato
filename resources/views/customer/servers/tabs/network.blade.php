@@ -69,12 +69,23 @@
         <p class="mt-2 text-sm leading-7 text-amber-800">پس از ثبت دوره، سهمیه و مبلغ اینجا نمایش داده می‌شود.</p>
     </section>
 @else
-    @php($billingPeriod = $summary['period'])
-    <h3 class="mt-5 text-lg font-black text-slate-950">خلاصه صورتحساب شبکه</h3>
-    <p class="mb-3 mt-1 text-sm text-slate-500">
-        از <x-network-usage-date :date="$billingPeriod->period_start->copy()->setTimezone(config('app.customer_timezone'))->toDateString()" />
-        تا <x-network-usage-date :date="$billingPeriod->period_end->copy()->subSecond()->setTimezone(config('app.customer_timezone'))->toDateString()" />
-    </p>
+    @php
+        $billingPeriod = $summary['period'];
+        $periodStart = $billingPeriod->period_start->setTimezone($billingPeriod->timezone);
+        $periodEnd = $billingPeriod->period_end->setTimezone($billingPeriod->timezone);
+        $calendarLabel = match ($billingPeriod->billingCalendar()) {
+            \App\Models\VmNetworkBillingPeriod::CALENDAR_JALALI => 'دوره ماه شمسی',
+            \App\Models\VmNetworkBillingPeriod::CALENDAR_TRANSITION => 'دوره گذار به تقویم شمسی',
+            default => 'دوره ماه میلادی',
+        };
+    @endphp
+    <div class="mb-3 mt-5">
+        <h3 class="text-lg font-black text-slate-950">{{ $summary['is_current'] ? 'خلاصه صورتحساب شبکه' : 'خلاصه آخرین دوره ثبت‌شده شبکه' }}</h3>
+        <p class="mt-1 text-sm text-slate-500">
+            {{ $calendarLabel }} · از <x-network-usage-date :date="$periodStart->toDateString()" />
+            تا <x-network-usage-date :date="$periodEnd->copy()->subSecond()->toDateString()" />
+        </p>
+    </div>
     <dl class="grid grid-cols-2 gap-3 xl:grid-cols-4">
         @foreach ([
             'ورودی' => $reports->bytes($summary['ingress_bytes']),
@@ -96,6 +107,16 @@
         <div class="flex flex-wrap justify-between gap-2">
             <div>
                 <h3 class="font-black">سهمیه ماهانه</h3>
+                @if ($summary['is_current'])
+                    <p class="mt-1 text-xs leading-6 text-slate-600">
+                        نوسازی سهمیه در <x-network-usage-date :date="$periodEnd->toDateString()" />
+                        ساعت <bdi>{{ \App\Support\PersianDigits::convert($periodEnd->format('H:i')) }}</bdi>
+                        <bdi dir="ltr">({{ $billingPeriod->timezone }})</bdi>
+                    </p>
+                    @if ($billingPeriod->billingCalendar() === \App\Models\VmNetworkBillingPeriod::CALENDAR_TRANSITION)
+                        <p class="text-xs leading-6 text-slate-600">سهمیه کامل ماهانه در دوره گذار اعمال می‌شود.</p>
+                    @endif
+                @endif
                 <p class="mt-1 text-xs leading-6 text-slate-500">آخرین داده: {{ $summary['latest_bucket']?->interval_end?->diffForHumans() ?? 'نامشخص' }} · ساعات اخیر ممکن است هنوز نهایی نشده باشد.</p>
             </div>
             <b>{{ $summary['usage_percent'] === null ? 'بدون سهمیه' : $summary['usage_percent'].'٪' }}</b>

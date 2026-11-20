@@ -30,7 +30,7 @@ class NetworkUsageReportService
     /** @return array<string, mixed> */
     public function vmSummary(VirtualMachine $vm, ?CarbonInterface $at = null): array
     {
-        $at ??= now();
+        $at = ($at ?? now())->toImmutable()->utc();
         $period = VmNetworkBillingPeriod::query()
             ->where('virtual_machine_id', $vm->id)
             ->where('period_start', '<=', $at)
@@ -47,6 +47,7 @@ class NetworkUsageReportService
 
         return [
             'period' => $period, 'latest_bucket' => $latestBucket,
+            'is_current' => $period->period_start->lte($at) && $period->period_end->gt($at),
             'ingress_bytes' => (int) $period->ingress_bytes, 'egress_bytes' => (int) $period->egress_bytes,
             'rated_bytes' => (int) $period->rated_bytes, 'included_bytes' => (int) $period->included_bytes,
             'remaining_bytes' => max(0, (int) $period->included_bytes - (int) $period->rated_bytes),
