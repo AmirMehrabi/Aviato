@@ -382,12 +382,12 @@
                     @foreach ($navGroups as $group => $items)
                         @if ($group === 'فروشندگی')
                             <details class="group/reseller" @if (str_starts_with($activeNav ?? '', 'reseller')) open @endif>
-                                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2.5 text-[#C7D4EA] transition hover:bg-[#0A2A66] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#69A9FF] [&::-webkit-details-marker]:hidden">
+                                <summary class="flex h-11 cursor-pointer list-none items-center gap-3 rounded-xl px-3 text-[13px] font-semibold text-[#C7D4EA] transition hover:bg-[#0A2A66] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white [&::-webkit-details-marker]:hidden">
                                     <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 10h16M5 10l1-6h12l1 6M6 10v10h12V10M9 20v-6h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     <span>فروشندگی</span>
                                     <svg class="mr-auto size-4 shrink-0 transition-transform group-open/reseller:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 </summary>
-                                <div class="mt-1 mr-5 space-y-0.5 border-r border-white/10 pr-2" aria-label="بخش‌های فروشندگی">
+                                <div class="mt-1 mr-5 space-y-0.5 pr-2" aria-label="بخش‌های فروشندگی">
                                     @foreach ($items as $item)
                                         @include('customer.partials.sidebar-link')
                                     @endforeach

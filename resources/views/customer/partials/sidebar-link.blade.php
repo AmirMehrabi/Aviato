@@ -6,15 +6,12 @@
     @if ($isActive) aria-current="{{ $sidebarRoute === $item['route'] ? 'page' : 'location' }}" @endif
     @click="if (window.innerWidth < 1024) sidebarOpen = false"
     @class([
-        'relative flex min-h-11 items-center gap-3 overflow-hidden rounded-lg px-3 py-2.5 leading-5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#69A9FF]',
-        'bg-[#234995] font-semibold text-white' => $isActive,
+        'flex items-center gap-3 rounded-xl px-3 font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white h-11 text-[13px]',
+        'bg-white/12 text-white' => $isActive,
         'text-[#C7D4EA] hover:bg-[#0A2A66] hover:text-white' => ! $isActive,
     ])
 >
-    @if ($isActive)
-        <span class="pointer-events-none absolute inset-y-2 start-0 w-1 rounded-e-full bg-[#8FC5FF]" aria-hidden="true"></span>
-    @endif
-    <svg @class(['size-[18px] shrink-0', 'text-[#8FC5FF]' => $isActive]) viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+    <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
         <path d="{{ $item['icon'] }}" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <span class="min-w-0">{{ $item['label'] }}</span>
