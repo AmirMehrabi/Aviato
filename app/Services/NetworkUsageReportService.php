@@ -7,6 +7,7 @@ use App\Models\VirtualMachine;
 use App\Models\VmNetworkBillingPeriod;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use Morilog\Jalali\Jalalian;
 
 class NetworkUsageReportService
 {
@@ -63,6 +64,60 @@ class NetworkUsageReportService
             ->where('interval_start', '>=', $from)->where('interval_end', '<=', $to)
             ->selectRaw('DATE(interval_start) as usage_date, SUM(ingress_bytes) as ingress_bytes, SUM(egress_bytes) as egress_bytes, COUNT(*) as bucket_count')
             ->groupByRaw('DATE(interval_start)')->orderBy('usage_date')->get();
+    }
+
+    /** @return array<string, Jalalian> */
+    public function trafficMonths(VirtualMachine $vm, string $timezone): array
+    {
+        $month = Jalalian::fromCarbon(now($timezone)->startOfDay())->getFirstDayOfMonth();
+        $earliest = NetworkUsageBucket::query()->where('virtual_machine_id', $vm->id)
+            ->oldest('interval_start')->first(['interval_start']);
+        $firstMonth = $earliest
+            ? Jalalian::fromCarbon($earliest->interval_start->setTimezone($timezone)->startOfDay())->getFirstDayOfMonth()
+            : $month;
+
+        $months = [$month->format('Y-m') => $month];
+        while ($month->format('Y-m') > $firstMonth->format('Y-m')) {
+            $month = $month->subMonths();
+            $months[$month->format('Y-m')] = $month;
+        }
+
+        return $months;
+    }
+
+    /** @return array{daily: Collection<int, object>, dataState: array{partial: int, missing: int}} */
+    public function trafficForRange(VirtualMachine $vm, CarbonInterface $from, CarbonInterface $to): array
+    {
+        $buckets = NetworkUsageBucket::query()->where('virtual_machine_id', $vm->id)
+            ->where('interval_start', '>=', $from->toImmutable()->utc())
+            ->where('interval_start', '<', $to->toImmutable()->utc())
+            ->where('interval_end', '<=', $to->toImmutable()->utc())
+            ->select('interval_start', 'ingress_bytes', 'egress_bytes', 'status', 'completeness')
+            ->orderBy('interval_start')
+            ->cursor();
+
+        $days = [];
+        $dataState = ['partial' => 0, 'missing' => 0];
+        foreach ($buckets as $bucket) {
+            if (isset($dataState[$bucket->completeness])) {
+                $dataState[$bucket->completeness]++;
+            }
+            if ($bucket->status !== 'final' || $bucket->completeness !== 'complete') {
+                continue;
+            }
+
+            $date = $bucket->interval_start->setTimezone($from->getTimezone())->toDateString();
+            $day = $days[$date] ??= (object) ['usage_date' => $date, 'ingress_bytes' => 0, 'egress_bytes' => 0];
+            $day->ingress_bytes += $bucket->ingress_bytes;
+            $day->egress_bytes += $bucket->egress_bytes;
+        }
+
+        return ['daily' => collect(array_values($days)), 'dataState' => $dataState];
+    }
+
+    public function gigabytes(int $bytes): string
+    {
+        return $bytes > 0 && $bytes < 1_000_000 ? '<0.001' : number_format($bytes / 1_000_000_000, 3);
     }
 
     public function bytes(int $bytes): string

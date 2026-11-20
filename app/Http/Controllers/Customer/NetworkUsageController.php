@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\NetworkUsageBucket;
 use App\Models\VirtualMachine;
 use App\Services\BillingService;
+use App\Services\NetworkBillingPolicyService;
 use App\Services\NetworkUsageReportService;
 use App\Services\ProjectAccessService;
 use App\Services\WalletService;
@@ -29,12 +29,18 @@ class NetworkUsageController extends Controller
         ]);
     }
 
-    public function show(Request $request, VirtualMachine $virtualMachine, BillingService $billing): View
+    public function show(Request $request, VirtualMachine $virtualMachine, BillingService $billing, NetworkBillingPolicyService $policies): View
     {
         $server = $this->projects->resolveCustomerVm($request, $virtualMachine);
         $server->loadMissing(['proxmoxServer', 'infrastructureLocation.hetznerAccount', 'project.owner']);
-        $summary = $this->reports->vmSummary($server);
-        $period = $summary['period'];
+        $timezone = $policies->effective($server)['timezone'];
+        $months = $this->reports->trafficMonths($server, $timezone);
+        $selectedMonth = $request->query('month', array_key_first($months));
+        abort_unless(is_string($selectedMonth) && isset($months[$selectedMonth]), 404);
+
+        $month = $months[$selectedMonth];
+        $from = $month->toCarbon()->startOfDay();
+        $to = $month->addMonths()->toCarbon()->startOfDay();
         $customer = $request->user('customer');
 
         return view('customer.servers.detail', array_merge($this->layoutData($request), [
@@ -44,15 +50,14 @@ class NetworkUsageController extends Controller
             'activeMembership' => $this->projects->membership($server->project, $customer),
             'canManageServer' => $this->projects->canManageVms($server->project, $customer),
             'billing' => $billing,
-            'summary' => $summary,
+            'summary' => $this->reports->vmSummary($server),
             'reports' => $this->reports,
             'wallets' => $this->wallets,
-            'daily' => $period ? $this->reports->daily($server, $period->period_start, $period->period_end) : collect(),
-            'dataState' => [
-                'partial' => NetworkUsageBucket::query()->where('virtual_machine_id', $server->id)->where('completeness', 'partial')->count(),
-                'missing' => NetworkUsageBucket::query()->where('virtual_machine_id', $server->id)->where('completeness', 'missing')->count(),
-            ],
-        ]));
+            'months' => $months,
+            'selectedMonth' => $selectedMonth,
+            'chartStart' => $from->toDateString(),
+            'chartEnd' => $to->copy()->subDay()->toDateString(),
+        ], $this->reports->trafficForRange($server, $from, $to)));
     }
 
     private function layoutData(Request $request): array

@@ -139,6 +139,54 @@ class NetworkUsageUiTest extends TestCase
             ->assertSee('جزئیات مصرف روزانه');
     }
 
+    public function test_customer_can_switch_between_jalali_traffic_months(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-23 12:00:00', 'Asia/Tehran'));
+        $vm = $this->meteredVm();
+        $this->period($vm);
+        $this->actingAs($vm->customer, 'customer');
+
+        $newYear = Carbon::parse('2026-03-21 00:00:00', 'Asia/Tehran');
+        $this->bucket($vm, [
+            'interval_start' => $newYear->copy()->subHour(), 'interval_end' => $newYear,
+            'ingress_bytes' => 4_500_000_000, 'egress_bytes' => 5_000_000_000,
+        ]);
+        $this->bucket($vm, [
+            'bucket_id' => 'bucket-ui-2',
+            'interval_start' => $newYear, 'interval_end' => $newYear->copy()->addHour(),
+            'ingress_bytes' => 1_500_000_000, 'egress_bytes' => 2_250_000_000,
+        ]);
+        $this->bucket($vm, [
+            'bucket_id' => 'bucket-ui-3',
+            'interval_start' => $newYear->copy()->addHours(4), 'interval_end' => $newYear->copy()->addHours(5),
+            'ingress_bytes' => 750_000_000, 'egress_bytes' => 0,
+        ]);
+
+        $url = 'https://cp.localhost/servers/'.$vm->uuid.'/network';
+        $this->get($url)
+            ->assertOk()
+            ->assertViewHas('selectedMonth', '1405-01')
+            ->assertViewHas('chartStart', '2026-03-21')
+            ->assertViewHas('chartEnd', '2026-04-20')
+            ->assertViewHas('daily', fn ($daily) => $daily->pluck('usage_date')->all() === ['2026-03-21']
+                && $daily->first()->ingress_bytes === 2_250_000_000)
+            ->assertSee('value="1404-12"', false)
+            ->assertSee('ورودی (GB)')
+            ->assertSee('خروجی (GB)')
+            ->assertSee('>2.250</bdi>', false);
+
+        $this->get($url.'?month=1404-12')
+            ->assertOk()
+            ->assertViewHas('selectedMonth', '1404-12')
+            ->assertViewHas('chartEnd', '2026-03-20')
+            ->assertViewHas('daily', fn ($daily) => $daily->pluck('usage_date')->all() === ['2026-03-20']
+                && $daily->first()->ingress_bytes === 4_500_000_000)
+            ->assertSee('۱۴۰۴/۱۲/۲۹')
+            ->assertSee('>4.500</bdi>', false);
+
+        $this->get($url.'?month=1405-02')->assertNotFound();
+    }
+
     public function test_customer_cannot_view_another_projects_vm_network_page(): void
     {
         $vm = $this->meteredVm();
@@ -179,9 +227,9 @@ class NetworkUsageUiTest extends TestCase
         ]);
     }
 
-    private function bucket(VirtualMachine $vm): void
+    private function bucket(VirtualMachine $vm, array $attributes = []): void
     {
-        NetworkUsageBucket::query()->create([
+        NetworkUsageBucket::query()->create($attributes + [
             'source' => 'test', 'bucket_id' => 'bucket-ui-1', 'revision' => 1, 'status' => 'final',
             'virtual_machine_id' => $vm->id, 'vm_uuid' => $vm->uuid, 'assignment_id' => 'assignment-ui-1',
             'interval_start' => now()->subHour(), 'interval_end' => now(), 'ingress_bytes' => 100,

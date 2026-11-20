@@ -6,15 +6,15 @@ const jalaliDate = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
     timeZone: 'UTC',
 });
 
-export function vmNetworkChart(series) {
+export function vmNetworkChart(series, startDate = series[0].date, endDate = series.at(-1).date) {
     let chart;
 
     return {
         init() {
             this.$nextTick(() => {
                 const days = new Map(series.map(day => [Date.parse(day.date), day]));
-                const firstDay = Date.parse(series[0].date);
-                const lastDay = Date.parse(series.at(-1).date);
+                const firstDay = Date.parse(startDate);
+                const lastDay = Date.parse(endDate);
                 const dates = Array.from(
                     { length: (lastDay - firstDay) / millisecondsPerDay + 1 },
                     (_, index) => firstDay + index * millisecondsPerDay,
