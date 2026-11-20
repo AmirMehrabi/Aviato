@@ -32,6 +32,7 @@ class WalletController extends Controller
         private readonly WorkspaceWalletAlertService $walletAlerts,
     ) {}
 
+    
     public function show(Request $request): View
     {
         $customer = $request->user('customer');
