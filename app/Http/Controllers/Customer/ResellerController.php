@@ -75,7 +75,13 @@ class ResellerController extends Controller
         $customer->load('wallet');
         $commissions = $customer->resellerCommissions()
             ->with('customer')
-            ->latest()
+            ->select('service_date', 'customer_id', 'commission_pct', 'status')
+            ->selectRaw('SUM(settlement_amount) AS settlement_amount, SUM(commission_amount) AS commission_amount')
+            ->groupBy('service_date', 'customer_id', 'commission_pct', 'status')
+            ->orderByDesc('service_date')
+            ->orderBy('customer_id')
+            ->orderBy('commission_pct')
+            ->orderBy('status')
             ->paginate(20)
             ->withQueryString();
 
