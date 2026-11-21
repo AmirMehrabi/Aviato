@@ -186,6 +186,7 @@ class TicketController extends Controller
         return response()->json([
             'unread_replies_count' => 0,
             'notification_unread_count' => $this->notifications->unreadCount($request->user('admin')),
+            'ticket_notification_unread_count' => $this->notifications->ticketUnreadCount($request->user('admin')),
         ]);
     }
 

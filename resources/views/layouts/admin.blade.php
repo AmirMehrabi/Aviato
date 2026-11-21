@@ -22,6 +22,9 @@
     @php
         $adminUser = auth('admin')->user();
         $adminUnreadNotificationsCount = $adminUser?->unreadNotifications()->count() ?? 0;
+        $adminUnreadTicketNotificationsCount = $adminUser
+            ? app(\App\Services\Notifications\NotificationInboxService::class)->ticketUnreadCount($adminUser)
+            : 0;
         $navGroups = \App\Support\AdminNavigation::groups($adminUser);
         $mainNavGroups = array_filter($navGroups, fn (array $group): bool => ! $group['secondary']);
         $secondaryNavGroups = array_filter($navGroups, fn (array $group): bool => $group['secondary']);
@@ -63,6 +66,7 @@
             notificationsOpen: false,
             profileOpen: false,
             notificationUnreadCount: Number(config.notificationUnreadCount || 0),
+            ticketUnreadCount: Number(config.ticketUnreadCount || 0),
 
             openSearch() {
                 this.searchOpen = true;
@@ -134,8 +138,9 @@
     </script>
 
     <div
-        x-data="adminLayout({ notificationUnreadCount: {{ $adminUnreadNotificationsCount }}, sidebarPanel: @js($initialSidebarPanel) })"
+        x-data="adminLayout({ notificationUnreadCount: {{ $adminUnreadNotificationsCount }}, ticketUnreadCount: {{ $adminUnreadTicketNotificationsCount }}, sidebarPanel: @js($initialSidebarPanel) })"
         @notification-unread-changed.window="notificationUnreadCount = $event.detail.count"
+        @ticket-notification-unread-changed.window="ticketUnreadCount = Number($event.detail.count || 0)"
         @notification-center-open.window="searchOpen = false; profileOpen = false"
         @keydown.window.ctrl.k.prevent="openSearch()"
         @keydown.window.meta.k.prevent="openSearch()"
@@ -184,11 +189,6 @@
                 </button>
             </div>
 
-            @php
-                $awaitingTickets = \App\Support\AdminAccess::canVisit($adminUser, 'admin.tickets.index')
-                    ? \App\Models\Ticket::where('status', \App\Models\Ticket::STATUS_OPEN)->count()
-                    : 0;
-            @endphp
             <div x-ref="adminSidebar" class="admin-sidebar-scroll -mx-2 mt-5 min-h-0 flex-1 overflow-y-auto px-2 pb-1">
                 <nav id="admin-nav-main" x-show="sidebarPanel === 'main'" x-cloak aria-label="منوی اصلی" class="space-y-3">
                     @foreach ($mainNavGroups as $group)
@@ -197,7 +197,7 @@
                                 <span class="block px-3 pb-1 text-[10px] font-bold text-white/55">{{ $group['label'] }}</span>
                             @endif
                             @foreach ($group['items'] as $item)
-                                <x-admin.nav-link :item="$item" :awaiting-tickets="$awaitingTickets" />
+                                <x-admin.nav-link :item="$item" />
                             @endforeach
                         </div>
                     @endforeach

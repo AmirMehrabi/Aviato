@@ -1,4 +1,4 @@
-@props(['item', 'awaitingTickets' => 0])
+@props(['item'])
 
 <a href="{{ route($item['route']) }}"
     @click="if (window.innerWidth < 1024) sidebarOpen = false"
@@ -13,7 +13,7 @@
     @if ($item['active'])
         <span class="absolute right-0 h-4 w-0.5 rounded-full bg-white" aria-hidden="true"></span>
     @endif
-    @if ($item['route'] === 'admin.tickets.index' && $awaitingTickets > 0)
-        <span class="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-[#004DB3]" aria-label="{{ $awaitingTickets }} تیکت در انتظار پاسخ مدیر" title="در انتظار پاسخ مدیر">{{ $awaitingTickets > 99 ? '99+' : $awaitingTickets }}</span>
+    @if ($item['route'] === 'admin.tickets.index')
+        <span x-cloak x-show="ticketUnreadCount > 0" x-text="ticketUnreadCount > 99 ? '99+' : ticketUnreadCount" :aria-label="`${ticketUnreadCount} اعلان خوانده‌نشده تیکت`" class="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-[#004DB3]"></span>
     @endif
 </a>

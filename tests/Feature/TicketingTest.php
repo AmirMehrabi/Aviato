@@ -477,13 +477,24 @@ class TicketingTest extends TestCase
             }
         }
 
-        $this->actingAs($customer, 'customer')->get('https://cp.localhost/tickets/'.$ticket->number)->assertOk();
+        $this->actingAs($customer, 'customer')->get('https://cp.localhost/tickets/'.$ticket->number)
+            ->assertOk()
+            ->assertSee('ticketUnreadCount: 1');
         $this->assertNotNull($reply->fresh()->seen_by_customer_at);
         $this->assertSame(1, $customer->unreadNotifications()->count());
         $this->assertSame($other->id, $customer->unreadNotifications()->firstOrFail()->data['ticket_id']);
         $this->assertSame(3, $admin->unreadNotifications()->count());
 
-        $this->actingAs($admin, 'admin')->get('https://admin.localhost/tickets/'.$ticket->number)->assertOk();
+        $this->actingAs($admin, 'admin')->get('https://admin.localhost/tickets')
+            ->assertOk()
+            ->assertSee('ticketUnreadCount: 3');
+
+        $this->actingAs($admin, 'admin')->get('https://admin.localhost/tickets/'.$ticket->number)
+            ->assertOk()
+            ->assertSee('ticketUnreadCount: 1');
+        $this->postJson('https://admin.localhost/tickets/'.$ticket->number.'/seen')
+            ->assertOk()
+            ->assertJsonPath('ticket_notification_unread_count', 1);
         $this->assertNotNull($customerMessage->fresh()->seen_by_admin_at);
         $this->assertSame(1, $admin->unreadNotifications()->count());
         $this->assertSame($other->id, $admin->unreadNotifications()->firstOrFail()->data['ticket_id']);

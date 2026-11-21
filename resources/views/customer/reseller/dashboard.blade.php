@@ -32,15 +32,15 @@
 
     <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 class="text-lg font-black">نمودار درآمد ماهانه</h2>
-        <div class="mt-4 h-64">
+        <div class="relative mt-4 h-64">
             <canvas x-data x-init="
                 new Chart($el, {
                     type: 'bar',
                     data: {
-                        labels: {!! json_encode($monthlyCommissions->pluck('month')) !!},
+                        labels: @js($monthlyCommissions->pluck('month')->all()),
                         datasets: [{
                             label: 'کمیسیون',
-                            data: {!! json_encode($monthlyCommissions->pluck('total')) !!},
+                            data: @js($monthlyCommissions->pluck('total')->all()),
                             backgroundColor: 'rgba(0, 105, 255, 0.8)',
                             borderRadius: 8,
                         }]
