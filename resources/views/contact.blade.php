@@ -111,7 +111,7 @@
                         </div>
                         <div class="py-4">
                             <dt class="text-sm font-bold text-slate-500">تلفن</dt>
-                            <dd class="mt-2 text-base font-black text-[#0069FF]"><a href="tel:+983491097953" dir="ltr" class="hover:underline">۰۳۴-۹۱۰۹-۷۹۵۳</a></dd>
+                            <dd class="mt-2 text-base font-black text-[#0069FF]"><a href="tel:+982191093464" dir="ltr" class="hover:underline">021 9109 3464</a></dd>
                         </div>
                         <div class="py-4">
                             <dt class="text-sm font-bold text-slate-500">ساعت پاسخ‌گویی</dt>

@@ -18,7 +18,8 @@ class ContactSubmissionTest extends TestCase
             ->assertSee(route('customer.tickets.create'), false)
             ->assertSee('نوع درخواست را انتخاب کنید')
             ->assertSee('mailto:admin@aviato.ir', false)
-            ->assertSee('tel:+983491097953', false);
+            ->assertSee('021 9109 3464')
+            ->assertSee('tel:+982191093464', false);
     }
 
     public function test_guest_can_submit_contact_form(): void
