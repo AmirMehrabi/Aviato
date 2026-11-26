@@ -80,7 +80,7 @@ before('deploy:symlink', 'deploy:remember_current');
 
 task('deploy:healthcheck', function () {
     try {
-        run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
+        run('sudo -n /usr/bin/systemctl reload php8.6-fpm');
         // Check the local HTTPS vhost with the correct TLS hostname.
         run("curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --noproxy '*' --max-time 15 --resolve aviato.ir:443:127.0.0.1 https://aviato.ir/up > /dev/null");
         foreach (['admin.aviato.ir', 'my.aviato.ir'] as $portal) {
@@ -89,7 +89,7 @@ task('deploy:healthcheck', function () {
         run('rm -f {{deploy_path}}/.dep/previous_current');
     } catch (\Throwable $exception) {
         run('if [ -s {{deploy_path}}/.dep/previous_current ]; then ln -sfn "$(cat {{deploy_path}}/.dep/previous_current)" {{current_path}}; fi');
-        run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
+        run('sudo -n /usr/bin/systemctl reload php8.6-fpm');
 
         throw $exception;
     }
@@ -141,7 +141,7 @@ after('deploy:success', 'supervisor:deploy');
 task('artisan:reload', artisan('reload --except=queue', ['min' => '12.41']));
 
 task('php-fpm:reload', function () {
-    run('sudo -n /usr/bin/systemctl reload php8.5-fpm');
+    run('sudo -n /usr/bin/systemctl reload php8.6-fpm');
 });
 
 // task('nginx:s3', function () {

@@ -6,8 +6,8 @@ staging_path="${1:?Supply the staging directory containing redis/, php/ and the 
 backup_path="/var/backups/aviato-performance/$(date -u +%Y%m%dT%H%M%SZ)"
 nginx_site="$(readlink -f /etc/nginx/sites-enabled/aviato.conf)"
 install -d -m 700 "$backup_path"
-cp -a /etc/php/8.5/fpm/pool.d "$backup_path/php-pools"
-cp -a /etc/php/8.5/fpm/conf.d "$backup_path/php-ini"
+cp -a /etc/php/8.6/fpm/pool.d "$backup_path/php-pools"
+cp -a /etc/php/8.6/fpm/conf.d "$backup_path/php-ini"
 cp -a "$nginx_site" "$backup_path/nginx-site.conf"
 cp -a /var/www/html/aviato/shared/.env "$backup_path/environment"
 for config_path in /etc/redis/portal.conf /etc/systemd/system/redis-portal.service /etc/nginx/conf.d/aviato-performance.conf /etc/nginx/snippets/aviato-build-assets.conf; do
@@ -23,9 +23,9 @@ systemctl daemon-reload
 systemctl enable --now redis-portal
 test "$(redis-cli -p 6380 ping)" = PONG
 
-install -m 644 "$staging_path/php/99-aviato-performance.ini" /etc/php/8.5/fpm/conf.d/99-aviato-performance.ini
-install -m 644 "$staging_path/php/zz-aviato-performance.conf" /etc/php/8.5/fpm/pool.d/zz-aviato-performance.conf
-php-fpm8.5 -t
+install -m 644 "$staging_path/php/99-aviato-performance.ini" /etc/php/8.6/fpm/conf.d/99-aviato-performance.ini
+install -m 644 "$staging_path/php/zz-aviato-performance.conf" /etc/php/8.6/fpm/pool.d/zz-aviato-performance.conf
+php-fpm8.6 -t
 
 install -m 644 "$staging_path/performance.conf" /etc/nginx/conf.d/aviato-performance.conf
 install -m 644 "$staging_path/build-assets.conf" /etc/nginx/snippets/aviato-build-assets.conf
@@ -43,7 +43,7 @@ if include not in text:
     site.write_text(text.replace(marker, include + '\n' + marker))
 PY
 nginx -t
-systemctl reload php8.5-fpm
+systemctl reload php8.6-fpm
 systemctl reload nginx
 
 for portal_host in aviato.ir admin.aviato.ir my.aviato.ir; do
