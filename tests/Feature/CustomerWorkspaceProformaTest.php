@@ -27,7 +27,7 @@ class CustomerWorkspaceProformaTest extends TestCase
 
     private const TRAFFIC_NOTICE = 'هزینه مصرف ترافیک شبکه در این پیش‌فاکتور لحاظ نشده است.';
 
-    public function test_workspace_links_and_document_require_billing_and_workspace_wide_vm_access(): void
+    public function test_billing_members_can_view_proformas_at_any_vm_scope_while_other_roles_keep_existing_access(): void
     {
         $owner = Customer::factory()->create();
         $project = $owner->ensureDefaultProject();
@@ -40,7 +40,9 @@ class CustomerWorkspaceProformaTest extends TestCase
             [ProjectMember::ROLE_ADMIN, ProjectMember::VM_ACCESS_ALL, true],
             [ProjectMember::ROLE_ADMIN, ProjectMember::VM_ACCESS_OWN, false],
             [ProjectMember::ROLE_ADMIN, ProjectMember::VM_ACCESS_SPECIFIC, false],
-            [ProjectMember::ROLE_BILLING, ProjectMember::VM_ACCESS_ALL, false],
+            [ProjectMember::ROLE_BILLING, ProjectMember::VM_ACCESS_ALL, true],
+            [ProjectMember::ROLE_BILLING, ProjectMember::VM_ACCESS_OWN, true],
+            [ProjectMember::ROLE_BILLING, ProjectMember::VM_ACCESS_SPECIFIC, true],
             [ProjectMember::ROLE_MEMBER, ProjectMember::VM_ACCESS_ALL, false],
             [ProjectMember::ROLE_VIEWER, ProjectMember::VM_ACCESS_ALL, false],
         ] as [$role, $scope, $allowed]) {

@@ -107,8 +107,8 @@ class ProjectAccessService
         $membership = $this->membership($project, $customer);
 
         return $membership?->canViewBilling()
-            && $membership->canViewVms()
-            && $membership->canAccessAllVms();
+            && ($membership->role === ProjectMember::ROLE_BILLING
+                || ($membership->canViewVms() && $membership->canAccessAllVms()));
     }
 
     public function visibleVms(Project $project, Customer $customer): HasMany
