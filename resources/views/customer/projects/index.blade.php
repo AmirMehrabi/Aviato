@@ -70,6 +70,9 @@
                             <a href="{{ route($canViewVms ? 'customer.servers.index' : 'dashboard', [], false) }}" class="rounded-lg bg-[#031B4E] px-4 py-2 text-sm font-black text-white transition hover:bg-[#0A2A66]">{{ $canViewVms ? 'مشاهده منابع' : 'نمای کلی فضای کاری' }}</a>
                         @endif
                         <a href="{{ route('customer.projects.show', $project, false) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069FF]">مدیریت</a>
+                        @if(app(\App\Services\ProjectAccessService::class)->canViewProforma($project, $customer))
+                            <a href="{{ route('customer.projects.proforma', $project, false) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF]">پیش‌فاکتور</a>
+                        @endif
                     </div>
                 </article>
             @endforeach

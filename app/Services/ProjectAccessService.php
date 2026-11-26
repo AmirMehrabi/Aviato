@@ -102,6 +102,15 @@ class ProjectAccessService
         return (bool) $this->membership($project, $customer)?->canViewBilling();
     }
 
+    public function canViewProforma(Project $project, Customer $customer): bool
+    {
+        $membership = $this->membership($project, $customer);
+
+        return $membership?->canViewBilling()
+            && $membership->canViewVms()
+            && $membership->canAccessAllVms();
+    }
+
     public function visibleVms(Project $project, Customer $customer): HasMany
     {
         $membership = $this->membership($project, $customer);

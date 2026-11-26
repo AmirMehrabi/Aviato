@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\VmPriceUnavailableException;
 use App\Models\AppSetting;
 use App\Models\ResourceRate;
 use App\Models\VirtualMachine;
@@ -11,7 +12,6 @@ use App\Models\VmDisk;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Support\Collection;
-use RuntimeException;
 
 class BillingService
 {
@@ -48,25 +48,43 @@ class BillingService
 
     public function hourlyWhenRunning(VirtualMachine $vm): float
     {
+        return $this->applyTaxIfApplicable($this->runningHourlyBeforeTax($vm), $vm);
+    }
+
+    /** @return array{subtotal: int, tax: int, total: int} */
+    public function runningMonthlyEstimate(VirtualMachine $vm): array
+    {
+        if ($vm->isLifecycleLocked() || $vm->status === VirtualMachine::STATUS_SUSPENDED) {
+            return ['subtotal' => 0, 'tax' => 0, 'total' => 0];
+        }
+
+        $hourly = $this->runningHourlyBeforeTax($vm);
+        $subtotal = (int) round($hourly * ResourceRate::hoursPerMonth());
+        $total = (int) round($this->applyTaxIfApplicable($hourly, $vm) * ResourceRate::hoursPerMonth());
+
+        return ['subtotal' => $subtotal, 'tax' => $total - $subtotal, 'total' => $total];
+    }
+
+    private function runningHourlyBeforeTax(VirtualMachine $vm): float
+    {
         if ($vm->pricing_mode === 'custom') {
-            return $this->applyTaxIfApplicable($vm->custom_monthly_price / ResourceRate::hoursPerMonth(), $vm);
+            return $vm->custom_monthly_price / ResourceRate::hoursPerMonth();
         }
 
         if ($vm->isHetzner()) {
-            return $this->applyTaxIfApplicable($this->hetznerHourly($vm), $vm);
+            return $this->hetznerHourly($vm);
         }
 
         if ($vm->bundle && $vm->pricing_mode !== 'resources') {
-            return $this->applyTaxIfApplicable((float) $vm->bundle->hourly_price, $vm);
+            return (float) $vm->bundle->hourly_price;
         }
 
         $rates = $this->rates();
-        $base = ($vm->cpu_cores * $this->rate($rates, ResourceRate::CPU))
+
+        return ($vm->cpu_cores * $this->rate($rates, ResourceRate::CPU))
             + ($vm->ram_gb * $this->rate($rates, ResourceRate::RAM))
             + ($vm->disk_gb * $this->rate($rates, ResourceRate::DISK))
             + ($vm->ip_count * $this->rate($rates, ResourceRate::IP));
-
-        return $this->applyTaxIfApplicable($base, $vm);
     }
 
     public function monthlyBeforeTax(VirtualMachine $vm): int
@@ -240,13 +258,13 @@ class BillingService
                 return $snapshot;
             }
 
-            throw new RuntimeException('Hetzner price mapping is missing for this VM.');
+            throw new VmPriceUnavailableException('Hetzner price mapping is missing for this VM.');
         }
 
         $converted = AppSetting::convertHetznerUsdToIrr($usd);
 
         if ($converted <= 0) {
-            throw new RuntimeException('USD to IRR rate is not configured for Hetzner billing.');
+            throw new VmPriceUnavailableException('USD to IRR rate is not configured for Hetzner billing.');
         }
 
         return $converted;

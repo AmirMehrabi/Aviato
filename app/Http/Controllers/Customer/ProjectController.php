@@ -12,6 +12,7 @@ use App\Services\ProjectAccessService;
 use App\Services\ProjectLifecycleService;
 use App\Services\ProjectMemberVmAccessService;
 use App\Services\WalletService;
+use App\Services\WorkspaceProformaService;
 use App\Services\WorkspaceWalletAlertPreferences;
 use App\Services\WorkspaceWalletAlertService;
 use Illuminate\Contracts\View\View;
@@ -74,6 +75,7 @@ class ProjectController extends Controller
             'activeProject' => $activeProject,
             'activeMembership' => $this->projects->membership($activeProject, $customer),
             'projectMembership' => $this->projects->membership($project, $customer),
+            'canViewProforma' => $this->projects->canViewProforma($project, $customer),
             'walletAlertThresholds' => app(WorkspaceWalletAlertService::class)->thresholds($project),
             'walletAlertRecipientIds' => array_map(
                 fn (Customer $recipient): int => $recipient->id,
@@ -85,6 +87,16 @@ class ProjectController extends Controller
                 ? $this->lifecycle->deletionBlockers($project, $customer)
                 : [],
             'invoiceCount' => $customer->invoices()->count(),
+        ]);
+    }
+
+    public function proforma(Request $request, Project $project, WorkspaceProformaService $proforma): View
+    {
+        abort_unless($this->projects->canViewProforma($project, $request->user('customer')), 404);
+
+        return view('customer.projects.proforma', [
+            ...$proforma->estimate($project),
+            'wallets' => $this->wallets,
         ]);
     }
 

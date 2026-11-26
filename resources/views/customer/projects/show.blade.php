@@ -156,6 +156,9 @@
             <div class="rounded-lg border border-slate-200 bg-white p-5">
                 <h2 class="text-lg font-black text-slate-950">مسئول پرداخت: {{ $project->owner?->name }}</h2>
                 <p class="mt-2 text-sm leading-7 text-slate-500">هزینه همه منابع این فضا از کیف‌پول مالک پرداخت می‌شود. هشدارهای این بخش بر اساس موجودی و هزینه ماهانه مالک هستند.</p>
+                @if($canViewProforma)
+                    <a href="{{ route('customer.projects.proforma', $project, false) }}" class="mt-3 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0069FF]">پیش‌فاکتور</a>
+                @endif
                 @if($isActive)
                     <a href="{{ route('customer.wallet.show', [], false) }}" class="mt-3 inline-flex text-sm font-black text-[#0069FF]">مشاهده کیف‌پول و پرداخت‌ها ←</a>
                 @endif
