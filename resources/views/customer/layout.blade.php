@@ -159,7 +159,7 @@
                     <div>
                         <p class="text-xs font-black {{ $walletIsOverdrawn || $walletIsLocked ? 'text-red-700' : 'text-amber-700' }}">{{ $walletIsOverdrawn ? 'موجودی کیف پول منفی است' : ($walletIsDepleted ? 'کیف پول شما خالی است' : 'کیف پول قفل است') }}</p>
                         <p class="mt-1 text-sm font-bold leading-7 {{ $walletIsOverdrawn || $walletIsLocked ? 'text-red-800' : 'text-amber-800' }}">
-                            {{ $walletIsLocked ? 'برای ادامه استفاده، وضعیت کیف پول را بررسی کنید. مشاهده و مدیریت حساب همچنان در دسترس است.' : 'مشاهده و مدیریت حساب همچنان در دسترس است؛ برای ساخت یا افزایش مصرف سرویس‌ها، کیف پول را شارژ کنید.' }}
+                            {{ $walletIsLocked ? 'برای ادامه استفاده، وضعیت کیف پول را بررسی کنید. مشاهده و مدیریت حساب همچنان در دسترس است.' : 'برای ساخت سرویس جدید یا افزایش مصرف، کیف پول‌تان را شارژ کنید.' }}
                         </p>
                     </div>
                 </div>
