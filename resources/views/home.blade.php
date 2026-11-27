@@ -31,6 +31,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preload" as="image" type="image/webp" href="{{ Vite::asset('resources/images/landing-cloud-hero-mobile.webp') }}" media="(max-width: 767px)" fetchpriority="high">
     <link rel="preload" as="image" type="image/webp" href="{{ Vite::asset('resources/images/landing-cloud-hero.webp') }}" media="(min-width: 768px)" fetchpriority="high">
+    <link rel="preload" as="font" type="font/woff2" href="{{ Vite::asset('resources/fonts/DastkhatBar-Variable.woff2') }}" crossorigin>
 @endpush
 
 @section('content')

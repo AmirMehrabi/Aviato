@@ -73,6 +73,13 @@
             --public-font-fallback: 'Ravi', 'Dana', 'Vazirmatn', sans-serif;
         }
 
+        @if ($isHomePage)
+            html.website-font,
+            .figma-marketing.landing-page {
+                --public-font-fallback: 'Dana', 'Vazirmatn', sans-serif;
+            }
+        @endif
+
         .figma-marketing header {
             top: 2.5rem;
         }

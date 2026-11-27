@@ -10,6 +10,7 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/css/marketing.css',
                 'resources/js/marketing.js',
+                'resources/fonts/DastkhatBar-Variable.woff2',
                 'resources/images/landing-cloud-hero.webp',
                 'resources/images/landing-cloud-hero-mobile.webp',
             ],

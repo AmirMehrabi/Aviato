@@ -29,6 +29,7 @@ class MarketingHomeTest extends TestCase
     {
         $this->get('/')->assertOk()
             ->assertSee('<style>'.Vite::content('resources/css/marketing.css').'</style>', false)
+            ->assertSee('<link rel="preload" as="font" type="font/woff2" href="'.Vite::asset('resources/fonts/DastkhatBar-Variable.woff2').'" crossorigin>', false)
             ->assertDontSee('rel="stylesheet"', false)
             ->assertDontSee('rel="manifest"', false)
             ->assertSee('src="'.asset('assets/images/figma-aviato-logo-160.webp').'"', false)
