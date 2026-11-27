@@ -2,6 +2,9 @@
 <html lang="fa" dir="rtl" class="website-font">
 
 <head>
+    @php
+        $isHomePage = request()->routeIs('home');
+    @endphp
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'آویاتو | خرید ماشین مجازی ابری سریع')</title>
@@ -24,11 +27,18 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicons/favicon-16x16.png') }}">
 
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicons/apple-touch-icon.png') }}">
-    <link rel="manifest" crossorigin="use-credentials" href="{{ asset('favicons/site.webmanifest') }}">
+    @unless ($isHomePage)
+        <link rel="manifest" crossorigin="use-credentials" href="{{ asset('favicons/site.webmanifest') }}">
+    @endunless
 
     <meta name="theme-color" content="#0B6BFF">
     @stack('preloads')
-    @vite(['resources/css/marketing.css', 'resources/js/marketing.js'])
+    @if ($isHomePage && ! Vite::isRunningHot())
+        <style>{!! Vite::content('resources/css/marketing.css') !!}</style>
+        @vite('resources/js/marketing.js')
+    @else
+        @vite(['resources/css/marketing.css', 'resources/js/marketing.js'])
+    @endif
     <style>
         html {
             scroll-behavior: smooth;
@@ -131,6 +141,8 @@
     @php
         $activePage = $activePage ?? 'home';
         $darkHeaderTop = false;
+        $brandLogo = asset('assets/images/figma-aviato-logo-160.webp');
+        $brandLogoRetina = asset('assets/images/figma-aviato-logo-320.webp');
         $marketingNavItems = config('marketing.navigation', []);
         $solutionMenuItems = collect(config('solutions'))->map(function ($solution) {
             $solution['route'] = route($solution['route']);
@@ -159,7 +171,7 @@
             <nav class="relative mx-auto flex h-full max-w-[1400px] items-center justify-between gap-4 px-4 md:px-8 lg:px-10">
                 <a href="{{ route('home') }}" class="flex min-w-0 items-center" aria-label="آویاتو" @mouseenter="solutionsOpen = false" @focus="solutionsOpen = false">
                     <span class="relative block h-10 w-24 sm:w-40" :class="scrolled ? 'h-9 w-20 sm:w-40' : 'h-10 w-24 sm:w-40'">
-                        <img src="{{ asset('assets/images/figma-aviato-logo.png') }}" alt="آویاتو" width="553" height="213"
+                        <img src="{{ $brandLogo }}" srcset="{{ $brandLogoRetina }} 2x" alt="آویاتو" width="160" height="62"
                             x-show="scrolled || ! {{ $darkHeaderTop ? 'true' : 'false' }}"
                             :class="scrolled ? 'h-9 w-20' : 'h-10 w-24'"
                             class="absolute inset-0 h-10 w-24 object-contain object-right transition-[height,width] sm:w-40">
@@ -285,7 +297,7 @@
                 x-transition:leave-end="translate-x-full opacity-0"
                 class="absolute right-0 top-0 flex h-dvh w-[min(21rem,88vw)] flex-col border-l border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/15">
                 <div class="flex items-center justify-between gap-4">
-                    <img src="{{ asset('assets/images/figma-aviato-logo.png') }}" alt="آویاتو" width="553" height="213"
+                    <img src="{{ $brandLogo }}" srcset="{{ $brandLogoRetina }} 2x" alt="آویاتو" width="160" height="62"
                         class="h-10 w-28 object-contain object-right">
                     <button type="button" @click="menuOpen = false" class="grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50" aria-label="بستن منو">
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -346,7 +358,7 @@
 
                     <div class="flex flex-col items-center text-center lg:items-end lg:text-right">
                         <a href="{{ route('home') }}" aria-label="آویاتو، خانه">
-                            <img loading="lazy" decoding="async" src="{{ asset('assets/images/figma-aviato-logo.png') }}" alt="آویاتو" width="553" height="213" class="h-[62px] w-40 object-contain object-right">
+                            <img loading="lazy" decoding="async" src="{{ $brandLogo }}" srcset="{{ $brandLogoRetina }} 2x" alt="آویاتو" width="160" height="62" class="h-[62px] w-40 object-contain object-right">
                         </a>
                         <p class="mt-3 max-w-[252px] text-base leading-[27px]">آویاتو، زیرساخت ساده و قابل اتکا برای اجرای سرویس‌های آنلاین.</p>
                     </div>
@@ -362,7 +374,7 @@
         <footer class="border-t border-slate-200 bg-[#F5F8FD] px-4 py-10 text-slate-700 md:px-8 md:py-12 lg:px-10">
             <div class="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.35fr_0.65fr_0.65fr] md:gap-12">
                 <div>
-                    <img loading="lazy" decoding="async" src="{{ asset('assets/images/figma-aviato-logo.png') }}" alt="آویاتو" width="553" height="213"
+                    <img loading="lazy" decoding="async" src="{{ $brandLogo }}" srcset="{{ $brandLogoRetina }} 2x" alt="آویاتو" width="160" height="62"
                         class="h-12 w-40 object-contain object-right">
                     <p class="mt-4 max-w-sm text-base font-black leading-8 text-slate-950">
                         آویاتو، زیرساخت ساده و قابل اتکا برای اجرای سرویس های آنلاین.

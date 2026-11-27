@@ -11,7 +11,7 @@
 
     $currentCustomers = collect([
         ['name' => 'حسابرو', 'url' => 'https://hesabro.com', 'logo' => 'assets/images/customers/hesabro-logo.png', 'width' => 139, 'height' => 34],
-        ['name' => 'کارخانه نوآوری کرمان', 'url' => 'https://kermanif.ir', 'logo' => 'assets/images/customers/kermanif-logo.png', 'width' => 82, 'height' => 82],
+        ['name' => 'کارخانه نوآوری کرمان', 'url' => 'https://kermanif.ir', 'logo' => 'assets/images/customers/kermanif-logo-56.webp', 'logoRetina' => 'assets/images/customers/kermanif-logo-82.webp', 'width' => 56, 'height' => 56],
         ['name' => 'مبیت', 'url' => 'https://mobit.ir', 'logo' => 'assets/images/customers/mobit-logo.svg', 'width' => 918, 'height' => 256],
         ['name' => 'آوینوکس', 'url' => 'https://avinox.ir/', 'logo' => 'assets/images/customers/avinox-logo.svg', 'width' => 1255, 'height' => 159],
         ['name' => 'پی‌بای', 'url' => 'https://paybuy.ir/', 'logo' => 'assets/images/customers/paybuy-logo.svg', 'width' => 32, 'height' => 32],
@@ -80,7 +80,11 @@
                     @foreach ($currentCustomers as $customer)
                         <a href="{{ $customer['url'] }}" target="_blank" rel="noopener noreferrer" class="group flex min-h-[167px] flex-col items-center justify-center rounded-2xl border border-[#E0E0E0] bg-white p-6 text-center transition hover:border-[#B9D6FF] hover:shadow-lg hover:shadow-slate-200/50">
                             <span class="flex h-16 w-full items-center justify-center">
-                                <img src="{{ asset($customer['logo']) }}" alt="{{ $customer['name'] }}" width="{{ $customer['width'] }}" height="{{ $customer['height'] }}" decoding="async" class="max-h-14 max-w-44 object-contain">
+                                <img src="{{ asset($customer['logo']) }}"
+                                    @isset($customer['logoRetina'])
+                                        srcset="{{ asset($customer['logo']) }} {{ $customer['width'] }}w, {{ asset($customer['logoRetina']) }} 82w" sizes="56px"
+                                    @endisset
+                                    alt="{{ $customer['name'] }}" width="{{ $customer['width'] }}" height="{{ $customer['height'] }}" decoding="async" class="max-h-14 max-w-44 object-contain">
                             </span>
                             <span class="mt-3 text-xl text-slate-950">{{ $customer['name'] }}</span>
                             <span class="text-base text-slate-500" dir="ltr">{{ parse_url($customer['url'], PHP_URL_HOST) }}</span>

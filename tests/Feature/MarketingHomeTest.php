@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Js;
 use Tests\TestCase;
 
@@ -22,6 +23,16 @@ class MarketingHomeTest extends TestCase
         foreach (['pricing', 'customer.domains.index', 'customer.cloud-dns.index', 'solutions.colocation'] as $route) {
             $response->assertSee(route($route), false);
         }
+    }
+
+    public function test_homepage_uses_inline_styles_and_responsive_brand_assets(): void
+    {
+        $this->get('/')->assertOk()
+            ->assertSee('<style>'.Vite::content('resources/css/marketing.css').'</style>', false)
+            ->assertDontSee('rel="stylesheet"', false)
+            ->assertDontSee('rel="manifest"', false)
+            ->assertSee('src="'.asset('assets/images/figma-aviato-logo-160.webp').'"', false)
+            ->assertSee('srcset="'.asset('assets/images/figma-aviato-logo-320.webp').' 2x"', false);
     }
 
     public function test_customer_selection_has_three_distinct_customers_in_their_fixed_order(): void
