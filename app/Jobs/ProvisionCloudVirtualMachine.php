@@ -112,6 +112,12 @@ class ProvisionCloudVirtualMachine implements ShouldBeEncrypted, ShouldQueue
                 $verifiedConfig = $proxmox->vmConfig($server, $vm->node, $vmid);
                 $history[] = ['step' => 'config_verify', 'result' => array_diff_key($verifiedConfig, ['cipassword' => true])];
 
+                $antiSpoofing = [];
+                if ($address) {
+                    $antiSpoofing = $proxmox->applyVmIpAntiSpoofing($server, $vm->node, $vmid, $address->address);
+                    $history[] = ['step' => 'anti_spoofing', 'result' => $antiSpoofing];
+                }
+
                 $actualCpu = (int) ($verifiedConfig['cores'] ?? $vm->cpu_cores);
                 $actualRamMb = (int) ($verifiedConfig['memory'] ?? ($vm->ram_gb * 1024));
                 $actualDiskGb = (int) ($verifiedConfig['maxdisk'] ?? ($vm->disk_gb * 1024 * 1024 * 1024)) / (1024 * 1024 * 1024);
@@ -127,6 +133,7 @@ class ProvisionCloudVirtualMachine implements ShouldBeEncrypted, ShouldQueue
                 }
 
                 $vm->forceFill([
+                    'mac_address' => $antiSpoofing['mac_address'] ?? $vm->mac_address,
                     'cpu_cores' => $actualCpu,
                     'ram_gb' => (int) ceil($actualRamMb / 1024),
                     'disk_gb' => $actualDiskGb,

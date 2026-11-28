@@ -333,7 +333,7 @@ class CloudVmProvisioningTest extends TestCase
         $this->assertNull($vm->ssh_public_key);
     }
 
-    public function test_provisioning_skips_cloud_init_payload_when_image_disables_it(): void
+    public function test_provisioning_filters_the_reserved_ip_without_cloud_init(): void
     {
         [$image, $bundle] = $this->catalog();
         $image->update(['cloud_init_enabled' => false]);
@@ -351,10 +351,18 @@ class CloudVmProvisioningTest extends TestCase
             'cpu_cores' => 2,
             'ram_gb' => 4,
             'disk_gb' => 40,
-            'ip_count' => 0,
+            'ip_count' => 1,
             'status' => VirtualMachine::STATUS_STOPPED,
             'provisioning_status' => VirtualMachine::PROVISION_PENDING,
         ]);
+
+        $address = IpAddress::create([
+            'ip_pool_id' => IpPool::query()->firstOrFail()->id,
+            'address' => '192.168.10.50',
+            'status' => IpAddress::STATUS_RESERVED,
+            'virtual_machine_id' => $vm->id,
+        ]);
+        $vm->update(['ip_address_id' => $address->id, 'ip_address' => $address->address]);
 
         $this->mock(ProxmoxService::class, function ($mock): void {
             $mock->shouldReceive('nextVmid')->once()->andReturn(['vmid' => 101]);
@@ -363,17 +371,21 @@ class CloudVmProvisioningTest extends TestCase
             $mock->shouldReceive('configureCloudInit')->never();
             $mock->shouldReceive('resizeDisk')->never();
             $mock->shouldReceive('regenerateCloudInit')->never();
-            $mock->shouldReceive('startVm')->never();
             $mock->shouldReceive('vmConfig')->once()->andReturn([]);
+            $mock->shouldReceive('applyVmIpAntiSpoofing')->once()
+                ->withArgs(fn ($server, $node, $vmid, $ip): bool => $node === 'pve1' && $vmid === 101 && $ip === '192.168.10.50')
+                ->ordered()->andReturn(['mac_address' => '02:00:00:00:00:01']);
+            $mock->shouldReceive('startVm')->once()->ordered()->andReturn(['task_id' => null]);
         });
 
-        (new ProvisionCloudVirtualMachine($vm->id, ['start_after_create' => false]))->handle(
+        (new ProvisionCloudVirtualMachine($vm->id))->handle(
             app(ProxmoxService::class),
             app(IpPoolService::class),
         );
 
         $this->assertSame(VirtualMachine::PROVISION_READY, $vm->refresh()->provisioning_status);
-        $this->assertNull($vm->ip_address);
+        $this->assertSame('02:00:00:00:00:01', $vm->mac_address);
+        $this->assertSame('192.168.10.50', $vm->ip_address);
     }
 
     public function test_provisioning_skips_a_vmid_retained_by_a_deleted_panel_record(): void
@@ -429,6 +441,48 @@ class CloudVmProvisioningTest extends TestCase
 
         $this->assertSame(102, $vm->refresh()->vmid);
         $this->assertSame(VirtualMachine::PROVISION_READY, $vm->provisioning_status);
+    }
+
+    public function test_rebuild_filters_the_reserved_ip_without_cloud_init(): void
+    {
+        [$image, $bundle] = $this->catalog();
+        $image->update(['cloud_init_enabled' => false]);
+        $vm = VirtualMachine::create([
+            'customer_id' => Customer::factory()->create()->id,
+            'proxmox_server_id' => $image->proxmox_server_id,
+            'vm_bundle_id' => $bundle->id,
+            'cloud_image_id' => $image->id,
+            'vmid' => 101, 'template_vmid' => $image->template_vmid,
+            'name' => 'plain-template-vps', 'node' => $image->node, 'storage' => $image->storage,
+            'cpu_cores' => 2, 'ram_gb' => 4, 'disk_gb' => 40, 'ip_count' => 1,
+            'status' => VirtualMachine::STATUS_STOPPED,
+            'provisioning_status' => VirtualMachine::PROVISION_PENDING,
+            'remote_state' => ['rebuild_requested_at' => now()->toISOString()],
+        ]);
+        $address = IpAddress::create([
+            'ip_pool_id' => IpPool::query()->firstOrFail()->id,
+            'address' => '192.168.10.50',
+            'status' => IpAddress::STATUS_ASSIGNED,
+            'virtual_machine_id' => $vm->id,
+        ]);
+        $vm->update(['ip_address_id' => $address->id, 'ip_address' => $address->address]);
+
+        $this->mock(ProxmoxService::class, function ($mock): void {
+            $mock->shouldReceive('vmConfigOrNull')->once()->andReturnNull();
+            $mock->shouldReceive('cloneCloudTemplate')->once()->andReturn(['task_id' => null]);
+            $mock->shouldNotReceive('configureCloudInit');
+            $mock->shouldReceive('applyVmIpAntiSpoofing')->once()
+                ->withArgs(fn ($server, $node, $vmid, $ip, $interface, $bridge): bool => $node === 'pve1'
+                    && $vmid === 101 && $ip === '192.168.10.50' && $interface === 'net0' && $bridge === null)
+                ->ordered()->andReturn(['mac_address' => '02:00:00:00:00:01']);
+            $mock->shouldReceive('startVm')->once()->ordered()->andReturn(['task_id' => null]);
+            $mock->shouldReceive('vmConfig')->once()->andReturn([]);
+        });
+
+        (new RebuildCloudVirtualMachine($vm->id))->handle(app(ProxmoxService::class), app(IpPoolService::class));
+
+        $this->assertSame(VirtualMachine::PROVISION_READY, $vm->refresh()->provisioning_status);
+        $this->assertSame('02:00:00:00:00:01', $vm->mac_address);
     }
 
     public function test_cloud_image_minimum_resources_are_enforced(): void
